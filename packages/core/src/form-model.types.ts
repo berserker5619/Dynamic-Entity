@@ -175,7 +175,7 @@ export interface NestedTabConfig {
 /** Top-level nested entity form configuration — authored by the builder, consumed by the renderer. */
 export interface EntityFormConfig {
   entity: string;
-  /** Consumer-facing config schema version (drives `migrateConfig`). */
+  /** Consumer-facing config schema version. */
   version?: number;
   name?: LocalizedText;
   isSystemDefined?: boolean;

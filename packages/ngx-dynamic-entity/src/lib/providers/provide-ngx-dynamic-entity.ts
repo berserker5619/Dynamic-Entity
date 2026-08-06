@@ -4,15 +4,12 @@ import {
   FIELD_TYPE_REGISTRY,
   HOOK_REGISTRY,
   MASKED_ROLES,
-  MIGRATION_STRATEGY,
   VALIDATOR_REGISTRY,
 } from '../tokens/injection-tokens';
 
 export interface NgxDynamicEntityConfig {
   /** Roles that see masked field values as XXXXXXXXX */
   maskedRoles?: string[];
-  /** Migration strategy: 'strict' rejects stale records, 'graceful' flags them. Never 'auto' (ADR-005). */
-  migrationStrategy?: 'strict' | 'graceful';
   /** Custom field type components keyed by type string */
   fieldTypes?: Record<string, Type<any>>;
   /** Entity-ref option loaders keyed by entity key (ADR-006) */
@@ -36,7 +33,6 @@ export interface NgxDynamicEntityConfig {
 export const provideNgxDynamicEntity = (config: NgxDynamicEntityConfig = {}): EnvironmentProviders =>
   makeEnvironmentProviders([
     { provide: MASKED_ROLES, useValue: config.maskedRoles ?? [] },
-    { provide: MIGRATION_STRATEGY, useValue: config.migrationStrategy ?? 'graceful' },
     { provide: FIELD_TYPE_REGISTRY, useValue: new Map(Object.entries(config.fieldTypes ?? {})) },
     { provide: ENTITY_REF_REGISTRY, useValue: new Map(Object.entries(config.entityRefs ?? {})) },
     { provide: VALIDATOR_REGISTRY, useValue: new Map(Object.entries(config.validators ?? {})) },

@@ -6,9 +6,6 @@ import type { CommonModuleEntry } from '@dynamic-entity/core';
 /** Roles that see XXXXXXXXX for masked fields (ADR-003) */
 export const MASKED_ROLES = new InjectionToken<string[]>('MASKED_ROLES');
 
-/** Migration strategy for the frontend — 'strict' | 'graceful' only (ADR-005, never 'auto') */
-export const MIGRATION_STRATEGY = new InjectionToken<'strict' | 'graceful'>('MIGRATION_STRATEGY');
-
 /** Registry: fieldType string → Angular component class */
 export const FIELD_TYPE_REGISTRY = new InjectionToken<Map<string, Type<any>>>('FIELD_TYPE_REGISTRY');
 

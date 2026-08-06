@@ -14,13 +14,12 @@ import { findTab, resolveLabel } from '@dynamic-entity/core';
 import { DynamicFieldComponent } from './dynamic-field/dynamic-field.component';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
 import { HookRegistryService } from '../services/hook-registry.service';
-import { VersionService } from '../services/version.service';
 import { RbacService } from '../services/rbac.service';
 
 /**
  * DynamicFormComponent — the main form component.
  * Renders a reactive form from EntityFormConfig with tab support, nested fields,
- * migration banner, and RBAC-gated submission.
+ * and RBAC-gated submission.
  */
 @Component({
   selector: 'ngx-dynamic-form',
@@ -47,7 +46,6 @@ export class DynamicFormComponent implements OnChanges {
   private readonly fb = inject(FormBuilder);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly hookRegistry = inject(HookRegistryService);
-  protected readonly versionService = inject(VersionService);
   private readonly rbacService = inject(RbacService);
 
   // ─── Signals (local reactive state) ───────────────────────────────────────
@@ -79,16 +77,11 @@ export class DynamicFormComponent implements OnChanges {
     return this.rbacService.getPermissions(this.config, this.userRoles);
   }
 
-  get needsMigration(): boolean {
-    return this.versionService.needsMigration(this.initialData || {}, this.config);
-  }
-
   get canSubmit(): boolean {
     return (
       this.permissions.canEdit &&
       !this.readonly &&
-      !this.isSaving() &&
-      !this.versionService.shouldBlockSubmit(this.initialData || {}, this.config)
+      !this.isSaving()
     );
   }
 

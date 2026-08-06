@@ -1,17 +1,5 @@
 <form [formGroup]="form" (ngSubmit)="submit()" class="ngx-form" novalidate>
 
-  <!-- Migration banner — visible in graceful mode when record is stale -->
-  @if (needsMigration) {
-    <div class="ngx-form__migration-banner" role="alert">
-      ⚠️ This record was created with an older configuration version.
-      @if (versionService.shouldBlockSubmit(initialData || {}, config)) {
-        Please run migration before editing.
-      } @else {
-        It will be updated to the latest version on save.
-      }
-    </div>
-  }
-
   <!-- Error message -->
   @if (error) {
     <div class="ngx-form__error-banner" role="alert">{{ error }}</div>

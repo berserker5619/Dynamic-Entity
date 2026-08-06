@@ -9,7 +9,6 @@ export * from './lib/services/field-registry.service';
 export * from './lib/services/hook-registry.service';
 export * from './lib/services/validator-registry.service';
 export * from './lib/services/entity-ref-registry.service';
-export * from './lib/services/version.service';
 export * from './lib/services/rbac.service';
 
 // Components — the library ships form UI only; rendering a data table is the consumer's choice.
@@ -38,7 +37,6 @@ export type {
   VersionedRecord,
   EntityPermissions,
   RbacContext,
-  MigrationStrategy,
   QueryOptions,
   PaginatedResult,
   FieldValidators,

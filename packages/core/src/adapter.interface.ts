@@ -45,8 +45,5 @@ export interface DynamicEntityAdapter {
   softDeleteRecord(entity: string, id: string): Promise<void>;
   restoreRecord(entity: string, id: string): Promise<VersionedRecord>;
   hardDeleteRecord(entity: string, id: string): Promise<void>;
-
-  // Migration
-  findRecordsNeedingMigration(entity: string): Promise<VersionedRecord[]>;
   bulkUpdateRecords(entity: string, updates: Array<{ id: string; data: object }>): Promise<void>;
 }

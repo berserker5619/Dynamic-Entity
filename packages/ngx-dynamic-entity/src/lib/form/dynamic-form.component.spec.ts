@@ -3,7 +3,6 @@ import { ReactiveFormsModule, FormArray, FormGroup } from '@angular/forms';
 import { DynamicFormComponent } from './dynamic-form.component';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
 import { HookRegistryService } from '../services/hook-registry.service';
-import { VersionService } from '../services/version.service';
 import { RbacService } from '../services/rbac.service';
 import type { EntityFormConfig } from '@dynamic-entity/core';
 import { SimpleChange } from '@angular/core';
@@ -13,7 +12,6 @@ describe('DynamicFormComponent', () => {
   let fixture: ComponentFixture<DynamicFormComponent>;
   let mockValidatorRegistry: any;
   let mockHookRegistry: any;
-  let mockVersionService: any;
   let mockRbacService: any;
 
   const mockConfig: EntityFormConfig = {
@@ -53,10 +51,6 @@ describe('DynamicFormComponent', () => {
       resolveFromConfig: jest.fn().mockReturnValue([]),
     };
     mockHookRegistry = { run: jest.fn().mockImplementation((_k, d) => Promise.resolve(d)) };
-    mockVersionService = {
-      needsMigration: jest.fn().mockReturnValue(false),
-      shouldBlockSubmit: jest.fn().mockReturnValue(false),
-    };
     mockRbacService = { getPermissions: jest.fn().mockReturnValue({ canEdit: true }) };
 
     await TestBed.configureTestingModule({
@@ -64,7 +58,6 @@ describe('DynamicFormComponent', () => {
       providers: [
         { provide: ValidatorRegistryService, useValue: mockValidatorRegistry },
         { provide: HookRegistryService, useValue: mockHookRegistry },
-        { provide: VersionService, useValue: mockVersionService },
         { provide: RbacService, useValue: mockRbacService },
       ],
     }).compileComponents();
@@ -120,9 +113,8 @@ describe('DynamicFormComponent', () => {
     expect(spy).toHaveBeenCalledWith((expect as any).objectContaining({ name: 'Submit Test' }));
   });
 
-  it('should block submit if VersionService says so (strict mode)', () => {
-    mockVersionService.shouldBlockSubmit.mockReturnValue(true);
-    expect(component.canSubmit).toBe(false);
+  it('should allow submit when editable and not saving', () => {
+    expect(component.canSubmit).toBe(true);
   });
 
   it('should emit formReset on reset call', () => {

@@ -10,7 +10,7 @@ class CustomFieldComponent {}
 describe('FieldRegistryService', () => {
   let service: FieldRegistryService;
 
-  const ALL_15_FIELD_TYPES = [
+  const ALL_BUILTIN_FIELD_TYPES = [
     'text',
     'textarea',
     'number',
@@ -24,8 +24,11 @@ describe('FieldRegistryService', () => {
     'dropdown',
     'radio',
     'multiSelect',
+    'entity-ref',
     'group',
     'array',
+    'image',
+    'file',
   ];
 
   beforeEach(() => {
@@ -46,8 +49,8 @@ describe('FieldRegistryService', () => {
     expect(comp).toBe(TextFieldComponent);
   });
 
-  it('should resolve all 15 rich field types defined in the catalog', () => {
-    for (const type of ALL_15_FIELD_TYPES) {
+  it('should resolve all built-in field types', () => {
+    for (const type of ALL_BUILTIN_FIELD_TYPES) {
       const comp = service.resolve(type);
       expect(comp).not.toBeNull();
       expect(service.has(type)).toBeTrue();
