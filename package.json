@@ -20,5 +20,9 @@
   },
   "overrides": {
     "rxjs": "^7.8.2"
+  },
+  "optionalDependencies": {
+    "@esbuild/linux-x64": "^0.25.0",
+    "@rollup/rollup-linux-x64-gnu": "^4.34.0"
   }
 }
