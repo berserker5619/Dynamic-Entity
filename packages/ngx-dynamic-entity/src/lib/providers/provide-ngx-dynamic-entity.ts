@@ -1,6 +1,5 @@
 import { EnvironmentProviders, makeEnvironmentProviders, Type } from '@angular/core';
 import {
-  DYNAMIC_ENTITY_API_URL,
   ENTITY_REF_REGISTRY,
   FIELD_TYPE_REGISTRY,
   HOOK_REGISTRY,
@@ -10,8 +9,6 @@ import {
 } from '../tokens/injection-tokens';
 
 export interface NgxDynamicEntityConfig {
-  /** Base URL of the dynamic-entity-server API. Example: 'http://localhost:3000/api/entities' */
-  apiUrl?: string;
   /** Roles that see masked field values as XXXXXXXXX */
   maskedRoles?: string[];
   /** Migration strategy: 'strict' rejects stale records, 'graceful' flags them. Never 'auto' (ADR-005). */
@@ -32,14 +29,12 @@ export interface NgxDynamicEntityConfig {
  *
  * Usage in app.config.ts:
  *   provideNgxDynamicEntity({
- *     apiUrl: 'http://localhost:3000/api/entities',
  *     maskedRoles: ['IT_SUPPORT'],
  *     entityRefs: { clients: () => clientService.getOptions() },
  *   })
  */
 export const provideNgxDynamicEntity = (config: NgxDynamicEntityConfig = {}): EnvironmentProviders =>
   makeEnvironmentProviders([
-    { provide: DYNAMIC_ENTITY_API_URL, useValue: config.apiUrl ?? '' },
     { provide: MASKED_ROLES, useValue: config.maskedRoles ?? [] },
     { provide: MIGRATION_STRATEGY, useValue: config.migrationStrategy ?? 'graceful' },
     { provide: FIELD_TYPE_REGISTRY, useValue: new Map(Object.entries(config.fieldTypes ?? {})) },

@@ -8,10 +8,8 @@ module.exports = {
   // this Jest setup. They need a separate Jasmine→Jest migration; excluded until then so
   // `npm test` gives a clean signal for the Jest-native suites.
   testPathIgnorePatterns: [
-    '<rootDir>/src/lib/services/config.service.spec.ts',
     '<rootDir>/src/lib/form/dynamic-form.component.spec.ts',
     '<rootDir>/src/lib/form/dynamic-field/dynamic-field.component.spec.ts',
-    '<rootDir>/src/lib/table/dynamic-table.component.spec.ts',
     '<rootDir>/src/lib/field-types/entity-ref-field.component.spec.ts',
   ],
   moduleNameMapper: {

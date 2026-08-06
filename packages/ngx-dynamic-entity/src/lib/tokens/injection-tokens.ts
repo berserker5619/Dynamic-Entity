@@ -1,9 +1,5 @@
 import { InjectionToken } from '@angular/core';
-import type { EntityConfig, FieldConfig, MigrationStrategy } from '@dynamic-entity/core';
 import type { Type } from '@angular/core';
-
-/** Base URL for the dynamic-entity-server API */
-export const DYNAMIC_ENTITY_API_URL = new InjectionToken<string>('DYNAMIC_ENTITY_API_URL');
 
 /** Roles that see XXXXXXXXX for masked fields (ADR-003) */
 export const MASKED_ROLES = new InjectionToken<string[]>('MASKED_ROLES');

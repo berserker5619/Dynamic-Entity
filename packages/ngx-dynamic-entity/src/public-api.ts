@@ -5,7 +5,6 @@ export * from './lib/tokens/injection-tokens';
 export * from './lib/providers/provide-ngx-dynamic-entity';
 
 // Services
-export * from './lib/services/config.service';
 export * from './lib/services/field-registry.service';
 export * from './lib/services/hook-registry.service';
 export * from './lib/services/validator-registry.service';

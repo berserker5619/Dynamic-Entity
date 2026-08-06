@@ -8,7 +8,7 @@ import { LocalStore } from './mock/local-store.service';
  * BuilderPageComponent — demo host for <ngx-entity-builder>.
  *
  * Shows the visual builder with a *live* <ngx-dynamic-form> preview projected into the
- * builder's [ngxBuilderPreview] slot, and persists the result via ConfigService.
+ * builder's [ngxBuilderPreview] slot, and persists the result via LocalStore (demo only).
  */
 @Component({
   selector: 'app-builder-page',
