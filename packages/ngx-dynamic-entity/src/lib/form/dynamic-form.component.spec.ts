@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule, FormArray, FormGroup } from '@angular/forms';
 import { DynamicFormComponent } from './dynamic-form.component';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
@@ -24,25 +24,25 @@ describe('DynamicFormComponent', () => {
         id: 'tab1',
         label: { en: 'Tab 1' },
         fields: [
-          { id: 'name', type: 'text', validators: { required: true }, defaultValue: 'Default' },
+          { id: 'name', type: 'text', label: { en: 'Name' }, validators: { required: true }, defaultValue: 'Default' },
           {
             id: 'address',
             type: 'group',
             label: { en: 'Address' },
-            children: [{ id: 'city', type: 'text' }],
+            children: [{ id: 'city', type: 'text', label: { en: 'City' } }],
           },
           {
             id: 'contacts',
             type: 'array',
             label: { en: 'Contacts' },
-            children: [{ id: 'phone', type: 'text' }],
+            children: [{ id: 'phone', type: 'text', label: { en: 'Phone' } }],
           },
         ],
       },
       {
         id: 'tab2',
         label: { en: 'Tab 2' },
-        fields: [{ id: 'age', type: 'number' }],
+        fields: [{ id: 'age', type: 'number', label: { en: 'Age' } }],
       },
     ],
   };
@@ -117,7 +117,7 @@ describe('DynamicFormComponent', () => {
     await component.submit();
 
     expect(mockHookRegistry.run).toHaveBeenCalled();
-    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ name: 'Submit Test' }));
+    expect(spy).toHaveBeenCalledWith((expect as any).objectContaining({ name: 'Submit Test' }));
   });
 
   it('should block submit if VersionService says so (strict mode)', () => {

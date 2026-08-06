@@ -10,7 +10,7 @@ describe('EntityRefFieldComponent', () => {
 
   beforeEach(async () => {
     mockRegistry = {
-      resolve: vi.fn().mockReturnValue(() => Promise.resolve([{ value: '1', label: 'Item 1' }]))
+      resolve: jest.fn().mockReturnValue(() => Promise.resolve([{ value: '1', label: 'Item 1' }]))
     };
 
     await TestBed.configureTestingModule({

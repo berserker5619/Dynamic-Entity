@@ -6,8 +6,8 @@
     "dev": "ng serve",
     "start": "ng serve",
     "build": "ng build",
-    "test": "ng test",
-    "lint": "ng lint"
+    "test": "ng test --watch=false --browsers=ChromeHeadless",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@angular/animations": "^17.3.0",

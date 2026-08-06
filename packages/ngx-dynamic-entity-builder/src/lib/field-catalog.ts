@@ -21,7 +21,7 @@ export interface FieldTypeMeta {
   supportsPlaceholder: boolean;
 }
 
-export const FIELD_TYPE_CATALOG: readonly FieldTypeMeta[] = [
+export const FIELD_TYPE_CATALOG: FieldTypeMeta[] = [
   {
     type: 'text',
     label: 'Text',
@@ -217,7 +217,7 @@ export const FIELD_TYPE_CATALOG: readonly FieldTypeMeta[] = [
     supportsDefaultValue: false,
     supportsPlaceholder: false,
   },
-] as const;
+];
 
 const CATALOG_BY_TYPE = new Map<string, FieldTypeMeta>(
   FIELD_TYPE_CATALOG.map(meta => [meta.type, meta]),

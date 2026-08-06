@@ -5,7 +5,7 @@
   "scripts": {
     "build": "npx ng-packagr -p ng-package.json",
     "test": "jest",
-    "lint": "ng lint ngx-dynamic-entity-builder"
+    "lint": "tsc --noEmit"
   },
   "peerDependencies": {
     "@angular/cdk": "^17.0.0",

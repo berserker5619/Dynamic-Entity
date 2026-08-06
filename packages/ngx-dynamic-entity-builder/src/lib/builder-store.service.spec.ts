@@ -69,7 +69,7 @@ describe('BuilderStore', () => {
       store.updateField(a, { label: { en: 'Original' } });
       const dupId = store.duplicateField(a);
       expect(store.fields().length).toBe(2);
-      expect(store.fields()[1].id).toBe(dupId);
+      expect(store.fields()[1].id).toBe(dupId!);
       expect(store.fields()[1].label).toEqual({ en: 'Original' });
     });
 

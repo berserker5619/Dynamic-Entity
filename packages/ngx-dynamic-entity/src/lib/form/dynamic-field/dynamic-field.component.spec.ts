@@ -21,8 +21,8 @@ describe('DynamicFieldComponent', () => {
   let mockRbacService: any;
 
   beforeEach(async () => {
-    mockFieldRegistry = { resolve: vi.fn().mockReturnValue(MockTextField) };
-    mockRbacService = { shouldMaskField: vi.fn().mockReturnValue(false) };
+    mockFieldRegistry = { resolve: jest.fn().mockReturnValue(MockTextField) };
+    mockRbacService = { shouldMaskField: jest.fn().mockReturnValue(false) };
 
     await TestBed.configureTestingModule({
       imports: [DynamicFieldComponent],
