@@ -1,50 +1,52 @@
 import { test, expect } from '@playwright/test';
+import { fieldByLabel, gotoDemo, recordButton } from './test-helpers';
 
-test.describe('Dynamic Entity E2E - Validation & Multi-Tab Navigation', () => {
+test.describe('Dynamic Entity E2E - Validation, Roles, and Config Manager', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:4200');
-    await page.waitForLoadState('networkidle');
+    await gotoDemo(page);
   });
 
-  test('1. Validates required form fields and prevents invalid submission', async ({ page }) => {
-    // Click "+ Add Client"
-    await page.locator('button', { hasText: '+ Add Client' }).click();
-    await expect(page.locator('h2')).toHaveText('New Client');
+  test('validates required fields before allowing submission', async ({ page }) => {
+    await safeClick(page.getByRole('button', { name: '+ Add Client' }));
+    await expect(page.getByRole('heading', { level: 2, name: 'New Client' })).toBeVisible();
 
-    // Save button should be disabled when required field (Name) is empty
-    const saveBtn = page.locator('button.ngx-form__submit', { hasText: 'Save' });
+    const saveBtn = page.getByRole('button', { name: 'Save' });
     await expect(saveBtn).toBeDisabled();
 
-    // Fill required Name field
-    await page.locator('.ngx-field', { hasText: 'Name' }).locator('input').fill('Valid Test Client');
-
-    // Save button should now be enabled
+    await fieldByLabel(page, 'Name').locator('input').fill('Valid Test Client');
     await expect(saveBtn).toBeEnabled();
 
-    // Submit form
-    await saveBtn.click();
-    await page.waitForTimeout(500);
-
-    // Verify successfully returned to list and record exists
-    await expect(page.locator('button', { hasText: 'Valid Test Client' })).toBeVisible();
+    await safeClick(saveBtn);
+    await expect(recordButton(page, 'Valid Test Client')).toBeVisible();
   });
 
-  test('2. Navigates between tabs in multi-tab forms', async ({ page }) => {
-    // Click on Acme Corp to open Edit Client
-    await page.locator('button', { hasText: 'Acme Corp' }).click();
-    await expect(page.locator('h2')).toHaveText('Edit Client');
+  test('enforces readonly mode for viewer role', async ({ page }) => {
+    await safeClick(page.getByRole('button', { name: 'Viewer (Readonly)' }));
+    await safeClick(recordButton(page, 'Acme Corp'));
 
-    // Check tab bar if tabs exist
-    const form = page.locator('ngx-dynamic-form');
-    await expect(form).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Edit Client' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Back to List/i })).toBeVisible();
+  });
 
-    // Verify reset button returns to list view
-    const resetBtn = page.locator('button.ngx-form__reset', { hasText: 'Back to List' });
-    await expect(resetBtn).toBeVisible();
-    await resetBtn.click();
-    await page.waitForTimeout(300);
+  test('edits config metadata and increments the version', async ({ page }) => {
+    await safeClick(page.getByRole('button', { name: 'Entity Manager' }));
 
-    // Verify returned to client list
-    await expect(page.locator('h1')).toHaveText('Dynamic Entity Demo');
+    await expect(page.getByRole('heading', { level: 2, name: 'Manage Entities' })).toBeVisible();
+    await expect(page.locator('tbody tr')).toHaveCount(2);
+
+    await safeClick(page.getByRole('button', { name: /Edit Metadata/i }).first());
+    await expect(page.getByRole('heading', { level: 3, name: /Edit Config: clients/i })).toBeVisible();
+
+    const textarea = page.locator('textarea').first();
+    const originalConfig = JSON.parse(await textarea.inputValue());
+    originalConfig.name = { en: 'Clients Directory' };
+    await textarea.fill(JSON.stringify(originalConfig, null, 2));
+
+    await safeClick(page.getByRole('button', { name: 'Save Config' }));
+    await safeClick(page.getByRole('button', { name: 'Entity Manager' }));
+
+    const clientsRow = page.locator('tbody tr').filter({ hasText: 'clients' });
+    await expect(clientsRow).toContainText('2');
   });
 });
