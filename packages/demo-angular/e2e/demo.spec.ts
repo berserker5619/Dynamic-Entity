@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { builderPaletteButton, fieldByLabel, gotoDemo, recordButton } from './test-helpers';
+import { builderPaletteButton, fieldByLabel, gotoDemo, recordButton, safeClick } from './test-helpers';
 
 test.describe('Dynamic Entity Demo E2E Tests', () => {
   test.beforeEach(async ({ page }) => {

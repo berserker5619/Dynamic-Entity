@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:4200',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:4200',
     trace: 'on-first-retry',
     screenshot: 'on',
   },
