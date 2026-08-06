@@ -174,7 +174,14 @@ describe('normalizeLocalizedText', () => {
 });
 
 describe('normalizeField', () => {
+  it('does NOT inject options on non-option field types', () => {
+    const raw = { id: 'name', type: 'text', label: { en: 'Name' } };
+    const result = normalizeField(raw);
+    expect(result.options).toBeUndefined();
+  });
+
   it('normalizes id from _id and label from string', () => {
+
     const raw = { _id: 'abc', type: 'text', label: 'My Field', options: [] };
     const result = normalizeField(raw);
     expect(result.id).toBe('abc');

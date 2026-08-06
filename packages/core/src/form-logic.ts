@@ -226,28 +226,34 @@ export function normalizeField(field: unknown): NestedFieldConfig {
     }));
   }
 
-  // Normalize options
-  const rawOptions = (f['options'] ?? []) as unknown[];
-  const options = (Array.isArray(rawOptions) ? rawOptions : []).map((opt: unknown) => {
-    if (!opt) return { value: '', label: { en: '' } };
-    if (typeof opt === 'string') return { value: opt, label: { en: opt } };
-    if (typeof opt === 'object') {
-      const o = opt as Record<string, unknown>;
-      // Already { value, label: LocalizedText }
-      if ('value' in o && 'label' in o) return { value: o['value'], label: normalizeLocalizedText(o['label']) };
-      // Plain LocalizedText used as option label, no value wrapper
-      return { value: o['en'] ?? Object.values(o)[0] ?? '', label: normalizeLocalizedText(o) };
-    }
-    return { value: opt, label: { en: String(opt) } };
-  });
+  // Normalize options — only include if the raw field had options or children
+  const rawOptions = f['options'];
+  const normalizedOptions = Array.isArray(rawOptions)
+    ? rawOptions.map((opt: unknown) => {
+        if (!opt) return { value: '', label: { en: '' } };
+        if (typeof opt === 'string') return { value: opt, label: { en: opt } };
+        if (typeof opt === 'object') {
+          const o = opt as Record<string, unknown>;
+          // Already { value, label: LocalizedText }
+          if ('value' in o && 'label' in o) return { value: o['value'], label: normalizeLocalizedText(o['label']) };
+          // Plain LocalizedText used as option label, no value wrapper
+          return { value: o['en'] ?? Object.values(o)[0] ?? '', label: normalizeLocalizedText(o) };
+        }
+        return { value: opt, label: { en: String(opt) } };
+      })
+    : undefined;
 
-  return {
+  const normalized: NestedFieldConfig = {
     ...rest,
     id: computedId,
     label: normalizeLocalizedText(f['label']),
-    options,
     children: (children as unknown[]).map(c => normalizeField(c)),
   } as NestedFieldConfig;
+
+  // Only attach options when they were present in the raw data
+  if (normalizedOptions !== undefined) normalized.options = normalizedOptions;
+
+  return normalized;
 }
 
 /**
@@ -274,7 +280,7 @@ export function normalizeTab(tab: unknown): NestedTabConfig {
     ...rest,
     id: computedId,
     label: normalizeLocalizedText(t['label']),
-    isPrimaryTab: (t['isPrimaryTab'] as boolean) ?? false,
+    isPrimaryTab: Boolean(t['isPrimaryTab']),
     fields: (fields as unknown[]).map(f => normalizeField(f)),
     children: (children as unknown[]).map(c => normalizeTab(c)),
   } as NestedTabConfig;
@@ -329,11 +335,12 @@ export function evaluateRules(
 
   for (const rule of sorted) {
     const triggerValue = formValues[rule.fieldId];
-    const conditionsMet = rule.conditions.every(cond =>
-      evaluateCondition(cond.operator, triggerValue, cond.value, cond.compareType === 'field'
+    const conditionsMet = rule.conditions.every(cond => {
+      const compareValue = cond.compareType === 'field'
         ? formValues[cond.compareToField ?? '']
-        : cond.value, sessionBaseline?.[rule.fieldId])
-    );
+        : cond.value;
+      return evaluateCondition(cond.operator, triggerValue, compareValue, sessionBaseline?.[rule.fieldId]);
+    });
 
     if (!conditionsMet) continue;
 
@@ -358,11 +365,10 @@ export function evaluateRules(
 function evaluateCondition(
   operator: RuleOperator,
   value: unknown,
-  ruleValue: unknown,
-  compareValue: unknown,
+  /** Resolved compare value: either cond.value or the sibling field's current value. */
+  compare: unknown,
   baseline?: unknown,
 ): boolean {
-  const compare = compareValue !== undefined ? compareValue : ruleValue;
   const str = (v: unknown) => String(v ?? '').toLowerCase();
 
   switch (operator) {
