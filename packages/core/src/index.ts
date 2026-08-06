@@ -5,3 +5,5 @@ export * from './adapter.interface';
 export * from './migration.types';
 export * from './rbac.types';
 export * from './error-codes';
+export * from './constants';
+export * from './simple-to-rich.upcaster';
