@@ -136,4 +136,16 @@ describe('EntityBuilderComponent', () => {
     store.addField('text');
     expect(cfg.tabs[0].fields!.length).toBe(2);
   });
+
+  it('accepts custom common modules from input', () => {
+    const modules = [{ id: 'custom', label: { en: 'Custom' }, component: 'app-custom' }];
+
+    component.commonModules = modules;
+    component.ngOnChanges({
+      commonModules: new SimpleChange(undefined, modules, true),
+    });
+    fixture.detectChanges();
+
+    expect(component.commonModules).toEqual(modules);
+  });
 });

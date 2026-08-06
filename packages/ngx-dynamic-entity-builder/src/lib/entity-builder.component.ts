@@ -21,8 +21,13 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import type { EntityFormConfig, EntityPermissions } from '@dynamic-entity/core';
-import { resolveLabel } from '@dynamic-entity/core';
+import {
+  COMMON_MODULES,
+  type CommonModuleEntry,
+  type EntityFormConfig,
+  type EntityPermissions,
+  resolveLabel,
+} from '@dynamic-entity/core';
 import { BuilderStore } from './builder-store.service';
 import { FieldInspectorComponent } from './components/field-inspector.component';
 import { FieldPaletteComponent } from './components/field-palette.component';
@@ -72,6 +77,8 @@ export class EntityBuilderComponent implements OnChanges {
   @Input() languages: string[] = ['en'];
   /** Optional role list — enables multi-select role pickers for RBAC instead of free text. */
   @Input() availableRoles: string[] = [];
+  /** Optional common-module definitions for module tabs; defaults to the built-in list from core. */
+  @Input() commonModules: readonly CommonModuleEntry[] = COMMON_MODULES;
 
   /** Emitted on every change to the working config. */
   @Output() configChange = new EventEmitter<EntityFormConfig>();

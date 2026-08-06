@@ -7,3 +7,4 @@ export * from './rbac.types';
 export * from './error-codes';
 export * from './constants';
 export * from './simple-to-rich.upcaster';
+export * from './config-migration';

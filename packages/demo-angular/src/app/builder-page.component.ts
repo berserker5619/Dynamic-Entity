@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EntityBuilderComponent, EntityFormConfig } from 'ngx-dynamic-entity-builder';
 import { DynamicFormComponent } from 'ngx-dynamic-entity';
+import { COMMON_MODULES } from '@dynamic-entity/core';
 import { LocalStore } from './mock/local-store.service';
 
 /**
@@ -20,6 +21,7 @@ import { LocalStore } from './mock/local-store.service';
       [config]="editing()"
       [languages]="['en', 'de']"
       [availableRoles]="['admin', 'manager', 'IT_SUPPORT', 'viewer']"
+      [commonModules]="commonModules"
       (configChange)="draft.set($event)"
       (save)="onSave($event)"
     >
@@ -59,6 +61,8 @@ import { LocalStore } from './mock/local-store.service';
 })
 export class BuilderPageComponent {
   private readonly store = inject(LocalStore);
+
+  readonly commonModules = COMMON_MODULES;
 
   readonly editing = signal<EntityFormConfig>({
     entity: 'new_entity',
