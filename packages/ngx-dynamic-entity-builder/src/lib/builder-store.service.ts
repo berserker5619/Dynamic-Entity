@@ -457,7 +457,7 @@ export class BuilderStore {
       }
 
       const labels = field.label ?? {};
-      const hasLabel = Object.values(labels).some(v => v && v.trim());
+      const hasLabel = Object.values(labels).some(v => typeof v === 'string' && v.trim());
       if (!hasLabel) {
         problems.push({
           level: 'warning',
