@@ -1,14 +1,11 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { EntityBuilderComponent, EntityConfig } from 'ngx-dynamic-entity-builder';
+import { EntityBuilderComponent, EntityFormConfig } from 'ngx-dynamic-entity-builder';
 import { DynamicFormComponent } from 'ngx-dynamic-entity';
 import { LocalStore } from './mock/local-store.service';
 
 /**
  * BuilderPageComponent — demo host for <ngx-entity-builder>.
- *
- * Shows the visual builder with a *live* <ngx-dynamic-form> preview projected into the
- * builder's [ngxBuilderPreview] slot, and persists the result via LocalStore (demo only).
  */
 @Component({
   selector: 'app-builder-page',
@@ -26,14 +23,11 @@ import { LocalStore } from './mock/local-store.service';
       (configChange)="draft.set($event)"
       (save)="onSave($event)"
     >
-      <!-- Live preview: rendered by the real renderer as you build -->
       @if (draft(); as c) {
-        @if (c.entity && c.fields.length) {
-          <div ngxBuilderPreview class="builder-preview">
-            <h3>Live preview — {{ c.entity }}</h3>
-            <ngx-dynamic-form [config]="c" [userRoles]="['admin']"></ngx-dynamic-form>
-          </div>
-        }
+        <div ngxBuilderPreview class="builder-preview">
+          <h3>Live preview — {{ c.entity || 'Unnamed Entity' }}</h3>
+          <ngx-dynamic-form [config]="c" [userRoles]="['admin']"></ngx-dynamic-form>
+        </div>
       }
     </ngx-entity-builder>
   `,
@@ -66,15 +60,17 @@ import { LocalStore } from './mock/local-store.service';
 export class BuilderPageComponent {
   private readonly store = inject(LocalStore);
 
-  /** An existing config to edit — left undefined to start from scratch. */
-  readonly editing = signal<EntityConfig | undefined>(undefined);
-  /** The current working draft, mirrored from the builder for the live preview. */
-  readonly draft = signal<EntityConfig | null>(null);
+  readonly editing = signal<EntityFormConfig>({
+    entity: 'new_entity',
+    version: 1,
+    tabs: [{ id: 'main', label: { en: 'Main' }, fields: [] }],
+  });
+  readonly draft = signal<EntityFormConfig | null>(this.editing());
 
   readonly message = signal<string | null>(null);
   readonly isError = signal(false);
 
-  onSave(config: EntityConfig): void {
+  onSave(config: EntityFormConfig): void {
     try {
       // Create when new, update when the entity already has a saved version.
       if (this.store.getConfig(config.entity)) {

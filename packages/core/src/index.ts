@@ -1,4 +1,3 @@
-export * from './config.types';
 export * from './form-model.types';
 export * from './versioning.types';
 export * from './form-logic';

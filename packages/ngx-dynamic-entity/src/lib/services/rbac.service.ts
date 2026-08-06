@@ -1,11 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import type { EntityConfig, FieldConfig, TabConfig } from '@dynamic-entity/core';
+import type { EntityFormConfig, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
+import { shouldMaskField as coreShouldMaskField, resolveEffectiveMask as coreResolveEffectiveMask } from '@dynamic-entity/core';
 import { MASKED_ROLES } from '../tokens/injection-tokens';
 
 /**
  * RbacService — ALL permission checks and masking logic live here.
- * CRITICAL SYNC: resolveEffectiveMask() must be identical to rbac.utils.js in dynamic-entity-server.
- * Changing one without the other is a critical production bug (ADR-003).
  */
 @Injectable({ providedIn: 'root' })
 export class RbacService {
@@ -20,12 +19,9 @@ export class RbacService {
     return userRoles.some(r => requiredRoles.includes(r));
   }
 
-  /**
-   * ADR-003: 3-level OR resolution.
-   * MUST match rbac.utils.js resolveEffectiveMask() exactly.
-   */
+  /** 3-level OR resolution */
   resolveEffectiveMask(formMask?: boolean, tabMask?: boolean, fieldMask?: boolean): boolean {
-    return !!(formMask || tabMask || fieldMask);
+    return coreResolveEffectiveMask(formMask, tabMask, fieldMask);
   }
 
   /** Check if the user's roles include any masked role */
@@ -34,13 +30,12 @@ export class RbacService {
   }
 
   /** Determine if a specific field should be masked for this user */
-  shouldMaskField(field: FieldConfig, tab: TabConfig | undefined, config: EntityConfig, userRoles: string[]): boolean {
-    if (!this.isUserMaskedRole(userRoles)) return false;
-    return this.resolveEffectiveMask(config.maskData, tab?.maskData, field.maskData);
+  shouldMaskField(field: NestedFieldConfig, tab: NestedTabConfig | undefined, config: EntityFormConfig, userRoles: string[]): boolean {
+    return coreShouldMaskField(field, tab, config, userRoles, this.maskedRoles);
   }
 
   /** Get view/edit/delete permissions for a config */
-  getPermissions(config: EntityConfig, userRoles: string[]) {
+  getPermissions(config: EntityFormConfig, userRoles: string[]) {
     return {
       canView: this.hasPermission(userRoles, config.permissions?.view),
       canEdit: this.hasPermission(userRoles, config.permissions?.edit),

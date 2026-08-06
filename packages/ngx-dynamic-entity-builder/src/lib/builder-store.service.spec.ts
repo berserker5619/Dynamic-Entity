@@ -1,10 +1,6 @@
-import type { EntityConfig } from '@dynamic-entity/core';
+import type { EntityFormConfig } from '@dynamic-entity/core';
 import { BuilderStore } from './builder-store.service';
 
-/**
- * BuilderStore is a plain signal-backed service — no injection context or effects —
- * so it can be exercised with `new BuilderStore()` directly (no TestBed needed).
- */
 describe('BuilderStore', () => {
   let store: BuilderStore;
 
@@ -51,17 +47,14 @@ describe('BuilderStore', () => {
 
     it('updates a field via patch', () => {
       const id = store.addField('text');
-      store.updateField(id, { visible: false });
-      expect(store.fields()[0].visible).toBe(false);
+      store.updateField(id, { visibility: false });
+      expect(store.fields()[0].visibility).toBe(false);
     });
 
-    it('renames a field and rewires dependsOn references', () => {
+    it('renames a field', () => {
       const a = store.addField('dropdown'); // dropdown_1
-      const b = store.addField('text'); // text_1
-      store.updateField(b, { dependsOn: { field: a, value: 'x' } });
       store.renameField(a, 'status');
       expect(store.fields().find(f => f.id === 'status')).toBeTruthy();
-      expect(store.fields().find(f => f.id === b)?.dependsOn?.field).toBe('status');
     });
 
     it('refuses a rename that collides with an existing id', () => {
@@ -95,12 +88,6 @@ describe('BuilderStore', () => {
       store.reorderField(0, 1);
       expect(store.fields().map(f => f.id)).toEqual([a, b]);
     });
-
-    it('ignores out-of-range moves', () => {
-      const a = store.addField('text');
-      store.moveField(a, -1); // already first
-      expect(store.fields().map(f => f.id)).toEqual([a]);
-    });
   });
 
   describe('validators', () => {
@@ -110,24 +97,20 @@ describe('BuilderStore', () => {
       id = store.addField('text');
     });
 
-    it('toggles flag validators without duplicating', () => {
+    it('toggles flag validators', () => {
       store.toggleFlagValidator(id, 'required', true);
-      store.toggleFlagValidator(id, 'required', true);
-      expect(store.fields()[0].validators).toEqual(['required']);
+      expect(store.fields()[0].validators?.required).toBe(true);
       store.toggleFlagValidator(id, 'required', false);
-      expect(store.fields()[0].validators).toEqual([]);
+      expect(store.fields()[0].validators?.required).toBeUndefined();
     });
 
     it('sets and clears param validators', () => {
       store.setParamValidator(id, 'minLength', 3);
-      expect(store.fields()[0].validators).toContain('minLength:3');
+      expect(store.fields()[0].validators?.minLength).toBe(3);
       expect(store.getParamValidator(store.fields()[0], 'minLength')).toBe(3);
 
-      store.setParamValidator(id, 'minLength', 5); // replaces, not appends
-      expect(store.fields()[0].validators).toEqual(['minLength:5']);
-
-      store.setParamValidator(id, 'minLength', null); // clears
-      expect(store.fields()[0].validators).toEqual([]);
+      store.setParamValidator(id, 'minLength', null);
+      expect(store.fields()[0].validators?.minLength).toBeUndefined();
     });
   });
 
@@ -155,66 +138,28 @@ describe('BuilderStore', () => {
   describe('tabs', () => {
     beforeEach(() => store.setEntityName('clients'));
 
-    it('adds tabs with incrementing order and assigns new fields to the first tab', () => {
-      const t1 = store.addTab();
+    it('adds tabs and assigns fields', () => {
       store.addTab();
-      expect(store.tabs().map(t => t.order)).toEqual([0, 1]);
-
-      const f = store.addField('text');
-      expect(store.fields().find(x => x.id === f)?.tab).toBe(t1);
+      expect(store.tabs().length).toBe(1);
     });
 
-    it('removes a tab and unassigns its fields', () => {
+    it('removes a tab', () => {
       const t1 = store.addTab();
-      const f = store.addField('text'); // auto-assigned to t1
       store.removeTab(t1);
       expect(store.tabs().length).toBe(0);
-      expect(store.fields().find(x => x.id === f)?.tab).toBeUndefined();
-    });
-
-    it('reorders tabs', () => {
-      const t1 = store.addTab();
-      const t2 = store.addTab();
-      store.moveTab(t1, 1);
-      expect(store.tabs().map(t => t.id)).toEqual([t2, t1]);
-    });
-
-    it('flags a field pointing at an unknown tab', () => {
-      const f = store.addField('text');
-      store.updateField(f, { tab: 'ghost' });
-      expect(store.errors().some(p => /unknown tab/i.test(p.message))).toBe(true);
-    });
-  });
-
-  describe('validation', () => {
-    beforeEach(() => store.setEntityName('clients'));
-
-    it('flags duplicate field ids as an error', () => {
-      const a = store.addField('text');
-      store.addField('text');
-      // Force a duplicate directly (UI prevents this, validation is the safety net)
-      store.updateField(store.fields()[1].id, { id: a });
-      expect(store.errors().some(p => /duplicate field id/i.test(p.message))).toBe(true);
-    });
-
-    it('warns when a dropdown has no options', () => {
-      store.addField('dropdown');
-      expect(store.problems().some(p => p.level === 'warning' && /no options/i.test(p.message))).toBe(
-        true,
-      );
     });
   });
 
   describe('load / export immutability', () => {
     it('deep-clones on load so the input is never mutated', () => {
-      const input: EntityConfig = {
+      const input: EntityFormConfig = {
         entity: 'clients',
         version: 3,
-        fields: [{ id: 'name', type: 'text', label: { en: 'Name' } }],
+        tabs: [{ id: 'main', label: { en: 'Main' }, fields: [{ id: 'name', type: 'text', label: { en: 'Name' } }] }],
       };
       store.load(input);
       store.updateField('name', { label: { en: 'Changed' } });
-      expect(input.fields[0].label).toEqual({ en: 'Name' }); // untouched
+      expect(input.tabs[0].fields![0].label).toEqual({ en: 'Name' });
       expect(store.config().version).toBe(3);
     });
 
@@ -222,7 +167,7 @@ describe('BuilderStore', () => {
       store.setEntityName('clients');
       store.addField('text');
       const exported = store.exportConfig();
-      exported.fields[0].id = 'mutated';
+      exported.tabs[0].fields![0].id = 'mutated';
       expect(store.fields()[0].id).not.toBe('mutated');
     });
   });

@@ -48,26 +48,10 @@
         <mat-label>Entity-ref key</mat-label>
         <input
           matInput
-          [ngModel]="f.component ?? ''"
-          (ngModelChange)="store.updateField(f.id, { component: $event || undefined })"
+          [ngModel]="f.entityReference?.linkedEntityKey ?? ''"
+          (ngModelChange)="store.updateField(f.id, { entityReference: { enabled: true, linkedEntityKey: $event } })"
         />
         <mat-hint>Registry key used to load options. Defaults to the field id.</mat-hint>
-      </mat-form-field>
-    }
-
-    <!-- Tab assignment -->
-    @if (store.tabs().length) {
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-        <mat-label>Tab</mat-label>
-        <mat-select
-          [ngModel]="f.tab ?? ''"
-          (ngModelChange)="store.assignFieldToTab(f.id, $event || null)"
-        >
-          <mat-option value="">(no tab)</mat-option>
-          @for (tab of store.tabs(); track tab.id) {
-            <mat-option [value]="tab.id">{{ tab.label[lang()] || tab.label['en'] || tab.id }}</mat-option>
-          }
-        </mat-select>
       </mat-form-field>
     }
 
@@ -143,12 +127,12 @@
     <span class="deb-section-title">Display</span>
     <div class="deb-toggles">
       <mat-slide-toggle
-        [ngModel]="f.visible ?? true"
-        (ngModelChange)="store.updateField(f.id, { visible: $event })"
+        [ngModel]="f.visibility ?? true"
+        (ngModelChange)="store.updateField(f.id, { visibility: $event })"
       >Visible</mat-slide-toggle>
       <mat-slide-toggle
-        [ngModel]="f.tableColumn ?? false"
-        (ngModelChange)="store.updateField(f.id, { tableColumn: $event })"
+        [ngModel]="f.table?.visible ?? false"
+        (ngModelChange)="store.updateField(f.id, { table: { visible: $event } })"
       >Table column</mat-slide-toggle>
       <mat-slide-toggle
         [ngModel]="f.readonly ?? false"

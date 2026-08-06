@@ -1,6 +1,7 @@
-import { Component, Input, OnInit, signal } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
-import type { FieldConfig, DropdownOption } from '@dynamic-entity/core';
+import type { NestedFieldConfig } from '@dynamic-entity/core';
+import { resolveLabel } from '@dynamic-entity/core';
 
 @Component({
   selector: 'ngx-dropdown-field',
@@ -8,7 +9,7 @@ import type { FieldConfig, DropdownOption } from '@dynamic-entity/core';
   imports: [ReactiveFormsModule],
   template: `
     <div class="ngx-field ngx-field--dropdown" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
-      <label class="ngx-field__label">{{ field.label[language] || field.label['en'] }}</label>
+      <label class="ngx-field__label">{{ label }}</label>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
       } @else if (readonly) {
@@ -19,9 +20,9 @@ import type { FieldConfig, DropdownOption } from '@dynamic-entity/core';
           [formControl]="$any(control)"
           [attr.disabled]="field.disabled ? true : null"
         >
-          <option value="">{{ field.placeholder?.[language] || field.placeholder?.['en'] || 'Select...' }}</option>
+          <option value="">{{ placeholder || 'Select...' }}</option>
           @for (option of field.options || []; track option.value) {
-            <option [value]="option.value">{{ option.label[language] || option.label['en'] }}</option>
+            <option [value]="option.value">{{ resolveOptionLabel(option) }}</option>
           }
         </select>
         @if (control.invalid && control.touched) {
@@ -32,14 +33,26 @@ import type { FieldConfig, DropdownOption } from '@dynamic-entity/core';
   `,
 })
 export class DropdownFieldComponent {
-  @Input() field!: FieldConfig;
+  @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() language: string = 'en';
   @Input() readonly: boolean = false;
   @Input() masked: boolean = false;
 
+  get label(): string {
+    return resolveLabel(this.field?.label, this.language);
+  }
+
+  get placeholder(): string {
+    return resolveLabel(this.field?.placeholder, this.language);
+  }
+
+  resolveOptionLabel(option: { label: any }): string {
+    return resolveLabel(option.label, this.language);
+  }
+
   getLabel(value: any): string {
     const option = (this.field.options || []).find(o => o.value === value);
-    return option ? (option.label[this.language] || option.label['en'] || String(value)) : (value ?? '—');
+    return option ? resolveLabel(option.label, this.language) : (value ?? '—');
   }
 }

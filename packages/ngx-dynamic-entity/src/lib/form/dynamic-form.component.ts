@@ -6,11 +6,11 @@ import {
   OnChanges,
   SimpleChanges,
   signal,
-  computed,
   inject,
 } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import type { EntityConfig, VersionedRecord } from '@dynamic-entity/core';
+import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import type { EntityFormConfig, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
+import { findTab, resolveLabel } from '@dynamic-entity/core';
 import { DynamicFieldComponent } from './dynamic-field/dynamic-field.component';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
 import { HookRegistryService } from '../services/hook-registry.service';
@@ -19,12 +19,8 @@ import { RbacService } from '../services/rbac.service';
 
 /**
  * DynamicFormComponent — the main form component.
- * Renders a reactive form from EntityConfig with tab support, dependencies,
+ * Renders a reactive form from EntityFormConfig with tab support, nested fields,
  * migration banner, and RBAC-gated submission.
- *
- * ONEHERMES pattern: isSaving state lock prevents subscription cyclones (ADR-002).
- * ONEHERMES bug fix: visibility rules re-evaluated after initialData loads (form-fixes doc).
- * ONEHERMES bug fix: use @for + @if separately, not both on same element (form-fixes doc).
  */
 @Component({
   selector: 'ngx-dynamic-form',
@@ -34,7 +30,7 @@ import { RbacService } from '../services/rbac.service';
 })
 export class DynamicFormComponent implements OnChanges {
   // ─── Inputs ───────────────────────────────────────────────────────────────
-  @Input() config!: EntityConfig;
+  @Input() config!: EntityFormConfig;
   @Input() initialData?: Record<string, any>;
   @Input() userRoles: string[] = [];
   @Input() language: string = 'en';
@@ -56,22 +52,27 @@ export class DynamicFormComponent implements OnChanges {
 
   // ─── Signals (local reactive state) ───────────────────────────────────────
   readonly activeTab = signal<string>('');
-  readonly isSaving = signal(false); // ADR-002: isSaving lock prevents API spam
+  readonly isSaving = signal(false);
 
   // ─── Form ─────────────────────────────────────────────────────────────────
   form!: FormGroup;
 
   // ─── Computed ─────────────────────────────────────────────────────────────
-  get tabs() {
-    return (this.config?.tabs || []).sort((a, b) => a.order - b.order);
+  get tabs(): NestedTabConfig[] {
+    return this.config?.tabs || [];
   }
 
-  get fieldsForActiveTab() {
+  get activeTabConfig(): NestedTabConfig | null {
     const tabId = this.activeTab();
-    return (this.config?.fields || []).filter(f => {
-      if (!this.tabs.length) return true; // No tabs — show all
-      return f.tab === tabId || (!f.tab && tabId === this.tabs[0]?.id);
-    });
+    if (!tabId) return this.tabs[0] ?? null;
+    return findTab(this.tabs, tabId);
+  }
+
+  get fieldsForActiveTab(): NestedFieldConfig[] {
+    const active = this.activeTabConfig;
+    if (active) return active.fields || [];
+    // If no tabs defined, flatten all fields across tabs
+    return (this.config?.tabs || []).flatMap(t => t.fields || []);
   }
 
   get permissions() {
@@ -91,13 +92,16 @@ export class DynamicFormComponent implements OnChanges {
     );
   }
 
+  resolveTabLabel(tab: NestedTabConfig): string {
+    return resolveLabel(tab.label, this.language);
+  }
+
   // ─── Lifecycle ────────────────────────────────────────────────────────────
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['config'] && this.config) {
       this.buildForm();
     }
-    // ONEHERMES fix: re-apply data after initialData loads (form-fixes doc)
     if (changes['initialData'] && this.form && this.initialData) {
       this.patchForm(this.initialData);
     }
@@ -106,19 +110,42 @@ export class DynamicFormComponent implements OnChanges {
     }
   }
 
+  private getAllFields(tabs: NestedTabConfig[] = []): NestedFieldConfig[] {
+    const result: NestedFieldConfig[] = [];
+    for (const tab of tabs) {
+      if (tab.fields) result.push(...tab.fields);
+      if (tab.children) result.push(...this.getAllFields(tab.children));
+    }
+    return result;
+  }
+
+  private buildFieldControl(field: NestedFieldConfig): AbstractControl {
+    const validators = this.validatorRegistry.resolveFromConfig(field.validators);
+    if (field.type === 'group') {
+      const controls: Record<string, AbstractControl> = {};
+      for (const child of field.children ?? []) {
+        controls[child.id] = this.buildFieldControl(child);
+      }
+      return this.fb.group(controls);
+    }
+    if (field.type === 'array') {
+      return this.fb.array([]);
+    }
+    return this.fb.control(field.defaultValue ?? null, validators);
+  }
+
   private buildForm(): void {
-    const controls: Record<string, any> = {};
-    for (const field of this.config.fields || []) {
-      if (field.isSystem) continue; // System fields not in form controls
-      const validators = this.validatorRegistry.resolveAll(field.validators);
-      controls[field.id] = [field.defaultValue ?? null, validators];
+    const controls: Record<string, AbstractControl> = {};
+    const allFields = this.getAllFields(this.config?.tabs);
+
+    for (const field of allFields) {
+      if (field.systemDefault) continue;
+      controls[field.id] = this.buildFieldControl(field);
     }
     this.form = this.fb.group(controls);
 
-    // Emit changes via formChange output
     this.form.valueChanges.subscribe(value => this.formChange.emit(value));
 
-    // Apply initial data after form builds
     if (this.initialData) {
       this.patchForm(this.initialData);
     }
@@ -129,11 +156,38 @@ export class DynamicFormComponent implements OnChanges {
   }
 
   private patchForm(data: Record<string, any>): void {
-    // Filter empty objects (ONEHERMES array field empty row bug fix)
-    const cleanData = Object.fromEntries(
-      Object.entries(data).filter(([, v]) => v !== undefined),
-    );
-    this.form.patchValue(cleanData, { emitEvent: false });
+    const allFields = this.getAllFields(this.config?.tabs);
+    this.patchFormGroup(this.form, allFields, data);
+  }
+
+  private patchFormGroup(group: FormGroup, fields: NestedFieldConfig[], data: Record<string, any>): void {
+    if (!data) return;
+    fields.forEach(field => {
+      const control = group.get(field.id);
+      if (!control) return;
+
+      if (field.type === 'group' && field.children) {
+        this.patchFormGroup(control as FormGroup, field.children, data[field.id] ?? {});
+      } else if (field.type === 'array' && field.children) {
+        const arrayData = data[field.id];
+        if (Array.isArray(arrayData)) {
+          const fa = control as FormArray;
+          fa.clear();
+          arrayData.forEach(item => {
+            const itemControls: Record<string, AbstractControl> = {};
+            for (const child of field.children!) {
+              itemControls[child.id] = this.buildFieldControl(child);
+            }
+            const itemGroup = this.fb.group(itemControls);
+            this.patchFormGroup(itemGroup, field.children!, item);
+            fa.push(itemGroup);
+          });
+        }
+      } else {
+        const val = data[field.id];
+        if (val !== undefined) control.patchValue(val, { emitEvent: false });
+      }
+    });
   }
 
   // ─── Actions ──────────────────────────────────────────────────────────────
@@ -148,14 +202,12 @@ export class DynamicFormComponent implements OnChanges {
       return;
     }
 
-    // ADR-002: isSaving lock — prevents subscription cyclones / duplicate API calls
     if (this.isSaving()) return;
     this.isSaving.set(true);
 
     try {
       let data = { ...this.form.value };
 
-      // Run pre-submit hook (Angular-side)
       data = await this.hookRegistry.run(`${this.config.entity}:beforeSave`, data, {
         config: this.config,
         userRoles: this.userRoles,
@@ -163,7 +215,6 @@ export class DynamicFormComponent implements OnChanges {
 
       this.formSubmit.emit(data);
     } finally {
-      // Reset saving lock in the consumer's success/error handler — here we just unblock
       this.isSaving.set(false);
     }
   }

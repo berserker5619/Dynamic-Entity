@@ -64,6 +64,14 @@ export class LocalStore {
     return this.read<Record<string, unknown>[]>(recordsKey(entity), []);
   }
 
+  private extractFields(config: AnyConfig | null): AnyConfig[] {
+    if (!config) return [];
+    if (config['tabs']) {
+      return (config['tabs'] as AnyConfig[]).flatMap(t => t['fields'] ?? []);
+    }
+    return config['fields'] ?? [];
+  }
+
   /** Paginated/sorted/searched/masked query (used by the simple clients table). */
   getRecords(entity: string, q: RecordQuery = {}): RecordPage {
     const config = this.getConfig(entity);
@@ -72,8 +80,9 @@ export class LocalStore {
 
     const search = (q.search ?? '').trim().toLowerCase();
     if (search) {
-      const stringFields = (config?.['fields'] ?? [])
-        .filter((f: AnyConfig) => f['type'] === 'text' || f['type'] === 'textarea')
+      const allFields = this.extractFields(config);
+      const stringFields = allFields
+        .filter((f: AnyConfig) => f['type'] === 'text' || f['type'] === 'textarea' || f['type'] === 'email')
         .map((f: AnyConfig) => f['id']);
       rows = rows.filter(r => stringFields.some((fid: string) => String(r[fid] ?? '').toLowerCase().includes(search)));
     }
@@ -137,7 +146,8 @@ export class LocalStore {
   private maskedFieldIds(config: AnyConfig | null, roles: string[]): Set<string> {
     const isMasked = roles.some(r => MASKED_ROLES.includes(r));
     if (!config || !isMasked) return new Set();
-    return new Set((config['fields'] ?? []).filter((f: AnyConfig) => f['maskData']).map((f: AnyConfig) => f['id']));
+    const allFields = this.extractFields(config);
+    return new Set(allFields.filter((f: AnyConfig) => f['maskData']).map((f: AnyConfig) => f['id']));
   }
   private applyMask(row: Record<string, unknown>, ids: Set<string>): Record<string, unknown> {
     if (ids.size === 0) return row;

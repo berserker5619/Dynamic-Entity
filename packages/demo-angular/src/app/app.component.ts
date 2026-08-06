@@ -2,7 +2,7 @@ import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   DynamicFormComponent,
-  EntityConfig,
+  EntityFormConfig,
   VersionedRecord
 } from 'ngx-dynamic-entity';
 import { BuilderPageComponent } from './builder-page.component';
@@ -21,11 +21,11 @@ export class AppComponent implements OnInit {
   // ─── Signals ──────────────────────────────────────────────────────────────
   readonly userRoles = signal<string[]>(['admin']);
   readonly view = signal<'list' | 'form' | 'config' | 'builder'>('list');
-  readonly config = signal<EntityConfig | null>(null);
-  readonly allConfigs = signal<EntityConfig[]>([]);
+  readonly config = signal<EntityFormConfig | null>(null);
+  readonly allConfigs = signal<EntityFormConfig[]>([]);
   readonly records = signal<VersionedRecord[]>([]);
   readonly selectedRecord = signal<VersionedRecord | null>(null);
-  readonly selectedConfig = signal<EntityConfig | null>(null);
+  readonly selectedConfig = signal<EntityFormConfig | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly totalRecords = signal<number>(0);
@@ -47,11 +47,11 @@ export class AppComponent implements OnInit {
   // ─── Data Loading (localStorage — no API) ──────────────────────────────────
 
   loadAllConfigs() {
-    this.allConfigs.set(this.store.listConfigs() as EntityConfig[]);
+    this.allConfigs.set(this.store.listConfigs() as EntityFormConfig[]);
   }
 
   loadConfig() {
-    const config = this.store.getConfig('clients') as EntityConfig | null;
+    const config = this.store.getConfig('clients') as EntityFormConfig | null;
     if (config) this.config.set(config);
   }
 

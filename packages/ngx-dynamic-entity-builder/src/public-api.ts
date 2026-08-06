@@ -14,9 +14,10 @@ export * from './lib/field-catalog';
 
 // Re-export the core types a consumer of the builder needs
 export type {
-  EntityConfig,
-  FieldConfig,
-  TabConfig,
+  EntityFormConfig,
+  NestedTabConfig,
+  NestedFieldConfig,
+  RichFieldType,
   DropdownOption,
   EntityPermissions,
 } from '@dynamic-entity/core';

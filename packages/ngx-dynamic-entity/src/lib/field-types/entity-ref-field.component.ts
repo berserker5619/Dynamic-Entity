@@ -1,13 +1,12 @@
 import { Component, Input, OnInit, signal } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
-import type { FieldConfig } from '@dynamic-entity/core';
+import type { NestedFieldConfig } from '@dynamic-entity/core';
+import { resolveLabel } from '@dynamic-entity/core';
 import { EntityRefRegistryService } from '../services/entity-ref-registry.service';
 import { inject } from '@angular/core';
 
 /**
  * EntityRefFieldComponent — renders a dropdown populated by a loader from EntityRefRegistryService.
- * ADR-006: Options come ONLY from the registry. Never via @Input() loader.
- * Uses field.component (if set) or field.id as the registry lookup key.
  */
 @Component({
   selector: 'ngx-entity-ref-field',
@@ -15,7 +14,7 @@ import { inject } from '@angular/core';
   imports: [ReactiveFormsModule],
   template: `
     <div class="ngx-field ngx-field--entity-ref" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
-      <label class="ngx-field__label">{{ field.label[language] || field.label['en'] }}</label>
+      <label class="ngx-field__label">{{ label }}</label>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
       } @else if (readonly) {
@@ -29,7 +28,7 @@ import { inject } from '@angular/core';
             [formControl]="$any(control)"
             [attr.disabled]="field.disabled ? true : null"
           >
-            <option value="">{{ field.placeholder?.[language] || 'Select...' }}</option>
+            <option value="">{{ placeholder || 'Select...' }}</option>
             @for (option of options(); track option.value) {
               <option [value]="option.value">{{ option.label }}</option>
             }
@@ -43,7 +42,7 @@ import { inject } from '@angular/core';
   `,
 })
 export class EntityRefFieldComponent implements OnInit {
-  @Input() field!: FieldConfig;
+  @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() language: string = 'en';
   @Input() readonly: boolean = false;
@@ -54,9 +53,17 @@ export class EntityRefFieldComponent implements OnInit {
   readonly options = signal<Array<{ value: any; label: string }>>([]);
   readonly loading = signal(false);
 
+  get label(): string {
+    return resolveLabel(this.field?.label, this.language);
+  }
+
+  get placeholder(): string {
+    return resolveLabel(this.field?.placeholder, this.language);
+  }
+
   async ngOnInit(): Promise<void> {
-    if (this.masked) return; // No need to load options if masked
-    const entityKey = this.field.component ?? this.field.id;
+    if (this.masked) return;
+    const entityKey = this.field.entityReference?.linkedEntityKey ?? this.field.id;
     const loader = this.entityRefRegistry.resolve(entityKey);
     if (!loader) return;
 

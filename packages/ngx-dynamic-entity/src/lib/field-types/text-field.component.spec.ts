@@ -1,17 +1,17 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { TextFieldComponent } from './text-field.component';
-import { FieldConfig } from '@dynamic-entity/core';
+import type { NestedFieldConfig } from '@dynamic-entity/core';
 
 describe('TextFieldComponent', () => {
   let component: TextFieldComponent;
   let fixture: ComponentFixture<TextFieldComponent>;
-  const mockField: FieldConfig = {
+  const mockField: NestedFieldConfig = {
     id: 'name',
     type: 'text',
     label: { en: 'Full Name' },
     placeholder: { en: 'Enter name' }
-  } as any;
+  };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({

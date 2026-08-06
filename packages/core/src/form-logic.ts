@@ -4,8 +4,8 @@
  * formatting, nested tab/record value access, mask resolution, and conditional visibility.
  */
 
-import type { DropdownOption } from './config.types';
 import type {
+  DropdownOption,
   EntityFormConfig,
   LocalizedText,
   NestedFieldConfig,

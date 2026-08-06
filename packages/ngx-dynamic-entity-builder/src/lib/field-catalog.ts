@@ -1,46 +1,23 @@
-import type { BuiltInFieldType, FieldConfig } from '@dynamic-entity/core';
+import type { RichFieldType, NestedFieldConfig } from '@dynamic-entity/core';
 
 /**
- * field-catalog.ts — the single source of truth for what the builder can create.
- *
- * Every buildable field type is described once here: its palette presentation, the
- * id prefix used when generating unique ids, which capabilities it exposes in the
- * inspector (options list, entity-ref key, param validators), and a factory that
- * produces a sensible default FieldConfig.
- *
- * This mirrors the render-side FieldRegistryService in ngx-dynamic-entity: the two
- * lists must agree on type strings. Adding a new built-in type = add an entry here
- * AND register a component in FieldRegistryService (keep both in the same change).
+ * field-catalog.ts — single source of truth for what the visual builder can create.
  */
 
-/** Validators that take no parameter — rendered as toggles in the inspector. */
 export type FlagValidator = 'required' | 'email';
-
-/** Validators that take a numeric parameter — rendered as number inputs (compiled to `name:N`). */
 export type ParamValidator = 'min' | 'max' | 'minLength' | 'maxLength';
 
 export interface FieldTypeMeta {
-  /** The type string stored on FieldConfig.type — must match the render-side registry. */
-  type: BuiltInFieldType;
-  /** Human label shown in the palette. */
+  type: RichFieldType;
   label: string;
-  /** Material icon ligature name shown in the palette (requires the Material Icons font). */
   icon: string;
-  /** One-line description shown as a tooltip / helper text. */
   description: string;
-  /** Prefix used to generate unique field ids, e.g. 'text' -> text_1. Identifier-safe (no hyphens). */
   idPrefix: string;
-  /** True for types backed by an inline options list (dropdown, multiSelect). */
   hasOptions: boolean;
-  /** True for the entity-ref type, which needs a registry key rather than inline options. */
   isEntityRef: boolean;
-  /** Flag validators offered in the inspector for this type. */
   flagValidators: FlagValidator[];
-  /** Param validators offered in the inspector for this type. */
   paramValidators: ParamValidator[];
-  /** Whether a free-text default value makes sense for this type. */
   supportsDefaultValue: boolean;
-  /** Whether a placeholder makes sense (text-like/select inputs). */
   supportsPlaceholder: boolean;
 }
 
@@ -85,11 +62,63 @@ export const FIELD_TYPE_CATALOG: readonly FieldTypeMeta[] = [
     supportsPlaceholder: true,
   },
   {
+    type: 'currency',
+    label: 'Currency',
+    icon: 'attach_money',
+    description: 'Currency amount input',
+    idPrefix: 'currency',
+    hasOptions: false,
+    isEntityRef: false,
+    flagValidators: ['required'],
+    paramValidators: ['min', 'max'],
+    supportsDefaultValue: true,
+    supportsPlaceholder: true,
+  },
+  {
+    type: 'email',
+    label: 'Email',
+    icon: 'email',
+    description: 'Email address input',
+    idPrefix: 'email',
+    hasOptions: false,
+    isEntityRef: false,
+    flagValidators: ['required', 'email'],
+    paramValidators: [],
+    supportsDefaultValue: true,
+    supportsPlaceholder: true,
+  },
+  {
+    type: 'password',
+    label: 'Password',
+    icon: 'lock',
+    description: 'Masked password input',
+    idPrefix: 'password',
+    hasOptions: false,
+    isEntityRef: false,
+    flagValidators: ['required'],
+    paramValidators: ['minLength', 'maxLength'],
+    supportsDefaultValue: false,
+    supportsPlaceholder: true,
+  },
+  {
     type: 'checkbox',
     label: 'Checkbox',
     icon: 'check_box',
-    description: 'Boolean toggle',
+    description: 'Boolean checkbox',
     idPrefix: 'checkbox',
+    hasOptions: false,
+    isEntityRef: false,
+    flagValidators: ['required'],
+    paramValidators: [],
+    supportsDefaultValue: false,
+    supportsPlaceholder: false,
+  },
+  {
+    type: 'boolean',
+    label: 'Boolean Toggle',
+    icon: 'toggle_on',
+    description: 'Switch toggle',
+    idPrefix: 'boolean',
     hasOptions: false,
     isEntityRef: false,
     flagValidators: ['required'],
@@ -111,10 +140,23 @@ export const FIELD_TYPE_CATALOG: readonly FieldTypeMeta[] = [
     supportsPlaceholder: false,
   },
   {
+    type: 'datetime',
+    label: 'Date & Time',
+    icon: 'schedule',
+    description: 'Date and time picker',
+    idPrefix: 'datetime',
+    hasOptions: false,
+    isEntityRef: false,
+    flagValidators: ['required'],
+    paramValidators: [],
+    supportsDefaultValue: false,
+    supportsPlaceholder: false,
+  },
+  {
     type: 'dropdown',
     label: 'Dropdown',
     icon: 'arrow_drop_down_circle',
-    description: 'Single-select from a fixed option list',
+    description: 'Single-select from options',
     idPrefix: 'dropdown',
     hasOptions: true,
     isEntityRef: false,
@@ -124,10 +166,23 @@ export const FIELD_TYPE_CATALOG: readonly FieldTypeMeta[] = [
     supportsPlaceholder: true,
   },
   {
+    type: 'radio',
+    label: 'Radio Group',
+    icon: 'radio_button_checked',
+    description: 'Radio button group',
+    idPrefix: 'radio',
+    hasOptions: true,
+    isEntityRef: false,
+    flagValidators: ['required'],
+    paramValidators: [],
+    supportsDefaultValue: false,
+    supportsPlaceholder: false,
+  },
+  {
     type: 'multiSelect',
     label: 'Multi-select',
     icon: 'checklist',
-    description: 'Multi-select from a fixed option list',
+    description: 'Multi-select from options',
     idPrefix: 'multiSelect',
     hasOptions: true,
     isEntityRef: false,
@@ -137,23 +192,23 @@ export const FIELD_TYPE_CATALOG: readonly FieldTypeMeta[] = [
     supportsPlaceholder: false,
   },
   {
-    type: 'entity-ref',
-    label: 'Entity Reference',
-    icon: 'link',
-    description: 'Reference to another entity (options loaded from a registry key)',
-    idPrefix: 'entityRef',
+    type: 'group',
+    label: 'Group',
+    icon: 'folder',
+    description: 'Nested group of fields',
+    idPrefix: 'group',
     hasOptions: false,
-    isEntityRef: true,
-    flagValidators: ['required'],
+    isEntityRef: false,
+    flagValidators: [],
     paramValidators: [],
     supportsDefaultValue: false,
-    supportsPlaceholder: true,
+    supportsPlaceholder: false,
   },
   {
     type: 'array',
     label: 'Array',
     icon: 'data_array',
-    description: 'Repeating group of values',
+    description: 'Repeating list of fields',
     idPrefix: 'array',
     hasOptions: false,
     isEntityRef: false,
@@ -168,15 +223,10 @@ const CATALOG_BY_TYPE = new Map<string, FieldTypeMeta>(
   FIELD_TYPE_CATALOG.map(meta => [meta.type, meta]),
 );
 
-/** Look up metadata for a field type. Returns undefined for unknown/custom types. */
 export function getFieldTypeMeta(type: string): FieldTypeMeta | undefined {
   return CATALOG_BY_TYPE.get(type);
 }
 
-/**
- * Turn a field id into a human default label.
- * 'firstName' -> 'First Name', 'text_1' -> 'Text 1', 'entityRef_2' -> 'Entity Ref 2'.
- */
 export function humanizeId(id: string): string {
   const spaced = id
     .replace(/[_-]+/g, ' ')
@@ -189,33 +239,29 @@ export function humanizeId(id: string): string {
     .join(' ');
 }
 
-/**
- * Factory for a default FieldConfig of the given type.
- * Only shape known-good defaults here — the inspector edits everything else.
- *
- * @param type            buildable field type
- * @param id              unique field id (caller guarantees uniqueness)
- * @param defaultLanguage language key used for the initial label
- */
 export function createFieldConfig(
-  type: BuiltInFieldType,
+  type: RichFieldType,
   id: string,
   defaultLanguage = 'en',
-): FieldConfig {
+): NestedFieldConfig {
   const meta = getFieldTypeMeta(type);
-  const field: FieldConfig = {
+  const inTable = type !== 'textarea' && type !== 'array' && type !== 'group';
+  const field: NestedFieldConfig = {
     id,
     type,
     label: { [defaultLanguage]: humanizeId(id) },
-    validators: [],
-    visible: true,
-    tableColumn: type !== 'textarea' && type !== 'array',
+    validators: {},
+    visibility: true,
+    table: { visible: inTable },
   };
   if (meta?.hasOptions) {
     field.options = [];
   }
-  if (type === 'checkbox') {
+  if (type === 'checkbox' || type === 'boolean') {
     field.defaultValue = false;
+  }
+  if (type === 'group' || type === 'array') {
+    field.children = [];
   }
   return field;
 }

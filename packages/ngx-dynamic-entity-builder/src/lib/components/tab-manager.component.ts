@@ -4,11 +4,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { resolveLabel } from '@dynamic-entity/core';
 import { BuilderStore } from '../builder-store.service';
 
 /**
  * TabManagerComponent — add / rename / reorder / remove tabs (Angular Material).
- * Reads and mutates the shared BuilderStore directly (provided at the builder level).
  */
 @Component({
   selector: 'ngx-tab-manager',
@@ -33,7 +33,7 @@ import { BuilderStore } from '../builder-store.service';
             <mat-label>{{ tab.id }}</mat-label>
             <input
               matInput
-              [ngModel]="tab.label[lang()] || tab.label['en'] || ''"
+              [ngModel]="tabLabel(tab)"
               (ngModelChange)="store.setTabLabel(tab.id, lang(), $event)"
             />
           </mat-form-field>
@@ -77,5 +77,9 @@ export class TabManagerComponent {
 
   protected lang(): string {
     return this.store.activeLanguage();
+  }
+
+  protected tabLabel(tab: { label?: any }): string {
+    return resolveLabel(tab.label, this.lang());
   }
 }

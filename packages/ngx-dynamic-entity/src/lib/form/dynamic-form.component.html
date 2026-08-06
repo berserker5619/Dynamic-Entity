@@ -30,7 +30,7 @@
           role="tab"
           [attr.aria-selected]="activeTab() === tab.id"
         >
-          {{ tab.label[language] || tab.label['en'] }}
+          {{ resolveTabLabel(tab) }}
         </button>
       }
     </div>
@@ -39,7 +39,7 @@
   <!-- Fields for active tab -->
   <div class="ngx-form__panel">
     @for (field of fieldsForActiveTab; track field.id) {
-      @if (field.visible !== false) {
+      @if (field.visibility !== false) {
         <ngx-dynamic-field
           [field]="field"
           [control]="getControl(field.id)!"

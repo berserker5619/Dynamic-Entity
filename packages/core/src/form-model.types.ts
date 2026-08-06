@@ -9,10 +9,14 @@
  * ships no data table; how a table is rendered is the consumer's choice.
  */
 
-import type { DropdownOption } from './config.types';
 import type { EntityPermissions } from './rbac.types';
 
 export type LocalizedText = Record<string, string>;
+
+export interface DropdownOption {
+  value: any;
+  label: LocalizedText;
+}
 
 /** Full field-type vocabulary supported by the rich renderer. */
 export type RichFieldType =

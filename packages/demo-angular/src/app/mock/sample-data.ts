@@ -1,31 +1,36 @@
-import type { EntityConfig, EntityFormConfig } from 'ngx-dynamic-entity';
+import type { EntityFormConfig } from 'ngx-dynamic-entity';
 
 /**
- * Sample `clients` entity config (simple flat model) used to seed localStorage so the
- * demo works fully offline. `salary` is masked for masked roles (see interceptor).
+ * Sample `clients` entity config (rich EntityFormConfig model) used to seed localStorage
+ * so the demo works fully offline.
  */
-export const CLIENTS_CONFIG: EntityConfig = {
+export const CLIENTS_CONFIG: EntityFormConfig = {
   entity: 'clients',
   version: 1,
   maskData: false,
   permissions: {},
-  fields: [
-    { id: 'name', type: 'text', label: { en: 'Name' }, validators: ['required'], tableColumn: true, visible: true },
-    { id: 'email', type: 'text', label: { en: 'Email' }, validators: ['email'], tableColumn: true, visible: true },
-    { id: 'company', type: 'text', label: { en: 'Company' }, tableColumn: true, visible: true },
+  tabs: [
     {
-      id: 'status',
-      type: 'dropdown',
-      label: { en: 'Status' },
-      options: [
-        { value: 'active', label: { en: 'Active' } },
-        { value: 'inactive', label: { en: 'Inactive' } },
+      id: 'general',
+      label: { en: 'General' },
+      fields: [
+        { id: 'name', type: 'text', label: { en: 'Name' }, validators: { required: true }, visibility: true },
+        { id: 'email', type: 'email', label: { en: 'Email' }, validators: { pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$' }, visibility: true },
+        { id: 'company', type: 'text', label: { en: 'Company' }, visibility: true },
+        {
+          id: 'status',
+          type: 'dropdown',
+          label: { en: 'Status' },
+          options: [
+            { value: 'active', label: { en: 'Active' } },
+            { value: 'inactive', label: { en: 'Inactive' } },
+          ],
+          visibility: true,
+        },
+        { id: 'salary', type: 'number', label: { en: 'Salary' }, visibility: true, maskData: true },
+        { id: 'notes', type: 'textarea', label: { en: 'Notes' }, visibility: true },
       ],
-      tableColumn: true,
-      visible: true,
     },
-    { id: 'salary', type: 'number', label: { en: 'Salary' }, tableColumn: true, visible: true, maskData: true },
-    { id: 'notes', type: 'textarea', label: { en: 'Notes' }, visible: true },
   ],
 };
 
@@ -56,10 +61,7 @@ export const CLIENTS_RECORDS: Record<string, unknown>[] = [
   rec('Vehement', 'info@vehement.com', 'Vehement', 'inactive', 47000),
 ];
 
-/** Roles that see masked values for fields with `maskData: true`. */
 export const MASKED_ROLES = ['IT_SUPPORT'];
-
-// ─── Nested `employees` config + records (for the rich EntityTable) ──────────
 
 export const EMPLOYEES_CONFIG: EntityFormConfig = {
   entity: 'employees',

@@ -9,12 +9,13 @@ import {
   inject,
 } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
-import type { FieldConfig, EntityConfig, TabConfig } from '@dynamic-entity/core';
+import type { NestedFieldConfig, EntityFormConfig, NestedTabConfig } from '@dynamic-entity/core';
+import { findTab } from '@dynamic-entity/core';
 import { FieldRegistryService } from '../../services/field-registry.service';
 import { RbacService } from '../../services/rbac.service';
 
 /**
- * DynamicFieldComponent — mounts the correct field component for a given FieldConfig.
+ * DynamicFieldComponent — mounts the correct field component for a given NestedFieldConfig.
  * Uses ViewContainerRef.createComponent() and passes inputs via setInput() (ADR-008).
  * Never add field-type-specific logic here — this component must remain generic.
  *
@@ -27,9 +28,10 @@ import { RbacService } from '../../services/rbac.service';
   template: `<ng-container #fieldHost></ng-container>`,
 })
 export class DynamicFieldComponent implements OnChanges {
-  @Input() field!: FieldConfig;
+  @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
-  @Input() config!: EntityConfig;
+  @Input() config!: EntityFormConfig;
+  @Input() currentTabId?: string;
   @Input() language: string = 'en';
   @Input() readonly: boolean = false;
   @Input() userRoles: string[] = [];
@@ -53,8 +55,8 @@ export class DynamicFieldComponent implements OnChanges {
     if (!ComponentClass) return; // Unknown field type — render nothing
 
     // Determine masking for this specific field
-    const tab: TabConfig | undefined = (this.config?.tabs || []).find(t => t.id === this.field.tab);
-    const masked = this.rbacService.shouldMaskField(this.field, tab, this.config, this.userRoles);
+    const tab: NestedTabConfig | null = this.currentTabId ? findTab(this.config?.tabs, this.currentTabId) : null;
+    const masked = this.rbacService.shouldMaskField(this.field, tab ?? undefined, this.config, this.userRoles);
 
     // Re-use existing component if same type, otherwise recreate
     if (this.componentRef && this.componentRef.instance instanceof ComponentClass) {

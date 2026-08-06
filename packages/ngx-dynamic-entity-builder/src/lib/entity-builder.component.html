@@ -130,8 +130,7 @@
                 <span class="deb-field-label">{{ fieldLabel(f) }}</span>
                 <span class="deb-field-id">{{ f.id }}</span>
               </div>
-              @if (f.tab) { <span class="deb-chip deb-chip--muted">{{ f.tab }}</span> }
-              @if ((f.validators ?? []).includes('required')) { <span class="deb-req" title="Required">*</span> }
+              @if (f.validators?.required) { <span class="deb-req" title="Required">*</span> }
 
               <button mat-icon-button type="button" [disabled]="i === 0"
                 (click)="store.moveField(f.id, -1); $event.stopPropagation()" matTooltip="Move up">

@@ -1,5 +1,11 @@
-import type { EntityConfig, EntityConfigSnapshot } from './config.types';
+import type { EntityFormConfig } from './form-model.types';
 import type { VersionedRecord } from './versioning.types';
+
+export interface EntityConfigSnapshot {
+  version: number;
+  config: EntityFormConfig;
+  changedAt: string;
+}
 
 export interface QueryOptions {
   page?: number;
@@ -23,13 +29,13 @@ export interface PaginatedResult {
 
 export interface DynamicEntityAdapter {
   // Config CRUD
-  findConfig(entity: string): Promise<EntityConfig | null>;
-  listConfigs(): Promise<EntityConfig[]>;
-  saveConfig(config: EntityConfig): Promise<EntityConfig>;
-  updateConfig(entity: string, updates: Partial<EntityConfig>): Promise<EntityConfig>;
+  findConfig(entity: string): Promise<EntityFormConfig | null>;
+  listConfigs(): Promise<EntityFormConfig[]>;
+  saveConfig(config: EntityFormConfig): Promise<EntityFormConfig>;
+  updateConfig(entity: string, updates: Partial<EntityFormConfig>): Promise<EntityFormConfig>;
   deleteConfig(entity: string): Promise<void>;
   getConfigHistory(entity: string): Promise<EntityConfigSnapshot[]>;
-  rollbackConfig(entity: string, version: number): Promise<EntityConfig>;
+  rollbackConfig(entity: string, version: number): Promise<EntityFormConfig>;
 
   // Data CRUD
   findRecords(entity: string, options?: QueryOptions): Promise<PaginatedResult>;

@@ -10,15 +10,33 @@ class CustomFieldComponent {}
 describe('FieldRegistryService', () => {
   let service: FieldRegistryService;
 
+  const ALL_15_FIELD_TYPES = [
+    'text',
+    'textarea',
+    'number',
+    'currency',
+    'email',
+    'password',
+    'checkbox',
+    'boolean',
+    'date',
+    'datetime',
+    'dropdown',
+    'radio',
+    'multiSelect',
+    'group',
+    'array',
+  ];
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
         FieldRegistryService,
         {
           provide: FIELD_TYPE_REGISTRY,
-          useValue: new Map([['custom', CustomFieldComponent]])
-        }
-      ]
+          useValue: new Map([['custom', CustomFieldComponent]]),
+        },
+      ],
     });
     service = TestBed.inject(FieldRegistryService);
   });
@@ -26,6 +44,14 @@ describe('FieldRegistryService', () => {
   it('should resolve built-in field types', () => {
     const comp = service.resolve('text');
     expect(comp).toBe(TextFieldComponent);
+  });
+
+  it('should resolve all 15 rich field types defined in the catalog', () => {
+    for (const type of ALL_15_FIELD_TYPES) {
+      const comp = service.resolve(type);
+      expect(comp).not.toBeNull();
+      expect(service.has(type)).toBeTrue();
+    }
   });
 
   it('should resolve consumer-provided field types', () => {

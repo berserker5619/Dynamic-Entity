@@ -9,14 +9,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import type { FieldConfig } from '@dynamic-entity/core';
+import type { NestedFieldConfig } from '@dynamic-entity/core';
+import { resolveLabel } from '@dynamic-entity/core';
 import { BuilderStore } from '../builder-store.service';
 import { getFieldTypeMeta, type FieldTypeMeta } from '../field-catalog';
 
 /**
  * FieldInspectorComponent — edits every property of the currently selected field.
- * Sections are shown/hidden based on the field type's catalog metadata.
- * All edits flow through BuilderStore mutators (single source of truth).
  */
 @Component({
   selector: 'ngx-field-inspector',
@@ -92,28 +91,26 @@ export class FieldInspectorComponent {
     return this.store.activeLanguage();
   }
 
-  /** Commit an id rename on blur — reads the raw input value. */
   protected commitId(oldId: string, event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.store.renameField(oldId, value);
   }
 
-  /** Coerce an input value to number|null (empty/NaN -> null, clears the validator). */
   protected toNum(value: unknown): number | null {
     if (value === '' || value === null || value === undefined) return null;
     const n = Number(value);
     return Number.isNaN(n) ? null : n;
   }
 
-  protected labelValue(field: FieldConfig): string {
-    return field.label?.[this.lang()] ?? field.label?.['en'] ?? '';
+  protected labelValue(field: NestedFieldConfig): string {
+    return resolveLabel(field.label, this.lang());
   }
 
-  protected placeholderValue(field: FieldConfig): string {
-    return field.placeholder?.[this.lang()] ?? '';
+  protected placeholderValue(field: NestedFieldConfig): string {
+    return resolveLabel(field.placeholder, this.lang());
   }
 
   protected optionLabel(option: { label: Record<string, string> }): string {
-    return option.label?.[this.lang()] ?? option.label?.['en'] ?? '';
+    return resolveLabel(option.label, this.lang());
   }
 }

@@ -1,6 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
-import type { FieldConfig } from '@dynamic-entity/core';
+import type { NestedFieldConfig } from '@dynamic-entity/core';
+import { resolveLabel } from '@dynamic-entity/core';
 
 @Component({
   selector: 'ngx-date-field',
@@ -8,7 +9,7 @@ import type { FieldConfig } from '@dynamic-entity/core';
   imports: [ReactiveFormsModule],
   template: `
     <div class="ngx-field ngx-field--date" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
-      <label class="ngx-field__label">{{ field.label[language] || field.label['en'] }}</label>
+      <label class="ngx-field__label">{{ label }}</label>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
       } @else if (readonly) {
@@ -28,11 +29,15 @@ import type { FieldConfig } from '@dynamic-entity/core';
   `,
 })
 export class DateFieldComponent {
-  @Input() field!: FieldConfig;
+  @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() language: string = 'en';
   @Input() readonly: boolean = false;
   @Input() masked: boolean = false;
+
+  get label(): string {
+    return resolveLabel(this.field?.label, this.language);
+  }
 
   /** ISO 8601 date → locale display string (ONEHERMES convention: always UTC, display in user locale) */
   formatDate(value: string | null): string {

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { CheckboxFieldComponent } from './checkbox-field.component';
-import { FieldConfig } from '@dynamic-entity/core';
+import type { NestedFieldConfig } from '@dynamic-entity/core';
 
 describe('CheckboxFieldComponent', () => {
   let component: CheckboxFieldComponent;
@@ -14,7 +14,7 @@ describe('CheckboxFieldComponent', () => {
 
     fixture = TestBed.createComponent(CheckboxFieldComponent);
     component = fixture.componentInstance;
-    component.field = { label: { en: 'Active' } } as any;
+    component.field = { id: 'active', type: 'checkbox', label: { en: 'Active' } };
     component.control = new FormControl(true);
     fixture.detectChanges();
   });

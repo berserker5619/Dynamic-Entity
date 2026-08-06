@@ -2,13 +2,11 @@ import { Component, EventEmitter, Output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import type { BuiltInFieldType } from '@dynamic-entity/core';
+import type { RichFieldType } from '@dynamic-entity/core';
 import { FIELD_TYPE_CATALOG, type FieldTypeMeta } from '../field-catalog';
 
 /**
  * FieldPaletteComponent — the list of buildable field types (Angular Material).
- * Emits `pick` with the chosen type; the container adds the field to the store.
- * Purely presentational — holds no state.
  */
 @Component({
   selector: 'ngx-field-palette',
@@ -51,5 +49,5 @@ import { FIELD_TYPE_CATALOG, type FieldTypeMeta } from '../field-catalog';
 export class FieldPaletteComponent {
   readonly catalog: readonly FieldTypeMeta[] = FIELD_TYPE_CATALOG;
 
-  @Output() pick = new EventEmitter<BuiltInFieldType>();
+  @Output() pick = new EventEmitter<RichFieldType>();
 }

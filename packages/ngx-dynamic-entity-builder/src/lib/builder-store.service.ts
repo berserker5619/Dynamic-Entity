@@ -1,10 +1,12 @@
 import { Injectable, computed, signal } from '@angular/core';
 import type {
   DropdownOption,
-  EntityConfig,
+  EntityFormConfig,
   EntityPermissions,
-  FieldConfig,
-  TabConfig,
+  NestedFieldConfig,
+  NestedTabConfig,
+  FieldValidators,
+  RichFieldType,
 } from '@dynamic-entity/core';
 import {
   createFieldConfig,
@@ -14,14 +16,12 @@ import {
   type ParamValidator,
 } from './field-catalog';
 
-/** A validation issue surfaced to the UI. Errors block a clean export; warnings do not. */
 export interface BuilderProblem {
   level: 'error' | 'warning';
   message: string;
   fieldId?: string;
 }
 
-/** Deep clone helper — structuredClone where available, JSON fallback for older runtimes. */
 function clone<T>(value: T): T {
   if (typeof structuredClone === 'function') return structuredClone(value);
   return JSON.parse(JSON.stringify(value)) as T;
@@ -29,33 +29,26 @@ function clone<T>(value: T): T {
 
 const ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-/**
- * BuilderStore — signal-backed working state for one EntityConfig being authored.
- *
- * Provided at the EntityBuilderComponent level (NOT root) so every builder instance
- * gets an isolated store. All mutations go through the private `mutate()` helper which
- * clones the current config, applies the change to the draft, and re-sets the signal —
- * keeping every emitted config immutable and change-detection friendly.
- */
 @Injectable()
 export class BuilderStore {
-  private readonly _config = signal<EntityConfig>(this.emptyConfig());
+  private readonly _config = signal<EntityFormConfig>(this.emptyConfig());
   private readonly _selectedFieldId = signal<string | null>(null);
   private readonly _activeLanguage = signal<string>('en');
 
-  /** The current working config (read-only signal). */
   readonly config = this._config.asReadonly();
   readonly selectedFieldId = this._selectedFieldId.asReadonly();
   readonly activeLanguage = this._activeLanguage.asReadonly();
 
-  readonly fields = computed<FieldConfig[]>(() => this._config().fields);
-  readonly tabs = computed<TabConfig[]>(() =>
-    [...(this._config().tabs ?? [])].sort((a, b) => a.order - b.order),
-  );
-  readonly selectedField = computed<FieldConfig | null>(() => {
+  readonly tabs = computed<NestedTabConfig[]>(() => this._config().tabs ?? []);
+
+  readonly fields = computed<NestedFieldConfig[]>(() => {
+    return (this._config().tabs ?? []).flatMap(t => t.fields ?? []);
+  });
+
+  readonly selectedField = computed<NestedFieldConfig | null>(() => {
     const id = this._selectedFieldId();
     if (!id) return null;
-    return this._config().fields.find(f => f.id === id) ?? null;
+    return this.findFieldInTabs(this._config().tabs, id);
   });
 
   readonly problems = computed<BuilderProblem[]>(() => this.validate(this._config()));
@@ -66,24 +59,30 @@ export class BuilderStore {
 
   // ─── Initialisation ─────────────────────────────────────────────────────────
 
-  /** Load an existing config for editing. A deep clone is taken — the input is never mutated. */
-  load(config: EntityConfig): void {
+  load(config: EntityFormConfig): void {
     const next = clone(config);
-    next.fields = next.fields ?? [];
     next.tabs = next.tabs ?? [];
+    if (next.tabs.length === 0) {
+      next.tabs = [{ id: 'default', label: { en: 'Default' }, fields: [] }];
+    }
     this._config.set(next);
-    this._selectedFieldId.set(next.fields[0]?.id ?? null);
+    const firstField = this.getAllFields(next.tabs)[0];
+    this._selectedFieldId.set(firstField?.id ?? null);
     this._activeLanguage.set(next.defaultLanguage ?? 'en');
   }
 
-  /** Reset to a blank config for the given entity name. */
   reset(entity = ''): void {
     this._config.set(this.emptyConfig(entity));
     this._selectedFieldId.set(null);
   }
 
-  private emptyConfig(entity = ''): EntityConfig {
-    return { entity, version: 1, fields: [], tabs: [], defaultLanguage: 'en' };
+  private emptyConfig(entity = ''): EntityFormConfig {
+    return {
+      entity,
+      version: 1,
+      defaultLanguage: 'en',
+      tabs: [],
+    };
   }
 
   // ─── Entity-level settings ──────────────────────────────────────────────────
@@ -106,7 +105,6 @@ export class BuilderStore {
     });
   }
 
-  /** Set the role list for one RBAC action. Empty array = no restriction. */
   setPermission(action: keyof EntityPermissions, roles: string[]): void {
     this.mutate(draft => {
       const permissions: EntityPermissions = { ...(draft.permissions ?? {}) };
@@ -119,100 +117,141 @@ export class BuilderStore {
     this._activeLanguage.set(language);
   }
 
+  // ─── Helper Traversal ───────────────────────────────────────────────────────
+
+  private getAllFields(tabs: NestedTabConfig[] = []): NestedFieldConfig[] {
+    const list: NestedFieldConfig[] = [];
+    for (const t of tabs) {
+      if (t.fields) list.push(...t.fields);
+      if (t.children) list.push(...this.getAllFields(t.children));
+    }
+    return list;
+  }
+
+  private findFieldInTabs(tabs: NestedTabConfig[] = [], id: string): NestedFieldConfig | null {
+    for (const t of tabs) {
+      if (t.fields) {
+        const found = t.fields.find(f => f.id === id);
+        if (found) return found;
+      }
+      if (t.children) {
+        const found = this.findFieldInTabs(t.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
   // ─── Field CRUD ─────────────────────────────────────────────────────────────
 
-  /** Add a new field of the given type, select it, and return its generated id. */
-  addField(type: FieldConfig['type']): string {
+  addField(type: RichFieldType, targetTabId?: string): string {
     const meta = getFieldTypeMeta(type);
     const prefix = meta?.idPrefix ?? 'field';
-    const id = this.uniqueId(prefix, this._config().fields);
-    const activeTab = this.tabs()[0]?.id;
+    const allFields = this.fields();
+    const id = this.uniqueId(prefix, allFields);
 
     this.mutate(draft => {
-      const field = createFieldConfig(type as any, id, draft.defaultLanguage ?? 'en');
-      if (activeTab) field.tab = activeTab;
-      draft.fields.push(field);
+      const field = createFieldConfig(type, id, draft.defaultLanguage ?? 'en');
+      const targetTab = targetTabId
+        ? draft.tabs.find(t => t.id === targetTabId)
+        : draft.tabs[0];
+      if (targetTab) {
+        targetTab.fields = targetTab.fields ?? [];
+        targetTab.fields.push(field);
+      } else {
+        draft.tabs.push({ id: 'main', label: { en: 'Main' }, fields: [field] });
+      }
     });
     this._selectedFieldId.set(id);
     return id;
   }
 
-  /** Shallow-merge a patch into a field by id. */
-  updateField(id: string, patch: Partial<FieldConfig>): void {
+  updateField(id: string, patch: Partial<NestedFieldConfig>): void {
     this.mutate(draft => {
-      const field = draft.fields.find(f => f.id === id);
+      const field = this.findFieldInTabs(draft.tabs, id);
       if (field) Object.assign(field, patch);
     });
   }
 
-  /** Rename a field id, keeping it unique and updating any dependsOn references. */
   renameField(oldId: string, newId: string): void {
     const trimmed = newId.trim();
     if (!trimmed || trimmed === oldId) return;
-    // Refuse a collision — validation will also flag it, but never overwrite silently.
-    if (this._config().fields.some(f => f.id === trimmed)) return;
+    if (this.fields().some(f => f.id === trimmed)) return;
 
     this.mutate(draft => {
-      const field = draft.fields.find(f => f.id === oldId);
+      const field = this.findFieldInTabs(draft.tabs, oldId);
       if (!field) return;
       field.id = trimmed;
-      for (const f of draft.fields) {
-        if (f.dependsOn?.field === oldId) f.dependsOn = { ...f.dependsOn, field: trimmed };
-      }
     });
     if (this._selectedFieldId() === oldId) this._selectedFieldId.set(trimmed);
   }
 
   removeField(id: string): void {
     this.mutate(draft => {
-      draft.fields = draft.fields.filter(f => f.id !== id);
+      for (const tab of draft.tabs) {
+        if (tab.fields) {
+          tab.fields = tab.fields.filter(f => f.id !== id);
+        }
+      }
     });
     if (this._selectedFieldId() === id) this._selectedFieldId.set(null);
   }
 
-  /** Duplicate a field with a fresh unique id, inserted right after the original. */
   duplicateField(id: string): string | null {
-    const source = this._config().fields.find(f => f.id === id);
+    const source = this.selectedField() ?? this.findFieldInTabs(this._config().tabs, id);
     if (!source) return null;
     const meta = getFieldTypeMeta(source.type);
     const prefix = meta?.idPrefix ?? 'field';
-    const newId = this.uniqueId(prefix, this._config().fields);
+    const newId = this.uniqueId(prefix, this.fields());
 
     this.mutate(draft => {
-      const index = draft.fields.findIndex(f => f.id === id);
-      const copy = clone(source);
-      copy.id = newId;
-      draft.fields.splice(index + 1, 0, copy);
+      for (const tab of draft.tabs) {
+        const index = (tab.fields ?? []).findIndex(f => f.id === id);
+        if (index !== -1) {
+          const copy = clone(source);
+          copy.id = newId;
+          tab.fields!.splice(index + 1, 0, copy);
+          break;
+        }
+      }
     });
     this._selectedFieldId.set(newId);
     return newId;
   }
 
-  /** Move a field one slot up (-1) or down (+1) in order. */
   moveField(id: string, direction: -1 | 1): void {
     this.mutate(draft => {
-      const from = draft.fields.findIndex(f => f.id === id);
-      if (from === -1) return;
-      const to = from + direction;
-      if (to < 0 || to >= draft.fields.length) return;
-      const [item] = draft.fields.splice(from, 1);
-      draft.fields.splice(to, 0, item);
+      for (const tab of draft.tabs) {
+        const fields = tab.fields ?? [];
+        const from = fields.findIndex(f => f.id === id);
+        if (from !== -1) {
+          const to = from + direction;
+          if (to < 0 || to >= fields.length) return;
+          const [item] = fields.splice(from, 1);
+          fields.splice(to, 0, item);
+          return;
+        }
+      }
     });
   }
 
-  /** Reorder by absolute indices — used by drag-and-drop. */
-  reorderField(fromIndex: number, toIndex: number): void {
+  /** Safe reorder for drag & drop within active tab or flat list */
+  reorderField(fromIndex: number, toIndex: number, tabId?: string): void {
     this.mutate(draft => {
+      const targetTab = tabId
+        ? draft.tabs.find(t => t.id === tabId)
+        : draft.tabs[0];
+      const fields = targetTab?.fields ?? [];
       if (
         fromIndex < 0 ||
         toIndex < 0 ||
-        fromIndex >= draft.fields.length ||
-        toIndex >= draft.fields.length
+        fromIndex >= fields.length ||
+        toIndex >= fields.length
       ) {
         return;
       }
-      const [item] = draft.fields.splice(fromIndex, 1);
-      draft.fields.splice(toIndex, 0, item);
+      const [item] = fields.splice(fromIndex, 1);
+      fields.splice(toIndex, 0, item);
     });
   }
 
@@ -224,14 +263,14 @@ export class BuilderStore {
 
   setFieldLabel(id: string, language: string, value: string): void {
     this.mutate(draft => {
-      const field = draft.fields.find(f => f.id === id);
+      const field = this.findFieldInTabs(draft.tabs, id);
       if (field) field.label = { ...field.label, [language]: value };
     });
   }
 
   setFieldPlaceholder(id: string, language: string, value: string): void {
     this.mutate(draft => {
-      const field = draft.fields.find(f => f.id === id);
+      const field = this.findFieldInTabs(draft.tabs, id);
       if (!field) return;
       field.placeholder = { ...(field.placeholder ?? {}), [language]: value };
     });
@@ -239,51 +278,50 @@ export class BuilderStore {
 
   // ─── Validators ─────────────────────────────────────────────────────────────
 
-  /** Toggle a no-param validator ('required' | 'email'). */
   toggleFlagValidator(id: string, validator: FlagValidator, on: boolean): void {
     this.mutate(draft => {
-      const field = draft.fields.find(f => f.id === id);
+      const field = this.findFieldInTabs(draft.tabs, id);
       if (!field) return;
-      const list = new Set(field.validators ?? []);
-      if (on) list.add(validator);
-      else list.delete(validator);
-      field.validators = [...list];
+      field.validators = field.validators ?? {};
+      if (validator === 'required') {
+        if (on) field.validators.required = true;
+        else delete field.validators.required;
+      } else if (validator === 'email') {
+        if (on) field.validators.pattern = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$';
+        else delete field.validators.pattern;
+      }
     });
   }
 
-  /**
-   * Set (or clear) a parameterised validator like `min:5`, `maxLength:255`.
-   * Pass null/undefined/NaN to remove it.
-   */
   setParamValidator(id: string, validator: ParamValidator, value: number | null): void {
     this.mutate(draft => {
-      const field = draft.fields.find(f => f.id === id);
+      const field = this.findFieldInTabs(draft.tabs, id);
       if (!field) return;
-      const kept = (field.validators ?? []).filter(v => v.split(':')[0] !== validator);
-      if (value !== null && value !== undefined && !Number.isNaN(value)) {
-        kept.push(`${validator}:${value}`);
+      field.validators = field.validators ?? {};
+      if (value === null || value === undefined || Number.isNaN(value)) {
+        delete field.validators[validator];
+      } else {
+        field.validators[validator] = value;
       }
-      field.validators = kept;
     });
   }
 
-  /** Read back the numeric parameter of a param validator, or null if unset. */
-  getParamValidator(field: FieldConfig, validator: ParamValidator): number | null {
-    const entry = (field.validators ?? []).find(v => v.split(':')[0] === validator);
-    if (!entry) return null;
-    const n = Number(entry.split(':')[1]);
-    return Number.isNaN(n) ? null : n;
+  getParamValidator(field: NestedFieldConfig, validator: ParamValidator): number | null {
+    const val = field.validators?.[validator];
+    return typeof val === 'number' ? val : null;
   }
 
-  hasFlagValidator(field: FieldConfig, validator: FlagValidator): boolean {
-    return (field.validators ?? []).includes(validator);
+  hasFlagValidator(field: NestedFieldConfig, validator: FlagValidator): boolean {
+    if (validator === 'required') return !!field.validators?.required;
+    if (validator === 'email') return !!field.validators?.pattern;
+    return false;
   }
 
-  // ─── Options (dropdown / multiSelect) ───────────────────────────────────────
+  // ─── Options (dropdown / multiSelect / radio) ────────────────────────────────
 
   addOption(fieldId: string): void {
     this.mutate(draft => {
-      const field = draft.fields.find(f => f.id === fieldId);
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
       if (!field) return;
       const options = field.options ? [...field.options] : [];
       const n = options.length + 1;
@@ -295,7 +333,7 @@ export class BuilderStore {
 
   updateOption(fieldId: string, index: number, patch: Partial<DropdownOption>): void {
     this.mutate(draft => {
-      const field = draft.fields.find(f => f.id === fieldId);
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
       if (!field?.options?.[index]) return;
       field.options = field.options.map((o, i) => (i === index ? { ...o, ...patch } : o));
     });
@@ -303,7 +341,7 @@ export class BuilderStore {
 
   setOptionLabel(fieldId: string, index: number, language: string, value: string): void {
     this.mutate(draft => {
-      const field = draft.fields.find(f => f.id === fieldId);
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
       const option = field?.options?.[index];
       if (!option) return;
       option.label = { ...option.label, [language]: value };
@@ -312,7 +350,7 @@ export class BuilderStore {
 
   removeOption(fieldId: string, index: number): void {
     this.mutate(draft => {
-      const field = draft.fields.find(f => f.id === fieldId);
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
       if (!field?.options) return;
       field.options = field.options.filter((_, i) => i !== index);
     });
@@ -325,13 +363,12 @@ export class BuilderStore {
     this.mutate(draft => {
       const tabs = draft.tabs ?? (draft.tabs = []);
       const lang = draft.defaultLanguage ?? 'en';
-      const order = tabs.reduce((max, t) => Math.max(max, t.order), -1) + 1;
-      tabs.push({ id, label: { [lang]: humanizeId(id) }, order });
+      tabs.push({ id, label: { [lang]: humanizeId(id) }, fields: [] });
     });
     return id;
   }
 
-  updateTab(id: string, patch: Partial<TabConfig>): void {
+  updateTab(id: string, patch: Partial<NestedTabConfig>): void {
     this.mutate(draft => {
       const tab = (draft.tabs ?? []).find(t => t.id === id);
       if (tab) Object.assign(tab, patch);
@@ -345,51 +382,35 @@ export class BuilderStore {
     });
   }
 
-  /** Remove a tab and unassign any fields that pointed at it. */
   removeTab(id: string): void {
     this.mutate(draft => {
       draft.tabs = (draft.tabs ?? []).filter(t => t.id !== id);
-      for (const f of draft.fields) {
-        if (f.tab === id) delete f.tab;
-      }
     });
   }
 
   moveTab(id: string, direction: -1 | 1): void {
     this.mutate(draft => {
-      const ordered = [...(draft.tabs ?? [])].sort((a, b) => a.order - b.order);
-      const from = ordered.findIndex(t => t.id === id);
+      const tabs = draft.tabs ?? [];
+      const from = tabs.findIndex(t => t.id === id);
       if (from === -1) return;
       const to = from + direction;
-      if (to < 0 || to >= ordered.length) return;
-      const [item] = ordered.splice(from, 1);
-      ordered.splice(to, 0, item);
-      ordered.forEach((t, i) => (t.order = i));
-      draft.tabs = ordered;
-    });
-  }
-
-  assignFieldToTab(fieldId: string, tabId: string | null): void {
-    this.mutate(draft => {
-      const field = draft.fields.find(f => f.id === fieldId);
-      if (!field) return;
-      if (tabId) field.tab = tabId;
-      else delete field.tab;
+      if (to < 0 || to >= tabs.length) return;
+      const [item] = tabs.splice(from, 1);
+      tabs.splice(to, 0, item);
     });
   }
 
   // ─── Export ─────────────────────────────────────────────────────────────────
 
-  /** Return a clean, deep-cloned copy of the config suitable for saving. */
-  exportConfig(): EntityConfig {
+  exportConfig(): EntityFormConfig {
     return clone(this._config());
   }
 
   // ─── Internals ──────────────────────────────────────────────────────────────
 
-  private mutate(fn: (draft: EntityConfig) => void): void {
+  private mutate(fn: (draft: EntityFormConfig) => void): void {
     const draft = clone(this._config());
-    draft.fields = draft.fields ?? [];
+    draft.tabs = draft.tabs ?? [];
     fn(draft);
     this._config.set(draft);
   }
@@ -405,7 +426,7 @@ export class BuilderStore {
     return candidate;
   }
 
-  private validate(config: EntityConfig): BuilderProblem[] {
+  private validate(config: EntityFormConfig): BuilderProblem[] {
     const problems: BuilderProblem[] = [];
 
     if (!config.entity || !config.entity.trim()) {
@@ -418,13 +439,13 @@ export class BuilderStore {
       });
     }
 
-    const fields = config.fields ?? [];
-    if (fields.length === 0) {
+    const allFields = this.getAllFields(config.tabs);
+    if (allFields.length === 0) {
       problems.push({ level: 'warning', message: 'This entity has no fields yet.' });
     }
 
     const seen = new Map<string, number>();
-    for (const field of fields) {
+    for (const field of allFields) {
       seen.set(field.id, (seen.get(field.id) ?? 0) + 1);
 
       if (!field.id || !ID_PATTERN.test(field.id)) {
@@ -450,20 +471,6 @@ export class BuilderStore {
         problems.push({
           level: 'warning',
           message: `Field "${field.id}" is a ${field.type} but has no options.`,
-          fieldId: field.id,
-        });
-      }
-      if (meta?.isEntityRef && !field.component && !field.id) {
-        problems.push({
-          level: 'warning',
-          message: `Entity-ref field "${field.id}" has no registry key set.`,
-          fieldId: field.id,
-        });
-      }
-      if (field.tab && !(config.tabs ?? []).some(t => t.id === field.tab)) {
-        problems.push({
-          level: 'error',
-          message: `Field "${field.id}" references unknown tab "${field.tab}".`,
           fieldId: field.id,
         });
       }

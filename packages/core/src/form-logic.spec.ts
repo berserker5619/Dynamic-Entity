@@ -1,5 +1,4 @@
-import type { DropdownOption } from './config.types';
-import type { EntityFormConfig } from './form-model.types';
+import type { DropdownOption, EntityFormConfig } from './form-model.types';
 import {
   evaluateFieldVisibility,
   formatDisplayValue,
@@ -83,16 +82,26 @@ describe('normalizeArrayStructures', () => {
     normalizeArrayStructures(rec, CONFIG);
     expect(rec.personal.addresses).toEqual([]);
   });
+
+  it('normalizes single non-array values to an array list', () => {
+    const rec: any = { personal: { addresses: { city: 'Berlin' } } };
+    normalizeArrayStructures(rec, CONFIG);
+    expect(rec.personal.addresses).toEqual([{ city: 'Berlin' }]);
+  });
 });
 
 describe('masking', () => {
   it('resolveEffectiveMask ORs the 3 levels', () => {
     expect(resolveEffectiveMask(false, false, true)).toBe(true);
+    expect(resolveEffectiveMask(true, false, false)).toBe(true);
+    expect(resolveEffectiveMask(false, true, false)).toBe(true);
     expect(resolveEffectiveMask(false, false, false)).toBe(false);
   });
+
   it('shouldMaskField requires a masked role and an effective mask', () => {
     const field = { id: 'salary', type: 'number' as const, label: { en: 'Salary' }, maskData: true };
     expect(shouldMaskField(field, undefined, CONFIG, ['IT_SUPPORT'], ['IT_SUPPORT'])).toBe(true);
+    expect(shouldMaskField(field, undefined, CONFIG, ['viewer', 'IT_SUPPORT'], ['IT_SUPPORT', 'GUEST'])).toBe(true);
     expect(shouldMaskField(field, undefined, CONFIG, ['admin'], ['IT_SUPPORT'])).toBe(false);
   });
 });
@@ -101,8 +110,9 @@ describe('evaluateFieldVisibility', () => {
   it('honors visibility:false and showWhen', () => {
     const hidden = { id: 'x', type: 'text' as const, label: { en: 'X' }, visibility: false };
     expect(evaluateFieldVisibility(hidden, {})).toBe(false);
-    const cond = { id: 'y', type: 'text' as const, label: { en: 'Y' }, showWhen: { isEmployee: true } };
-    expect(evaluateFieldVisibility(cond, { isEmployee: true })).toBe(true);
-    expect(evaluateFieldVisibility(cond, { isEmployee: false })).toBe(false);
+    const cond = { id: 'y', type: 'text' as const, label: { en: 'Y' }, showWhen: { isEmployee: true, status: 'active' } };
+    expect(evaluateFieldVisibility(cond, { isEmployee: true, status: 'active' })).toBe(true);
+    expect(evaluateFieldVisibility(cond, { isEmployee: true, status: 'inactive' })).toBe(false);
+    expect(evaluateFieldVisibility(cond, { isEmployee: false, status: 'active' })).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { NumberFieldComponent } from './number-field.component';
-import { FieldConfig } from '@dynamic-entity/core';
+import type { NestedFieldConfig } from '@dynamic-entity/core';
 
 describe('NumberFieldComponent', () => {
   let component: NumberFieldComponent;
@@ -14,7 +14,7 @@ describe('NumberFieldComponent', () => {
 
     fixture = TestBed.createComponent(NumberFieldComponent);
     component = fixture.componentInstance;
-    component.field = { label: { en: 'Age' } } as any;
+    component.field = { id: 'age', type: 'number', label: { en: 'Age' } };
     component.control = new FormControl(25);
     fixture.detectChanges();
   });

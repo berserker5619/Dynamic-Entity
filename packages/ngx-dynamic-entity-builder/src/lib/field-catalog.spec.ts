@@ -12,26 +12,30 @@ describe('field-catalog', () => {
       'text',
       'textarea',
       'number',
+      'currency',
+      'email',
+      'password',
       'checkbox',
+      'boolean',
       'date',
+      'datetime',
       'dropdown',
+      'radio',
       'multiSelect',
-      'entity-ref',
+      'group',
       'array',
     ]);
-    // no duplicates
     expect(new Set(types).size).toBe(types.length);
   });
 
-  it('flags option-backed and entity-ref types correctly', () => {
+  it('flags option-backed types correctly', () => {
     expect(getFieldTypeMeta('dropdown')?.hasOptions).toBe(true);
     expect(getFieldTypeMeta('multiSelect')?.hasOptions).toBe(true);
     expect(getFieldTypeMeta('text')?.hasOptions).toBe(false);
-    expect(getFieldTypeMeta('entity-ref')?.isEntityRef).toBe(true);
   });
 
   it('returns undefined metadata for unknown types', () => {
-    expect(getFieldTypeMeta('nope')).toBeUndefined();
+    expect(getFieldTypeMeta('nope' as any)).toBeUndefined();
   });
 
   describe('humanizeId', () => {
@@ -40,7 +44,6 @@ describe('field-catalog', () => {
     });
     it('splits snake and generated ids', () => {
       expect(humanizeId('text_1')).toBe('Text 1');
-      expect(humanizeId('entityRef_2')).toBe('Entity Ref 2');
     });
     it('handles single words', () => {
       expect(humanizeId('email')).toBe('Email');
@@ -53,9 +56,8 @@ describe('field-catalog', () => {
       expect(f.id).toBe('firstName');
       expect(f.type).toBe('text');
       expect(f.label).toEqual({ en: 'First Name' });
-      expect(f.visible).toBe(true);
-      expect(f.tableColumn).toBe(true);
-      expect(f.validators).toEqual([]);
+      expect(f.visibility).toBe(true);
+      expect(f.table?.visible).toBe(true);
     });
 
     it('honours the default language for the initial label', () => {
@@ -70,8 +72,8 @@ describe('field-catalog', () => {
 
     it('defaults checkbox value to false and keeps textarea/array out of table columns', () => {
       expect(createFieldConfig('checkbox', 'active').defaultValue).toBe(false);
-      expect(createFieldConfig('textarea', 'notes').tableColumn).toBe(false);
-      expect(createFieldConfig('array', 'items').tableColumn).toBe(false);
+      expect(createFieldConfig('textarea', 'notes').table?.visible).toBe(false);
+      expect(createFieldConfig('array', 'items').table?.visible).toBe(false);
     });
   });
 });

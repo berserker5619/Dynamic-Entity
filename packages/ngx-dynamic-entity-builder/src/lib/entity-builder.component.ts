@@ -21,7 +21,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import type { EntityConfig, EntityPermissions } from '@dynamic-entity/core';
+import type { EntityFormConfig, EntityPermissions } from '@dynamic-entity/core';
+import { resolveLabel } from '@dynamic-entity/core';
 import { BuilderStore } from './builder-store.service';
 import { FieldInspectorComponent } from './components/field-inspector.component';
 import { FieldPaletteComponent } from './components/field-palette.component';
@@ -35,14 +36,7 @@ const RBAC_ACTIONS: (keyof EntityPermissions)[] = ['view', 'edit', 'delete'];
 const EMPTY_ROLES: readonly string[] = Object.freeze([]);
 
 /**
- * EntityBuilderComponent — the top-level visual builder for an EntityConfig.
- *
- * Three panes (palette + tabs / field canvas / inspector) over a shared BuilderStore,
- * provided at this component so each builder instance is isolated. Emits `configChange`
- * on every edit and `save` when the user commits.
- *
- * A live form preview is optional and decoupled: project a renderer into the
- * `[ngxBuilderPreview]` slot, e.g. `<ngx-dynamic-form ngxBuilderPreview [config]="cfg">`.
+ * EntityBuilderComponent — the top-level visual builder for an EntityFormConfig.
  */
 @Component({
   selector: 'ngx-entity-builder',
@@ -73,30 +67,27 @@ export class EntityBuilderComponent implements OnChanges {
   protected readonly store = inject(BuilderStore);
 
   /** Existing config to edit. When omitted, the builder starts blank. */
-  @Input() config?: EntityConfig;
+  @Input() config?: EntityFormConfig;
   /** Languages available for label/placeholder editing. First entry is the default. */
   @Input() languages: string[] = ['en'];
   /** Optional role list — enables multi-select role pickers for RBAC instead of free text. */
   @Input() availableRoles: string[] = [];
 
   /** Emitted on every change to the working config. */
-  @Output() configChange = new EventEmitter<EntityConfig>();
+  @Output() configChange = new EventEmitter<EntityFormConfig>();
   /** Emitted when the user clicks Save. Carries a clean, deep-cloned config. */
-  @Output() save = new EventEmitter<EntityConfig>();
+  @Output() save = new EventEmitter<EntityFormConfig>();
 
   protected readonly rbacActions = RBAC_ACTIONS;
 
   constructor() {
-    // Mirror every store change out to the consumer. allowSignalWrites is required because a
-    // consumer may bind (configChange) to a signal setter (e.g. draft.set), which is a signal
-    // write triggered synchronously inside this effect — disallowed by default (NG0600).
     effect(() => this.configChange.emit(this.store.config()), { allowSignalWrites: true });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['config']) {
+    if (changes['config'] && changes['config'].currentValue !== changes['config'].previousValue) {
       if (this.config) this.store.load(this.config);
-      else this.store.reset();
+      else if (changes['config'].isFirstChange()) this.store.reset();
     }
     if (changes['languages'] && this.languages.length) {
       const active = this.store.activeLanguage();
@@ -118,9 +109,9 @@ export class EntityBuilderComponent implements OnChanges {
     return getFieldTypeMeta(type)?.icon ?? 'help_outline';
   }
 
-  protected fieldLabel(field: { id: string; label?: Record<string, string> }): string {
+  protected fieldLabel(field: { id: string; label?: any }): string {
     const lang = this.store.activeLanguage();
-    return field.label?.[lang] || field.label?.['en'] || field.id;
+    return resolveLabel(field.label, lang) || field.id;
   }
 
   // ─── Toolbar actions ──────────────────────────────────────────────────────
