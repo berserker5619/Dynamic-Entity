@@ -1,3 +1,6 @@
+/* Angular Material prebuilt theme — required by the form builder */
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
 :root {
   --primary: #2563eb;
   --bg: #f8fafc;

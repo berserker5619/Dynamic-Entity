@@ -1,0 +1,181 @@
+:host {
+  --deb-accent: #6366f1;
+  --deb-accent-soft: #eef2ff;
+  --deb-border: #e5e7eb;
+  --deb-muted: #6b7280;
+  --deb-surface: #fff;
+  display: block;
+}
+
+.deb-toolbar__title {
+  margin-left: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.deb-spacer {
+  flex: 1 1 auto;
+}
+.deb-problems--error {
+  color: #b91c1c;
+}
+
+/* ─── Shared helpers reused by child components ─── */
+.deb-full {
+  width: 100%;
+}
+.deb-grow {
+  flex: 1;
+}
+.deb-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.deb-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--deb-muted);
+}
+.deb-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--deb-muted);
+}
+.deb-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--deb-accent-soft);
+  color: var(--deb-accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.deb-chip--muted {
+  background: #f3f4f6;
+  color: var(--deb-muted);
+}
+
+/* ─── Layout ─── */
+.deb-body {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) 360px;
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+}
+.deb-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.deb-col--right {
+  position: sticky;
+  top: 16px;
+}
+
+@media (max-width: 1100px) {
+  .deb-body {
+    grid-template-columns: 1fr;
+  }
+  .deb-col--right {
+    position: static;
+  }
+}
+
+/* ─── Field canvas ─── */
+.deb-field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.deb-field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--deb-border);
+  border-radius: 8px;
+  background: var(--deb-surface);
+  cursor: pointer;
+}
+.deb-field-row:hover {
+  border-color: var(--deb-accent);
+}
+.deb-field-row--active {
+  border-color: var(--deb-accent);
+  box-shadow: 0 0 0 2px var(--deb-accent-soft);
+}
+.deb-drag-handle {
+  cursor: grab;
+  color: var(--deb-muted);
+}
+.deb-field-type {
+  color: var(--deb-accent);
+}
+.deb-field-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.deb-field-label {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.deb-field-id {
+  font-size: 12px;
+  color: var(--deb-muted);
+  font-family: ui-monospace, monospace;
+}
+.deb-req {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.deb-empty,
+.deb-inspector__empty {
+  text-align: center;
+  color: var(--deb-muted);
+  padding: 32px 8px;
+}
+.deb-empty mat-icon {
+  transform: scale(1.6);
+  margin-bottom: 12px;
+  color: var(--deb-border);
+}
+
+/* CDK drag-and-drop feedback */
+.cdk-drag-preview {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+.cdk-drag-placeholder {
+  opacity: 0.4;
+}
+.cdk-drag-animating {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+.deb-field-list.cdk-drop-list-dragging .deb-field-row:not(.cdk-drag-placeholder) {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* ─── Footer ─── */
+.deb-footer {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.deb-json {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}

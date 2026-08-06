@@ -1,5 +1,6 @@
 import {
   Component,
+  ComponentRef,
   Input,
   OnChanges,
   SimpleChanges,
@@ -39,7 +40,7 @@ export class DynamicFieldComponent implements OnChanges {
   private readonly fieldRegistry = inject(FieldRegistryService);
   private readonly rbacService = inject(RbacService);
 
-  private mountedComponent: any = null;
+  private componentRef: ComponentRef<unknown> | null = null;
 
   ngOnChanges(_changes: SimpleChanges): void {
     this.mountField();
@@ -56,24 +57,28 @@ export class DynamicFieldComponent implements OnChanges {
     const masked = this.rbacService.shouldMaskField(this.field, tab, this.config, this.userRoles);
 
     // Re-use existing component if same type, otherwise recreate
-    if (this.mountedComponent && this.mountedComponent instanceof ComponentClass) {
-      this.setInputs(this.mountedComponent, masked);
+    if (this.componentRef && this.componentRef.instance instanceof ComponentClass) {
+      this.setInputs(this.componentRef, masked);
       return;
     }
 
     this.fieldHost.clear();
-    const ref = this.fieldHost.createComponent(ComponentClass);
-    this.mountedComponent = ref.instance;
-    this.setInputs(ref.instance, masked);
-    ref.changeDetectorRef.markForCheck();
+    this.componentRef = this.fieldHost.createComponent(ComponentClass);
+    this.setInputs(this.componentRef, masked);
+    this.componentRef.changeDetectorRef.markForCheck();
   }
 
-  /** Pass all 5 contract inputs via setInput() — uniform for all types (ADR-008) */
-  private setInputs(instance: any, masked: boolean): void {
-    if ('field' in instance) instance.field = this.field;
-    if ('control' in instance) instance.control = this.control;
-    if ('language' in instance) instance.language = this.language;
-    if ('readonly' in instance) instance.readonly = this.readonly || !!this.field.readonly;
-    if ('masked' in instance) instance.masked = masked;
+  /**
+   * Pass all 5 contract inputs via ComponentRef.setInput() — uniform for all types (ADR-008).
+   * Must use setInput(), not property assignment: the field components declare inputs with
+   * definite assignment and no initializer, and the lib compiles with
+   * useDefineForClassFields:false, so `'field' in instance` is false until first set.
+   */
+  private setInputs(ref: ComponentRef<unknown>, masked: boolean): void {
+    ref.setInput('field', this.field);
+    ref.setInput('control', this.control);
+    ref.setInput('language', this.language);
+    ref.setInput('readonly', this.readonly || !!this.field.readonly);
+    ref.setInput('masked', masked);
   }
 }

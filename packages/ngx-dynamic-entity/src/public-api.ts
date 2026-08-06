@@ -13,10 +13,9 @@ export * from './lib/services/entity-ref-registry.service';
 export * from './lib/services/version.service';
 export * from './lib/services/rbac.service';
 
-// Components
+// Components — the library ships form UI only; rendering a data table is the consumer's choice.
 export * from './lib/form/dynamic-form.component';
 export * from './lib/form/dynamic-field/dynamic-field.component';
-export * from './lib/table/dynamic-table.component';
 
 // Field type components (individually importable — reusability rule)
 export * from './lib/field-types/text-field.component';
@@ -42,4 +41,11 @@ export type {
   MigrationStrategy,
   QueryOptions,
   PaginatedResult,
+  // Rich nested form model (config carries `table` hints as metadata only — no table ships)
+  EntityFormConfig,
+  NestedTabConfig,
+  NestedFieldConfig,
+  FieldTableConfig,
+  RichFieldType,
+  LocalizedText,
 } from '@dynamic-entity/core';

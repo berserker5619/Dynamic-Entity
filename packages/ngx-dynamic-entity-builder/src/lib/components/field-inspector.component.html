@@ -1,0 +1,172 @@
+@if (field(); as f) {
+  <div class="deb-inspector">
+    <!-- Identity -->
+    <div class="deb-row">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Field id</mat-label>
+        <input matInput [value]="f.id" (change)="commitId(f.id, $event)" />
+        <mat-hint>Used as the data key — must be unique.</mat-hint>
+      </mat-form-field>
+      <span class="deb-chip">{{ meta()?.label || f.type }}</span>
+    </div>
+
+    <!-- Localised text (active language) -->
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+      <mat-label>Label ({{ lang() }})</mat-label>
+      <input
+        matInput
+        [ngModel]="labelValue(f)"
+        (ngModelChange)="store.setFieldLabel(f.id, lang(), $event)"
+      />
+    </mat-form-field>
+
+    @if (meta()?.supportsPlaceholder) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+        <mat-label>Placeholder ({{ lang() }})</mat-label>
+        <input
+          matInput
+          [ngModel]="placeholderValue(f)"
+          (ngModelChange)="store.setFieldPlaceholder(f.id, lang(), $event)"
+        />
+      </mat-form-field>
+    }
+
+    @if (meta()?.supportsDefaultValue) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+        <mat-label>Default value</mat-label>
+        <input
+          matInput
+          [ngModel]="f.defaultValue ?? ''"
+          (ngModelChange)="store.updateField(f.id, { defaultValue: $event })"
+        />
+      </mat-form-field>
+    }
+
+    <!-- Entity-ref registry key -->
+    @if (meta()?.isEntityRef) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+        <mat-label>Entity-ref key</mat-label>
+        <input
+          matInput
+          [ngModel]="f.component ?? ''"
+          (ngModelChange)="store.updateField(f.id, { component: $event || undefined })"
+        />
+        <mat-hint>Registry key used to load options. Defaults to the field id.</mat-hint>
+      </mat-form-field>
+    }
+
+    <!-- Tab assignment -->
+    @if (store.tabs().length) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+        <mat-label>Tab</mat-label>
+        <mat-select
+          [ngModel]="f.tab ?? ''"
+          (ngModelChange)="store.assignFieldToTab(f.id, $event || null)"
+        >
+          <mat-option value="">(no tab)</mat-option>
+          @for (tab of store.tabs(); track tab.id) {
+            <mat-option [value]="tab.id">{{ tab.label[lang()] || tab.label['en'] || tab.id }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+
+    <mat-divider></mat-divider>
+
+    <!-- Validators -->
+    @if (meta(); as m) {
+      @if (m.flagValidators.length || m.paramValidators.length) {
+        <span class="deb-section-title">Validation</span>
+        <div class="deb-toggles">
+          @for (v of m.flagValidators; track v) {
+            <mat-checkbox
+              [ngModel]="store.hasFlagValidator(f, v)"
+              (ngModelChange)="store.toggleFlagValidator(f.id, v, $event)"
+            >{{ v }}</mat-checkbox>
+          }
+        </div>
+        @for (v of m.paramValidators; track v) {
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+            <mat-label>{{ v }}</mat-label>
+            <input
+              matInput
+              type="number"
+              [ngModel]="store.getParamValidator(f, v)"
+              (ngModelChange)="store.setParamValidator(f.id, v, toNum($event))"
+            />
+          </mat-form-field>
+        }
+      }
+    }
+
+    <!-- Options (dropdown / multiSelect) -->
+    @if (meta()?.hasOptions) {
+      <mat-divider></mat-divider>
+      <div class="deb-row" style="justify-content: space-between;">
+        <span class="deb-section-title">Options</span>
+        <button mat-stroked-button type="button" (click)="store.addOption(f.id)">
+          <mat-icon>add</mat-icon> Option
+        </button>
+      </div>
+      @for (opt of f.options ?? []; track $index) {
+        <div class="deb-option-row">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Value</mat-label>
+            <input
+              matInput
+              [ngModel]="opt.value"
+              (ngModelChange)="store.updateOption(f.id, $index, { value: $event })"
+            />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Label ({{ lang() }})</mat-label>
+            <input
+              matInput
+              [ngModel]="optionLabel(opt)"
+              (ngModelChange)="store.setOptionLabel(f.id, $index, lang(), $event)"
+            />
+          </mat-form-field>
+          <button mat-icon-button type="button" color="warn"
+            (click)="store.removeOption(f.id, $index)" matTooltip="Remove option">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      }
+      @if (!(f.options ?? []).length) {
+        <p class="deb-hint">No options yet — add at least one.</p>
+      }
+    }
+
+    <mat-divider></mat-divider>
+
+    <!-- Flags -->
+    <span class="deb-section-title">Display</span>
+    <div class="deb-toggles">
+      <mat-slide-toggle
+        [ngModel]="f.visible ?? true"
+        (ngModelChange)="store.updateField(f.id, { visible: $event })"
+      >Visible</mat-slide-toggle>
+      <mat-slide-toggle
+        [ngModel]="f.tableColumn ?? false"
+        (ngModelChange)="store.updateField(f.id, { tableColumn: $event })"
+      >Table column</mat-slide-toggle>
+      <mat-slide-toggle
+        [ngModel]="f.readonly ?? false"
+        (ngModelChange)="store.updateField(f.id, { readonly: $event })"
+      >Read-only</mat-slide-toggle>
+      <mat-slide-toggle
+        [ngModel]="f.disabled ?? false"
+        (ngModelChange)="store.updateField(f.id, { disabled: $event })"
+      >Disabled</mat-slide-toggle>
+      <mat-slide-toggle
+        [ngModel]="f.maskData ?? false"
+        (ngModelChange)="store.updateField(f.id, { maskData: $event })"
+      >Mask data (RBAC)</mat-slide-toggle>
+    </div>
+  </div>
+} @else {
+  <div class="deb-inspector__empty">
+    <mat-icon>touch_app</mat-icon>
+    <p>Select a field to edit its properties.</p>
+  </div>
+}

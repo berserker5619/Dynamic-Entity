@@ -1,0 +1,182 @@
+<mat-toolbar class="deb-toolbar" color="primary">
+  <mat-icon>dashboard_customize</mat-icon>
+  <span class="deb-toolbar__title">Entity Builder</span>
+  <span class="deb-spacer"></span>
+
+  @if (store.problems().length) {
+    <button
+      mat-button
+      type="button"
+      class="deb-problems"
+      [class.deb-problems--error]="!store.isValid()"
+      [matTooltip]="store.problems().length + ' issue(s) — hover items in the list'"
+    >
+      <mat-icon>{{ store.isValid() ? 'warning' : 'error' }}</mat-icon>
+      {{ store.errors().length }} / {{ store.problems().length }}
+    </button>
+  }
+
+  <button mat-button type="button" (click)="copyJson()">
+    <mat-icon>content_copy</mat-icon> Copy JSON
+  </button>
+  <button mat-flat-button color="accent" type="button" [disabled]="!store.isValid()" (click)="doSave()">
+    <mat-icon>save</mat-icon> Save
+  </button>
+</mat-toolbar>
+
+<div class="deb-body">
+  <!-- ─── Left: settings, palette, tabs ─── -->
+  <div class="deb-col deb-col--left">
+    <mat-card>
+      <mat-card-content>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+          <mat-label>Entity name</mat-label>
+          <input
+            matInput
+            [ngModel]="store.config().entity"
+            (ngModelChange)="store.setEntityName($event)"
+            placeholder="e.g. clients"
+          />
+        </mat-form-field>
+
+        <div class="deb-row">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-grow">
+            <mat-label>Editing language</mat-label>
+            <mat-select
+              [ngModel]="store.activeLanguage()"
+              (ngModelChange)="store.setActiveLanguage($event)"
+            >
+              @for (l of languages; track l) {
+                <mat-option [value]="l">{{ l }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <mat-slide-toggle
+          [ngModel]="store.config().maskData ?? false"
+          (ngModelChange)="store.setMaskData($event)"
+        >Mask this entity (RBAC)</mat-slide-toggle>
+
+        <mat-expansion-panel class="deb-rbac">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Permissions</mat-panel-title>
+          </mat-expansion-panel-header>
+          @for (action of rbacActions; track action) {
+            @if (availableRoles.length) {
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+                <mat-label>{{ action }} roles</mat-label>
+                <mat-select multiple [ngModel]="rolesFor(action)" (ngModelChange)="setRoles(action, $event)">
+                  @for (role of availableRoles; track role) {
+                    <mat-option [value]="role">{{ role }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            } @else {
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+                <mat-label>{{ action }} roles (comma-separated)</mat-label>
+                <input
+                  matInput
+                  [ngModel]="rolesFor(action).join(', ')"
+                  (ngModelChange)="setRolesFromText(action, $event)"
+                />
+              </mat-form-field>
+            }
+          }
+          <p class="deb-hint">Empty = no restriction for that action.</p>
+        </mat-expansion-panel>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card>
+      <mat-card-header><mat-card-title>Add field</mat-card-title></mat-card-header>
+      <mat-card-content>
+        <ngx-field-palette (pick)="store.addField($event)"></ngx-field-palette>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card>
+      <mat-card-content>
+        <ngx-tab-manager></ngx-tab-manager>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- ─── Center: field canvas ─── -->
+  <div class="deb-col deb-col--center">
+    <mat-card class="deb-canvas">
+      <mat-card-header>
+        <mat-card-title>Fields ({{ store.fields().length }})</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        @if (store.fields().length === 0) {
+          <div class="deb-empty">
+            <mat-icon>widgets</mat-icon>
+            <p>No fields yet. Pick a type from <strong>Add field</strong> to get started.</p>
+          </div>
+        }
+
+        <div cdkDropList class="deb-field-list" (cdkDropListDropped)="onDrop($event)">
+          @for (f of store.fields(); track f.id; let i = $index, count = $count) {
+            <div
+              cdkDrag
+              class="deb-field-row"
+              [class.deb-field-row--active]="store.selectedFieldId() === f.id"
+              (click)="store.selectField(f.id)"
+            >
+              <mat-icon class="deb-drag-handle" cdkDragHandle title="Drag to reorder">drag_indicator</mat-icon>
+              <mat-icon class="deb-field-type" [matTooltip]="fieldTypeLabel(f.type)">{{ fieldTypeIcon(f.type) }}</mat-icon>
+              <div class="deb-field-meta">
+                <span class="deb-field-label">{{ fieldLabel(f) }}</span>
+                <span class="deb-field-id">{{ f.id }}</span>
+              </div>
+              @if (f.tab) { <span class="deb-chip deb-chip--muted">{{ f.tab }}</span> }
+              @if ((f.validators ?? []).includes('required')) { <span class="deb-req" title="Required">*</span> }
+
+              <button mat-icon-button type="button" [disabled]="i === 0"
+                (click)="store.moveField(f.id, -1); $event.stopPropagation()" matTooltip="Move up">
+                <mat-icon>arrow_upward</mat-icon>
+              </button>
+              <button mat-icon-button type="button" [disabled]="i === count - 1"
+                (click)="store.moveField(f.id, 1); $event.stopPropagation()" matTooltip="Move down">
+                <mat-icon>arrow_downward</mat-icon>
+              </button>
+              <button mat-icon-button type="button"
+                (click)="store.duplicateField(f.id); $event.stopPropagation()" matTooltip="Duplicate">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+              <button mat-icon-button type="button" color="warn"
+                (click)="store.removeField(f.id); $event.stopPropagation()" matTooltip="Delete">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- ─── Right: inspector ─── -->
+  <div class="deb-col deb-col--right">
+    <mat-card>
+      <mat-card-header><mat-card-title>Field properties</mat-card-title></mat-card-header>
+      <mat-card-content>
+        <ngx-field-inspector></ngx-field-inspector>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>
+
+<!-- ─── Footer: JSON + optional live preview ─── -->
+<div class="deb-footer">
+  <mat-expansion-panel>
+    <mat-expansion-panel-header>
+      <mat-panel-title><mat-icon>data_object</mat-icon>&nbsp;Config JSON</mat-panel-title>
+    </mat-expansion-panel-header>
+    <pre class="deb-json">{{ json }}</pre>
+  </mat-expansion-panel>
+
+  <div class="deb-preview-slot">
+    <ng-content select="[ngxBuilderPreview]"></ng-content>
+  </div>
+</div>

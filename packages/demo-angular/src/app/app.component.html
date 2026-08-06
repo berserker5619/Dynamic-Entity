@@ -7,6 +7,8 @@
         (click)="setView('list')">Clients Data</button>
       <button class="nav-link" [class.nav-link--active]="view() === 'config'" (click)="setView('config')">Entity
         Manager</button>
+      <button class="nav-link" [class.nav-link--active]="view() === 'builder'"
+        (click)="setView('builder')">Form Builder</button>
     </nav>
 
     <div class="role-switcher">
@@ -27,6 +29,7 @@
     <div class="ngx-form__error-banner">{{ error() }}</div>
     }
 
+    @if (view() === 'list' || view() === 'form') {
     <div class="view-toggle">
       @if (view() === 'list') {
       <button class="ngx-form__submit" (click)="onCreateNew()">+ Add Client</button>
@@ -34,14 +37,24 @@
       <button class="ngx-form__reset" (click)="onCancel()">← Back to List</button>
       }
     </div>
+    }
 
     @if (view() === 'list' || view() === 'form') {
     @if (config()) {
     @if (view() === 'list') {
-    <ngx-dynamic-table [config]="config()!" [data]="records()" [userRoles]="userRoles()" [loading]="loading()"
-      [totalRecords]="totalRecords()" [currentPage]="currentPage()" [pageSize]="pageSize()"
-      (rowClick)="onRowClick($event)" (pageChange)="onPageChange($event)" (sortChange)="onSortChange($event)"
-      (searchChange)="onSearchChange($event)"></ngx-dynamic-table>
+    <!-- The library ships no table; the demo renders its own simple list. Pick a record to edit it in the dynamic form. -->
+    <input class="ngx-field__input" style="max-width: 320px; margin-bottom: 16px" placeholder="Search clients…"
+      [value]="searchTerm()" (input)="onSearchChange($any($event.target).value)" />
+    <div style="display: flex; flex-direction: column; gap: 8px; max-width: 640px;">
+      @for (rec of records(); track rec['_id']) {
+      <button type="button" (click)="onRowClick(rec)"
+        style="text-align: left; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer;">
+        <strong>{{ rec['name'] }}</strong> — {{ rec['company'] }} · {{ rec['status'] }}
+      </button>
+      } @empty {
+      <p>No clients.</p>
+      }
+    </div>
     } @else {
     <div class="form-wrapper">
       <h2>{{ selectedRecord() ? 'Edit Client' : 'New Client' }}</h2>
@@ -89,6 +102,10 @@
       </div>
       }
     </div>
+    }
+
+    @if (view() === 'builder') {
+    <app-builder-page></app-builder-page>
     }
   </main>
 </div>

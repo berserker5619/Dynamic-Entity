@@ -26,6 +26,7 @@
     "paths": {
       "@dynamic-entity/core": ["../core/src/index.ts"],
       "ngx-dynamic-entity": ["../ngx-dynamic-entity/src/public-api.ts"],
+      "ngx-dynamic-entity-builder": ["../ngx-dynamic-entity-builder/src/public-api.ts"],
       "rxjs": ["../../node_modules/rxjs"],
       "rxjs/*": ["../../node_modules/rxjs/*"]
     }

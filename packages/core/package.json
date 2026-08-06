@@ -1,7 +1,7 @@
 {
   "name": "@dynamic-entity/core",
   "version": "0.0.1",
-  "description": "Shared TypeScript interfaces for the dynamic-entity ecosystem. Zero runtime code.",
+  "description": "Shared model + framework-agnostic form logic for the dynamic-entity ecosystem.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -15,10 +15,14 @@
   "files": ["dist"],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
+    "test": "jest",
     "lint": "tsc --noEmit",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0"
   },
