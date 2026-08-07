@@ -37,8 +37,6 @@ export type {
   VersionedRecord,
   EntityPermissions,
   RbacContext,
-  QueryOptions,
-  PaginatedResult,
   FieldValidators,
   EntityReferenceConfig,
   FormRule,

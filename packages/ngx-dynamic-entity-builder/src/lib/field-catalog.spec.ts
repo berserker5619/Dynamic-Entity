@@ -19,11 +19,15 @@ describe('field-catalog', () => {
       'boolean',
       'date',
       'datetime',
+      'monthYear',
       'dropdown',
       'radio',
       'multiSelect',
+      'entity-ref',
       'group',
       'array',
+      'image',
+      'file',
     ]);
     expect(new Set(types).size).toBe(types.length);
   });

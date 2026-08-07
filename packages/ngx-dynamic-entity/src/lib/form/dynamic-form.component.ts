@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { EntityFormConfig, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
-import { findTab, resolveLabel } from '@dynamic-entity/core';
+import { evaluateFieldVisibility, findTab, resolveLabel } from '@dynamic-entity/core';
 import { DynamicFieldComponent } from './dynamic-field/dynamic-field.component';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
 import { HookRegistryService } from '../services/hook-registry.service';
@@ -51,6 +51,7 @@ export class DynamicFormComponent implements OnChanges {
   // ─── Signals (local reactive state) ───────────────────────────────────────
   readonly activeTab = signal<string>('');
   readonly isSaving = signal(false);
+  readonly formValues = signal<Record<string, any>>({});
 
   // ─── Form ─────────────────────────────────────────────────────────────────
   form!: FormGroup;
@@ -68,9 +69,9 @@ export class DynamicFormComponent implements OnChanges {
 
   get fieldsForActiveTab(): NestedFieldConfig[] {
     const active = this.activeTabConfig;
-    if (active) return active.fields || [];
-    // If no tabs defined, flatten all fields across tabs
-    return (this.config?.tabs || []).flatMap(t => t.fields || []);
+    const rawFields = active ? (active.fields || []) : ((this.config?.tabs || []).flatMap(t => t.fields || []));
+    const currentValues = this.formValues();
+    return rawFields.filter(field => evaluateFieldVisibility(field, currentValues));
   }
 
   get permissions() {
@@ -136,8 +137,12 @@ export class DynamicFormComponent implements OnChanges {
       controls[field.id] = this.buildFieldControl(field);
     }
     this.form = this.fb.group(controls);
+    this.formValues.set(this.form.value || {});
 
-    this.form.valueChanges.subscribe(value => this.formChange.emit(value));
+    this.form.valueChanges.subscribe(value => {
+      this.formValues.set(value || {});
+      this.formChange.emit(value);
+    });
 
     if (this.initialData) {
       this.patchForm(this.initialData);
@@ -151,6 +156,7 @@ export class DynamicFormComponent implements OnChanges {
   private patchForm(data: Record<string, any>): void {
     const allFields = this.getAllFields(this.config?.tabs);
     this.patchFormGroup(this.form, allFields, data);
+    this.formValues.set(this.form.value || {});
   }
 
   private patchFormGroup(group: FormGroup, fields: NestedFieldConfig[], data: Record<string, any>): void {
@@ -215,6 +221,7 @@ export class DynamicFormComponent implements OnChanges {
   reset(): void {
     this.form.reset();
     if (this.initialData) this.patchForm(this.initialData);
+    this.formValues.set(this.form.value || {});
     this.formReset.emit();
   }
 

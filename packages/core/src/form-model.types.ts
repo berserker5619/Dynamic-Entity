@@ -34,6 +34,7 @@ export type RichFieldType =
   | 'checkbox'
   | 'boolean'
   | 'multiSelect'
+  | 'entity-ref'
   | 'group'
   | 'array'
   | 'image'
