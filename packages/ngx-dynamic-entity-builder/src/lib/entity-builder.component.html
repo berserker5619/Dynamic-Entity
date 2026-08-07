@@ -127,7 +127,10 @@
               <mat-icon class="deb-drag-handle" cdkDragHandle title="Drag to reorder">drag_indicator</mat-icon>
               <mat-icon class="deb-field-type" [matTooltip]="fieldTypeLabel(f.type)">{{ fieldTypeIcon(f.type) }}</mat-icon>
               <div class="deb-field-meta">
-                <span class="deb-field-label">{{ fieldLabel(f) }}</span>
+                <div class="deb-row" style="gap:6px">
+                  <span class="deb-field-label">{{ fieldLabel(f) }}</span>
+                  <span class="deb-type-badge">{{ f.type }}</span>
+                </div>
                 <span class="deb-field-id">{{ f.id }}</span>
               </div>
               @if (f.validators?.required) { <span class="deb-req" title="Required">*</span> }

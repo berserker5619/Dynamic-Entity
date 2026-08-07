@@ -6,6 +6,7 @@ import {
   signal,
   computed,
   inject,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -16,8 +17,8 @@ import { RulesEvaluationService } from '../services/rules-evaluation.service';
 
 /**
  * DynamicRecordFormComponent — comprehensive tabbed record view & edit component.
- * Supports cross-tab rule evaluation, inline array-row editing, profile header,
- * summary drawer (showOnMinimize), criticalField baseline locks & deferred VALUE_CHANGED banners.
+ * Supports cross-tab rule evaluation, profile header, summary drawer (showOnMinimize),
+ * interactive quick-jump links, and baseline modification tracking.
  */
 @Component({
   selector: 'ngx-dynamic-record-form',
@@ -94,6 +95,13 @@ import { RulesEvaluationService } from '../services/rules-evaluation.service';
       .ngx-record-editor__summary-item {
         display: flex;
         flex-direction: column;
+        cursor: pointer;
+        padding: 6px 10px;
+        border-radius: 6px;
+        transition: background 0.15s;
+      }
+      .ngx-record-editor__summary-item:hover {
+        background: #eff6ff;
       }
       .ngx-record-editor__summary-label {
         font-size: 11px;
@@ -123,6 +131,8 @@ export class DynamicRecordFormComponent {
   @Output() formSubmit = new EventEmitter<Record<string, any>>();
   @Output() formChange = new EventEmitter<Record<string, any>>();
   @Output() formReset = new EventEmitter<void>();
+
+  @ViewChild(DynamicFormComponent) dynamicFormComp?: DynamicFormComponent;
 
   private readonly rulesEvaluation = inject(RulesEvaluationService);
 
@@ -183,5 +193,23 @@ export class DynamicRecordFormComponent {
     const val = this.currentData()[field.id];
     if (val === null || val === undefined || val === '') return '—';
     return String(val);
+  }
+
+  jumpToField(fieldId: string): void {
+    // Find parent tab for field
+    for (const tab of this.config?.tabs || []) {
+      const hasField = (tab.fields || []).some(f => f.id === fieldId);
+      if (hasField) {
+        this.dynamicFormComp?.setActiveTab(tab.id);
+        setTimeout(() => {
+          const el = document.getElementById(`field-container-${fieldId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.focus();
+          }
+        }, 50);
+        break;
+      }
+    }
   }
 }

@@ -1,6 +1,6 @@
 :host {
-  --deb-accent: #6366f1;
-  --deb-accent-soft: #eef2ff;
+  --deb-accent: #4f46e5;
+  --deb-accent-soft: #e0e7ff;
   --deb-border: #e5e7eb;
   --deb-muted: #6b7280;
   --deb-surface: #fff;
@@ -95,18 +95,32 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
+  padding: 8px 12px;
   border: 1px solid var(--deb-border);
   border-radius: 8px;
   background: var(--deb-surface);
   cursor: pointer;
+  transition: all 0.15s ease-in-out;
 }
 .deb-field-row:hover {
   border-color: var(--deb-accent);
+  background: #f8fafc;
 }
 .deb-field-row--active {
   border-color: var(--deb-accent);
-  box-shadow: 0 0 0 2px var(--deb-accent-soft);
+  border-left: 4px solid var(--deb-accent);
+  background: #f0fdf4;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.12);
+}
+.deb-type-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f3f4f6;
+  color: #4b5563;
 }
 .deb-drag-handle {
   cursor: grab;
@@ -122,10 +136,11 @@
   flex: 1;
 }
 .deb-field-label {
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: #111827;
 }
 .deb-field-id {
   font-size: 12px;

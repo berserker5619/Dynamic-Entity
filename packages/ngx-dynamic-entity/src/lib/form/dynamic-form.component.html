@@ -42,7 +42,7 @@
     </div>
   }
 
-  <!-- Fields for active tab -->
+  <!-- Fields for active tab (Responsive 12-column grid) -->
   <div class="ngx-form__panel">
     @for (field of fieldsForActiveTab; track field.id) {
       <ngx-dynamic-field
@@ -52,6 +52,8 @@
         [language]="language"
         [readonly]="readonly || !!field.readonly"
         [userRoles]="userRoles"
+        [style.gridColumn]="getFieldSpan(field)"
+        [attr.id]="'field-container-' + field.id"
       />
     }
   </div>
@@ -71,6 +73,7 @@
         type="submit"
         class="ngx-form__submit"
         [disabled]="!canSubmit || form.invalid"
+        title="Shortcut: Ctrl+S"
       >
         @if (isSaving() || loading) {
           Saving…

@@ -2,22 +2,32 @@
 @import '@angular/material/prebuilt-themes/indigo-pink.css';
 
 :root {
-  --primary: #2563eb;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-light: #e0e7ff;
   --bg: #f8fafc;
-  --text: #1e293b;
+  --surface: #ffffff;
+  --text: #0f172a;
+  --text-muted: #64748b;
   --border: #e2e8f0;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--bg);
   color: var(--text);
   margin: 0;
-  padding: 20px;
+  padding: 24px;
+  -webkit-font-smoothing: antialiased;
 }
 
 .demo-container {
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
@@ -25,116 +35,224 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+  padding: 16px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.demo-header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.demo-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.nav-link {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.nav-link:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.nav-link--active {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: #c7d2fe;
 }
 
 .role-switcher {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .role-btn {
-  padding: 8px 16px;
+  padding: 6px 14px;
   border: 1px solid var(--border);
-  background: white;
-  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s ease-in-out;
+}
+
+.role-btn:hover {
+  background: var(--bg);
 }
 
 .role-btn--active {
   background: var(--primary);
   color: white;
   border-color: var(--primary);
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
 }
 
 .view-toggle {
   margin-bottom: 20px;
   display: flex;
-  gap: 10px;
+  gap: 12px;
 }
 
-/* ngx-dynamic-entity basic style hooks */
-.ngx-table__table {
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.ngx-table__th {
-  background: #f1f5f9;
-  padding: 12px;
-  text-align: left;
-  font-weight: 600;
-  border-bottom: 2px solid var(--border);
-  cursor: pointer;
-}
-
-.ngx-table__td {
-  padding: 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.ngx-table__row:hover {
-  background: #f8fafc;
-  cursor: pointer;
-}
-
-.ngx-table__td--masked {
-  color: #94a3b8;
-  font-style: italic;
-}
-
-.ngx-form {
-  background: white;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  max-width: 600px;
+/* ─── Renderer Form Styling ─── */
+.form-wrapper {
+  background: var(--surface);
+  padding: 28px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  max-width: 840px;
   margin: 0 auto;
 }
 
-.ngx-field {
+.ngx-form {
+  background: var(--surface);
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.ngx-form__tabs {
+  display: flex;
+  gap: 6px;
   margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 2px;
+}
+
+.ngx-form__tab {
+  padding: 8px 18px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.ngx-form__tab:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+
+.ngx-form__tab--active {
+  background: var(--surface);
+  color: var(--primary);
+  border: 1px solid var(--border);
+  border-bottom-color: var(--surface);
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.ngx-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .ngx-field__label {
-  display: block;
+  font-size: 13px;
   font-weight: 600;
-  margin-bottom: 8px;
+  color: #334155;
+  margin: 0;
+}
+
+.ngx-field__req {
+  color: #dc2626;
+  font-weight: 700;
 }
 
 .ngx-field__input {
   width: 100%;
-  padding: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
   box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .ngx-field__input:focus {
   outline: none;
   border-color: var(--primary);
-  ring: 2px solid #bfdbfe;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.ngx-field--invalid .ngx-field__input {
+  border-color: #ef4444;
+}
+
+.ngx-field--invalid .ngx-field__input:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
 }
 
 .ngx-field__error {
-  color: #ef4444;
+  color: #dc2626;
   font-size: 12px;
-  margin-top: 4px;
-  display: block;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.ngx-form__info-banner,
+.ngx-form__warning-banner,
+.ngx-form__error-banner {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.ngx-form__info-banner {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+
+.ngx-form__warning-banner {
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  color: #b45309;
+}
+
+.ngx-form__error-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
 }
 
 .ngx-form__actions {
-  margin-top: 30px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
   display: flex;
-  gap: 10px;
+  gap: 12px;
   justify-content: flex-end;
 }
 
@@ -142,36 +260,85 @@ body {
   background: var(--primary);
   color: white;
   border: none;
-  padding: 10px 24px;
-  border-radius: 6px;
+  padding: 9px 22px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-weight: 600;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.ngx-form__submit:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.ngx-form__submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .ngx-form__reset {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--border);
-  padding: 10px 24px;
-  border-radius: 6px;
+  color: var(--text);
+  padding: 9px 20px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s;
 }
 
-.ngx-form__tabs {
-  display: flex;
-  gap: 5px;
-  margin-bottom: -1px;
+.ngx-form__reset:hover {
+  background: var(--bg);
 }
 
-.ngx-form__tab {
-  padding: 10px 20px;
+/* ─── Entity Manager Table ─── */
+.ngx-table__table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--surface);
+  border-radius: var(--radius);
+  overflow: hidden;
   border: 1px solid var(--border);
-  border-bottom: none;
-  background: #f1f5f9;
-  border-radius: 8px 8px 0 0;
-  cursor: pointer;
+  box-shadow: var(--shadow-sm);
 }
 
-.ngx-form__tab--active {
-  background: white;
+.ngx-table__th {
+  background: #f8fafc;
+  padding: 12px 16px;
+  text-align: left;
   font-weight: 600;
+  font-size: 13px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ngx-table__td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.ngx-table__row:hover {
+  background: #f8fafc;
+}
+
+.ngx-table__action {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ngx-table__action:hover {
+  border-color: var(--primary);
+  color: var(--primary);
 }

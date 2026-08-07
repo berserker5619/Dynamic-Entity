@@ -21,11 +21,15 @@
     </div>
   }
 
-  <!-- Summary Panel (showOnMinimize fields) -->
+  <!-- Summary Panel (showOnMinimize fields with interactive jump) -->
   @if (summaryFields().length > 0) {
     <div class="ngx-record-editor__summary-panel">
       @for (sf of summaryFields(); track sf.id) {
-        <div class="ngx-record-editor__summary-item">
+        <div
+          class="ngx-record-editor__summary-item"
+          (click)="jumpToField(sf.id)"
+          [title]="'Click to jump to ' + formatFieldLabel(sf)"
+        >
           <span class="ngx-record-editor__summary-label">{{ formatFieldLabel(sf) }}</span>
           <span class="ngx-record-editor__summary-val">{{ formatFieldValue(sf) }}</span>
         </div>

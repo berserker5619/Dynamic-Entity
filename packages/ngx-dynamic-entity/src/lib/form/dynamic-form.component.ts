@@ -8,6 +8,7 @@ import {
   signal,
   computed,
   inject,
+  HostListener,
 } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
@@ -20,14 +21,32 @@ import { RulesEvaluationService } from '../services/rules-evaluation.service';
 
 /**
  * DynamicFormComponent — the main form component.
- * Renders a reactive form from EntityFormConfig with tab support, nested fields,
- * rules evaluation, and RBAC-gated submission.
+ * Renders a reactive form from EntityFormConfig with tab support, responsive 12-col grid,
+ * rules evaluation, keyboard shortcuts (Ctrl+S, Esc), and RBAC-gated submission.
  */
 @Component({
   selector: 'ngx-dynamic-form',
   standalone: true,
   imports: [ReactiveFormsModule, DynamicFieldComponent],
   templateUrl: './dynamic-form.component.html',
+  styles: [
+    `
+      .ngx-form__panel {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 16px 20px;
+        align-items: start;
+      }
+      @media (max-width: 768px) {
+        .ngx-form__panel {
+          grid-template-columns: 1fr;
+        }
+        ngx-dynamic-field {
+          grid-column: span 12 !important;
+        }
+      }
+    `,
+  ],
 })
 export class DynamicFormComponent implements OnChanges {
   // ─── Inputs ───────────────────────────────────────────────────────────────
@@ -62,6 +81,17 @@ export class DynamicFormComponent implements OnChanges {
 
   // ─── Form ─────────────────────────────────────────────────────────────────
   form!: FormGroup;
+
+  // ─── Keyboard Shortcuts ───────────────────────────────────────────────────
+  @HostListener('window:keydown', ['$event'])
+  handleKeyboardEvent(event: KeyboardEvent): void {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      if (!this.readonly && this.canSubmit && this.form?.valid) {
+        this.submit();
+      }
+    }
+  }
 
   // ─── Computed ─────────────────────────────────────────────────────────────
   readonly ruleResult = computed(() =>
@@ -99,121 +129,90 @@ export class DynamicFormComponent implements OnChanges {
   }
 
   get canSubmit(): boolean {
-    return (
-      this.permissions.canEdit &&
-      !this.readonly &&
-      !this.isSaving() &&
-      Object.keys(this.ruleResult().validationErrors).length === 0
-    );
+    return this.permissions.canEdit && !this.readonly;
   }
-
-  resolveTabLabel(tab: NestedTabConfig): string {
-    return resolveLabel(tab.label, this.language);
-  }
-
-  // ─── Lifecycle ────────────────────────────────────────────────────────────
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['config'] && this.config) {
+    if (changes['config'] || changes['initialData']) {
       this.buildForm();
-    }
-    if (changes['initialData'] && this.form && this.initialData) {
-      this.patchForm(this.initialData);
-    }
-    if (changes['config'] && this.tabs.length) {
-      this.activeTab.set(this.visibleTabs[0]?.id || this.tabs[0]?.id || '');
-    }
-  }
-
-  private getAllFields(tabs: NestedTabConfig[] = []): NestedFieldConfig[] {
-    const result: NestedFieldConfig[] = [];
-    for (const tab of tabs) {
-      if (tab.fields) result.push(...tab.fields);
-      if (tab.children) result.push(...this.getAllFields(tab.children));
-    }
-    return result;
-  }
-
-  private buildFieldControl(field: NestedFieldConfig): AbstractControl {
-    const validators = this.validatorRegistry.resolveFromConfig(field.validators);
-    if (field.type === 'group') {
-      const controls: Record<string, AbstractControl> = {};
-      for (const child of field.children ?? []) {
-        controls[child.id] = this.buildFieldControl(child);
+      if (this.visibleTabs.length > 0 && !this.activeTab()) {
+        this.activeTab.set(this.visibleTabs[0].id);
       }
-      return this.fb.group(controls);
     }
-    if (field.type === 'array') {
-      return this.fb.array([]);
-    }
-    return this.fb.control(field.defaultValue ?? null, validators);
+  }
+
+  setActiveTab(tabId: string): void {
+    this.activeTab.set(tabId);
+  }
+
+  getFieldSpan(field: NestedFieldConfig): string {
+    const span = field.colSpan ?? 12;
+    return `span ${Math.min(12, Math.max(1, span))}`;
   }
 
   private buildForm(): void {
-    const controls: Record<string, AbstractControl> = {};
-    const allFields = this.getAllFields(this.config?.tabs);
+    if (!this.config) return;
+    const group: Record<string, AbstractControl> = {};
 
-    for (const field of allFields) {
-      if (field.systemDefault) continue;
-      controls[field.id] = this.buildFieldControl(field);
-    }
-    this.form = this.fb.group(controls);
-    this.formValues.set(this.form.value || {});
+    const walkTabs = (tabs: NestedTabConfig[]) => {
+      for (const tab of tabs) {
+        for (const field of tab.fields || []) {
+          this.buildFieldControl(field, group);
+        }
+        if (tab.children) walkTabs(tab.children);
+      }
+    };
+    walkTabs(this.config.tabs || []);
 
-    this.form.valueChanges.subscribe(value => {
-      this.formValues.set(value || {});
-      this.formChange.emit(value);
-    });
+    this.form = this.fb.group(group);
 
     if (this.initialData) {
       this.patchForm(this.initialData);
     }
 
-    if (this.tabs.length && !this.activeTab()) {
-      this.activeTab.set(this.visibleTabs[0]?.id || this.tabs[0].id);
+    this.formValues.set(this.form.value || {});
+    this.form.valueChanges.subscribe(val => {
+      this.formValues.set(val || {});
+      this.formChange.emit(val);
+    });
+  }
+
+  private buildFieldControl(field: NestedFieldConfig, group: Record<string, AbstractControl>): void {
+    if (field.type === 'group') {
+      const subGroup: Record<string, AbstractControl> = {};
+      for (const child of field.children || []) {
+        this.buildFieldControl(child, subGroup);
+      }
+      group[field.id] = this.fb.group(subGroup);
+    } else if (field.type === 'array') {
+      group[field.id] = this.fb.array([]);
+    } else {
+      const validators = this.validatorRegistry.resolveFromConfig(field.validators);
+      group[field.id] = this.fb.control({ value: null, disabled: field.disabled ?? false }, validators);
     }
   }
 
   private patchForm(data: Record<string, any>): void {
-    const allFields = this.getAllFields(this.config?.tabs);
-    this.patchFormGroup(this.form, allFields, data);
-    this.formValues.set(this.form.value || {});
-  }
-
-  private patchFormGroup(group: FormGroup, fields: NestedFieldConfig[], data: Record<string, any>): void {
-    if (!data) return;
-    fields.forEach(field => {
-      const control = group.get(field.id);
-      if (!control) return;
-
-      if (field.type === 'group' && field.children) {
-        this.patchFormGroup(control as FormGroup, field.children, data[field.id] ?? {});
-      } else if (field.type === 'array' && field.children) {
-        const arrayData = data[field.id];
-        if (Array.isArray(arrayData)) {
-          const fa = control as FormArray;
-          fa.clear();
-          arrayData.forEach(item => {
-            const itemControls: Record<string, AbstractControl> = {};
-            for (const child of field.children!) {
-              itemControls[child.id] = this.buildFieldControl(child);
-            }
-            const itemGroup = this.fb.group(itemControls);
-            this.patchFormGroup(itemGroup, field.children!, item);
-            fa.push(itemGroup);
-          });
+    for (const [key, val] of Object.entries(data)) {
+      const ctrl = this.form.get(key);
+      if (!ctrl) continue;
+      if (ctrl instanceof FormArray && Array.isArray(val)) {
+        ctrl.clear();
+        for (const item of val) {
+          ctrl.push(this.fb.control(item));
         }
       } else {
-        const val = data[field.id];
-        if (val !== undefined) control.patchValue(val, { emitEvent: false });
+        ctrl.patchValue(val, { emitEvent: false });
       }
-    });
+    }
   }
 
-  // ─── Actions ──────────────────────────────────────────────────────────────
+  getControl(fieldId: string): AbstractControl | null {
+    return this.form?.get(fieldId) ?? null;
+  }
 
-  setActiveTab(tabId: string): void {
-    this.activeTab.set(tabId);
+  resolveTabLabel(tab: NestedTabConfig): string {
+    return resolveLabel(tab.label, this.language);
   }
 
   async submit(): Promise<void> {
@@ -222,18 +221,17 @@ export class DynamicFormComponent implements OnChanges {
       return;
     }
 
-    if (this.isSaving()) return;
+    const rawData = this.form.getRawValue();
+    let processedData = rawData;
+
+    const hookKey = `${this.config?.entity}:beforeSave`;
+    if (this.hookRegistry.has(hookKey)) {
+      processedData = await this.hookRegistry.run(hookKey, processedData);
+    }
+
     this.isSaving.set(true);
-
     try {
-      let data = { ...this.form.value };
-
-      data = await this.hookRegistry.run(`${this.config.entity}:beforeSave`, data, {
-        config: this.config,
-        userRoles: this.userRoles,
-      });
-
-      this.formSubmit.emit(data);
+      this.formSubmit.emit(processedData);
     } finally {
       this.isSaving.set(false);
     }
@@ -244,9 +242,5 @@ export class DynamicFormComponent implements OnChanges {
     if (this.initialData) this.patchForm(this.initialData);
     this.formValues.set(this.form.value || {});
     this.formReset.emit();
-  }
-
-  getControl(fieldId: string) {
-    return this.form?.get(fieldId);
   }
 }
