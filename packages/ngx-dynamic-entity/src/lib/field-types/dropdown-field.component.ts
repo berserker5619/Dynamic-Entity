@@ -1,7 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
-import { resolveLabel } from '@dynamic-entity/core';
+import { resolveLabel, resolveOptionLabel, resolveOptionValue } from '@dynamic-entity/core';
 
 @Component({
   selector: 'ngx-dropdown-field',
@@ -21,8 +21,8 @@ import { resolveLabel } from '@dynamic-entity/core';
           [attr.disabled]="field.disabled ? true : null"
         >
           <option value="">{{ placeholder || 'Select...' }}</option>
-          @for (option of field.options || []; track option.value) {
-            <option [value]="option.value">{{ resolveOptionLabel(option) }}</option>
+          @for (option of field.options || []; track getOptVal(option)) {
+            <option [value]="getOptVal(option)">{{ getOptLabel(option) }}</option>
           }
         </select>
         @if (control.invalid && control.touched) {
@@ -47,12 +47,16 @@ export class DropdownFieldComponent {
     return resolveLabel(this.field?.placeholder, this.language);
   }
 
-  resolveOptionLabel(option: { label: any }): string {
-    return resolveLabel(option.label, this.language);
+  getOptVal(option: any): any {
+    return resolveOptionValue(option, this.language);
+  }
+
+  getOptLabel(option: any): string {
+    return resolveOptionLabel(option, this.language);
   }
 
   getLabel(value: any): string {
-    const option = (this.field.options || []).find(o => o.value === value);
-    return option ? resolveLabel(option.label, this.language) : (value ?? '—');
+    const option = (this.field.options || []).find(o => this.getOptVal(o) === value);
+    return option ? this.getOptLabel(option) : (value ?? '—');
   }
 }

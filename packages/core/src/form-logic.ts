@@ -27,6 +27,41 @@ export function resolveLabel(text: LocalizedText | undefined | null, lang = 'en'
   return text[lang] ?? text['en'] ?? Object.values(text).find(Boolean) ?? '';
 }
 
+/** Resolve option value for dropdown/radio/multiSelect options. Handles {value, label}, LocalizedText, or primitives. */
+export function resolveOptionValue(option: unknown, lang = 'en'): any {
+  if (option == null) return '';
+  if (typeof option === 'string' || typeof option === 'number' || typeof option === 'boolean') {
+    return option;
+  }
+  if (typeof option === 'object') {
+    const opt = option as Record<string, any>;
+    if ('value' in opt && opt['value'] !== undefined) {
+      return opt['value'];
+    }
+    if (opt[lang] !== undefined) return opt[lang];
+    if (opt['en'] !== undefined) return opt['en'];
+    const firstStr = Object.values(opt).find(v => typeof v === 'string' || typeof v === 'number');
+    if (firstStr !== undefined) return firstStr;
+  }
+  return String(option);
+}
+
+/** Resolve option display label for dropdown/radio/multiSelect options. Handles {value, label}, LocalizedText, or primitives. */
+export function resolveOptionLabel(option: unknown, lang = 'en'): string {
+  if (option == null) return '';
+  if (typeof option === 'string' || typeof option === 'number' || typeof option === 'boolean') {
+    return String(option);
+  }
+  if (typeof option === 'object') {
+    const opt = option as Record<string, any>;
+    if ('label' in opt && opt['label'] !== undefined) {
+      return resolveLabel(opt['label'], lang);
+    }
+    return resolveLabel(opt as LocalizedText, lang);
+  }
+  return String(option);
+}
+
 /** Format a raw stored value for read-only display, per field type. */
 export function formatDisplayValue(
   type: RichFieldType | string,
@@ -56,16 +91,16 @@ export function formatDisplayValue(
 
     case 'dropdown':
     case 'radio': {
-      const opt = (options ?? []).find(o => o.value === raw);
-      return opt ? resolveLabel(opt.label, lang) : String(raw);
+      const opt = (options ?? []).find(o => resolveOptionValue(o, lang) === raw);
+      return opt ? resolveOptionLabel(opt, lang) : String(raw);
     }
 
     case 'multiSelect': {
       if (!Array.isArray(raw)) return String(raw);
       return raw
         .map(item => {
-          const opt = (options ?? []).find(o => o.value === item);
-          return opt ? resolveLabel(opt.label, lang) : String(item);
+          const opt = (options ?? []).find(o => resolveOptionValue(o, lang) === item);
+          return opt ? resolveOptionLabel(opt, lang) : String(item);
         })
         .filter(Boolean)
         .join(', ');

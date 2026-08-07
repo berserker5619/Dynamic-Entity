@@ -5,6 +5,7 @@ import {
   EMPLOYEES_CONFIG,
   EMPLOYEES_RECORDS,
   MASKED_ROLES,
+  TEST_DATA_CONFIGS,
 } from './sample-data';
 
 const CONFIGS_KEY = 'de_demo_configs';
@@ -156,20 +157,29 @@ export class LocalStore {
     return out;
   }
   private ensureSeed(): void {
-    const configs = this.read<AnyConfig[] | null>(CONFIGS_KEY, null);
-    if (!configs) {
-      this.write(CONFIGS_KEY, [CLIENTS_CONFIG, EMPLOYEES_CONFIG]);
-      this.write(recordsKey('clients'), CLIENTS_RECORDS);
-      this.write(recordsKey('employees'), EMPLOYEES_RECORDS);
-      return;
-    }
-    const ensure = (entity: string, cfg: AnyConfig, records: Record<string, unknown>[]) => {
-      if (!configs.find(c => c['entity'] === entity)) {
-        this.write(CONFIGS_KEY, [...this.read<AnyConfig[]>(CONFIGS_KEY, []), cfg]);
+    const existing = this.read<AnyConfig[]>(CONFIGS_KEY, []);
+    const mergedMap = new Map<string, AnyConfig>();
+
+    // Seed test_data.json configurations first
+    for (const cfg of TEST_DATA_CONFIGS) {
+      if (cfg && cfg['entity']) {
+        mergedMap.set(cfg['entity'], cfg);
       }
-      if (!localStorage.getItem(recordsKey(entity))) this.write(recordsKey(entity), records);
-    };
-    ensure('clients', CLIENTS_CONFIG, CLIENTS_RECORDS);
-    ensure('employees', EMPLOYEES_CONFIG, EMPLOYEES_RECORDS);
+    }
+
+    // Demo sample configs take precedence for clients and employees (so demo tests remain deterministic)
+    mergedMap.set(CLIENTS_CONFIG.entity, CLIENTS_CONFIG);
+    mergedMap.set(EMPLOYEES_CONFIG.entity, EMPLOYEES_CONFIG);
+
+    // User modifications take precedence
+    for (const ex of existing) {
+      if (ex && ex['entity']) {
+        mergedMap.set(ex['entity'], ex);
+      }
+    }
+
+    this.write(CONFIGS_KEY, Array.from(mergedMap.values()));
+    if (!localStorage.getItem(recordsKey('clients'))) this.write(recordsKey('clients'), CLIENTS_RECORDS);
+    if (!localStorage.getItem(recordsKey('employees'))) this.write(recordsKey('employees'), EMPLOYEES_RECORDS);
   }
 }

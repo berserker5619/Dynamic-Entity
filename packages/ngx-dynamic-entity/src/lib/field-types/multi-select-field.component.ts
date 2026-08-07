@@ -1,7 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
-import { resolveLabel } from '@dynamic-entity/core';
+import { resolveLabel, resolveOptionLabel, resolveOptionValue } from '@dynamic-entity/core';
 
 @Component({
   selector: 'ngx-multi-select-field',
@@ -22,8 +22,8 @@ import { resolveLabel } from '@dynamic-entity/core';
           multiple
           size="4"
         >
-          @for (option of field.options || []; track option.value) {
-            <option [value]="option.value">{{ resolveOptionLabel(option) }}</option>
+          @for (option of field.options || []; track getOptVal(option)) {
+            <option [value]="getOptVal(option)">{{ getOptLabel(option) }}</option>
           }
         </select>
         @if (control.invalid && control.touched) {
@@ -44,16 +44,20 @@ export class MultiSelectFieldComponent {
     return resolveLabel(this.field?.label, this.language);
   }
 
-  resolveOptionLabel(option: { label: any }): string {
-    return resolveLabel(option.label, this.language);
+  getOptVal(option: any): any {
+    return resolveOptionValue(option, this.language);
+  }
+
+  getOptLabel(option: any): string {
+    return resolveOptionLabel(option, this.language);
   }
 
   getLabels(values: any[]): string {
     if (!Array.isArray(values) || !values.length) return '—';
     return values
       .map(v => {
-        const opt = (this.field.options || []).find(o => o.value === v);
-        return opt ? resolveLabel(opt.label, this.language) : String(v);
+        const opt = (this.field.options || []).find(o => this.getOptVal(o) === v);
+        return opt ? this.getOptLabel(opt) : String(v);
       })
       .join(', ');
   }

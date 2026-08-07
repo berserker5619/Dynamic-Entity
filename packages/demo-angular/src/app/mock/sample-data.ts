@@ -1,4 +1,7 @@
 import type { EntityFormConfig } from 'ngx-dynamic-entity';
+import testDataRaw from '../../../../../test_data.json';
+
+export const TEST_DATA_CONFIGS: EntityFormConfig[] = testDataRaw as EntityFormConfig[];
 
 /**
  * Sample `clients` entity config (rich EntityFormConfig model) used to seed localStorage

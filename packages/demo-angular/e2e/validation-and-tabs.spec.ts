@@ -54,9 +54,9 @@ test.describe('Dynamic Entity E2E - Validation, Roles, and Config Manager', () =
     await safeClick(page.getByRole('button', { name: 'Entity Manager' }));
 
     await expect(page.getByRole('heading', { level: 2, name: 'Manage Entities' })).toBeVisible();
-    await expect(page.locator('tbody tr')).toHaveCount(2);
+    await expect(page.locator('tbody tr')).toHaveCount(12);
 
-    await safeClick(page.getByRole('button', { name: /Edit Metadata/i }).first());
+    await page.locator('tr').filter({ hasText: 'clients' }).getByRole('button', { name: /Edit Metadata/i }).click();
     await expect(page.getByRole('heading', { level: 3, name: /Edit Config: clients/i })).toBeVisible();
 
     const textarea = page.locator('textarea').first();
