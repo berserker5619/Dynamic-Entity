@@ -10,9 +10,11 @@ export * from './lib/services/hook-registry.service';
 export * from './lib/services/validator-registry.service';
 export * from './lib/services/entity-ref-registry.service';
 export * from './lib/services/rbac.service';
+export * from './lib/services/rules-evaluation.service';
 
 // Components — the library ships form UI only; rendering a data table is the consumer's choice.
 export * from './lib/form/dynamic-form.component';
+export * from './lib/form/dynamic-record-form.component';
 export * from './lib/form/dynamic-field/dynamic-field.component';
 
 // Field type components (individually importable — reusability rule)
@@ -42,4 +44,5 @@ export type {
   FormRule,
   RuleCondition,
   RuleAction,
+  RuleEvaluationResult,
 } from '@dynamic-entity/core';

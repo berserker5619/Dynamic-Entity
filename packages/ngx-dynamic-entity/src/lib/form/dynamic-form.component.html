@@ -1,15 +1,33 @@
 <form [formGroup]="form" (ngSubmit)="submit()" class="ngx-form" novalidate>
 
-  <!-- Error message -->
+  <!-- Error message banner -->
   @if (error) {
     <div class="ngx-form__error-banner" role="alert">{{ error }}</div>
   }
 
-  <!-- Tab bar — only if tabs defined -->
-  @if (tabs.length > 0) {
+  <!-- Rules Info Banners -->
+  @for (infoKey of Object.keys(ruleResult().infoBanners); track infoKey) {
+    <div class="ngx-form__info-banner" role="status">
+      ℹ️ {{ ruleResult().infoBanners[infoKey] }}
+    </div>
+  }
+
+  <!-- Rules Validation Errors & Warnings -->
+  @for (errKey of Object.keys(ruleResult().validationErrors); track errKey) {
+    <div class="ngx-form__error-banner" role="alert">
+      ⚠️ {{ ruleResult().validationErrors[errKey] }}
+    </div>
+  }
+  @for (warnKey of Object.keys(ruleResult().validationWarnings); track warnKey) {
+    <div class="ngx-form__warning-banner" role="status">
+      ⚡ {{ ruleResult().validationWarnings[warnKey] }}
+    </div>
+  }
+
+  <!-- Tab bar — only if visible tabs defined -->
+  @if (visibleTabs.length > 0) {
     <div class="ngx-form__tabs" role="tablist">
-      <!-- ONEHERMES fix: @for and @if on separate elements, not same (form-fixes doc) -->
-      @for (tab of tabs; track tab.id) {
+      @for (tab of visibleTabs; track tab.id) {
         <button
           type="button"
           class="ngx-form__tab"
@@ -27,16 +45,14 @@
   <!-- Fields for active tab -->
   <div class="ngx-form__panel">
     @for (field of fieldsForActiveTab; track field.id) {
-      @if (field.visibility !== false) {
-        <ngx-dynamic-field
-          [field]="field"
-          [control]="getControl(field.id)!"
-          [config]="config"
-          [language]="language"
-          [readonly]="readonly || !!field.readonly"
-          [userRoles]="userRoles"
-        />
-      }
+      <ngx-dynamic-field
+        [field]="field"
+        [control]="getControl(field.id)!"
+        [config]="config"
+        [language]="language"
+        [readonly]="readonly || !!field.readonly"
+        [userRoles]="userRoles"
+      />
     }
   </div>
 

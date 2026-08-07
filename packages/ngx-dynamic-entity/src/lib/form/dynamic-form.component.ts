@@ -6,20 +6,22 @@ import {
   OnChanges,
   SimpleChanges,
   signal,
+  computed,
   inject,
 } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import type { EntityFormConfig, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
+import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
 import { evaluateFieldVisibility, findTab, resolveLabel } from '@dynamic-entity/core';
 import { DynamicFieldComponent } from './dynamic-field/dynamic-field.component';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
 import { HookRegistryService } from '../services/hook-registry.service';
 import { RbacService } from '../services/rbac.service';
+import { RulesEvaluationService } from '../services/rules-evaluation.service';
 
 /**
  * DynamicFormComponent — the main form component.
  * Renders a reactive form from EntityFormConfig with tab support, nested fields,
- * and RBAC-gated submission.
+ * rules evaluation, and RBAC-gated submission.
  */
 @Component({
   selector: 'ngx-dynamic-form',
@@ -30,7 +32,9 @@ import { RbacService } from '../services/rbac.service';
 export class DynamicFormComponent implements OnChanges {
   // ─── Inputs ───────────────────────────────────────────────────────────────
   @Input() config!: EntityFormConfig;
+  @Input() rules?: FormRule[];
   @Input() initialData?: Record<string, any>;
+  @Input() originalData?: Record<string, any>;
   @Input() userRoles: string[] = [];
   @Input() language: string = 'en';
   @Input() readonly: boolean = false;
@@ -47,6 +51,9 @@ export class DynamicFormComponent implements OnChanges {
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly hookRegistry = inject(HookRegistryService);
   private readonly rbacService = inject(RbacService);
+  private readonly rulesEvaluation = inject(RulesEvaluationService);
+
+  protected readonly Object = Object;
 
   // ─── Signals (local reactive state) ───────────────────────────────────────
   readonly activeTab = signal<string>('');
@@ -57,13 +64,22 @@ export class DynamicFormComponent implements OnChanges {
   form!: FormGroup;
 
   // ─── Computed ─────────────────────────────────────────────────────────────
+  readonly ruleResult = computed(() =>
+    this.rulesEvaluation.evaluate(this.rules, this.formValues(), this.originalData),
+  );
+
   get tabs(): NestedTabConfig[] {
     return this.config?.tabs || [];
   }
 
+  get visibleTabs(): NestedTabConfig[] {
+    const hidden = this.ruleResult().hiddenTabs;
+    return this.tabs.filter(tab => tab.visibility !== false && !hidden.includes(tab.id));
+  }
+
   get activeTabConfig(): NestedTabConfig | null {
     const tabId = this.activeTab();
-    if (!tabId) return this.tabs[0] ?? null;
+    if (!tabId) return this.visibleTabs[0] ?? null;
     return findTab(this.tabs, tabId);
   }
 
@@ -71,7 +87,11 @@ export class DynamicFormComponent implements OnChanges {
     const active = this.activeTabConfig;
     const rawFields = active ? (active.fields || []) : ((this.config?.tabs || []).flatMap(t => t.fields || []));
     const currentValues = this.formValues();
-    return rawFields.filter(field => evaluateFieldVisibility(field, currentValues));
+    const hiddenFields = this.ruleResult().hiddenFields;
+
+    return rawFields.filter(
+      field => evaluateFieldVisibility(field, currentValues) && !hiddenFields.includes(field.id),
+    );
   }
 
   get permissions() {
@@ -82,7 +102,8 @@ export class DynamicFormComponent implements OnChanges {
     return (
       this.permissions.canEdit &&
       !this.readonly &&
-      !this.isSaving()
+      !this.isSaving() &&
+      Object.keys(this.ruleResult().validationErrors).length === 0
     );
   }
 
@@ -100,7 +121,7 @@ export class DynamicFormComponent implements OnChanges {
       this.patchForm(this.initialData);
     }
     if (changes['config'] && this.tabs.length) {
-      this.activeTab.set(this.tabs[0]?.id || '');
+      this.activeTab.set(this.visibleTabs[0]?.id || this.tabs[0]?.id || '');
     }
   }
 
@@ -149,7 +170,7 @@ export class DynamicFormComponent implements OnChanges {
     }
 
     if (this.tabs.length && !this.activeTab()) {
-      this.activeTab.set(this.tabs[0].id);
+      this.activeTab.set(this.visibleTabs[0]?.id || this.tabs[0].id);
     }
   }
 

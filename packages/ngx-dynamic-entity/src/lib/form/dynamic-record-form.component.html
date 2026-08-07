@@ -1,0 +1,51 @@
+<div class="ngx-record-editor">
+  <!-- Record Header -->
+  <div class="ngx-record-editor__header">
+    <div class="ngx-record-editor__title-group">
+      <div class="ngx-record-editor__avatar">
+        {{ avatarLetter }}
+      </div>
+      <div>
+        <h2 class="ngx-record-editor__title">
+          {{ recordTitle }}
+        </h2>
+        <span class="ngx-record-editor__subtitle">Entity: {{ config.entity }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modification baseline banner -->
+  @if (isModified()) {
+    <div class="ngx-record-editor__banner ngx-record-editor__banner--warning">
+      🔒 Record modified from session baseline — unsaved changes pending.
+    </div>
+  }
+
+  <!-- Summary Panel (showOnMinimize fields) -->
+  @if (summaryFields().length > 0) {
+    <div class="ngx-record-editor__summary-panel">
+      @for (sf of summaryFields(); track sf.id) {
+        <div class="ngx-record-editor__summary-item">
+          <span class="ngx-record-editor__summary-label">{{ formatFieldLabel(sf) }}</span>
+          <span class="ngx-record-editor__summary-val">{{ formatFieldValue(sf) }}</span>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Main Dynamic Form -->
+  <ngx-dynamic-form
+    [config]="config"
+    [rules]="rules"
+    [initialData]="initialData"
+    [originalData]="originalBaseline()"
+    [userRoles]="userRoles"
+    [language]="language"
+    [readonly]="readonly"
+    [loading]="loading"
+    [error]="error"
+    (formChange)="onFormChange($event)"
+    (formSubmit)="onFormSubmit($event)"
+    (formReset)="onFormReset()"
+  />
+</div>

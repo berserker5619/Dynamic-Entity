@@ -3,5 +3,8 @@ export * from './versioning.types';
 export * from './form-logic';
 export * from './field-catalog';
 export * from './rbac.types';
+export * from './rules-engine';
+export * from './entity-reference.types';
+export * from './file-ref.types';
 export * from './constants';
 
