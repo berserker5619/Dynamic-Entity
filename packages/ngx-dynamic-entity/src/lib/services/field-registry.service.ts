@@ -23,15 +23,12 @@ import { FileFieldComponent } from '../field-types/file-field.component';
 
 /**
  * FieldRegistryService — resolves field type strings to Angular component classes.
- * Open/Closed: open for extension via consumer fieldTypes config, closed for modification.
- * DynamicFieldComponent uses this to mount the right component via createComponent().
- *
- * All 18 RichFieldType values have dedicated built-in components.
- * Consumer registry takes precedence (registered via provideDynamicEntity / FIELD_TYPE_REGISTRY).
+ * Supports dynamic registration and token-based consumer overrides (FIELD_TYPE_REGISTRY).
  */
 @Injectable({ providedIn: 'root' })
 export class FieldRegistryService {
-  private readonly consumerRegistry = inject(FIELD_TYPE_REGISTRY, { optional: true }) ?? new Map();
+  private readonly consumerRegistry = inject(FIELD_TYPE_REGISTRY, { optional: true }) ?? new Map<string, Type<any>>();
+  private readonly dynamicRegistry = new Map<string, Type<any>>();
 
   /** Built-in field type → component map. All 18 RichFieldType variants covered. */
   private readonly builtInRegistry = new Map<string, Type<any>>([
@@ -44,7 +41,7 @@ export class FieldRegistryService {
     ['checkbox',   CheckboxFieldComponent],
     ['boolean',    BooleanFieldComponent],
     ['date',       DateFieldComponent],
-    ['datetime',   DateFieldComponent],      // reuses date; datetime distinction is in format only
+    ['datetime',   DateFieldComponent],
     ['monthYear',  MonthYearFieldComponent],
     ['dropdown',   DropdownFieldComponent],
     ['radio',      RadioFieldComponent],
@@ -56,17 +53,37 @@ export class FieldRegistryService {
     ['file',       FileFieldComponent],
   ]);
 
+  /** Register a dynamic field type component mapping at runtime. */
+  register(type: string, component: Type<any>): void {
+    this.dynamicRegistry.set(type, component);
+  }
+
+  /** Register multiple dynamic field type component mappings at runtime. */
+  registerAll(map: Record<string, Type<any>>): void {
+    for (const [type, comp] of Object.entries(map)) {
+      this.dynamicRegistry.set(type, comp);
+    }
+  }
+
   /**
    * Resolve a field type string to a component class.
-   * Consumer registry takes precedence over built-ins.
-   * Returns null if neither registry has a match (caller should show a fallback).
+   * Consumer token registry takes priority, then dynamic registry, then built-in registry.
    */
   resolve(fieldType: string): Type<any> | null {
-    return this.consumerRegistry.get(fieldType) ?? this.builtInRegistry.get(fieldType) ?? null;
+    return (
+      this.consumerRegistry.get(fieldType) ??
+      this.dynamicRegistry.get(fieldType) ??
+      this.builtInRegistry.get(fieldType) ??
+      null
+    );
   }
 
   /** Check if a field type has a registered component. */
   has(fieldType: string): boolean {
-    return this.consumerRegistry.has(fieldType) || this.builtInRegistry.has(fieldType);
+    return (
+      this.consumerRegistry.has(fieldType) ||
+      this.dynamicRegistry.has(fieldType) ||
+      this.builtInRegistry.has(fieldType)
+    );
   }
 }
