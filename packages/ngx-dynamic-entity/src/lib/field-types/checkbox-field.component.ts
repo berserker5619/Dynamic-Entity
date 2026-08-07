@@ -16,8 +16,9 @@ import { resolveLabel } from '@dynamic-entity/core';
         <label class="ngx-field__label">{{ label }}</label>
         <span class="ngx-field__value">{{ control.value ? 'Yes' : 'No' }}</span>
       } @else {
-        <label class="ngx-field__label">
+        <label class="ngx-field__label" [attr.for]="field.id">
           <input
+            [id]="field.id"
             class="ngx-field__input"
             type="checkbox"
             [formControl]="$any(control)"

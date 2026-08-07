@@ -9,13 +9,14 @@ import { resolveLabel } from '@dynamic-entity/core';
   imports: [ReactiveFormsModule],
   template: `
     <div class="ngx-field ngx-field--textarea" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
-      <label class="ngx-field__label">{{ label }}</label>
+      <label class="ngx-field__label" [attr.for]="field.id">{{ label }}</label>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
       } @else if (readonly) {
         <span class="ngx-field__value">{{ control.value }}</span>
       } @else {
         <textarea
+          [id]="field.id"
           class="ngx-field__input"
           [formControl]="$any(control)"
           [placeholder]="placeholder"

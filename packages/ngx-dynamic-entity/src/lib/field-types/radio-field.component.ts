@@ -19,8 +19,9 @@ import { resolveLabel, resolveOptionLabel, resolveOptionValue } from '@dynamic-e
         } @else {
           <div class="ngx-field__radio-group">
             @for (option of field.options || []; track getOptVal(option)) {
-              <label class="ngx-field__radio-option">
+              <label class="ngx-field__radio-option" [attr.for]="field.id + '-' + getOptVal(option)">
                 <input
+                  [id]="field.id + '-' + getOptVal(option)"
                   type="radio"
                   class="ngx-field__radio-input"
                   [formControl]="$any(control)"

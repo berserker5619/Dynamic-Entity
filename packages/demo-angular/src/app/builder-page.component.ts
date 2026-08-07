@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EntityBuilderComponent, EntityFormConfig } from 'ngx-dynamic-entity-builder';
 import { DynamicFormComponent } from 'ngx-dynamic-entity';
@@ -62,6 +62,8 @@ import { LocalStore } from './mock/local-store.service';
 export class BuilderPageComponent {
   private readonly store = inject(LocalStore);
 
+  @Output() entitySaved = new EventEmitter<string>();
+
   readonly commonModules = COMMON_MODULES;
 
   readonly editing = signal<EntityFormConfig>({
@@ -84,6 +86,7 @@ export class BuilderPageComponent {
       }
       this.isError.set(false);
       this.message.set(`Saved "${config.entity}" ✓`);
+      this.entitySaved.emit(config.entity);
     } catch (err: any) {
       this.isError.set(true);
       this.message.set(err?.message || `Failed to save "${config.entity}"`);

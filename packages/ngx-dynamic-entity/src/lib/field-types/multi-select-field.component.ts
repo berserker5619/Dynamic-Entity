@@ -16,6 +16,7 @@ import { resolveLabel, resolveOptionLabel, resolveOptionValue } from '@dynamic-e
         <span class="ngx-field__value">{{ getLabels(control.value) }}</span>
       } @else {
         <select
+          [id]="field.id"
           class="ngx-field__input"
           [formControl]="$any(control)"
           [attr.disabled]="field.disabled ? true : null"

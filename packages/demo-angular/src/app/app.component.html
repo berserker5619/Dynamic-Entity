@@ -84,7 +84,11 @@
 
     @if (view() === 'config') {
     <div class="config-manager">
-      <h2>Manage Entities</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2>Manage Entities</h2>
+        <button class="ngx-form__submit" (click)="selectedConfig.set({ entity: '' })">+ Create New Entity</button>
+      </div>
+
       <table class="ngx-table__table">
         <thead>
           <tr>
@@ -108,7 +112,7 @@
 
       @if (selectedConfig() || !allConfigs().length) {
       <div class="form-wrapper" style="margin-top: 2rem;">
-        <h3>{{ selectedConfig() ? 'Edit Config: ' + selectedConfig()?.entity : 'Create New Entity' }}</h3>
+        <h3>{{ selectedConfig()?.entity ? 'Edit Config: ' + selectedConfig()?.entity : 'Create New Entity' }}</h3>
         <textarea #configJson style="width: 100%; height: 300px; font-family: monospace;"
           [value]="selectedConfig() | json"></textarea>
         <div style="margin-top: 12px; text-align: right;">
@@ -120,7 +124,7 @@
     }
 
     @if (view() === 'builder') {
-    <app-builder-page></app-builder-page>
+    <app-builder-page (entitySaved)="onBuilderSave($event)"></app-builder-page>
     }
   </main>
 </div>

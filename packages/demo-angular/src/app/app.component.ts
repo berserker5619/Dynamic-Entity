@@ -26,7 +26,7 @@ export class AppComponent implements OnInit {
   readonly allConfigs = signal<EntityFormConfig[]>([]);
   readonly records = signal<VersionedRecord[]>([]);
   readonly selectedRecord = signal<VersionedRecord | null>(null);
-  readonly selectedConfig = signal<EntityFormConfig | null>(null);
+  readonly selectedConfig = signal<Partial<EntityFormConfig> | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly totalRecords = signal<number>(0);
@@ -135,13 +135,20 @@ export class AppComponent implements OnInit {
   }
 
   onConfigSubmit(config: any) {
-    if (this.selectedConfig()) {
+    const existing = this.selectedConfig();
+    if (existing && existing.entity) {
       this.store.updateConfig(config.entity, config);
     } else {
       this.store.saveConfig(config);
     }
     this.loadAllConfigs();
+    this.onEntityChange(config.entity);
     this.view.set('list');
+  }
+
+  onBuilderSave(entityKey: string) {
+    this.loadAllConfigs();
+    this.onEntityChange(entityKey);
   }
 
   onCancel() {
@@ -152,7 +159,7 @@ export class AppComponent implements OnInit {
     if (rec['name'] && rec['company'] && rec['status']) {
       return `${rec['name']} — ${rec['company']} · ${rec['status']}`;
     }
-    const keys = ['name', 'firstName', 'title', 'company', 'organizationName', 'studentName', 'patientName', 'description', '_id'];
+    const keys = ['name', 'fullName', 'firstName', 'title', 'company', 'organizationName', 'studentName', 'patientName', 'description', '_id'];
     for (const k of keys) {
       if (rec[k]) return String(rec[k]);
     }
