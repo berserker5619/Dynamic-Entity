@@ -1,6 +1,22 @@
 <div class="demo-container">
   <header class="demo-header">
-    <h1>Dynamic Entity Demo</h1>
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <h1>Dynamic Entity Demo</h1>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label for="entitySelect" style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Entity Config:</label>
+        <select
+          id="entitySelect"
+          class="ngx-field__input"
+          style="width: auto; padding: 6px 12px; font-weight: 600; background: #fff;"
+          [value]="selectedEntity()"
+          (change)="onEntityChange($any($event.target).value)"
+        >
+          @for (cfg of allConfigs(); track cfg.entity) {
+            <option [value]="cfg.entity">{{ cfg.name ? (cfg.name['en'] || cfg.name) : cfg.entity }} ({{ cfg.entity }})</option>
+          }
+        </select>
+      </div>
+    </div>
 
     <nav class="demo-nav">
       <button class="nav-link" [class.nav-link--active]="view() === 'list' || view() === 'form'"
@@ -32,7 +48,7 @@
     @if (view() === 'list' || view() === 'form') {
     <div class="view-toggle">
       @if (view() === 'list') {
-      <button class="ngx-form__submit" (click)="onCreateNew()">+ Add Client</button>
+      <button class="ngx-form__submit" (click)="onCreateNew()">+ Add {{ selectedEntity() === 'clients' ? 'Client' : 'Record' }}</button>
       } @else {
       <button class="ngx-form__reset" (click)="onCancel()">← Back to List</button>
       }
@@ -42,28 +58,27 @@
     @if (view() === 'list' || view() === 'form') {
     @if (config()) {
     @if (view() === 'list') {
-    <!-- The library ships no table; the demo renders its own simple list. Pick a record to edit it in the dynamic form. -->
     <input class="ngx-field__input" style="max-width: 320px; margin-bottom: 16px" placeholder="Search clients…"
       [value]="searchTerm()" (input)="onSearchChange($any($event.target).value)" />
     <div style="display: flex; flex-direction: column; gap: 8px; max-width: 640px;">
       @for (rec of records(); track rec['_id']) {
       <button type="button" (click)="onRowClick(rec)"
         style="text-align: left; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer;">
-        <strong>{{ rec['name'] }}</strong> — {{ rec['company'] }} · {{ rec['status'] }}
+        <strong>{{ getRecordLabel(rec) }}</strong>
       </button>
       } @empty {
-      <p>No clients.</p>
+      <p style="color: var(--text-muted); font-style: italic;">No records found for {{ selectedEntity() }}. Click <strong>+ Add {{ selectedEntity() === 'clients' ? 'Client' : 'Record' }}</strong> to create one!</p>
       }
     </div>
     } @else {
     <div class="form-wrapper">
-      <h2>{{ selectedRecord() ? 'Edit Client' : 'New Client' }}</h2>
+      <h2>{{ selectedRecord() ? (selectedEntity() === 'clients' ? 'Edit Client' : 'Edit Record (' + selectedEntity() + ')') : (selectedEntity() === 'clients' ? 'New Client' : 'New Record (' + selectedEntity() + ')') }}</h2>
       <ngx-dynamic-form [config]="config()!" [initialData]="selectedRecord() || {}" [userRoles]="userRoles()"
         [loading]="loading()" (formSubmit)="onFormSubmit($event)" (formReset)="onCancel()"></ngx-dynamic-form>
     </div>
     }
     } @else {
-    <p>Loading configuration...</p>
+    <p>Loading configuration for {{ selectedEntity() }}...</p>
     }
     }
 
@@ -81,7 +96,7 @@
         <tbody>
           @for (cfg of allConfigs(); track cfg.entity) {
           <tr class="ngx-table__row">
-            <td class="ngx-table__td">{{ cfg.entity }}</td>
+            <td class="ngx-table__td"><strong>{{ cfg.entity }}</strong></td>
             <td class="ngx-table__td">{{ cfg.version }}</td>
             <td class="ngx-table__td">
               <button class="ngx-table__action" (click)="selectedConfig.set(cfg)">✏ Edit Metadata</button>
@@ -94,11 +109,11 @@
       @if (selectedConfig() || !allConfigs().length) {
       <div class="form-wrapper" style="margin-top: 2rem;">
         <h3>{{ selectedConfig() ? 'Edit Config: ' + selectedConfig()?.entity : 'Create New Entity' }}</h3>
-        <p><i>Note: For the demo, this uses a raw JSON input for speed, but could be bound to another
-            ngx-dynamic-form.</i></p>
         <textarea #configJson style="width: 100%; height: 300px; font-family: monospace;"
           [value]="selectedConfig() | json"></textarea>
-        <button class="ngx-form__submit" (click)="onConfigSubmit(JSON.parse(configJson.value))">Save Config</button>
+        <div style="margin-top: 12px; text-align: right;">
+          <button class="ngx-form__submit" (click)="onConfigSubmit(JSON.parse(configJson.value))">Save Config</button>
+        </div>
       </div>
       }
     </div>

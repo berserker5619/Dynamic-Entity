@@ -19,6 +19,7 @@ export class AppComponent implements OnInit {
   protected readonly JSON = JSON;
 
   // ─── Signals ──────────────────────────────────────────────────────────────
+  readonly selectedEntity = signal<string>('clients');
   readonly userRoles = signal<string[]>(['admin']);
   readonly view = signal<'list' | 'form' | 'config' | 'builder'>('list');
   readonly config = signal<EntityFormConfig | null>(null);
@@ -40,24 +41,33 @@ export class AppComponent implements OnInit {
 
   ngOnInit() {
     this.loadAllConfigs();
-    this.loadConfig();
-    this.loadRecords();
+    this.loadEntity(this.selectedEntity());
   }
 
-  // ─── Data Loading (localStorage — no API) ──────────────────────────────────
+  // ─── Data Loading ──────────────────────────────────────────────────────────
 
   loadAllConfigs() {
     this.allConfigs.set(this.store.listConfigs() as EntityFormConfig[]);
   }
 
-  loadConfig() {
-    const config = this.store.getConfig('clients') as EntityFormConfig | null;
-    if (config) this.config.set(config);
+  onEntityChange(entityKey: string) {
+    this.selectedEntity.set(entityKey);
+    this.currentPage.set(1);
+    this.searchTerm.set('');
+    this.loadEntity(entityKey);
+  }
+
+  loadEntity(entityKey: string) {
+    const config = this.store.getConfig(entityKey) as EntityFormConfig | null;
+    if (config) {
+      this.config.set(config);
+    }
+    this.loadRecords();
   }
 
   loadRecords() {
     this.loading.set(true);
-    const res = this.store.getRecords('clients', {
+    const res = this.store.getRecords(this.selectedEntity(), {
       page: this.currentPage(),
       pageSize: this.pageSize(),
       search: this.searchTerm() || undefined,
@@ -85,7 +95,7 @@ export class AppComponent implements OnInit {
 
   onSearchChange(term: string) {
     this.searchTerm.set(term);
-    this.currentPage.set(1); // Reset to first page on search
+    this.currentPage.set(1);
     this.loadRecords();
   }
 
@@ -93,7 +103,7 @@ export class AppComponent implements OnInit {
 
   setRole(role: string) {
     this.userRoles.set([role]);
-    this.loadRecords(); // Reload to see server-side masking change
+    this.loadRecords();
   }
 
   setView(view: 'list' | 'form' | 'config' | 'builder') {
@@ -114,10 +124,11 @@ export class AppComponent implements OnInit {
   }
 
   onFormSubmit(data: any) {
+    const entity = this.selectedEntity();
     if (this.selectedRecord()) {
-      this.store.updateRecord('clients', this.selectedRecord()!['_id'] as string, data);
+      this.store.updateRecord(entity, this.selectedRecord()!['_id'] as string, data);
     } else {
-      this.store.createRecord('clients', data);
+      this.store.createRecord(entity, data);
     }
     this.loadRecords();
     this.view.set('list');
@@ -135,5 +146,16 @@ export class AppComponent implements OnInit {
 
   onCancel() {
     this.view.set('list');
+  }
+
+  getRecordLabel(rec: VersionedRecord): string {
+    if (rec['name'] && rec['company'] && rec['status']) {
+      return `${rec['name']} — ${rec['company']} · ${rec['status']}`;
+    }
+    const keys = ['name', 'firstName', 'title', 'company', 'organizationName', 'studentName', 'patientName', 'description', '_id'];
+    for (const k of keys) {
+      if (rec[k]) return String(rec[k]);
+    }
+    return `Record (${rec['_id'] || 'new'})`;
   }
 }

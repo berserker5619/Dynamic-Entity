@@ -30,9 +30,9 @@ export interface RecordPage {
 type AnyConfig = Record<string, any>;
 
 /**
- * LocalStore — the demo's persistence layer. No API/HTTP: configs and records live in
- * localStorage, seeded with sample data on first use. All demo features (clients CRUD,
- * entity manager, form builder saves, data table) talk to this directly.
+ * LocalStore — the demo's persistence layer using real-world `test_data.json` entity configs.
+ * Supports all 12 entities: individuals, organizations, clients, payerProfiles, visitNotes,
+ * student, patientDetailsForm, expence, employees, deals, connections, nizamKT.
  */
 @Injectable({ providedIn: 'root' })
 export class LocalStore {
@@ -48,7 +48,7 @@ export class LocalStore {
     return this.listConfigs().find(c => c['entity'] === entity) ?? null;
   }
   saveConfig(config: AnyConfig): AnyConfig {
-    const cfg: AnyConfig = { ...config, version: 1, history: [] };
+    const cfg: AnyConfig = { ...config, version: (config['version'] ?? 0) + 1 };
     this.write(CONFIGS_KEY, [...this.listConfigs().filter(c => c['entity'] !== cfg['entity']), cfg]);
     if (!localStorage.getItem(recordsKey(cfg['entity']))) this.write(recordsKey(cfg['entity']), []);
     return cfg;
@@ -73,7 +73,7 @@ export class LocalStore {
     return config['fields'] ?? [];
   }
 
-  /** Paginated/sorted/searched/masked query (used by the simple clients table). */
+  /** Paginated/sorted/searched/masked query. */
   getRecords(entity: string, q: RecordQuery = {}): RecordPage {
     const config = this.getConfig(entity);
     const masked = this.maskedFieldIds(config, q.roles ?? []);
@@ -85,7 +85,9 @@ export class LocalStore {
       const stringFields = allFields
         .filter((f: AnyConfig) => f['type'] === 'text' || f['type'] === 'textarea' || f['type'] === 'email')
         .map((f: AnyConfig) => f['id']);
-      rows = rows.filter(r => stringFields.some((fid: string) => String(r[fid] ?? '').toLowerCase().includes(search)));
+      rows = rows.filter(r =>
+        stringFields.some((fid: string) => String(r[fid] ?? '').toLowerCase().includes(search)),
+      );
     }
     if (q.sortField) {
       const dir = q.sortDir === 'asc' ? 1 : -1;
@@ -102,37 +104,31 @@ export class LocalStore {
     const page = Math.max(1, q.page ?? 1);
     const pageSize = Math.max(1, q.pageSize ?? 20);
     const start = (page - 1) * pageSize;
-    const data = rows.slice(start, start + pageSize).map(r => this.applyMask(r, masked));
+    const paged = rows.slice(start, start + pageSize);
+
+    const data = paged.map(r => this.applyMask(r, masked));
     return { data, total, page, pageSize };
   }
 
   createRecord(entity: string, data: Record<string, unknown>): Record<string, unknown> {
-    const config = this.getConfig(entity);
-    const created = { ...data, _id: `${entity}_${Date.now()}`, _configVersion: config?.['version'] ?? 1 };
-    this.write(recordsKey(entity), [created, ...this.getAllRecords(entity)]);
-    return created;
+    const rows = this.getAllRecords(entity);
+    const id = `${entity}_${Date.now()}`;
+    const newRecord = { _id: id, _configVersion: this.getConfig(entity)?.['version'] ?? 1, ...data };
+    this.write(recordsKey(entity), [newRecord, ...rows]);
+    return newRecord;
   }
-  updateRecord(entity: string, id: string, data: Record<string, unknown>): Record<string, unknown> | null {
+
+  updateRecord(entity: string, id: string, updates: Record<string, unknown>): Record<string, unknown> | null {
     const rows = this.getAllRecords(entity);
     const idx = rows.findIndex(r => r['_id'] === id);
-    if (idx < 0) return null;
-    rows[idx] = { ...rows[idx], ...data };
+    if (idx === -1) return null;
+    const merged = { ...rows[idx], ...updates };
+    rows[idx] = merged;
     this.write(recordsKey(entity), rows);
-    return rows[idx];
-  }
-  deleteRecord(entity: string, id: string): void {
-    this.write(recordsKey(entity), this.getAllRecords(entity).filter(r => r['_id'] !== id));
+    return merged;
   }
 
-  /** Wipe all demo data and re-seed the samples. */
-  reset(): void {
-    Object.keys(localStorage)
-      .filter(k => k.startsWith('de_demo_'))
-      .forEach(k => localStorage.removeItem(k));
-    this.ensureSeed();
-  }
-
-  // ─── Internals ──────────────────────────────────────────────────────────────
+  // ─── LocalStorage helpers ──────────────────────────────────────────────────
   private read<T>(key: string, fallback: T): T {
     try {
       const raw = localStorage.getItem(key);
@@ -141,21 +137,27 @@ export class LocalStore {
       return fallback;
     }
   }
+
   private write(key: string, value: unknown): void {
-    localStorage.setItem(key, JSON.stringify(value));
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {}
   }
+
   private maskedFieldIds(config: AnyConfig | null, roles: string[]): Set<string> {
     const isMasked = roles.some(r => MASKED_ROLES.includes(r));
     if (!config || !isMasked) return new Set();
     const allFields = this.extractFields(config);
     return new Set(allFields.filter((f: AnyConfig) => f['maskData']).map((f: AnyConfig) => f['id']));
   }
+
   private applyMask(row: Record<string, unknown>, ids: Set<string>): Record<string, unknown> {
     if (ids.size === 0) return row;
     const out = { ...row };
     ids.forEach(id => (out[id] = MASK));
     return out;
   }
+
   private ensureSeed(): void {
     const existing = this.read<AnyConfig[]>(CONFIGS_KEY, []);
     const mergedMap = new Map<string, AnyConfig>();

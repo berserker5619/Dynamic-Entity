@@ -16,7 +16,7 @@ export function recordButton(page: Page, name: string): Locator {
 }
 
 export function fieldByLabel(page: Page, label: string): Locator {
-  return page.locator('.ngx-field').filter({ hasText: label });
+  return page.locator('.ngx-field').filter({ hasText: label }).first();
 }
 
 export function builderPaletteButton(page: Page, name: string): Locator {
