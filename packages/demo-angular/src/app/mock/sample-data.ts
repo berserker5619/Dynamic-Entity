@@ -146,3 +146,101 @@ export const EMPLOYEES_RECORDS: Record<string, unknown>[] = [
   { _id: 'emp_005', personal: { firstName: 'Omar', lastName: 'Farid', status: 'active', contact: { email: 'omar@x.com', phone: '999-000' } }, department: 'sales', salary: 88000, joined: '2018-09-30', addressesTab: { addresses: [{ street: '7 Birch Ln', city: 'Berlin', zip: '10437' }] } },
   { _id: 'emp_006', personal: { firstName: 'Sara', lastName: 'Lopez', status: 'inactive', contact: { email: 'sara@x.com', phone: '121-212' } }, department: 'eng', salary: 95000, joined: '2017-02-14', addressesTab: { addresses: [{ street: '3 Cedar Ct', city: 'Munich', zip: '80333' }] } },
 ];
+
+/**
+ * `orders` — the demo entity that exercises the runtime features the other configs don't:
+ * an entity-ref cascade (country → city), `autoPatch` from a selected company record,
+ * `patchOnTrue`, and a `criticalField` lock. Loaders are registered in `app.config.ts`.
+ */
+export const ORDERS_CONFIG: EntityFormConfig = {
+  entity: 'orders',
+  version: 1,
+  name: { en: 'Orders' },
+  tabs: [
+    {
+      id: 'order',
+      label: { en: 'Order' },
+      fields: [
+        { id: 'reference', type: 'text', label: { en: 'Reference' }, validators: { required: true }, colSpan: 6 },
+        {
+          id: 'company',
+          type: 'entity-ref',
+          label: { en: 'Company' },
+          colSpan: 6,
+          entityReference: { enabled: true, linkedEntityKey: 'companies', displayFields: ['name'] },
+          autoPatch: {
+            targetTab: 'order',
+            mappings: [
+              { source: 'vat', target: 'taxId' },
+              { source: 'city', target: 'billingCity' },
+            ],
+          },
+        },
+        { id: 'taxId', type: 'text', label: { en: 'Tax ID' }, colSpan: 6 },
+        { id: 'billingCity', type: 'text', label: { en: 'Billing city' }, colSpan: 6 },
+        {
+          id: 'sameAsBilling',
+          type: 'boolean',
+          label: { en: 'Ship to billing city' },
+          colSpan: 12,
+          patchOnTrue: [{ from: 'billingCity', to: 'shippingCity' }],
+        },
+        { id: 'shippingCity', type: 'text', label: { en: 'Shipping city' }, colSpan: 6 },
+        {
+          id: 'iban',
+          type: 'text',
+          label: { en: 'IBAN' },
+          colSpan: 6,
+          criticalField: true,
+        },
+      ],
+    },
+    {
+      id: 'delivery',
+      label: { en: 'Delivery' },
+      fields: [
+        {
+          id: 'country',
+          type: 'entity-ref',
+          label: { en: 'Country' },
+          colSpan: 6,
+          entityReference: { enabled: true, linkedEntityKey: 'countries' },
+        },
+        {
+          id: 'city',
+          type: 'entity-ref',
+          label: { en: 'City' },
+          colSpan: 6,
+          entityReference: {
+            enabled: true,
+            linkedEntityKey: 'cities',
+            parentField: 'country',
+            lookupFilter: 'country',
+          },
+        },
+      ],
+    },
+  ],
+};
+
+/** Loader data for the `orders` entity-ref fields. */
+export const ORDER_REFERENCE_DATA = {
+  companies: [
+    { value: 'acme', label: 'Acme', record: { name: 'Acme', vat: 'DE111111', city: 'Berlin' } },
+    { value: 'globex', label: 'Globex', record: { name: 'Globex', vat: 'FR222222', city: 'Paris' } },
+  ],
+  countries: [
+    { value: 'de', label: 'Germany' },
+    { value: 'fr', label: 'France' },
+  ],
+  cities: [
+    { value: 'ber', label: 'Berlin', record: { country: 'de' } },
+    { value: 'muc', label: 'Munich', record: { country: 'de' } },
+    { value: 'par', label: 'Paris', record: { country: 'fr' } },
+    { value: 'lyo', label: 'Lyon', record: { country: 'fr' } },
+  ],
+};
+
+export const ORDERS_RECORDS: Record<string, unknown>[] = [
+  { _id: 'order_001', reference: 'ORD-1001', iban: 'DE89370400440532013000', billingCity: 'Berlin' },
+];

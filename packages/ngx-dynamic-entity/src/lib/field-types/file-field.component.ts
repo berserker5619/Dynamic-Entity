@@ -1,13 +1,12 @@
 import { Component, inject, Input, signal } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
-import type { NestedFieldConfig } from '@dynamic-entity/core';
-import { resolveLabel } from '@dynamic-entity/core';
-import { UPLOAD_HANDLER } from '../tokens/injection-tokens';
-import type { FileRef } from './image-field.component';
+import type { FileRef, NestedFieldConfig } from '@dynamic-entity/core';
+import { fileRefName, resolveLabel } from '@dynamic-entity/core';
+import { FileUploadService } from '../services/file-upload.service';
 
 /**
  * File field: file input with filename display and download link.
- * Follows same FileRef / UPLOAD_HANDLER contract as image-field.
+ * Shares the `FileRef` / `UPLOAD_HANDLER` contract with image-field via FileUploadService.
  */
 @Component({
   selector: 'ngx-file-field',
@@ -15,7 +14,7 @@ import type { FileRef } from './image-field.component';
   imports: [],
   template: `
     <div class="ngx-field ngx-field--file" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
-      <label class="ngx-field__label">{{ label }}</label>
+      <label class="ngx-field__label" [attr.for]="'field-' + field.id">{{ label }}</label>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
       } @else if (readonly) {
@@ -31,7 +30,7 @@ import type { FileRef } from './image-field.component';
           @if (fileName()) {
             <div class="ngx-field__file-selected">
               <span class="ngx-field__file-name">📎 {{ fileName() }}</span>
-              <button type="button" class="ngx-field__remove-btn" (click)="remove()">✕</button>
+              <button type="button" class="ngx-field__remove-btn" (click)="remove()" aria-label="Remove file">✕</button>
             </div>
           }
           <label class="ngx-field__upload-btn" [class.ngx-field__upload-btn--loading]="uploading()">
@@ -42,7 +41,7 @@ import type { FileRef } from './image-field.component';
               <input
                 type="file"
                 class="ngx-field__file-input"
-                [accept]="field.disabled ? '' : '*'"
+                [id]="'field-' + field.id"
                 [disabled]="field.disabled || uploading()"
                 (change)="onFileSelect($any($event.target).files[0])"
               />
@@ -63,7 +62,7 @@ export class FileFieldComponent {
   @Input() readonly: boolean = false;
   @Input() masked: boolean = false;
 
-  private readonly uploadHandler = inject(UPLOAD_HANDLER, { optional: true });
+  private readonly uploads = inject(FileUploadService);
 
   readonly uploading = signal(false);
   readonly uploadError = signal<string | null>(null);
@@ -72,39 +71,29 @@ export class FileFieldComponent {
     return resolveLabel(this.field?.label, this.language);
   }
 
+  private get value(): FileRef | null {
+    return (this.control?.value as FileRef | null) ?? null;
+  }
+
   fileUrl(): string | null {
-    const v = this.control?.value as FileRef | null | undefined;
-    return v && 'url' in v ? v.url : null;
+    return this.value?.url ?? null;
   }
 
   fileName(): string | null {
-    const v = this.control?.value as (FileRef & { name?: string }) | null | undefined;
-    if (!v) return null;
-    if ('file' in v) return (v.file as File).name;
-    if ('url' in v) return v.url.split('/').pop() ?? 'file';
-    return null;
+    return fileRefName(this.value) || null;
   }
 
   async onFileSelect(file: File | undefined): Promise<void> {
     if (!file) return;
     this.uploadError.set(null);
-
-    if (this.uploadHandler) {
-      this.uploading.set(true);
-      try {
-        const result = await new Promise<{ url: string }>((resolve, reject) => {
-          this.uploadHandler!(file).subscribe({ next: resolve, error: reject });
-        });
-        this.control.setValue({ url: result.url });
-        this.control.markAsTouched();
-      } catch {
-        this.uploadError.set('Upload failed. Please try again.');
-      } finally {
-        this.uploading.set(false);
-      }
-    } else {
-      this.control.setValue({ file });
+    this.uploading.set(true);
+    try {
+      this.control.setValue(await this.uploads.toFileRef(file));
       this.control.markAsTouched();
+    } catch {
+      this.uploadError.set('Upload failed. Please try again.');
+    } finally {
+      this.uploading.set(false);
     }
   }
 

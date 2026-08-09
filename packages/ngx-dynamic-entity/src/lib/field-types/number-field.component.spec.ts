@@ -30,4 +30,43 @@ describe('NumberFieldComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ngx-field__value--masked')).toBeTruthy();
   });
+
+  it('renders a static value when readonly', () => {
+    component.readonly = true;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('input')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toContain('25');
+  });
+
+  describe('errorMessage', () => {
+    function withErrors(errors: Record<string, unknown> | null, touched = true): string {
+      component.control = new FormControl(0);
+      component.control.setErrors(errors);
+      if (touched) component.control.markAsTouched();
+      return component.errorMessage;
+    }
+
+    it('is empty until touched, and when there are no errors', () => {
+      expect(withErrors({ required: true }, false)).toBe('');
+      expect(withErrors(null)).toBe('');
+    });
+
+    it('is empty when there is no control at all', () => {
+      component.control = undefined as unknown as FormControl;
+      expect(component.errorMessage).toBe('');
+    });
+
+    it('reports required', () => {
+      expect(withErrors({ required: true })).toBe('This field is required.');
+    });
+
+    it('reports the offending bound for min and max', () => {
+      expect(withErrors({ min: { min: 18 } })).toBe('Value must be at least 18.');
+      expect(withErrors({ max: { max: 99 } })).toBe('Value must not exceed 99.');
+    });
+
+    it('falls back for an unrecognised error key', () => {
+      expect(withErrors({ somethingElse: true })).toBe('Invalid number.');
+    });
+  });
 });

@@ -5,6 +5,9 @@ export * from './lib/entity-builder.component';
 export * from './lib/components/field-palette.component';
 export * from './lib/components/field-inspector.component';
 export * from './lib/components/tab-manager.component';
+export * from './lib/components/rule-form.component';
+export * from './lib/components/field-rules-list.component';
+export * from './lib/components/entity-reference-config.component';
 
 // Store (provided per builder instance)
 export * from './lib/builder-store.service';
@@ -20,4 +23,12 @@ export type {
   RichFieldType,
   DropdownOption,
   EntityPermissions,
+  EntityReferenceConfig,
+  AutoPatchConfig,
+  AutoPatchMapping,
+  PatchOnTrueMapping,
+  FormRule,
+  RuleCondition,
+  RuleAction,
+  RuleOperator,
 } from '@dynamic-entity/core';

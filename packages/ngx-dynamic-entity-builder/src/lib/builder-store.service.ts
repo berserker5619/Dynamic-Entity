@@ -1,13 +1,17 @@
 import { Injectable, computed, signal } from '@angular/core';
 import type {
+  AutoPatchMapping,
   DropdownOption,
   EntityFormConfig,
   EntityPermissions,
+  EntityReferenceConfig,
+  FormRule,
   NestedFieldConfig,
   NestedTabConfig,
-  FieldValidators,
+  PatchOnTrueMapping,
   RichFieldType,
 } from '@dynamic-entity/core';
+import { labelToId } from '@dynamic-entity/core';
 import {
   createFieldConfig,
   getFieldTypeMeta,
@@ -15,6 +19,7 @@ import {
   type FlagValidator,
   type ParamValidator,
 } from './field-catalog';
+import { deepClone } from './clone';
 
 export interface BuilderProblem {
   level: 'error' | 'warning';
@@ -22,10 +27,7 @@ export interface BuilderProblem {
   fieldId?: string;
 }
 
-function clone<T>(value: T): T {
-  if (typeof structuredClone === 'function') return structuredClone(value);
-  return JSON.parse(JSON.stringify(value)) as T;
-}
+const clone = deepClone;
 
 const ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
@@ -34,10 +36,19 @@ export class BuilderStore {
   private readonly _config = signal<EntityFormConfig>(this.emptyConfig());
   private readonly _selectedFieldId = signal<string | null>(null);
   private readonly _activeLanguage = signal<string>('en');
+  /** Rules live beside the config: they are persisted per form, not inside `EntityFormConfig`. */
+  private readonly _rules = signal<FormRule[]>([]);
+  /**
+   * Field ids the author owns — set by an explicit rename, or by loading a saved config
+   * whose ids are already live data keys. Ids outside this set are still derived from the
+   * field's label. Builder-session state, deliberately not part of the exported config.
+   */
+  private readonly manualIds = new Set<string>();
 
   readonly config = this._config.asReadonly();
   readonly selectedFieldId = this._selectedFieldId.asReadonly();
   readonly activeLanguage = this._activeLanguage.asReadonly();
+  readonly rules = this._rules.asReadonly();
 
   readonly tabs = computed<NestedTabConfig[]>(() => this._config().tabs ?? []);
 
@@ -69,11 +80,18 @@ export class BuilderStore {
     const firstField = this.getAllFields(next.tabs)[0];
     this._selectedFieldId.set(firstField?.id ?? null);
     this._activeLanguage.set(next.defaultLanguage ?? 'en');
+
+    // Ids in a saved config are live data keys — records are already stored under them.
+    // Editing a label must never rewrite one, so freeze every id the config arrived with.
+    this.manualIds.clear();
+    for (const field of this.getAllFields(next.tabs)) this.manualIds.add(field.id);
   }
 
   reset(entity = ''): void {
     this._config.set(this.emptyConfig(entity));
     this._selectedFieldId.set(null);
+    this._rules.set([]);
+    this.manualIds.clear();
   }
 
   private emptyConfig(entity = ''): EntityFormConfig {
@@ -173,17 +191,93 @@ export class BuilderStore {
     });
   }
 
+  /**
+   * Rename a field explicitly, pinning the id so it is no longer derived from the label.
+   *
+   * Not reachable from the inspector — the id input is read-only by design. This exists for
+   * programmatic callers that must match an id to an existing data key.
+   */
   renameField(oldId: string, newId: string): void {
     const trimmed = newId.trim();
     if (!trimmed || trimmed === oldId) return;
     if (this.fields().some(f => f.id === trimmed)) return;
+    if (!this.findFieldInTabs(this._config().tabs, oldId)) return;
 
+    this.applyRename(oldId, trimmed);
+    this.manualIds.delete(oldId);
+    this.manualIds.add(trimmed);
+  }
+
+  /** Whether this field's id is pinned (loaded from storage or explicitly renamed). */
+  hasManualId(id: string): boolean {
+    return this.manualIds.has(id);
+  }
+
+  /**
+   * Move a field to a new id and repoint every id-based reference in the config at it.
+   *
+   * Ids are the wiring between fields — rules, cascades, patches and `showWhen` all address
+   * fields by id — so a rename that only touches `field.id` silently breaks that wiring.
+   * That was survivable while renaming was a rare manual act; label-derived ids make it
+   * routine, so the references move with it.
+   */
+  private applyRename(oldId: string, newId: string): void {
     this.mutate(draft => {
       const field = this.findFieldInTabs(draft.tabs, oldId);
       if (!field) return;
-      field.id = trimmed;
+      field.id = newId;
+
+      const walkFields = (fields: NestedFieldConfig[] | undefined) => {
+        for (const f of fields ?? []) {
+          if (f.showWhen && oldId in f.showWhen) {
+            const next: Record<string, unknown> = {};
+            // Rebuild in place so condition order survives the rename.
+            for (const [key, value] of Object.entries(f.showWhen)) {
+              next[key === oldId ? newId : key] = value;
+            }
+            f.showWhen = next;
+          }
+          if (f.entityReference?.parentField === oldId) {
+            f.entityReference = { ...f.entityReference, parentField: newId };
+          }
+          if (f.autoPatch) {
+            // `source` names a field on the *linked* record, not this config — leave it.
+            f.autoPatch = {
+              ...f.autoPatch,
+              mappings: f.autoPatch.mappings.map(m =>
+                m.target === oldId ? { ...m, target: newId } : m,
+              ),
+            };
+          }
+          if (f.patchOnTrue) {
+            f.patchOnTrue = f.patchOnTrue.map(m => ({
+              from: m.from === oldId ? newId : m.from,
+              to: m.to === oldId ? newId : m.to,
+            }));
+          }
+          if (f.children?.length) walkFields(f.children);
+        }
+      };
+      const walkTabs = (tabs: NestedTabConfig[] | undefined) => {
+        for (const tab of tabs ?? []) {
+          walkFields(tab.fields);
+          walkTabs(tab.children);
+        }
+      };
+      walkTabs(draft.tabs);
     });
-    if (this._selectedFieldId() === oldId) this._selectedFieldId.set(trimmed);
+
+    this._rules.update(rules =>
+      rules.map(rule => ({
+        ...rule,
+        fieldId: rule.fieldId === oldId ? newId : rule.fieldId,
+        targets: rule.targets.map(t =>
+          t.type === 'field' && t.id === oldId ? { ...t, id: newId } : t,
+        ),
+      })),
+    );
+
+    if (this._selectedFieldId() === oldId) this._selectedFieldId.set(newId);
   }
 
   removeField(id: string): void {
@@ -194,11 +288,15 @@ export class BuilderStore {
         }
       }
     });
+    this.manualIds.delete(id);
     if (this._selectedFieldId() === id) this._selectedFieldId.set(null);
   }
 
   duplicateField(id: string): string | null {
-    const source = this.selectedField() ?? this.findFieldInTabs(this._config().tabs, id);
+    // Look the source up by id — not by current selection. The insert below searches by id
+    // too, so falling back to the selected field could report a new id while inserting
+    // nothing, or duplicate a field the caller never named.
+    const source = this.findFieldInTabs(this._config().tabs, id);
     if (!source) return null;
     const meta = getFieldTypeMeta(source.type);
     const prefix = meta?.idPrefix ?? 'field';
@@ -261,11 +359,41 @@ export class BuilderStore {
 
   // ─── Localised text ─────────────────────────────────────────────────────────
 
+  /**
+   * Set a field's label, and derive the field's id from it: type "Employee Count", get
+   * `employeeCount`. The inspector renders the id read-only, so this is the only way a
+   * new field's id is set.
+   *
+   * Two things stop derivation: a config loaded from storage (its ids are live data keys
+   * that records are already stored under — see `load`), and an explicit `renameField`
+   * call, which remains available to programmatic callers.
+   *
+   * Only the config's default language drives the id; translating a label must not rename
+   * anything.
+   */
   setFieldLabel(id: string, language: string, value: string): void {
     this.mutate(draft => {
       const field = this.findFieldInTabs(draft.tabs, id);
       if (field) field.label = { ...field.label, [language]: value };
     });
+
+    if (language !== (this._config().defaultLanguage ?? 'en')) return;
+    if (this.manualIds.has(id)) return;
+
+    const derived = labelToId(value);
+    if (!derived || derived === id) return;
+
+    this.applyRename(id, this.availableId(derived, id));
+  }
+
+  /** `derived`, or `derived_2`, `derived_3`… if another field already holds it. */
+  private availableId(derived: string, currentId: string): string {
+    const taken = new Set(this.fields().map(f => f.id).filter(fid => fid !== currentId));
+    if (!taken.has(derived)) return derived;
+
+    let n = 2;
+    while (taken.has(`${derived}_${n}`)) n += 1;
+    return `${derived}_${n}`;
   }
 
   setFieldPlaceholder(id: string, language: string, value: string): void {
@@ -354,6 +482,157 @@ export class BuilderStore {
       if (!field?.options) return;
       field.options = field.options.filter((_, i) => i !== index);
     });
+  }
+
+  // ─── Entity reference / cascade ─────────────────────────────────────────────
+
+  /** Merge a patch into a field's `entityReference` block, keeping it enabled. */
+  updateEntityReference(fieldId: string, patch: Partial<EntityReferenceConfig>): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
+      if (!field) return;
+      const next: EntityReferenceConfig = {
+        ...(field.entityReference ?? { enabled: true }),
+        ...patch,
+        enabled: true,
+      };
+      // Drop keys explicitly cleared to `undefined` so exported configs stay clean.
+      for (const key of Object.keys(patch) as (keyof EntityReferenceConfig)[]) {
+        if (patch[key] === undefined) delete next[key];
+      }
+      field.entityReference = next;
+    });
+  }
+
+  // ─── autoPatch ──────────────────────────────────────────────────────────────
+
+  addAutoPatchMapping(fieldId: string): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
+      if (!field) return;
+      const targetTab = field.autoPatch?.targetTab ?? draft.tabs[0]?.id ?? '';
+      const mappings = [...(field.autoPatch?.mappings ?? []), { source: '', target: '' }];
+      field.autoPatch = { targetTab, mappings };
+    });
+  }
+
+  setAutoPatchTargetTab(fieldId: string, targetTab: string): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
+      if (!field?.autoPatch) return;
+      field.autoPatch = { ...field.autoPatch, targetTab };
+    });
+  }
+
+  updateAutoPatchMapping(fieldId: string, index: number, patch: Partial<AutoPatchMapping>): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
+      if (!field?.autoPatch?.mappings?.[index]) return;
+      field.autoPatch = {
+        ...field.autoPatch,
+        mappings: field.autoPatch.mappings.map((m, i) => (i === index ? { ...m, ...patch } : m)),
+      };
+    });
+  }
+
+  /** Removing the last mapping drops `autoPatch` entirely — no empty config in the export. */
+  removeAutoPatchMapping(fieldId: string, index: number): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
+      if (!field?.autoPatch) return;
+      const mappings = field.autoPatch.mappings.filter((_, i) => i !== index);
+      if (mappings.length === 0) delete field.autoPatch;
+      else field.autoPatch = { ...field.autoPatch, mappings };
+    });
+  }
+
+  // ─── patchOnTrue ────────────────────────────────────────────────────────────
+
+  addPatchOnTrueMapping(fieldId: string): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
+      if (!field) return;
+      field.patchOnTrue = [...(field.patchOnTrue ?? []), { from: '', to: '' }];
+    });
+  }
+
+  updatePatchOnTrueMapping(fieldId: string, index: number, patch: Partial<PatchOnTrueMapping>): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
+      if (!field?.patchOnTrue?.[index]) return;
+      field.patchOnTrue = field.patchOnTrue.map((m, i) => (i === index ? { ...m, ...patch } : m));
+    });
+  }
+
+  removePatchOnTrueMapping(fieldId: string, index: number): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
+      if (!field?.patchOnTrue) return;
+      const mappings = field.patchOnTrue.filter((_, i) => i !== index);
+      if (mappings.length === 0) delete field.patchOnTrue;
+      else field.patchOnTrue = mappings;
+    });
+  }
+
+  // ─── showWhen (static conditional visibility) ───────────────────────────────
+
+  /** Replace a field's `showWhen` map; an empty map removes the condition. */
+  setShowWhen(fieldId: string, showWhen: Record<string, unknown> | undefined): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
+      if (!field) return;
+      if (!showWhen || Object.keys(showWhen).length === 0) delete field.showWhen;
+      else field.showWhen = showWhen;
+    });
+  }
+
+  // ─── Rules ──────────────────────────────────────────────────────────────────
+
+  /** Rules for the field currently selected in the inspector. */
+  readonly rulesForSelectedField = computed<FormRule[]>(() => {
+    const id = this._selectedFieldId();
+    if (!id) return [];
+    return this._rules().filter(r => r.fieldId === id || r.targets.some(t => t.id === id));
+  });
+
+  loadRules(rules: FormRule[]): void {
+    this._rules.set(clone(rules));
+  }
+
+  addRule(rule: FormRule): string {
+    const id = rule.id?.trim() || this.uniqueId('rule', this._rules().map(r => ({ id: r.id ?? '' })));
+    this._rules.update(rules => [...rules, { ...clone(rule), id }]);
+    return id;
+  }
+
+  updateRule(id: string, patch: Partial<FormRule>): void {
+    this._rules.update(rules => rules.map(r => (r.id === id ? { ...r, ...clone(patch), id } : r)));
+  }
+
+  removeRule(id: string): void {
+    this._rules.update(rules => rules.filter(r => r.id !== id));
+  }
+
+  toggleRule(id: string, enabled: boolean): void {
+    this.updateRule(id, { enabled });
+  }
+
+  /** Move a rule in priority order. Priorities are renumbered 1..n so they stay contiguous. */
+  moveRule(id: string, direction: -1 | 1): void {
+    this._rules.update(rules => {
+      const next = [...rules];
+      const from = next.findIndex(r => r.id === id);
+      if (from === -1) return rules;
+      const to = from + direction;
+      if (to < 0 || to >= next.length) return rules;
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next.map((r, i) => ({ ...r, priority: i + 1 }));
+    });
+  }
+
+  exportRules(): FormRule[] {
+    return clone(this._rules());
   }
 
   // ─── Tabs ───────────────────────────────────────────────────────────────────

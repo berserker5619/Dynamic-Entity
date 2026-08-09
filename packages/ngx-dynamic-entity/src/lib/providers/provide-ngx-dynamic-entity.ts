@@ -1,4 +1,5 @@
 import { EnvironmentProviders, makeEnvironmentProviders, Type } from '@angular/core';
+import type { EntityReferenceLoader } from '@dynamic-entity/core';
 import {
   ENTITY_REF_REGISTRY,
   FIELD_TYPE_REGISTRY,
@@ -12,8 +13,11 @@ export interface NgxDynamicEntityConfig {
   maskedRoles?: string[];
   /** Custom field type components keyed by type string */
   fieldTypes?: Record<string, Type<any>>;
-  /** Entity-ref option loaders keyed by entity key (ADR-006) */
-  entityRefs?: Record<string, () => Promise<any[]>>;
+  /**
+   * Entity-ref option loaders keyed by entity key (ADR-006).
+   * Each receives `{ parentValue, filters, lang }` and may return an array, Promise, or Observable.
+   */
+  entityRefs?: Record<string, EntityReferenceLoader>;
   /** Custom validator functions keyed by validator name */
   validators?: Record<string, any>;
   /** Hook functions keyed by hook name */

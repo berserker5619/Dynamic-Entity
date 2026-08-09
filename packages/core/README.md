@@ -6,7 +6,16 @@ Framework-agnostic core models, pure form logic, rules evaluation engine, and fi
 - **Nested Entity Form Model (`EntityFormConfig`)**: Expresses tabbed hierarchies, nested groups, arrays, and field table display metadata.
 - **Pure Form Logic**: Framework-independent utilities for label resolution, display value formatting, nested data access, and masking.
 - **Rules Engine**: Pure condition evaluation for 18 rule operators (`EQUAL`, `CONTAINS`, `MORE_THAN`, `VALUE_CHANGED`, etc.) with action targeting (hidden fields/tabs, validation errors/warnings, info banners).
-- **Canonical Field Catalog**: Single source of truth for 18 rich field types (`text`, `monthYear`, `entity-ref`, `image`, `file`, etc.).
+- **Canonical Field Catalog**: Single source of truth for 19 rich field type keys (`text`, `monthYear`, `entity-ref`, `image`, `file`, etc.), consumed by both the renderer and the builder.
+- **Entity Reference Contracts**: `EntityReferenceLoader`, option normalisation, and pure cascade filtering (`lookupFilter` / `lookupPath`) — no framework, no rxjs.
+- **File Contracts**: the canonical `FileRef` and `FileUploadHandler` shared by the image and file fields.
+
+## Config versioning — no migration path
+
+`EntityFormConfig` carries a `version`, but this package ships **no migration**. A persisted
+config is only guaranteed to load against the model version it was written with. Stamp
+`version` on save and gate your own upgrade path on it; a breaking model change will not
+be auto-upcast for you.
 
 ## Installation
 ```bash

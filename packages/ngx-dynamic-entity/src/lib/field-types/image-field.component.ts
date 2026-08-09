@@ -1,19 +1,14 @@
-import { Component, inject, Input, signal } from '@angular/core';
+import { Component, OnDestroy, inject, Input, signal } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
-import type { NestedFieldConfig } from '@dynamic-entity/core';
+import type { FileRef, NestedFieldConfig } from '@dynamic-entity/core';
 import { resolveLabel } from '@dynamic-entity/core';
-import { UPLOAD_HANDLER } from '../tokens/injection-tokens';
-
-/**
- * FileRef — the value contract for image and file fields.
- * Either a persisted URL (returned by UPLOAD_HANDLER) or an unpersisted File object.
- */
-export type FileRef = { url: string } | { file: File };
+import { FileUploadService } from '../services/file-upload.service';
 
 /**
  * Image field: preview thumbnail + upload button.
- * If UPLOAD_HANDLER is provided, uploads on select and stores { url }.
- * Without a handler, stores { file: File } for consumer to handle.
+ *
+ * With `UPLOAD_HANDLER` registered the file is persisted and stored as `{ url }`; without one
+ * it is stored as `{ file }` and previewed from an object URL (revoked when replaced/destroyed).
  */
 @Component({
   selector: 'ngx-image-field',
@@ -21,17 +16,13 @@ export type FileRef = { url: string } | { file: File };
   imports: [],
   template: `
     <div class="ngx-field ngx-field--image" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
-      <label class="ngx-field__label">{{ label }}</label>
+      <label class="ngx-field__label" [attr.for]="'field-' + field.id">{{ label }}</label>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
       } @else {
         <div class="ngx-field__image-wrap">
           @if (previewUrl()) {
-            <img
-              class="ngx-field__image-preview"
-              [src]="previewUrl()"
-              [alt]="label"
-            />
+            <img class="ngx-field__image-preview" [src]="previewUrl()" [alt]="label" />
           } @else {
             <div class="ngx-field__image-placeholder">
               <span>📷</span>
@@ -48,6 +39,7 @@ export type FileRef = { url: string } | { file: File };
                   <input
                     type="file"
                     class="ngx-field__file-input"
+                    [id]="'field-' + field.id"
                     accept="image/*"
                     [disabled]="field.disabled || uploading()"
                     (change)="onFileSelect($any($event.target).files[0])"
@@ -67,54 +59,56 @@ export type FileRef = { url: string } | { file: File };
     </div>
   `,
 })
-export class ImageFieldComponent {
+export class ImageFieldComponent implements OnDestroy {
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() language: string = 'en';
   @Input() readonly: boolean = false;
   @Input() masked: boolean = false;
 
-  private readonly uploadHandler = inject(UPLOAD_HANDLER, { optional: true });
+  private readonly uploads = inject(FileUploadService);
 
   readonly uploading = signal(false);
   readonly uploadError = signal<string | null>(null);
+
+  /** Cached so an object URL is minted once per File, not once per change-detection pass. */
+  private previewSource: FileRef | null = null;
+  private previewCache: string | null = null;
 
   get label(): string {
     return resolveLabel(this.field?.label, this.language);
   }
 
-  get previewUrl(): ReturnType<typeof signal<string | null>> {
-    const v = this.control?.value as FileRef | null | undefined;
-    const url = v && 'url' in v ? v.url : null;
-    return signal(url);
+  previewUrl(): string | null {
+    const value = (this.control?.value as FileRef | null) ?? null;
+    if (value === this.previewSource) return this.previewCache;
+
+    this.uploads.revokePreviewUrl(this.previewCache);
+    this.previewSource = value;
+    this.previewCache = this.uploads.previewUrlFor(value);
+    return this.previewCache;
   }
 
   async onFileSelect(file: File | undefined): Promise<void> {
     if (!file) return;
     this.uploadError.set(null);
-
-    if (this.uploadHandler) {
-      this.uploading.set(true);
-      try {
-        const result = await new Promise<{ url: string }>((resolve, reject) => {
-          this.uploadHandler!(file).subscribe({ next: resolve, error: reject });
-        });
-        this.control.setValue({ url: result.url });
-        this.control.markAsTouched();
-      } catch {
-        this.uploadError.set('Upload failed. Please try again.');
-      } finally {
-        this.uploading.set(false);
-      }
-    } else {
-      // No upload handler — store File reference for consumer to handle
-      this.control.setValue({ file });
+    this.uploading.set(true);
+    try {
+      this.control.setValue(await this.uploads.toFileRef(file));
       this.control.markAsTouched();
+    } catch {
+      this.uploadError.set('Upload failed. Please try again.');
+    } finally {
+      this.uploading.set(false);
     }
   }
 
   remove(): void {
     this.control.setValue(null);
     this.control.markAsTouched();
+  }
+
+  ngOnDestroy(): void {
+    this.uploads.revokePreviewUrl(this.previewCache);
   }
 }

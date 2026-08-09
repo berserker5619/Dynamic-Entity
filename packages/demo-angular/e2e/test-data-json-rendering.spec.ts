@@ -37,9 +37,10 @@ test.describe('Dynamic Entity E2E - Rendering test_data.json Configurations', ()
     await safeClick(page.getByRole('button', { name: 'Entity Manager' }));
     await expect(page.getByRole('heading', { level: 2, name: 'Manage Entities' })).toBeVisible();
 
-    // Verify all 12 entities are listed in Entity Manager table
+    // 12 configs from test_data.json + the seeded `orders` demo entity
+    // (clients and employees are overrides of test_data.json entries, not extra rows).
     const tableRows = page.locator('tbody tr');
-    await expect(tableRows).toHaveCount(12);
+    await expect(tableRows).toHaveCount(13);
 
     // Verify no page errors occurred
     expect(errors).toEqual([]);

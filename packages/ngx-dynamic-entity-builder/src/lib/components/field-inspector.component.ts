@@ -13,6 +13,8 @@ import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { resolveLabel } from '@dynamic-entity/core';
 import { BuilderStore } from '../builder-store.service';
 import { getFieldTypeMeta, type FieldTypeMeta } from '../field-catalog';
+import { EntityReferenceConfigComponent } from './entity-reference-config.component';
+import { FieldRulesListComponent } from './field-rules-list.component';
 
 /**
  * FieldInspectorComponent — edits every property of the currently selected field.
@@ -31,6 +33,8 @@ import { getFieldTypeMeta, type FieldTypeMeta } from '../field-catalog';
     MatSelectModule,
     MatSlideToggleModule,
     MatTooltipModule,
+    EntityReferenceConfigComponent,
+    FieldRulesListComponent,
   ],
   templateUrl: './field-inspector.component.html',
   styles: [
@@ -55,6 +59,12 @@ import { getFieldTypeMeta, type FieldTypeMeta } from '../field-catalog';
       }
       .deb-row > * {
         flex: 1;
+      }
+      .deb-row--split {
+        justify-content: space-between;
+      }
+      .deb-row--split > * {
+        flex: 0 0 auto;
       }
       .deb-toggles {
         display: grid;
@@ -91,10 +101,6 @@ export class FieldInspectorComponent {
     return this.store.activeLanguage();
   }
 
-  protected commitId(oldId: string, event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.store.renameField(oldId, value);
-  }
 
   protected toNum(value: unknown): number | null {
     if (value === '' || value === null || value === undefined) return null;
@@ -112,5 +118,63 @@ export class FieldInspectorComponent {
 
   protected optionLabel(option: { label: Record<string, string> }): string {
     return resolveLabel(option.label, this.lang());
+  }
+
+  // ─── showWhen editing ───────────────────────────────────────────────────────
+
+  protected showWhenEntries(field: NestedFieldConfig): { key: string; display: string }[] {
+    return Object.entries(field.showWhen ?? {}).map(([key, value]) => ({
+      key,
+      display: this.stringifyShowWhen(value),
+    }));
+  }
+
+  protected addShowWhen(field: NestedFieldConfig): void {
+    const next = { ...(field.showWhen ?? {}) };
+    let key = 'field';
+    let n = 1;
+    while (key in next) key = `field_${++n}`;
+    next[key] = true;
+    this.store.setShowWhen(field.id, next);
+  }
+
+  protected renameShowWhen(field: NestedFieldConfig, oldKey: string, newKey: string): void {
+    const trimmed = newKey.trim();
+    if (!trimmed || trimmed === oldKey) return;
+    const current = field.showWhen ?? {};
+    if (trimmed in current) return;
+    const next: Record<string, unknown> = {};
+    // Rebuild in order so the row does not jump while the user is typing.
+    for (const [k, v] of Object.entries(current)) next[k === oldKey ? trimmed : k] = v;
+    this.store.setShowWhen(field.id, next);
+  }
+
+  protected setShowWhenValue(field: NestedFieldConfig, key: string, raw: string): void {
+    this.store.setShowWhen(field.id, { ...(field.showWhen ?? {}), [key]: this.parseShowWhen(raw) });
+  }
+
+  protected removeShowWhen(field: NestedFieldConfig, key: string): void {
+    const next = { ...(field.showWhen ?? {}) };
+    delete next[key];
+    this.store.setShowWhen(field.id, next);
+  }
+
+  /**
+   * `showWhen` compares with `!==`, so the authored type has to survive the round trip:
+   * "true"/"false" become booleans and numeric text becomes a number.
+   */
+  private parseShowWhen(raw: string): unknown {
+    const trimmed = raw.trim();
+    if (trimmed === 'true') return true;
+    if (trimmed === 'false') return false;
+    if (trimmed === 'null') return null;
+    if (trimmed !== '' && !Number.isNaN(Number(trimmed))) return Number(trimmed);
+    return raw;
+  }
+
+  private stringifyShowWhen(value: unknown): string {
+    if (value === null) return 'null';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
   }
 }

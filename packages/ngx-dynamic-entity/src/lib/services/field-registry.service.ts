@@ -1,64 +1,35 @@
 import { Injectable, Type, inject } from '@angular/core';
-import { FIELD_TYPE_REGISTRY } from '../tokens/injection-tokens';
-
-// ── Built-in field components (all 18 RichFieldType variants) ─────────────────
-import { TextFieldComponent } from '../field-types/text-field.component';
-import { TextareaFieldComponent } from '../field-types/textarea-field.component';
-import { NumberFieldComponent } from '../field-types/number-field.component';
-import { CurrencyFieldComponent } from '../field-types/currency-field.component';
-import { EmailFieldComponent } from '../field-types/email-field.component';
-import { PasswordFieldComponent } from '../field-types/password-field.component';
-import { CheckboxFieldComponent } from '../field-types/checkbox-field.component';
-import { BooleanFieldComponent } from '../field-types/boolean-field.component';
-import { DateFieldComponent } from '../field-types/date-field.component';
-import { MonthYearFieldComponent } from '../field-types/month-year-field.component';
-import { DropdownFieldComponent } from '../field-types/dropdown-field.component';
-import { RadioFieldComponent } from '../field-types/radio-field.component';
-import { MultiSelectFieldComponent } from '../field-types/multi-select-field.component';
-import { EntityRefFieldComponent } from '../field-types/entity-ref-field.component';
-import { GroupFieldComponent } from '../field-types/group-field.component';
-import { ArrayFieldComponent } from '../field-types/array-field.component';
-import { ImageFieldComponent } from '../field-types/image-field.component';
-import { FileFieldComponent } from '../field-types/file-field.component';
+import { FIELD_TYPE_REGISTRY, FIELD_TYPE_SETS } from '../tokens/injection-tokens';
 
 /**
  * FieldRegistryService — resolves field type strings to Angular component classes.
- * Supports dynamic registration and token-based consumer overrides (FIELD_TYPE_REGISTRY).
+ *
+ * **Tree-shaking contract:** this service holds *no* static imports of field components.
+ * Nothing is bundled until something registers it, which is what makes the built-ins
+ * opt-in. Register them with `provideBuiltInFieldTypes()` (all 19 keys) or a narrower
+ * subset via `provideFieldTypes({ ... })` — see `providers/provide-field-types.ts`.
+ *
+ * Resolution order: consumer token registry → runtime registrations → nothing.
  */
 @Injectable({ providedIn: 'root' })
 export class FieldRegistryService {
-  private readonly consumerRegistry = inject(FIELD_TYPE_REGISTRY, { optional: true }) ?? new Map<string, Type<any>>();
+  private readonly consumerRegistry =
+    inject(FIELD_TYPE_REGISTRY, { optional: true }) ?? new Map<string, Type<any>>();
   private readonly dynamicRegistry = new Map<string, Type<any>>();
 
-  /** Built-in field type → component map. All 18 RichFieldType variants covered. */
-  private readonly builtInRegistry = new Map<string, Type<any>>([
-    ['text',       TextFieldComponent],
-    ['textarea',   TextareaFieldComponent],
-    ['number',     NumberFieldComponent],
-    ['currency',   CurrencyFieldComponent],
-    ['email',      EmailFieldComponent],
-    ['password',   PasswordFieldComponent],
-    ['checkbox',   CheckboxFieldComponent],
-    ['boolean',    BooleanFieldComponent],
-    ['date',       DateFieldComponent],
-    ['datetime',   DateFieldComponent],
-    ['monthYear',  MonthYearFieldComponent],
-    ['dropdown',   DropdownFieldComponent],
-    ['radio',      RadioFieldComponent],
-    ['multiSelect',MultiSelectFieldComponent],
-    ['entity-ref', EntityRefFieldComponent],
-    ['group',      GroupFieldComponent],
-    ['array',      ArrayFieldComponent],
-    ['image',      ImageFieldComponent],
-    ['file',       FileFieldComponent],
-  ]);
+  constructor() {
+    // Sets contributed by provideFieldTypes()/provideBuiltInFieldTypes(), in declaration order.
+    for (const set of inject(FIELD_TYPE_SETS, { optional: true }) ?? []) {
+      this.registerAll(set);
+    }
+  }
 
-  /** Register a dynamic field type component mapping at runtime. */
+  /** Register a field type component mapping at runtime. */
   register(type: string, component: Type<any>): void {
     this.dynamicRegistry.set(type, component);
   }
 
-  /** Register multiple dynamic field type component mappings at runtime. */
+  /** Register multiple field type component mappings at runtime. */
   registerAll(map: Record<string, Type<any>>): void {
     for (const [type, comp] of Object.entries(map)) {
       this.dynamicRegistry.set(type, comp);
@@ -67,23 +38,19 @@ export class FieldRegistryService {
 
   /**
    * Resolve a field type string to a component class.
-   * Consumer token registry takes priority, then dynamic registry, then built-in registry.
+   * Consumer token registry takes priority over runtime registrations.
    */
   resolve(fieldType: string): Type<any> | null {
-    return (
-      this.consumerRegistry.get(fieldType) ??
-      this.dynamicRegistry.get(fieldType) ??
-      this.builtInRegistry.get(fieldType) ??
-      null
-    );
+    return this.consumerRegistry.get(fieldType) ?? this.dynamicRegistry.get(fieldType) ?? null;
   }
 
   /** Check if a field type has a registered component. */
   has(fieldType: string): boolean {
-    return (
-      this.consumerRegistry.has(fieldType) ||
-      this.dynamicRegistry.has(fieldType) ||
-      this.builtInRegistry.has(fieldType)
-    );
+    return this.consumerRegistry.has(fieldType) || this.dynamicRegistry.has(fieldType);
+  }
+
+  /** Every registered field type key. Consumer overrides and runtime registrations combined. */
+  registeredTypes(): string[] {
+    return [...new Set([...this.dynamicRegistry.keys(), ...this.consumerRegistry.keys()])].sort();
   }
 }

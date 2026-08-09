@@ -8,14 +8,11 @@ import type {
   AutoPatchConfig,
   DropdownOption,
   EntityFormConfig,
-  FormRule,
   LocalizedText,
   NestedFieldConfig,
   NestedTabConfig,
   PatchOnTrueMapping,
   RichFieldType,
-  RuleEvaluationResult,
-  RuleOperator,
 } from './form-model.types';
 
 const EMPTY = '—';
@@ -346,88 +343,11 @@ export function normalizeConfig(config: unknown): EntityFormConfig {
   } as unknown as EntityFormConfig;
 }
 
-// ─── Rule Engine Evaluator ────────────────────────────────────────────────────
-
-/**
- * Evaluates a set of `FormRule`s against the current form values.
- * Rules are sorted by priority (ascending) before evaluation.
- * Returns sets of hidden fields/tabs, validation errors, warnings, and info banners.
- */
-export function evaluateRules(
-  rules: FormRule[],
-  formValues: Record<string, unknown>,
-  sessionBaseline?: Record<string, unknown>,
-): RuleEvaluationResult {
-  const result: RuleEvaluationResult = {
-    hiddenFields: [],
-    hiddenTabs: [],
-    validationErrors: {},
-    validationWarnings: {},
-    infoBanners: {},
-  };
-
-  const sorted = [...rules].filter(r => r.enabled).sort((a, b) => a.priority - b.priority);
-
-  for (const rule of sorted) {
-    const triggerValue = formValues[rule.fieldId];
-    const conditionsMet = rule.conditions.every(cond => {
-      const compareValue = cond.compareType === 'field'
-        ? formValues[cond.compareToField ?? '']
-        : cond.value;
-      return evaluateCondition(cond.operator, triggerValue, compareValue, sessionBaseline?.[rule.fieldId]);
-    });
-
-    if (!conditionsMet) continue;
-
-    for (const target of rule.targets) {
-      const action = rule.action;
-      if (action.type === 'visibility') {
-        if (action.value === false) {
-          if (target.type === 'field') result.hiddenFields.push(target.id);
-          else result.hiddenTabs.push(target.id);
-        }
-      } else if (action.type === 'validation') {
-        result[action.severity === 'warning' ? 'validationWarnings' : 'validationErrors'][target.id] = String(action.value);
-      } else if (action.type === 'info') {
-        result.infoBanners[target.id] = String(action.value);
-      }
-    }
-  }
-
-  return result;
-}
-
-function evaluateCondition(
-  operator: RuleOperator,
-  value: unknown,
-  /** Resolved compare value: either cond.value or the sibling field's current value. */
-  compare: unknown,
-  baseline?: unknown,
-): boolean {
-  const str = (v: unknown) => String(v ?? '').toLowerCase();
-
-  switch (operator) {
-    case 'EQUAL':           return value === compare;
-    case 'NOT_EQUAL':       return value !== compare;
-    case 'CONTAINS':        return str(value).includes(str(compare));
-    case 'NOT_CONTAINS':    return !str(value).includes(str(compare));
-    case 'STARTS_WITH':     return str(value).startsWith(str(compare));
-    case 'ENDS_WITH':       return str(value).endsWith(str(compare));
-    case 'IS_EMPTY':        return value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0);
-    case 'IS_NOT_EMPTY':    return !(value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0));
-    case 'LESS_THAN':       return Number(value) < Number(compare);
-    case 'MORE_THAN':       return Number(value) > Number(compare);
-    case 'LESS_THAN_EQUAL': return Number(value) <= Number(compare);
-    case 'MORE_THAN_EQUAL': return Number(value) >= Number(compare);
-    case 'DATE_BEFORE':     return new Date(value as string) < new Date(compare as string);
-    case 'DATE_AFTER':      return new Date(value as string) > new Date(compare as string);
-    case 'IN':              return Array.isArray(compare) ? compare.includes(value) : false;
-    case 'NOT_IN':          return Array.isArray(compare) ? !compare.includes(value) : true;
-    case 'HAS_ITEMS':       return Array.isArray(value) && value.length > 0;
-    case 'VALUE_CHANGED':   return baseline !== undefined && value !== baseline;
-    default:                return false;
-  }
-}
+// ─── Rule evaluation ─────────────────────────────────────────────────────────
+// Rules live in `rules-engine.ts` (`evaluateFormRules`). A second implementation used to
+// sit here with subtly different semantics — strict `===` for EQUAL where the engine
+// coerces — and no consumer. Two exported engines meant an importer could silently get
+// the wrong comparison rules, so this one was removed rather than kept in sync.
 
 // ─── AutoPatch / PatchOnTrue ──────────────────────────────────────────────────
 

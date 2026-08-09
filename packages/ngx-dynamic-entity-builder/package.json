@@ -1,11 +1,12 @@
 {
   "name": "ngx-dynamic-entity-builder",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Angular 17 standalone visual builder for authoring dynamic-entity EntityConfig (fields, tabs, validators, RBAC).",
   "scripts": {
     "build": "npx ng-packagr -p ng-package.json",
     "test": "jest",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit && tsc --noEmit -p tsconfig.spec.json",
+    "test:coverage": "jest --coverage"
   },
   "peerDependencies": {
     "@angular/cdk": "^17.0.0",
@@ -13,13 +14,8 @@
     "@angular/core": "^17.0.0",
     "@angular/forms": "^17.0.0",
     "@angular/material": "^17.0.0",
-    "@dynamic-entity/core": "0.0.1",
+    "@dynamic-entity/core": "^0.1.0",
     "rxjs": "^7.0.0"
-  },
-  "peerDependenciesMeta": {
-    "ngx-dynamic-entity": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^17.0.0",

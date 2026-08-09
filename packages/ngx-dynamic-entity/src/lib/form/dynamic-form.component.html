@@ -24,6 +24,17 @@
     </div>
   }
 
+  <!-- Deferred VALUE_CHANGED notice for criticalField edits (vs session baseline) -->
+  @if (changedCriticalFields().length > 0) {
+    <div class="ngx-form__warning-banner" role="status" data-testid="critical-change-banner">
+      🔒 Critical field changed:
+      @for (field of changedCriticalFields(); track field.id) {
+        <span>{{ resolveFieldLabel(field) }}{{ $last ? '' : ', ' }}</span>
+      }
+      — this differs from the value at the start of this session.
+    </div>
+  }
+
   <!-- Tab bar — only if visible tabs defined -->
   @if (visibleTabs.length > 0) {
     <div class="ngx-form__tabs" role="tablist">
@@ -45,16 +56,40 @@
   <!-- Fields for active tab (Responsive 12-column grid) -->
   <div class="ngx-form__panel">
     @for (field of fieldsForActiveTab; track field.id) {
-      <ngx-dynamic-field
-        [field]="field"
-        [control]="getControl(field.id)!"
-        [config]="config"
-        [language]="language"
-        [readonly]="readonly || !!field.readonly"
-        [userRoles]="userRoles"
+      <div
+        class="ngx-form__field-slot"
         [style.gridColumn]="getFieldSpan(field)"
         [attr.id]="'field-container-' + field.id"
-      />
+      >
+        <ngx-dynamic-field
+          [field]="field"
+          [control]="getControl(field.id)!"
+          [config]="config"
+          [currentTabId]="activeTabConfig?.id"
+          [language]="language"
+          [readonly]="readonly || !!field.readonly || isFieldLocked(field)"
+          [userRoles]="userRoles"
+        />
+        @if (field.criticalField && !readonly) {
+          <button
+            type="button"
+            class="ngx-form__lock"
+            [attr.data-testid]="'lock-' + field.id"
+            [attr.aria-pressed]="!isFieldLocked(field)"
+            [attr.aria-label]="
+              (isFieldLocked(field) ? 'Unlock ' : 'Lock ') + resolveFieldLabel(field)
+            "
+            [title]="
+              isFieldLocked(field)
+                ? 'Critical field — click to unlock for editing'
+                : 'Critical field — click to lock'
+            "
+            (click)="toggleFieldLock(field)"
+          >
+            {{ isFieldLocked(field) ? '🔒' : '🔓' }}
+          </button>
+        }
+      </div>
     }
   </div>
 

@@ -9,7 +9,8 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "dev": "turbo run dev"
+    "dev": "turbo run dev",
+    "test:coverage": "turbo run test:coverage"
   },
   "devDependencies": {
     "eslint": "^8.57.1",

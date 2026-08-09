@@ -4,8 +4,12 @@
     <div class="deb-row">
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>Field id</mat-label>
-        <input matInput [value]="f.id" (change)="commitId(f.id, $event)" />
-        <mat-hint>Used as the data key — must be unique.</mat-hint>
+        <input matInput data-testid="field-id" [value]="f.id" disabled />
+        @if (store.hasManualId(f.id)) {
+          <mat-hint>The stored data key for this saved field — fixed.</mat-hint>
+        } @else {
+          <mat-hint>Derived from the label. Used as the data key.</mat-hint>
+        }
       </mat-form-field>
       <span class="deb-chip">{{ meta()?.label || f.type }}</span>
     </div>
@@ -42,17 +46,10 @@
       </mat-form-field>
     }
 
-    <!-- Entity-ref registry key -->
+    <!-- Entity reference, cascade, and autoPatch -->
     @if (meta()?.isEntityRef) {
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-        <mat-label>Entity-ref key</mat-label>
-        <input
-          matInput
-          [ngModel]="f.entityReference?.linkedEntityKey ?? ''"
-          (ngModelChange)="store.updateField(f.id, { entityReference: { enabled: true, linkedEntityKey: $event } })"
-        />
-        <mat-hint>Registry key used to load options. Defaults to the field id.</mat-hint>
-      </mat-form-field>
+      <mat-divider></mat-divider>
+      <ngx-entity-reference-config />
     }
 
     <mat-divider></mat-divider>
@@ -146,7 +143,85 @@
         [ngModel]="f.maskData ?? false"
         (ngModelChange)="store.updateField(f.id, { maskData: $event })"
       >Mask data (RBAC)</mat-slide-toggle>
+      <mat-slide-toggle
+        data-testid="toggle-critical"
+        [ngModel]="f.criticalField ?? false"
+        (ngModelChange)="store.updateField(f.id, { criticalField: $event })"
+        matTooltip="Renders locked; editing it announces a change against the session baseline."
+      >Critical field</mat-slide-toggle>
+      <mat-slide-toggle
+        [ngModel]="f.showOnMinimize ?? false"
+        (ngModelChange)="store.updateField(f.id, { showOnMinimize: $event })"
+        matTooltip="Shown in the record editor's summary panel."
+      >Show in summary</mat-slide-toggle>
     </div>
+
+    <mat-divider></mat-divider>
+
+    <!-- Conditional visibility (static showWhen) -->
+    <div class="deb-row deb-row--split">
+      <span class="deb-section-title">Show when</span>
+      <button mat-stroked-button type="button" data-testid="add-show-when" (click)="addShowWhen(f)">
+        <mat-icon>add</mat-icon> Condition
+      </button>
+    </div>
+    @for (entry of showWhenEntries(f); track entry.key) {
+      <div class="deb-option-row">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Field id</mat-label>
+          <input matInput [ngModel]="entry.key" (ngModelChange)="renameShowWhen(f, entry.key, $event)" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Equals</mat-label>
+          <input matInput [ngModel]="entry.display" (ngModelChange)="setShowWhenValue(f, entry.key, $event)" />
+        </mat-form-field>
+        <button mat-icon-button type="button" color="warn" matTooltip="Remove condition"
+          (click)="removeShowWhen(f, entry.key)">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
+    }
+    @if (!showWhenEntries(f).length) {
+      <p class="deb-hint">Always visible. Add a condition to show this field only for certain values.</p>
+    }
+
+    <!-- patchOnTrue (boolean/checkbox only) -->
+    @if (f.type === 'boolean' || f.type === 'checkbox') {
+      <mat-divider></mat-divider>
+      <div class="deb-row deb-row--split">
+        <span class="deb-section-title">Copy on true</span>
+        <button mat-stroked-button type="button" data-testid="add-patch-on-true"
+          (click)="store.addPatchOnTrueMapping(f.id)">
+          <mat-icon>add</mat-icon> Mapping
+        </button>
+      </div>
+      @for (mapping of f.patchOnTrue ?? []; track $index) {
+        <div class="deb-option-row">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>From field</mat-label>
+            <input matInput [ngModel]="mapping.from"
+              (ngModelChange)="store.updatePatchOnTrueMapping(f.id, $index, { from: $event })" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>To field</mat-label>
+            <input matInput [ngModel]="mapping.to"
+              (ngModelChange)="store.updatePatchOnTrueMapping(f.id, $index, { to: $event })" />
+          </mat-form-field>
+          <button mat-icon-button type="button" color="warn" matTooltip="Remove mapping"
+            (click)="store.removePatchOnTrueMapping(f.id, $index)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      }
+      @if (!(f.patchOnTrue ?? []).length) {
+        <p class="deb-hint">When this flips to true, copy one field's value into another.</p>
+      }
+    }
+
+    <mat-divider></mat-divider>
+
+    <!-- Rules attached to this field -->
+    <ngx-field-rules-list />
   </div>
 } @else {
   <div class="deb-inspector__empty">

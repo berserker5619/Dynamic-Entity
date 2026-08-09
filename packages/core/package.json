@@ -1,6 +1,6 @@
 {
   "name": "@dynamic-entity/core",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Shared model + framework-agnostic form logic for the dynamic-entity ecosystem.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -12,12 +12,15 @@
       "require": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "test": "jest",
     "lint": "tsc --noEmit",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --watch"
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "test:coverage": "jest --coverage"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
@@ -26,6 +29,10 @@
     "tsup": "^8.0.0",
     "typescript": "^5.4.0"
   },
-  "keywords": ["dynamic-entity", "typescript", "types"],
+  "keywords": [
+    "dynamic-entity",
+    "typescript",
+    "types"
+  ],
   "license": "MIT"
 }

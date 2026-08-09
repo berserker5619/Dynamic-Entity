@@ -3,15 +3,15 @@ module.exports = {
   preset: 'jest-preset-angular',
   setupFilesAfterEnv: ['<rootDir>/setup-jest.ts'],
   testMatch: ['<rootDir>/src/**/*.spec.ts'],
+  // Coverage is measured on shipped source only: barrels and specs are excluded.
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/public-api.ts'],
+  coverageReporters: ['text-summary', 'lcov'],
+  // Thresholds sit just under the current numbers: they are a ratchet against regression,
+  // not a target to game. Raise them when coverage genuinely improves.
+  coverageThreshold: {
+    global: { statements: 94, branches: 76, functions: 96, lines: 96 },
+  },
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
-  // Pre-existing specs written for Karma/Jasmine (jasmine.createSpyObj etc.) that predate
-  // this Jest setup. They need a separate Jasmine→Jest migration; excluded until then so
-  // `npm test` gives a clean signal for the Jest-native suites.
-  testPathIgnorePatterns: [
-    '<rootDir>/src/lib/form/dynamic-form.component.spec.ts',
-    '<rootDir>/src/lib/form/dynamic-field/dynamic-field.component.spec.ts',
-    '<rootDir>/src/lib/field-types/entity-ref-field.component.spec.ts',
-  ],
   moduleNameMapper: {
     '^@dynamic-entity/core$': '<rootDir>/../core/src/index.ts',
   },

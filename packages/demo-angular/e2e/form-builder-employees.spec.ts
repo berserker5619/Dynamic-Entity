@@ -43,14 +43,6 @@ async function selectLastField(page: Page): Promise<void> {
   await page.locator('.deb-field-row').last().click();
 }
 
-/** Fill the Field id in the inspector (first mat-form-field, commits on Tab). */
-async function setFieldId(page: Page, id: string): Promise<void> {
-  const input = page.locator('ngx-field-inspector mat-form-field').first().locator('input');
-  await expect(input).toBeVisible({ timeout: 5000 });
-  await input.fill(id);
-  await input.press('Tab');
-}
-
 /** Fill the Label (en) in the inspector. */
 async function setFieldLabel(page: Page, label: string): Promise<void> {
   const field = page.locator('ngx-field-inspector mat-form-field').filter({ hasText: /Label.*en/ }).first();
@@ -77,18 +69,23 @@ async function addOption(page: Page, value: string, label: string): Promise<void
   await last.locator('mat-form-field').filter({ hasText: /Label/ }).locator('input').fill(label);
 }
 
-/** Helper: add a complete field definition (type + id + label + required + options) in one call. */
+/**
+ * Helper: add a complete field definition in one call.
+ *
+ * `expectedId` is not typed in — the Field id is read-only in the inspector and derived
+ * from the label — so it is what the builder should produce, and is asserted after the save.
+ */
 async function addCompleteField(
   page: Page,
   type: string,
-  id: string,
+  expectedId: string,
   label: string,
   required: boolean,
   options?: [string, string][],
 ): Promise<void> {
+  void expectedId;
   await addField(page, type);
   await selectLastField(page);
-  await setFieldId(page, id);
   await setFieldLabel(page, label);
   if (required) await setRequired(page, true);
   if (options?.length) {
@@ -129,14 +126,14 @@ type FieldDef = [string, string, string, boolean, [string, string][]?];
 /** Tab 1 — Primary Details (primaryDetails) — 13 fields */
 const PRIMARY_DETAILS_FIELDS: FieldDef[] = [
   // [type, id, label, required, options?]
-  ['Text', 'individualNumber', 'Individual #', false],
+  ['Text', 'individual', 'Individual #', false],
   ['Dropdown', 'salutation', 'Salutation', false, [
     ['mr', 'Mr'], ['ms', 'Ms'], ['mrs', 'Mrs'], ['dr', 'Dr'], ['prof', 'Prof'],
   ]],
   ['Text', 'firstName', 'First Name', true],
   ['Text', 'middleName', 'Middle Name', false],
   ['Text', 'lastName', 'Last Name', true],
-  ['Text', 'prefferedName', 'Preferred Name', false],
+  ['Text', 'preferredName', 'Preferred Name', false],
   ['Dropdown', 'status', 'Status', true, [
     ['prospect', 'Prospect'], ['active', 'Active'], ['inactive', 'Inactive'],
     ['on_leave', 'On Leave'], ['terminated', 'Terminated'],
@@ -148,7 +145,7 @@ const PRIMARY_DETAILS_FIELDS: FieldDef[] = [
     ['sales_representative', 'Sales Representative'], ['accountant', 'Accountant'],
     ['administrator', 'Administrator'],
   ]],
-  ['Dropdown', 'companyId', 'Company', false],
+  ['Dropdown', 'company', 'Company', false],
   ['Text', 'companyName', 'Company Name', false],
   ['Dropdown', 'roleName', 'Role Name', false, [
     ['admin', 'Admin'], ['manager', 'Manager'], ['supervisor', 'Supervisor'],

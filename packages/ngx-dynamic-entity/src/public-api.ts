@@ -3,12 +3,15 @@ export * from './lib/tokens/injection-tokens';
 
 // Providers
 export * from './lib/providers/provide-ngx-dynamic-entity';
+export * from './lib/providers/provide-field-types';
 
 // Services
 export * from './lib/services/field-registry.service';
 export * from './lib/services/hook-registry.service';
 export * from './lib/services/validator-registry.service';
 export * from './lib/services/entity-ref-registry.service';
+export * from './lib/services/entity-ref-selection.service';
+export * from './lib/services/cascade-data.service';
 export * from './lib/services/rbac.service';
 export * from './lib/services/rules-evaluation.service';
 
@@ -41,6 +44,12 @@ export type {
   RbacContext,
   FieldValidators,
   EntityReferenceConfig,
+  EntityReferenceLoader,
+  ReferenceOption,
+  ReferenceLoaderContext,
+  AutoPatchConfig,
+  PatchOnTrueMapping,
+  FileRef,
   FormRule,
   RuleCondition,
   RuleAction,

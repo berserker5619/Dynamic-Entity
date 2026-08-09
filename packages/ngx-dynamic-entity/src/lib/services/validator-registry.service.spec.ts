@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ValidatorRegistryService } from './validator-registry.service';
 import { VALIDATOR_REGISTRY } from '../tokens/injection-tokens';
-import { Validators } from '@angular/forms';
+import { FormControl, Validators } from '@angular/forms';
 
 describe('ValidatorRegistryService', () => {
   let service: ValidatorRegistryService;
@@ -59,5 +59,83 @@ describe('ValidatorRegistryService', () => {
   it('should return null for invalid parameters', () => {
     expect(service.resolve('min:abc')).toBeNull();
     expect(service.resolve('minLength:')).toBeNull();
+  });
+
+  it('lets a consumer validator shadow a built-in key', () => {
+    TestBed.resetTestingModule();
+    const shadow = () => ({ shadowed: true });
+    TestBed.configureTestingModule({
+      providers: [
+        ValidatorRegistryService,
+        { provide: VALIDATOR_REGISTRY, useValue: new Map([['required', shadow]]) },
+      ],
+    });
+
+    expect(TestBed.inject(ValidatorRegistryService).resolve('required')).toBe(shadow);
+  });
+
+  it('resolveAll defaults to an empty list', () => {
+    expect(service.resolveAll()).toEqual([]);
+  });
+
+  /**
+   * `resolveFromConfig` is the path DynamicFormComponent actually builds controls with —
+   * every branch here is a validator a config author can declare.
+   */
+  describe('resolveFromConfig', () => {
+    const errorsFor = (config: Parameters<ValidatorRegistryService['resolveFromConfig']>[0], value: unknown) => {
+      const control = new FormControl(value, service.resolveFromConfig(config));
+      return control.errors ?? {};
+    };
+
+    it('returns [] for a missing config', () => {
+      expect(service.resolveFromConfig()).toEqual([]);
+      expect(service.resolveFromConfig(undefined)).toEqual([]);
+    });
+
+    it('delegates a string[] config to resolveAll', () => {
+      expect(service.resolveFromConfig(['required', 'unknown']).length).toBe(1);
+    });
+
+    it('applies required', () => {
+      expect(errorsFor({ required: true }, '')['required']).toBe(true);
+      expect(errorsFor({ required: true }, 'x')['required']).toBeUndefined();
+    });
+
+    it('applies min and max', () => {
+      expect(errorsFor({ min: 10 }, 5)['min']).toBeDefined();
+      expect(errorsFor({ max: 100 }, 500)['max']).toBeDefined();
+      expect(errorsFor({ min: 10, max: 100 }, 50)).toEqual({});
+    });
+
+    it('treats a zero bound as a real bound, not as absent', () => {
+      expect(errorsFor({ min: 0 }, -1)['min']).toBeDefined();
+      expect(errorsFor({ max: 0 }, 1)['max']).toBeDefined();
+    });
+
+    it('applies minLength and maxLength', () => {
+      expect(errorsFor({ minLength: 3 }, 'ab')['minlength']).toBeDefined();
+      expect(errorsFor({ maxLength: 3 }, 'abcd')['maxlength']).toBeDefined();
+    });
+
+    it('applies pattern', () => {
+      expect(errorsFor({ pattern: '^\\d+$' }, 'abc')['pattern']).toBeDefined();
+      expect(errorsFor({ pattern: '^\\d+$' }, '123')).toEqual({});
+    });
+
+    it('combines every declared validator', () => {
+      expect(service.resolveFromConfig({
+        required: true,
+        min: 1,
+        max: 9,
+        minLength: 1,
+        maxLength: 9,
+        pattern: '.*',
+      }).length).toBe(6);
+    });
+
+    it('returns [] for an empty config object', () => {
+      expect(service.resolveFromConfig({})).toEqual([]);
+    });
   });
 });

@@ -1,74 +1,132 @@
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { FieldRegistryService } from './field-registry.service';
+import { provideBuiltInFieldTypes, provideFieldTypes } from '../providers/provide-field-types';
 import { FIELD_TYPE_REGISTRY } from '../tokens/injection-tokens';
 import { TextFieldComponent } from '../field-types/text-field.component';
-import { Component } from '@angular/core';
+import { NumberFieldComponent } from '../field-types/number-field.component';
+import { FieldRegistryService } from './field-registry.service';
 
 @Component({ template: '' })
 class CustomFieldComponent {}
 
+@Component({ template: '' })
+class OverrideTextComponent {}
+
+const ALL_BUILTIN_FIELD_TYPES = [
+  'text',
+  'textarea',
+  'number',
+  'currency',
+  'email',
+  'password',
+  'checkbox',
+  'boolean',
+  'date',
+  'datetime',
+  'monthYear',
+  'dropdown',
+  'radio',
+  'multiSelect',
+  'entity-ref',
+  'group',
+  'array',
+  'image',
+  'file',
+];
+
 describe('FieldRegistryService', () => {
-  let service: FieldRegistryService;
+  afterEach(() => TestBed.resetTestingModule());
 
-  const ALL_BUILTIN_FIELD_TYPES = [
-    'text',
-    'textarea',
-    'number',
-    'currency',
-    'email',
-    'password',
-    'checkbox',
-    'boolean',
-    'date',
-    'datetime',
-    'dropdown',
-    'radio',
-    'multiSelect',
-    'entity-ref',
-    'group',
-    'array',
-    'image',
-    'file',
-  ];
+  describe('with no registration (the tree-shaking default)', () => {
+    it('resolves nothing — built-ins are opt-in', () => {
+      TestBed.configureTestingModule({});
+      const service = TestBed.inject(FieldRegistryService);
 
-  beforeEach(() => {
-    TestBed.configureTestingModule({
-      providers: [
-        FieldRegistryService,
-        {
-          provide: FIELD_TYPE_REGISTRY,
-          useValue: new Map([['custom', CustomFieldComponent]]),
-        },
-      ],
+      expect(service.resolve('text')).toBeNull();
+      expect(service.has('text')).toBe(false);
+      expect(service.registeredTypes()).toEqual([]);
     });
-    service = TestBed.inject(FieldRegistryService);
   });
 
-  it('should resolve built-in field types', () => {
-    const comp = service.resolve('text');
-    expect(comp).toBe(TextFieldComponent);
+  describe('with provideBuiltInFieldTypes()', () => {
+    beforeEach(() => {
+      TestBed.configureTestingModule({ providers: [provideBuiltInFieldTypes()] });
+    });
+
+    it('resolves every built-in field type', () => {
+      const service = TestBed.inject(FieldRegistryService);
+      for (const type of ALL_BUILTIN_FIELD_TYPES) {
+        expect(service.resolve(type)).not.toBeNull();
+        expect(service.has(type)).toBe(true);
+      }
+      expect(service.registeredTypes().length).toBe(ALL_BUILTIN_FIELD_TYPES.length);
+    });
+
+    it('maps text to TextFieldComponent', () => {
+      expect(TestBed.inject(FieldRegistryService).resolve('text')).toBe(TextFieldComponent);
+    });
+
+    it('returns null for unknown field types', () => {
+      expect(TestBed.inject(FieldRegistryService).resolve('unknown')).toBeNull();
+    });
   });
 
-  it('should resolve all built-in field types', () => {
-    for (const type of ALL_BUILTIN_FIELD_TYPES) {
-      const comp = service.resolve(type);
-      expect(comp).not.toBeNull();
-      expect(service.has(type)).toBeTrue();
-    }
+  describe('with a partial provideFieldTypes()', () => {
+    it('registers only the named types', () => {
+      TestBed.configureTestingModule({
+        providers: [provideFieldTypes({ text: TextFieldComponent })],
+      });
+      const service = TestBed.inject(FieldRegistryService);
+
+      expect(service.resolve('text')).toBe(TextFieldComponent);
+      expect(service.resolve('dropdown')).toBeNull();
+    });
+
+    it('composes multiple calls instead of clobbering', () => {
+      TestBed.configureTestingModule({
+        providers: [
+          provideFieldTypes({ text: TextFieldComponent }),
+          provideFieldTypes({ number: NumberFieldComponent }),
+        ],
+      });
+      const service = TestBed.inject(FieldRegistryService);
+
+      expect(service.resolve('text')).toBe(TextFieldComponent);
+      expect(service.resolve('number')).toBe(NumberFieldComponent);
+    });
+
+    it('lets a later set win on a key collision', () => {
+      TestBed.configureTestingModule({
+        providers: [
+          provideFieldTypes({ text: TextFieldComponent }),
+          provideFieldTypes({ text: OverrideTextComponent }),
+        ],
+      });
+      expect(TestBed.inject(FieldRegistryService).resolve('text')).toBe(OverrideTextComponent);
+    });
   });
 
-  it('should resolve consumer-provided field types', () => {
-    const comp = service.resolve('custom');
-    expect(comp).toBe(CustomFieldComponent);
-  });
+  describe('priority and runtime registration', () => {
+    it('lets the consumer token override a registered built-in', () => {
+      TestBed.configureTestingModule({
+        providers: [
+          provideBuiltInFieldTypes(),
+          { provide: FIELD_TYPE_REGISTRY, useValue: new Map([['text', OverrideTextComponent]]) },
+        ],
+      });
+      expect(TestBed.inject(FieldRegistryService).resolve('text')).toBe(OverrideTextComponent);
+    });
 
-  it('should return null for unknown field types', () => {
-    expect(service.resolve('unknown')).toBeNull();
-  });
+    it('supports register() and registerAll() at runtime', () => {
+      TestBed.configureTestingModule({});
+      const service = TestBed.inject(FieldRegistryService);
 
-  it('should check existence correctly', () => {
-    expect(service.has('text')).toBeTrue();
-    expect(service.has('custom')).toBeTrue();
-    expect(service.has('unknown')).toBeFalse();
+      service.register('custom', CustomFieldComponent);
+      service.registerAll({ another: CustomFieldComponent });
+
+      expect(service.resolve('custom')).toBe(CustomFieldComponent);
+      expect(service.resolve('another')).toBe(CustomFieldComponent);
+      expect(service.registeredTypes()).toEqual(['another', 'custom']);
+    });
   });
 });

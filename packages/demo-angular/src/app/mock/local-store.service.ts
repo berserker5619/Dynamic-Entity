@@ -1,10 +1,14 @@
 import { Injectable } from '@angular/core';
+import type { EntityFormConfig } from 'ngx-dynamic-entity';
+import { shouldMaskField } from '@dynamic-entity/core';
 import {
   CLIENTS_CONFIG,
   CLIENTS_RECORDS,
   EMPLOYEES_CONFIG,
   EMPLOYEES_RECORDS,
   MASKED_ROLES,
+  ORDERS_CONFIG,
+  ORDERS_RECORDS,
   TEST_DATA_CONFIGS,
 } from './sample-data';
 
@@ -144,11 +148,25 @@ export class LocalStore {
     } catch {}
   }
 
+  /**
+   * Which fields this role sees masked in the list view.
+   *
+   * The decision itself comes from core's `shouldMaskField`, so the demo table honours the
+   * same three-level rule (form → tab → field) as the renderer instead of its own
+   * field-only approximation. Only the row rendering is the demo's own — the library
+   * ships no data table.
+   */
   private maskedFieldIds(config: AnyConfig | null, roles: string[]): Set<string> {
-    const isMasked = roles.some(r => MASKED_ROLES.includes(r));
-    if (!config || !isMasked) return new Set();
-    const allFields = this.extractFields(config);
-    return new Set(allFields.filter((f: AnyConfig) => f['maskData']).map((f: AnyConfig) => f['id']));
+    if (!config) return new Set();
+    const formConfig = config as unknown as EntityFormConfig;
+    const masked = new Set<string>();
+
+    for (const tab of formConfig.tabs ?? []) {
+      for (const field of tab.fields ?? []) {
+        if (shouldMaskField(field, tab, formConfig, roles, MASKED_ROLES)) masked.add(field.id);
+      }
+    }
+    return masked;
   }
 
   private applyMask(row: Record<string, unknown>, ids: Set<string>): Record<string, unknown> {
@@ -172,6 +190,7 @@ export class LocalStore {
     // Demo sample configs take precedence for clients and employees (so demo tests remain deterministic)
     mergedMap.set(CLIENTS_CONFIG.entity, CLIENTS_CONFIG);
     mergedMap.set(EMPLOYEES_CONFIG.entity, EMPLOYEES_CONFIG);
+    mergedMap.set(ORDERS_CONFIG.entity, ORDERS_CONFIG);
 
     // User modifications take precedence
     for (const ex of existing) {
@@ -183,5 +202,6 @@ export class LocalStore {
     this.write(CONFIGS_KEY, Array.from(mergedMap.values()));
     if (!localStorage.getItem(recordsKey('clients'))) this.write(recordsKey('clients'), CLIENTS_RECORDS);
     if (!localStorage.getItem(recordsKey('employees'))) this.write(recordsKey('employees'), EMPLOYEES_RECORDS);
+    if (!localStorage.getItem(recordsKey('orders'))) this.write(recordsKey('orders'), ORDERS_RECORDS);
   }
 }

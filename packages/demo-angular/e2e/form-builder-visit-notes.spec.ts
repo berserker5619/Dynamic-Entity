@@ -7,7 +7,7 @@
  * Source entity (test_data.json lines 12891–13669):
  *   entity: "visitNotes"
  *   Tab 1 "basicInfo / Basic Information" — 5 fields:
- *     clientId (dropdown), caregiverName (text, required), visitDate (date, required),
+ *     client (dropdown), caregiverName (text, required), visitDate (date, required),
  *     startTime (text, required), endTime (text, required)
  *   Tab 2 "careActivities / Care Activities" — 7 fields:
  *     tasksCompleted (multiSelect, required, 14 options), clientConditionToday (dropdown, 4 options),
@@ -41,18 +41,6 @@ async function addField(page: Page, label: string): Promise<void> {
   const target = (await btn.count()) ? btn : btnFallback;
   await expect(target).toBeVisible({ timeout: 5000 });
   await target.click();
-}
-
-/**
- * Fill the "Field id" input in the inspector.
- * This is always the FIRST mat-form-field inside ngx-field-inspector.
- * Uses (change) not ngModel, so we Tab away to commit.
- */
-async function setFieldId(page: Page, newId: string): Promise<void> {
-  const input = page.locator('ngx-field-inspector mat-form-field').first().locator('input');
-  await expect(input).toBeVisible({ timeout: 5000 });
-  await input.fill(newId);
-  await input.press('Tab');
 }
 
 /**
@@ -167,18 +155,16 @@ test.describe('Form Builder UI — recreate visitNotes from test_data.json', () 
     // NOTE: store.addField() always targets tabs[0] when called from the palette UI.
     // So we add all 5 Basic Information fields first.
 
-    // Field 1: clientId — Dropdown (required)
+    // Field 1: client — Dropdown (required)
     await addField(page, 'Dropdown');
     await selectLastField(page);
-    await setFieldId(page, 'clientId');
     await setFieldLabel(page, 'Client');
     await setRequired(page, true);
-    await expect(page.locator('.deb-field-row .deb-field-id').filter({ hasText: 'clientId' })).toBeVisible();
+    await expect(page.locator('.deb-field-row .deb-field-id').filter({ hasText: 'client' })).toBeVisible();
 
     // Field 2: caregiverName — Text (required)
     await addField(page, 'Text');
     await selectLastField(page);
-    await setFieldId(page, 'caregiverName');
     await setFieldLabel(page, 'Caregiver Name');
     await setRequired(page, true);
     await expect(page.locator('.deb-field-row .deb-field-id').filter({ hasText: 'caregiverName' })).toBeVisible();
@@ -186,7 +172,6 @@ test.describe('Form Builder UI — recreate visitNotes from test_data.json', () 
     // Field 3: visitDate — Date (required)
     await addField(page, 'Date');
     await selectLastField(page);
-    await setFieldId(page, 'visitDate');
     await setFieldLabel(page, 'Visit Date');
     await setRequired(page, true);
     await expect(page.locator('.deb-field-row .deb-field-id').filter({ hasText: 'visitDate' })).toBeVisible();
@@ -194,7 +179,6 @@ test.describe('Form Builder UI — recreate visitNotes from test_data.json', () 
     // Field 4: startTime — Text (required)
     await addField(page, 'Text');
     await selectLastField(page);
-    await setFieldId(page, 'startTime');
     await setFieldLabel(page, 'Start Time');
     await setRequired(page, true);
     await expect(page.locator('.deb-field-row .deb-field-id').filter({ hasText: 'startTime' })).toBeVisible();
@@ -202,7 +186,6 @@ test.describe('Form Builder UI — recreate visitNotes from test_data.json', () 
     // Field 5: endTime — Text (required)
     await addField(page, 'Text');
     await selectLastField(page);
-    await setFieldId(page, 'endTime');
     await setFieldLabel(page, 'End Time');
     await setRequired(page, true);
     await expect(page.locator('.deb-field-row .deb-field-id').filter({ hasText: 'endTime' })).toBeVisible();
@@ -220,7 +203,6 @@ test.describe('Form Builder UI — recreate visitNotes from test_data.json', () 
     // Field 6: tasksCompleted — Multi-select (required, 14 options)
     await addField(page, 'Multi-select');
     await selectLastField(page);
-    await setFieldId(page, 'tasksCompleted');
     await setFieldLabel(page, 'Tasks Completed');
     await setRequired(page, true);
 
@@ -250,7 +232,6 @@ test.describe('Form Builder UI — recreate visitNotes from test_data.json', () 
     // Field 7: clientConditionToday — Dropdown (required, 4 options)
     await addField(page, 'Dropdown');
     await selectLastField(page);
-    await setFieldId(page, 'clientConditionToday');
     await setFieldLabel(page, 'Client Condition Today');
     await setRequired(page, true);
     for (const [val, lbl] of [['baseline', 'Baseline'], ['improved', 'Improved'], ['worse', 'Worse'], ['new_issue', 'New Issue']] as [string, string][]) {
@@ -261,35 +242,30 @@ test.describe('Form Builder UI — recreate visitNotes from test_data.json', () 
     // Field 8: changesObserved — Text Area
     await addField(page, 'Text Area');
     await selectLastField(page);
-    await setFieldId(page, 'changesObserved');
     await setFieldLabel(page, 'Changes Observed');
     await expect(page.locator('.deb-field-row .deb-field-id').filter({ hasText: 'changesObserved' })).toBeVisible();
 
     // Field 9: incidentsOrInjuries — Boolean Toggle
     await addField(page, 'Boolean Toggle');
     await selectLastField(page);
-    await setFieldId(page, 'incidentsOrInjuries');
     await setFieldLabel(page, 'Incidents or Injuries');
     await expect(page.locator('.deb-field-row .deb-field-id').filter({ hasText: 'incidentsOrInjuries' })).toBeVisible();
 
     // Field 10: incidentDescription — Text Area
     await addField(page, 'Text Area');
     await selectLastField(page);
-    await setFieldId(page, 'incidentDescription');
     await setFieldLabel(page, 'Incident Description');
     await expect(page.locator('.deb-field-row .deb-field-id').filter({ hasText: 'incidentDescription' })).toBeVisible();
 
     // Field 11: vitalSignsTaken — Boolean Toggle
     await addField(page, 'Boolean Toggle');
     await selectLastField(page);
-    await setFieldId(page, 'vitalSignsTaken');
     await setFieldLabel(page, 'Vital Signs Taken');
     await expect(page.locator('.deb-field-row .deb-field-id').filter({ hasText: 'vitalSignsTaken' })).toBeVisible();
 
     // Field 12: vitalsSummary — Text Area
     await addField(page, 'Text Area');
     await selectLastField(page);
-    await setFieldId(page, 'vitalsSummary');
     await setFieldLabel(page, 'Vitals Summary');
     await expect(page.locator('.deb-field-row .deb-field-id').filter({ hasText: 'vitalsSummary' })).toBeVisible();
 
@@ -304,7 +280,7 @@ test.describe('Form Builder UI — recreate visitNotes from test_data.json', () 
     await expect(jsonPre).toBeVisible({ timeout: 5000 });
     const jsonText = await jsonPre.textContent();
     expect(jsonText).toContain('"entity": "visitNotes"');
-    expect(jsonText).toContain('"clientId"');
+    expect(jsonText).toContain('"client"');
     expect(jsonText).toContain('"caregiverName"');
     expect(jsonText).toContain('"visitDate"');
     expect(jsonText).toContain('"startTime"');

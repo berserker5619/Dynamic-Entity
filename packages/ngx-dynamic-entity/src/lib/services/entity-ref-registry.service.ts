@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import type { EntityReferenceLoader } from '@dynamic-entity/core';
 import { ENTITY_REF_REGISTRY } from '../tokens/injection-tokens';
 
 /**
@@ -11,13 +12,14 @@ import { ENTITY_REF_REGISTRY } from '../tokens/injection-tokens';
  */
 @Injectable({ providedIn: 'root' })
 export class EntityRefRegistryService {
-  private readonly registry = inject(ENTITY_REF_REGISTRY, { optional: true }) ?? new Map();
+  private readonly registry =
+    inject(ENTITY_REF_REGISTRY, { optional: true }) ?? new Map<string, EntityReferenceLoader>();
 
   /**
-   * Get the option loader function for an entity key.
-   * @returns Async function that returns options array, or null if not registered.
+   * Get the option loader for an entity key.
+   * @returns The loader, or null if none is registered.
    */
-  resolve(entityKey: string): (() => Promise<any[]>) | null {
+  resolve(entityKey: string): EntityReferenceLoader | null {
     return this.registry.get(entityKey) ?? null;
   }
 

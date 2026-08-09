@@ -7,6 +7,7 @@ import {
   ViewChild,
   ViewContainerRef,
   inject,
+  isDevMode,
 } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
 import type { NestedFieldConfig, EntityFormConfig, NestedTabConfig } from '@dynamic-entity/core';
@@ -52,7 +53,10 @@ export class DynamicFieldComponent implements OnChanges {
     if (!this.field || !this.control) return;
 
     const ComponentClass = this.fieldRegistry.resolve(this.field.type);
-    if (!ComponentClass) return; // Unknown field type — render nothing
+    if (!ComponentClass) {
+      this.warnUnresolved(this.field.type);
+      return; // Unknown field type — render nothing
+    }
 
     // Determine masking for this specific field
     const tab: NestedTabConfig | null = this.currentTabId ? findTab(this.config?.tabs, this.currentTabId) : null;
@@ -69,6 +73,22 @@ export class DynamicFieldComponent implements OnChanges {
     this.setInputs(this.componentRef, masked);
     this.componentRef.changeDetectorRef.markForCheck();
   }
+
+  /**
+   * Field types are opt-in (see `provideFieldTypes` / `provideBuiltInFieldTypes`), so an
+   * unregistered type renders nothing. Say so once per type in dev builds rather than
+   * leaving a silently blank slot.
+   */
+  private warnUnresolved(type: string): void {
+    if (!isDevMode() || DynamicFieldComponent.warnedTypes.has(type)) return;
+    DynamicFieldComponent.warnedTypes.add(type);
+    console.warn(
+      `[ngx-dynamic-entity] No component registered for field type "${type}" — the field was not rendered. ` +
+        `Register it with provideFieldTypes({ '${type}': MyComponent }) or provideBuiltInFieldTypes().`,
+    );
+  }
+
+  private static readonly warnedTypes = new Set<string>();
 
   /**
    * Pass all 5 contract inputs via ComponentRef.setInput() — uniform for all types (ADR-008).

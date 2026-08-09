@@ -3,17 +3,17 @@ import {
   Input,
   Output,
   EventEmitter,
+  OnChanges,
+  SimpleChanges,
   signal,
   computed,
-  inject,
   ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
-import { resolveLabel } from '@dynamic-entity/core';
+import { formatDisplayValue, resolveLabel } from '@dynamic-entity/core';
 import { DynamicFormComponent } from './dynamic-form.component';
-import { RulesEvaluationService } from '../services/rules-evaluation.service';
 
 /**
  * DynamicRecordFormComponent — comprehensive tabbed record view & edit component.
@@ -118,7 +118,7 @@ import { RulesEvaluationService } from '../services/rules-evaluation.service';
     `,
   ],
 })
-export class DynamicRecordFormComponent {
+export class DynamicRecordFormComponent implements OnChanges {
   @Input() config!: EntityFormConfig;
   @Input() rules?: FormRule[];
   @Input() initialData?: Record<string, any>;
@@ -134,10 +134,20 @@ export class DynamicRecordFormComponent {
 
   @ViewChild(DynamicFormComponent) dynamicFormComp?: DynamicFormComponent;
 
-  private readonly rulesEvaluation = inject(RulesEvaluationService);
-
   readonly currentData = signal<Record<string, any>>({});
   readonly originalBaseline = signal<Record<string, any>>({});
+
+  /**
+   * Seed the session baseline from the loaded record so `VALUE_CHANGED` rules and the
+   * modification banner compare against the record as it was opened — not as it was
+   * after the first keystroke.
+   */
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['initialData'] || changes['config']) {
+      this.originalBaseline.set({ ...(this.initialData ?? {}) });
+      this.currentData.set({ ...(this.initialData ?? {}) });
+    }
+  }
 
   get recordTitle(): string {
     if (!this.config) return 'Record';
@@ -170,7 +180,9 @@ export class DynamicRecordFormComponent {
   });
 
   onFormChange(data: Record<string, any>): void {
-    if (!this.originalBaseline() || Object.keys(this.originalBaseline()).length === 0) {
+    // Baseline is seeded from `initialData` in ngOnChanges; only fill it here when the
+    // record was opened empty (create flow), so the first emitted shape becomes the baseline.
+    if (Object.keys(this.originalBaseline()).length === 0) {
       this.originalBaseline.set({ ...data });
     }
     this.currentData.set(data);
@@ -189,10 +201,9 @@ export class DynamicRecordFormComponent {
     return resolveLabel(field.label, this.language);
   }
 
+  /** Summary values render through the shared core formatter, not a local stringifier. */
   formatFieldValue(field: NestedFieldConfig): string {
-    const val = this.currentData()[field.id];
-    if (val === null || val === undefined || val === '') return '—';
-    return String(val);
+    return formatDisplayValue(field.type, field.options, this.currentData()[field.id], this.language);
   }
 
   jumpToField(fieldId: string): void {

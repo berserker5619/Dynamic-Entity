@@ -1,16 +1,32 @@
 import { InjectionToken } from '@angular/core';
 import type { Type } from '@angular/core';
-import type { Observable } from 'rxjs';
-import type { CommonModuleEntry } from '@dynamic-entity/core';
+import type { CommonModuleEntry, EntityReferenceLoader, FileUploadHandler } from '@dynamic-entity/core';
 
 /** Roles that see XXXXXXXXX for masked fields (ADR-003) */
 export const MASKED_ROLES = new InjectionToken<string[]>('MASKED_ROLES');
 
-/** Registry: fieldType string → Angular component class */
+/**
+ * Consumer **overrides**: fieldType string → Angular component class.
+ * Highest priority — beats anything registered through `provideFieldTypes()`.
+ */
 export const FIELD_TYPE_REGISTRY = new InjectionToken<Map<string, Type<any>>>('FIELD_TYPE_REGISTRY');
 
-/** Registry: entity key → async () => options[] loader function */
-export const ENTITY_REF_REGISTRY = new InjectionToken<Map<string, () => Promise<any[]>>>(
+/**
+ * Multi-provider of field-type sets, contributed by `provideFieldTypes()` /
+ * `provideBuiltInFieldTypes()`. Multi so several calls compose instead of clobbering;
+ * later sets win on key collision. This is the seam that keeps unused field components
+ * out of the bundle — nothing is imported until a set names it.
+ */
+export const FIELD_TYPE_SETS = new InjectionToken<Record<string, Type<any>>[]>('FIELD_TYPE_SETS');
+
+/**
+ * Registry: entity key → option loader.
+ *
+ * A loader receives a `ReferenceLoaderContext` (`parentValue`, `filters`, `lang`) and may
+ * return an array, a Promise, or an Observable of `ReferenceOption[]`. `ctx` is optional,
+ * so a zero-arg loader (`() => svc.list()`) is still a valid registration.
+ */
+export const ENTITY_REF_REGISTRY = new InjectionToken<Map<string, EntityReferenceLoader>>(
   'ENTITY_REF_REGISTRY',
 );
 
@@ -42,13 +58,12 @@ export const COMMON_MODULES_REGISTRY = new InjectionToken<CommonModuleEntry[]>(
 
 /**
  * Consumer-provided file/image upload handler.
- * When supplied, image-field and file-field components call this to persist
- * the File and receive a stable URL back. Without it, the field emits `{ file: File }` directly.
+ * When supplied, image-field and file-field call it to persist the File and receive a stable
+ * URL back. Without it the field stores `{ file, name, size, mimeType }` for the consumer to
+ * upload on submit. May return the result directly, as a Promise, or as an Observable.
  *
  * @example
  * { provide: UPLOAD_HANDLER, useFactory: () => (file: File) => myUploadService.upload(file) }
  */
-export const UPLOAD_HANDLER = new InjectionToken<(file: File) => Observable<{ url: string }>>(
-  'UPLOAD_HANDLER',
-);
+export const UPLOAD_HANDLER = new InjectionToken<FileUploadHandler>('UPLOAD_HANDLER');
 
