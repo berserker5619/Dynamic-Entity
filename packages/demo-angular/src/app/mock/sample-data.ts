@@ -35,6 +35,11 @@ export const CLIENTS_CONFIG: EntityFormConfig = {
         { id: 'notes', type: 'textarea', label: { en: 'Notes' }, visibility: true },
       ],
     },
+    {
+      id: 'documentsTab',
+      label: { en: 'Documents' },
+      moduleName: 'documents-view',
+    },
   ],
 };
 

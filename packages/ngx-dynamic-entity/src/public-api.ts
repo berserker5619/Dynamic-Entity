@@ -54,4 +54,5 @@ export type {
   RuleCondition,
   RuleAction,
   RuleEvaluationResult,
+  CommonModuleEntry,
 } from '@dynamic-entity/core';

@@ -67,3 +67,11 @@ export const COMMON_MODULES_REGISTRY = new InjectionToken<CommonModuleEntry[]>(
  */
 export const UPLOAD_HANDLER = new InjectionToken<FileUploadHandler>('UPLOAD_HANDLER');
 
+/**
+ * Consumer-provided predicate function to check whether user roles can edit system default tabs or fields.
+ * Defaults to allowing edits if not provided.
+ */
+export const SYSTEM_DEFAULT_CAN_EDIT = new InjectionToken<(roles: string[]) => boolean>(
+  'SYSTEM_DEFAULT_CAN_EDIT',
+);
+

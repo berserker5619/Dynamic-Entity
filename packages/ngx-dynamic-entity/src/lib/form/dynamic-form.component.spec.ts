@@ -383,4 +383,38 @@ describe('DynamicFormComponent', () => {
       expect(spy).toHaveBeenCalled();
     });
   });
+
+  describe('nested sub-tabs and module tabs (Phase 3)', () => {
+    it('switches sub-tabs and resolves fields for active sub-tab', () => {
+      build({
+        entity: 'parent_entity',
+        tabs: [
+          {
+            id: 'parentTab',
+            label: { en: 'Parent' },
+            children: [
+              {
+                id: 'childTab1',
+                label: { en: 'Child 1' },
+                fields: [{ id: 'field1', type: 'text', label: { en: 'Field 1' } }],
+              },
+              {
+                id: 'childTab2',
+                label: { en: 'Child 2' },
+                fields: [{ id: 'field2', type: 'text', label: { en: 'Field 2' } }],
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(component.visibleSubTabs.map(t => t.id)).toEqual(['childTab1', 'childTab2']);
+      expect(component.activeSubTabConfig?.id).toBe('childTab1');
+      expect(component.fieldsForActiveTab.map(f => f.id)).toEqual(['field1']);
+
+      component.setActiveSubTab('childTab2');
+      expect(component.activeSubTabConfig?.id).toBe('childTab2');
+      expect(component.fieldsForActiveTab.map(f => f.id)).toEqual(['field2']);
+    });
+  });
 });

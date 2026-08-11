@@ -12,6 +12,7 @@ import {
   inject,
   HostListener,
 } from '@angular/core';
+import { NgComponentOutlet } from '@angular/common';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import type {
@@ -35,6 +36,7 @@ import {
   setValueByPath,
 } from '@dynamic-entity/core';
 import { DynamicFieldComponent } from './dynamic-field/dynamic-field.component';
+import { COMMON_MODULES_REGISTRY } from '../tokens/injection-tokens';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
 import { HookRegistryService } from '../services/hook-registry.service';
 import { RbacService } from '../services/rbac.service';
@@ -50,7 +52,7 @@ import { EntityRefSelectionService } from '../services/entity-ref-selection.serv
 @Component({
   selector: 'ngx-dynamic-form',
   standalone: true,
-  imports: [ReactiveFormsModule, DynamicFieldComponent],
+  imports: [ReactiveFormsModule, DynamicFieldComponent, NgComponentOutlet],
   // Scoped per form instance: entity-ref selections must not leak between concurrent forms.
   providers: [EntityRefSelectionService],
   templateUrl: './dynamic-form.component.html',
@@ -123,11 +125,13 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   private readonly rbacService = inject(RbacService);
   private readonly rulesEvaluation = inject(RulesEvaluationService);
   private readonly entityRefSelection = inject(EntityRefSelectionService);
+  private readonly commonModulesRegistry = inject(COMMON_MODULES_REGISTRY, { optional: true });
 
   protected readonly Object = Object;
 
   // ─── Signals (local reactive state) ───────────────────────────────────────
   readonly activeTab = signal<string>('');
+  readonly activeSubTab = signal<string>('');
   readonly isSaving = signal(false);
   readonly formValues = signal<Record<string, any>>({});
   /** Baseline captured at first build, used when `originalData` is not supplied. */
@@ -188,8 +192,32 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     return findTab(this.tabs, tabId);
   }
 
-  get fieldsForActiveTab(): NestedFieldConfig[] {
+  get visibleSubTabs(): NestedTabConfig[] {
     const active = this.activeTabConfig;
+    if (!active?.children || active.children.length === 0) return [];
+    const hidden = this.ruleResult().hiddenTabs;
+    return active.children.filter(tab => tab.visibility !== false && !hidden.includes(tab.id));
+  }
+
+  get activeSubTabConfig(): NestedTabConfig | null {
+    const subTabs = this.visibleSubTabs;
+    if (!subTabs.length) return null;
+    const subId = this.activeSubTab();
+    return subTabs.find(s => s.id === subId) ?? subTabs[0];
+  }
+
+  get activeTabModuleComponent(): any | null {
+    const active = this.activeSubTabConfig ?? this.activeTabConfig;
+    if (!active?.moduleName || !this.commonModulesRegistry) return null;
+    const entry = this.commonModulesRegistry.find(
+      m => m.id === active.moduleName || m.component === active.moduleName,
+    );
+    return entry ? entry.component : null;
+  }
+
+  get fieldsForActiveTab(): NestedFieldConfig[] {
+    const active = this.activeSubTabConfig ?? this.activeTabConfig;
+    if (active?.moduleName) return [];
     const rawFields = active ? (active.fields || []) : ((this.config?.tabs || []).flatMap(t => t.fields || []));
     const currentValues = this.formValues();
     const hiddenFields = this.ruleResult().hiddenFields;
@@ -217,7 +245,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     if (changes['config'] || changes['initialData']) {
       this.buildForm();
       if (this.visibleTabs.length > 0 && !this.activeTab()) {
-        this.activeTab.set(this.visibleTabs[0].id);
+        this.setActiveTab(this.visibleTabs[0].id);
       }
     }
   }
@@ -229,6 +257,16 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
 
   setActiveTab(tabId: string): void {
     this.activeTab.set(tabId);
+    const parent = findTab(this.tabs, tabId);
+    if (parent?.children?.length) {
+      this.activeSubTab.set(parent.children[0].id);
+    } else {
+      this.activeSubTab.set('');
+    }
+  }
+
+  setActiveSubTab(subTabId: string): void {
+    this.activeSubTab.set(subTabId);
   }
 
   getFieldSpan(field: NestedFieldConfig): string {

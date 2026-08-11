@@ -11,7 +11,7 @@ import type {
   PatchOnTrueMapping,
   RichFieldType,
 } from '@dynamic-entity/core';
-import { labelToId } from '@dynamic-entity/core';
+import { findTab, labelToId } from '@dynamic-entity/core';
 import {
   createFieldConfig,
   getFieldTypeMeta,
@@ -670,23 +670,65 @@ export class BuilderStore {
     return id;
   }
 
+  addSubTab(parentId: string): string {
+    const allTabIds: string[] = [];
+    const collectIds = (tabs: NestedTabConfig[]) => {
+      for (const t of tabs) {
+        allTabIds.push(t.id);
+        if (t.children) collectIds(t.children);
+      }
+    };
+    collectIds(this._config().tabs ?? []);
+
+    const id = this.uniqueId('tab', allTabIds.map(tid => ({ id: tid })));
+    this.mutate(draft => {
+      const parent = findTab(draft.tabs, parentId);
+      if (parent) {
+        parent.children = parent.children ?? [];
+        const lang = draft.defaultLanguage ?? 'en';
+        parent.children.push({ id, label: { [lang]: humanizeId(id) }, fields: [] });
+      }
+    });
+    return id;
+  }
+
+  setPrimaryTab(tabId: string): void {
+    this.mutate(draft => {
+      const markPrimary = (tabs: NestedTabConfig[]) => {
+        for (const t of tabs) {
+          t.isPrimaryTab = t.id === tabId;
+          if (t.children) markPrimary(t.children);
+        }
+      };
+      markPrimary(draft.tabs ?? []);
+    });
+  }
+
   updateTab(id: string, patch: Partial<NestedTabConfig>): void {
     this.mutate(draft => {
-      const tab = (draft.tabs ?? []).find(t => t.id === id);
+      const tab = findTab(draft.tabs, id);
       if (tab) Object.assign(tab, patch);
     });
   }
 
   setTabLabel(id: string, language: string, value: string): void {
     this.mutate(draft => {
-      const tab = (draft.tabs ?? []).find(t => t.id === id);
+      const tab = findTab(draft.tabs, id);
       if (tab) tab.label = { ...tab.label, [language]: value };
     });
   }
 
   removeTab(id: string): void {
     this.mutate(draft => {
-      draft.tabs = (draft.tabs ?? []).filter(t => t.id !== id);
+      const removeRecursive = (tabs: NestedTabConfig[]): NestedTabConfig[] => {
+        return tabs
+          .filter(t => t.id !== id)
+          .map(t => ({
+            ...t,
+            children: t.children ? removeRecursive(t.children) : undefined,
+          }));
+      };
+      draft.tabs = removeRecursive(draft.tabs ?? []);
     });
   }
 

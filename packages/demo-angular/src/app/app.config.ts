@@ -2,13 +2,20 @@ import { ApplicationConfig } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { routes } from './app.routes';
-import { provideBuiltInFieldTypes, provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+import { COMMON_MODULES_REGISTRY, provideBuiltInFieldTypes, provideNgxDynamicEntity } from 'ngx-dynamic-entity';
 import { MASKED_ROLES, ORDER_REFERENCE_DATA } from './mock/sample-data';
+import { SampleModuleTabComponent } from './mock/sample-module.component';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
     provideAnimations(), // required by Angular Material (the form builder)
+    {
+      provide: COMMON_MODULES_REGISTRY,
+      useValue: [
+        { id: 'documents-view', label: { en: 'Documents' }, component: SampleModuleTabComponent },
+      ],
+    },
     // No API/HTTP — all data lives in localStorage via LocalStore. maskedRoles still drives
     // field masking inside the renderer's forms.
     provideNgxDynamicEntity({
