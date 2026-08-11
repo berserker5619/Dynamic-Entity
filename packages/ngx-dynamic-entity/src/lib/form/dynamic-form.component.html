@@ -63,7 +63,7 @@
       >
         <ngx-dynamic-field
           [field]="field"
-          [control]="getControl(field.id)!"
+          [control]="getControl(field.id, activeTabConfig?.id)!"
           [config]="config"
           [currentTabId]="activeTabConfig?.id"
           [language]="language"

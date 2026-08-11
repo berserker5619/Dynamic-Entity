@@ -24,9 +24,9 @@ export function resolveLabel(text: LocalizedText | undefined | null, lang = 'en'
   return text[lang] ?? text['en'] ?? Object.values(text).find(Boolean) ?? '';
 }
 
-/** Resolve option value for dropdown/radio/multiSelect options. Handles {value, label}, LocalizedText, or primitives. */
-export function resolveOptionValue(option: unknown, lang = 'en'): any {
-  if (option == null) return '';
+/** Resolve the actual stored value for an option (LocalizedText object, scalar, or opt.value). */
+export function getOptionStoredValue(option: unknown): any {
+  if (option == null) return null;
   if (typeof option === 'string' || typeof option === 'number' || typeof option === 'boolean') {
     return option;
   }
@@ -35,12 +35,32 @@ export function resolveOptionValue(option: unknown, lang = 'en'): any {
     if ('value' in opt && opt['value'] !== undefined) {
       return opt['value'];
     }
-    if (opt[lang] !== undefined) return opt[lang];
-    if (opt['en'] !== undefined) return opt['en'];
-    const firstStr = Object.values(opt).find(v => typeof v === 'string' || typeof v === 'number');
-    if (firstStr !== undefined) return firstStr;
+    return opt;
   }
-  return String(option);
+  return option;
+}
+
+/** Check if two values (scalars or LocalizedText objects) match. */
+export function valuesMatch(val1: unknown, val2: unknown, lang = 'en'): boolean {
+  if (val1 === val2) return true;
+  if (val1 == null || val2 == null) return val1 == val2;
+  if (typeof val1 === 'object' || typeof val2 === 'object') {
+    const l1 = resolveOptionLabel(val1, lang);
+    const l2 = resolveOptionLabel(val2, lang);
+    if (l1 && l2 && l1 === l2) return true;
+    return JSON.stringify(val1) === JSON.stringify(val2);
+  }
+  return String(val1) === String(val2);
+}
+
+/** Resolve option value for dropdown/radio/multiSelect options as a display string. */
+export function resolveOptionValue(option: unknown, lang = 'en'): any {
+  const stored = getOptionStoredValue(option);
+  if (stored == null) return '';
+  if (typeof stored === 'object') {
+    return resolveLabel(stored as LocalizedText, lang);
+  }
+  return stored;
 }
 
 /** Resolve option display label for dropdown/radio/multiSelect options. Handles {value, label}, LocalizedText, or primitives. */
@@ -88,27 +108,58 @@ export function formatDisplayValue(
 
     case 'dropdown':
     case 'radio': {
-      const opt = (options ?? []).find(o => resolveOptionValue(o, lang) === raw);
-      return opt ? resolveOptionLabel(opt, lang) : String(raw);
+      const opt = (options ?? []).find(o => valuesMatch(getOptionStoredValue(o), raw, lang));
+      if (opt) return resolveOptionLabel(opt, lang);
+      if (typeof raw === 'object') return resolveLabel(raw as LocalizedText, lang);
+      return String(raw);
     }
 
     case 'multiSelect': {
-      if (!Array.isArray(raw)) return String(raw);
+      if (!Array.isArray(raw)) return typeof raw === 'object' ? resolveLabel(raw as LocalizedText, lang) : String(raw);
       return raw
         .map(item => {
-          const opt = (options ?? []).find(o => resolveOptionValue(o, lang) === item);
-          return opt ? resolveOptionLabel(opt, lang) : String(item);
+          const opt = (options ?? []).find(o => valuesMatch(getOptionStoredValue(o), item, lang));
+          if (opt) return resolveOptionLabel(opt, lang);
+          if (typeof item === 'object') return resolveLabel(item as LocalizedText, lang);
+          return String(item);
         })
         .filter(Boolean)
         .join(', ');
     }
 
     default:
-      return String(raw);
+      return typeof raw === 'object' ? resolveLabel(raw as LocalizedText, lang) : String(raw);
   }
 }
 
-// ─── Nested record access (honors flatData) ──────────────────────────────────
+// ─── Nested record access & Dot-Notation ──────────────────────────────────────
+
+/** Extract a nested property value by dot-notation path (e.g. "employment.jobTitle"). */
+export function getValueByPath(obj: any, path: string): unknown {
+  if (!obj || !path) return undefined;
+  const parts = path.split('.');
+  let curr = obj;
+  for (const part of parts) {
+    if (curr == null) return undefined;
+    curr = curr[part];
+  }
+  return curr;
+}
+
+/** Set a nested property value by dot-notation path (e.g. "employment.jobTitle"). */
+export function setValueByPath(obj: any, path: string, value: unknown): void {
+  if (!obj || !path) return;
+  const parts = path.split('.');
+  let curr = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i];
+    if (curr[part] == null || typeof curr[part] !== 'object') {
+      curr[part] = {};
+    }
+    curr = curr[part];
+  }
+  curr[parts[parts.length - 1]] = value;
+}
 
 /** Find a tab anywhere in the (possibly nested) tab tree by id. */
 export function findTab(tabs: NestedTabConfig[] | undefined, tabId: string): NestedTabConfig | null {
@@ -120,23 +171,71 @@ export function findTab(tabs: NestedTabConfig[] | undefined, tabId: string): Nes
   return null;
 }
 
+/** Returns the array of path keys for a given tab in the tab hierarchy, respecting `flatData`. */
+export function getTabPath(tabs: NestedTabConfig[] | undefined, targetId: string, currentPath: string[] = []): string[] | null {
+  for (const tab of tabs ?? []) {
+    const nextPath = tab.flatData ? currentPath : [...currentPath, tab.id];
+    if (tab.id === targetId) return nextPath;
+    const childPath = getTabPath(tab.children, targetId, nextPath);
+    if (childPath) return childPath;
+  }
+  return null;
+}
+
 /** The sub-object holding a tab's fields in a record — the record root when `flatData`. */
-export function getTabData(tabId: string, record: any, config: EntityFormConfig): any {
-  const tab = findTab(config.tabs, tabId);
-  if (!tab) return null;
-  return tab.flatData ? record : record?.[tabId];
+export function getTabData(tabId: string, record: any, config?: EntityFormConfig): any {
+  if (!record) return null;
+  const tabs = config?.tabs;
+  if (!tabs) {
+    return record[tabId] ?? record;
+  }
+  const path = getTabPath(tabs, tabId);
+  if (!path) {
+    const tab = findTab(tabs, tabId);
+    return tab?.flatData ? record : record?.[tabId];
+  }
+  if (path.length === 0) return record;
+  let curr = record;
+  for (const p of path) {
+    if (curr == null) return null;
+    curr = curr[p];
+  }
+  return curr;
 }
 
 /** Merge a tab's form value back into a record, honoring `flatData`. Returns the record. */
-export function setTabData(record: any, tab: NestedTabConfig, formValue: Record<string, unknown>): any {
+export function setTabData(
+  record: any,
+  tab: NestedTabConfig | string,
+  formValue: Record<string, unknown>,
+  config?: EntityFormConfig,
+): any {
   const target = record ?? {};
-  if (tab.flatData) Object.assign(target, formValue);
-  else target[tab.id] = { ...(target[tab.id] ?? {}), ...formValue };
+  const tabId = typeof tab === 'string' ? tab : tab.id;
+  const tabs = config?.tabs ?? (typeof tab === 'object' ? [tab] : undefined);
+  const path = tabs ? getTabPath(tabs, tabId) : (typeof tab === 'object' && tab.flatData ? [] : [tabId]);
+
+  if (!path || path.length === 0) {
+    Object.assign(target, formValue);
+    return target;
+  }
+
+  let curr = target;
+  for (let i = 0; i < path.length - 1; i++) {
+    const p = path[i];
+    if (curr[p] == null || typeof curr[p] !== 'object') {
+      curr[p] = {};
+    }
+    curr = curr[p];
+  }
+  const last = path[path.length - 1];
+  curr[last] = { ...(curr[last] ?? {}), ...formValue };
   return target;
 }
 
 /** Ensure every `array` field in the config is stored as an array (coerce null/undefined → []). */
 export function normalizeArrayStructures(record: any, config: EntityFormConfig): any {
+  if (!record) return record;
   const walkFields = (fields: NestedFieldConfig[] | undefined, container: any) => {
     for (const f of fields ?? []) {
       if (!container) continue;
@@ -149,8 +248,9 @@ export function normalizeArrayStructures(record: any, config: EntityFormConfig):
   };
   const walkTabs = (tabs: NestedTabConfig[] | undefined) => {
     for (const tab of tabs ?? []) {
-      walkFields(tab.fields, tab.flatData ? record : record?.[tab.id]);
-      walkTabs(tab.children);
+      const container = getTabData(tab.id, record, config);
+      walkFields(tab.fields, container);
+      if (tab.children) walkTabs(tab.children);
     }
   };
   walkTabs(config.tabs);
@@ -182,7 +282,7 @@ export function evaluateFieldVisibility(field: NestedFieldConfig, values: Record
   if (field.visibility === false) return false;
   if (field.showWhen) {
     for (const [key, expected] of Object.entries(field.showWhen)) {
-      if (values[key] !== expected) return false;
+      if (!valuesMatch(values[key], expected)) return false;
     }
   }
   return true;
@@ -225,15 +325,20 @@ export function getLocaleLang(locale: string): string {
   return supported.includes(prefix) ? prefix : 'en';
 }
 
-/**
- * Ensures a label value is always a well-formed LocalizedText object.
- * Coerces strings and plain primitives; passes objects through.
- */
-export function normalizeLocalizedText(label: unknown): LocalizedText {
-  if (!label) return { en: '' };
-  if (typeof label === 'string') return { en: label };
-  if (typeof label === 'object' && !Array.isArray(label)) return label as LocalizedText;
-  return { en: String(label) };
+/** Coerces a value into a valid LocalizedText map ({ en: string }). */
+export function normalizeLocalizedText(value: unknown): LocalizedText {
+  if (!value) return { en: '' };
+  if (typeof value === 'string') return { en: value };
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    const obj = value as Record<string, unknown>;
+    const out: LocalizedText = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (typeof v === 'string') out[k] = v;
+      else if (v != null) out[k] = String(v);
+    }
+    if (Object.keys(out).length > 0) return out;
+  }
+  return { en: String(value) };
 }
 
 // ─── Config normalization (from raw API / storage) ────────────────────────────
@@ -268,8 +373,9 @@ export function normalizeField(field: unknown): NestedFieldConfig {
           const o = opt as Record<string, unknown>;
           // Already { value, label: LocalizedText }
           if ('value' in o && 'label' in o) return { value: o['value'], label: normalizeLocalizedText(o['label']) };
-          // Plain LocalizedText used as option label, no value wrapper
-          return { value: o['en'] ?? Object.values(o)[0] ?? '', label: normalizeLocalizedText(o) };
+          // Plain LocalizedText used as option label/value directly
+          const loc = normalizeLocalizedText(o);
+          return { value: loc, label: loc };
         }
         return { value: opt, label: { en: String(opt) } };
       })

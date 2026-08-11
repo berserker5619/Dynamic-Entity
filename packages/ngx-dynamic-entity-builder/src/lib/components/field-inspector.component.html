@@ -95,8 +95,8 @@
             <mat-label>Value</mat-label>
             <input
               matInput
-              [ngModel]="opt.value"
-              (ngModelChange)="store.updateOption(f.id, $index, { value: $event })"
+              [ngModel]="optionValue(opt)"
+              (ngModelChange)="store.setOptionValue(f.id, $index, $event)"
             />
           </mat-form-field>
           <mat-form-field appearance="outline" subscriptSizing="dynamic">

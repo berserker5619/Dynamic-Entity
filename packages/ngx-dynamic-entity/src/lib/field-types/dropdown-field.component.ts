@@ -1,7 +1,13 @@
 import { Component, Input } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
-import { resolveLabel, resolveOptionLabel, resolveOptionValue } from '@dynamic-entity/core';
+import {
+  getOptionStoredValue,
+  resolveLabel,
+  resolveOptionLabel,
+  resolveOptionValue,
+  valuesMatch,
+} from '@dynamic-entity/core';
 
 @Component({
   selector: 'ngx-dropdown-field',
@@ -27,13 +33,18 @@ import { resolveLabel, resolveOptionLabel, resolveOptionValue } from '@dynamic-e
           [id]="field.id"
           class="ngx-field__input"
           [formControl]="$any(control)"
+          [compareWith]="compareFn"
           [attr.disabled]="field.disabled ? true : null"
           [attr.aria-invalid]="control.invalid && control.touched"
           [attr.aria-describedby]="errorMessage ? field.id + '-error' : null"
         >
-          <option value="">{{ placeholder || 'Select...' }}</option>
-          @for (option of field.options || []; track getOptVal(option)) {
-            <option [value]="getOptVal(option)">{{ getOptLabel(option) }}</option>
+          <option [value]="''">{{ placeholder || 'Select...' }}</option>
+          @for (option of field.options || []; track getOptLabel(option)) {
+            @if (isObjectVal(option)) {
+              <option [ngValue]="getOptStoredVal(option)">{{ getOptLabel(option) }}</option>
+            } @else {
+              <option [value]="getOptStoredVal(option)">{{ getOptLabel(option) }}</option>
+            }
           }
         </select>
         @if (errorMessage) {
@@ -50,12 +61,23 @@ export class DropdownFieldComponent {
   @Input() readonly: boolean = false;
   @Input() masked: boolean = false;
 
+  readonly compareFn = (o1: any, o2: any): boolean => valuesMatch(o1, o2, this.language);
+
+  isObjectVal(option: any): boolean {
+    const val = getOptionStoredValue(option);
+    return typeof val === 'object' && val !== null;
+  }
+
   get label(): string {
     return resolveLabel(this.field?.label, this.language);
   }
 
   get placeholder(): string {
     return resolveLabel(this.field?.placeholder, this.language);
+  }
+
+  getOptStoredVal(option: any): any {
+    return getOptionStoredValue(option);
   }
 
   getOptVal(option: any): any {
@@ -67,8 +89,9 @@ export class DropdownFieldComponent {
   }
 
   getLabel(value: any): string {
-    const option = (this.field.options || []).find(o => this.getOptVal(o) === value);
-    return option ? this.getOptLabel(option) : (value ?? '—');
+    if (value == null || value === '') return '—';
+    const option = (this.field.options || []).find(o => valuesMatch(getOptionStoredValue(o), value, this.language));
+    return option ? this.getOptLabel(option) : (typeof value === 'object' ? resolveLabel(value, this.language) : (value ?? '—'));
   }
 
   get errorMessage(): string {

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { builderPaletteButton, fieldByLabel, gotoDemo, recordButton, safeClick } from './test-helpers';
+import { builderPaletteButton, fieldByLabel, gotoDemo, recordButton, safeClick, safeSelect } from './test-helpers';
 
 test.describe('Dynamic Entity Demo E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
@@ -29,7 +29,7 @@ test.describe('Dynamic Entity Demo E2E Tests', () => {
     await fieldByLabel(page, 'Name').locator('input').fill('Acme Global');
     await fieldByLabel(page, 'Email').locator('input').fill('info@acmeglobal.com');
     await fieldByLabel(page, 'Company').locator('input').fill('Acme');
-    await fieldByLabel(page, 'Status').locator('select').selectOption('active');
+    await safeSelect(fieldByLabel(page, 'Status').locator('select'), 'Active');
     await fieldByLabel(page, 'Salary').locator('input').fill('185000');
     await fieldByLabel(page, 'Notes').locator('textarea').fill('New client added via Playwright E2E test.');
 

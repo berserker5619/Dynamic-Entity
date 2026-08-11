@@ -9,8 +9,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import type { NestedFieldConfig } from '@dynamic-entity/core';
-import { resolveLabel } from '@dynamic-entity/core';
+import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
+import { getOptionStoredValue, resolveLabel, resolveOptionLabel } from '@dynamic-entity/core';
 import { BuilderStore } from '../builder-store.service';
 import { getFieldTypeMeta, type FieldTypeMeta } from '../field-catalog';
 import { EntityReferenceConfigComponent } from './entity-reference-config.component';
@@ -116,8 +116,13 @@ export class FieldInspectorComponent {
     return resolveLabel(field.placeholder, this.lang());
   }
 
-  protected optionLabel(option: { label: Record<string, string> }): string {
-    return resolveLabel(option.label, this.lang());
+  protected optionValue(option: DropdownOption): string {
+    const val = getOptionStoredValue(option);
+    return typeof val === 'object' ? '' : (val ?? '');
+  }
+
+  protected optionLabel(option: DropdownOption): string {
+    return resolveOptionLabel(option, this.lang());
   }
 
   // ─── showWhen editing ───────────────────────────────────────────────────────

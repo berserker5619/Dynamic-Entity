@@ -451,19 +451,33 @@ export class BuilderStore {
     this.mutate(draft => {
       const field = this.findFieldInTabs(draft.tabs, fieldId);
       if (!field) return;
-      const options = field.options ? [...field.options] : [];
+      const options = field.options ?? [];
       const n = options.length + 1;
       const lang = draft.defaultLanguage ?? 'en';
-      options.push({ value: `option_${n}`, label: { [lang]: `Option ${n}` } });
+      options.push({ [lang]: `Option ${n}` });
       field.options = options;
     });
   }
 
-  updateOption(fieldId: string, index: number, patch: Partial<DropdownOption>): void {
+  updateOption(fieldId: string, index: number, patch: any): void {
+    if (patch && 'value' in patch) {
+      this.setOptionValue(fieldId, index, patch.value);
+    }
+  }
+
+  setOptionValue(fieldId: string, index: number, value: any): void {
     this.mutate(draft => {
       const field = this.findFieldInTabs(draft.tabs, fieldId);
       if (!field?.options?.[index]) return;
-      field.options = field.options.map((o, i) => (i === index ? { ...o, ...patch } : o));
+      const existing = field.options[index];
+      if (typeof existing === 'object' && 'value' in existing) {
+        (existing as { value: any }).value = value;
+      } else if (typeof existing === 'object') {
+        const lang = draft.defaultLanguage ?? 'en';
+        field.options[index] = { value, label: existing as Record<string, string> };
+      } else {
+        field.options[index] = value;
+      }
     });
   }
 
@@ -472,7 +486,16 @@ export class BuilderStore {
       const field = this.findFieldInTabs(draft.tabs, fieldId);
       const option = field?.options?.[index];
       if (!option) return;
-      option.label = { ...option.label, [language]: value };
+      if (typeof option === 'object' && 'label' in option && option.label) {
+        (option as { label: Record<string, string> }).label = {
+          ...(option as { label: Record<string, string> }).label,
+          [language]: value,
+        };
+      } else if (typeof option === 'object') {
+        field.options![index] = { ...(option as Record<string, string>), [language]: value };
+      } else {
+        field.options![index] = { [language]: value };
+      }
     });
   }
 

@@ -15,6 +15,7 @@ export const CLIENTS_CONFIG: EntityFormConfig = {
   tabs: [
     {
       id: 'general',
+      flatData: true,
       label: { en: 'General' },
       fields: [
         { id: 'name', type: 'text', label: { en: 'Name' }, validators: { required: true }, visibility: true },

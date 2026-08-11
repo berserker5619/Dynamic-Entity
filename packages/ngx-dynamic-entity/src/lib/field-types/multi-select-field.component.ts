@@ -1,7 +1,13 @@
 import { Component, Input } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
-import { resolveLabel, resolveOptionLabel, resolveOptionValue } from '@dynamic-entity/core';
+import {
+  getOptionStoredValue,
+  resolveLabel,
+  resolveOptionLabel,
+  resolveOptionValue,
+  valuesMatch,
+} from '@dynamic-entity/core';
 
 @Component({
   selector: 'ngx-multi-select-field',
@@ -19,12 +25,17 @@ import { resolveLabel, resolveOptionLabel, resolveOptionValue } from '@dynamic-e
           [id]="field.id"
           class="ngx-field__input"
           [formControl]="$any(control)"
+          [compareWith]="compareFn"
           [attr.disabled]="field.disabled ? true : null"
           multiple
           size="4"
         >
-          @for (option of field.options || []; track getOptVal(option)) {
-            <option [value]="getOptVal(option)">{{ getOptLabel(option) }}</option>
+          @for (option of field.options || []; track getOptLabel(option)) {
+            @if (isObjectVal(option)) {
+              <option [ngValue]="getOptStoredVal(option)">{{ getOptLabel(option) }}</option>
+            } @else {
+              <option [value]="getOptStoredVal(option)">{{ getOptLabel(option) }}</option>
+            }
           }
         </select>
         @if (control.invalid && control.touched) {
@@ -41,8 +52,19 @@ export class MultiSelectFieldComponent {
   @Input() readonly: boolean = false;
   @Input() masked: boolean = false;
 
+  readonly compareFn = (o1: any, o2: any): boolean => valuesMatch(o1, o2, this.language);
+
+  isObjectVal(option: any): boolean {
+    const val = getOptionStoredValue(option);
+    return typeof val === 'object' && val !== null;
+  }
+
   get label(): string {
     return resolveLabel(this.field?.label, this.language);
+  }
+
+  getOptStoredVal(option: any): any {
+    return getOptionStoredValue(option);
   }
 
   getOptVal(option: any): any {
@@ -57,8 +79,8 @@ export class MultiSelectFieldComponent {
     if (!Array.isArray(values) || !values.length) return '—';
     return values
       .map(v => {
-        const opt = (this.field.options || []).find(o => this.getOptVal(o) === v);
-        return opt ? this.getOptLabel(opt) : String(v);
+        const opt = (this.field.options || []).find(o => valuesMatch(getOptionStoredValue(o), v, this.language));
+        return opt ? this.getOptLabel(opt) : (typeof v === 'object' ? resolveLabel(v, this.language) : String(v));
       })
       .join(', ');
   }

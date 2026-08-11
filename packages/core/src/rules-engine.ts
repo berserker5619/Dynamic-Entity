@@ -4,7 +4,7 @@ import type {
   RuleCondition,
   RuleEvaluationResult,
 } from './form-model.types';
-import { findTab } from './form-logic';
+import { findTab, valuesMatch } from './form-logic';
 
 /**
  * Evaluate a single rule condition against the current form values (and optional baseline values).
@@ -22,20 +22,20 @@ export function evaluateCondition(
 
   switch (condition.operator) {
     case 'EQUAL':
-      return actualValue === compareTarget || String(actualValue ?? '') === String(compareTarget ?? '');
+      return valuesMatch(actualValue, compareTarget);
 
     case 'NOT_EQUAL':
-      return actualValue !== compareTarget && String(actualValue ?? '') !== String(compareTarget ?? '');
+      return !valuesMatch(actualValue, compareTarget);
 
     case 'CONTAINS': {
       if (typeof actualValue === 'string') return actualValue.includes(String(compareTarget ?? ''));
-      if (Array.isArray(actualValue)) return actualValue.includes(compareTarget);
+      if (Array.isArray(actualValue)) return actualValue.some(item => valuesMatch(item, compareTarget));
       return false;
     }
 
     case 'NOT_CONTAINS': {
       if (typeof actualValue === 'string') return !actualValue.includes(String(compareTarget ?? ''));
-      if (Array.isArray(actualValue)) return !actualValue.includes(compareTarget);
+      if (Array.isArray(actualValue)) return !actualValue.some(item => valuesMatch(item, compareTarget));
       return true;
     }
 
@@ -76,10 +76,10 @@ export function evaluateCondition(
     }
 
     case 'IN':
-      return Array.isArray(compareTarget) && compareTarget.includes(actualValue);
+      return Array.isArray(compareTarget) && compareTarget.some(target => valuesMatch(actualValue, target));
 
     case 'NOT_IN':
-      return Array.isArray(compareTarget) && !compareTarget.includes(actualValue);
+      return Array.isArray(compareTarget) && !compareTarget.some(target => valuesMatch(actualValue, target));
 
     case 'HAS_ITEMS':
       return Array.isArray(actualValue) && actualValue.length > 0;

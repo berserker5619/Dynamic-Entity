@@ -88,31 +88,76 @@ describe('DynamicFormComponent', () => {
 
   describe('form construction', () => {
     it('builds nested group and array controls from the config', () => {
-      expect(component.form.get('name')).toBeDefined();
-      expect(component.form.get('address') instanceof FormGroup).toBe(true);
-      expect(component.form.get('address.city')).toBeDefined();
-      expect(component.form.get('contacts') instanceof FormArray).toBe(true);
+      expect(component.getControl('name')).toBeDefined();
+      expect(component.getControl('address') instanceof FormGroup).toBe(true);
+      expect(component.getControl('city')).toBeDefined();
+      expect(component.getControl('contacts') instanceof FormArray).toBe(true);
     });
 
     it('seeds controls from defaultValue', () => {
-      expect(component.form.get('name')?.value).toBe('Default');
+      expect(component.getControl('name')?.value).toBe('Default');
     });
 
     it('patches initial data including groups and array rows', () => {
       component.initialData = {
-        name: 'John',
-        age: 30,
-        address: { city: 'Berlin' },
-        contacts: [{ phone: '123-456' }, { phone: '789-012' }],
+        tab1: {
+          name: 'John',
+          address: { city: 'Berlin' },
+          contacts: [{ phone: '123-456' }, { phone: '789-012' }],
+        },
+        tab2: { age: 30 },
       };
       component.ngOnChanges({ initialData: new SimpleChange(null, component.initialData, true) });
 
-      expect(component.form.get('name')?.value).toBe('John');
-      expect(component.form.get('address.city')?.value).toBe('Berlin');
+      expect(component.getControl('name')?.value).toBe('John');
+      expect(component.getControl('city')?.value).toBe('Berlin');
 
-      const contacts = component.form.get('contacts') as FormArray;
+      const contacts = component.getControl('contacts') as FormArray;
       expect(contacts.length).toBe(2);
       expect(contacts.at(0).get('phone')?.value).toBe('123-456');
+    });
+
+    it('honors flatData and refererField overrides', () => {
+      const flatConfig: EntityFormConfig = {
+        entity: 'employees',
+        tabs: [
+          {
+            id: 'personal',
+            flatData: true,
+            label: { en: 'Personal' },
+            fields: [{ id: 'firstName', type: 'text', label: { en: 'First Name' } }],
+          },
+          {
+            id: 'job',
+            label: { en: 'Job' },
+            fields: [
+              {
+                id: 'title',
+                type: 'text',
+                label: { en: 'Title' },
+                refererField: 'employment.jobTitle',
+              },
+            ],
+          },
+        ],
+      };
+      build(flatConfig);
+
+      component.initialData = {
+        firstName: 'Alice',
+        employment: { jobTitle: 'Engineer' },
+      };
+      component.ngOnChanges({ initialData: new SimpleChange(null, component.initialData, true) });
+
+      expect(component.getControl('firstName')?.value).toBe('Alice');
+      expect(component.getControl('title')?.value).toBe('Engineer');
+
+      component.getControl('firstName')?.patchValue('Bob');
+      component.getControl('title')?.patchValue('Senior Engineer');
+
+      const rec = component.extractRecord();
+      expect(rec.firstName).toBe('Bob');
+      expect(rec.employment?.jobTitle).toBe('Senior Engineer');
     });
 
     it('does not stack valueChanges subscriptions across rebuilds', () => {
@@ -120,7 +165,7 @@ describe('DynamicFormComponent', () => {
       component.formChange.subscribe(v => emissions.push(v));
 
       component.ngOnChanges({ config: new SimpleChange(null, mockConfig, false) });
-      component.form.patchValue({ name: 'once' });
+      component.getControl('name')?.patchValue('once');
 
       expect(emissions.length).toBe(1);
     });
@@ -152,7 +197,7 @@ describe('DynamicFormComponent', () => {
 
       expect(component.fieldsForActiveTab.map(f => f.id)).toEqual(['isEmployee']);
 
-      component.form.patchValue({ isEmployee: true });
+      component.getControl('isEmployee')?.patchValue(true);
       expect(component.fieldsForActiveTab.map(f => f.id)).toEqual(['isEmployee', 'staffId']);
     });
 
@@ -170,7 +215,7 @@ describe('DynamicFormComponent', () => {
       ];
       component.rules = rules;
       component.setActiveTab('tab1');
-      component.form.patchValue({ name: 'hide-me' });
+      component.getControl('name')?.patchValue('hide-me');
 
       expect(component.fieldsForActiveTab.map(f => f.id)).not.toContain('address');
     });
@@ -206,10 +251,10 @@ describe('DynamicFormComponent', () => {
     });
 
     it('reports a critical change against the session baseline', () => {
-      component.ngOnChanges({ initialData: new SimpleChange(null, { iban: 'DE00' }, true) });
+      component.ngOnChanges({ initialData: new SimpleChange(null, { t: { iban: 'DE00' } }, true) });
       expect(component.changedCriticalFields()).toEqual([]);
 
-      component.form.patchValue({ iban: 'DE99' });
+      component.getControl('iban')?.patchValue('DE99');
       expect(component.changedCriticalFields().map(f => f.id)).toEqual(['iban']);
     });
 
@@ -254,8 +299,8 @@ describe('DynamicFormComponent', () => {
         .get(EntityRefSelectionService)
         .emit('company', { value: 'c1', label: 'Acme', record: { city: 'Berlin', vat: 'DE123' } });
 
-      expect(component.form.get('city')?.value).toBe('Berlin');
-      expect(component.form.get('vat')?.value).toBe('DE123');
+      expect(component.getControl('city')?.value).toBe('Berlin');
+      expect(component.getControl('vat')?.value).toBe('DE123');
     });
 
     it('ignores autoPatch targets that are not on the configured tab', () => {
@@ -283,7 +328,7 @@ describe('DynamicFormComponent', () => {
         .get(EntityRefSelectionService)
         .emit('company', { value: 'c1', label: 'Acme', record: { city: 'Berlin' } });
 
-      expect(component.form.get('city')?.value).toBeNull();
+      expect(component.getControl('city')?.value).toBeNull();
     });
 
     it('copies from → to when a boolean flips to true, once', () => {
@@ -302,26 +347,30 @@ describe('DynamicFormComponent', () => {
         ],
       });
 
-      component.form.patchValue({ home: 'Main St' });
-      component.form.patchValue({ billingSame: true });
-      expect(component.form.get('billing')?.value).toBe('Main St');
+      component.getControl('home')?.patchValue('Main St');
+      component.getControl('billingSame')?.patchValue(true);
+      expect(component.getControl('billing')?.value).toBe('Main St');
 
       // Editing the target afterwards must not be overwritten while the flag stays true.
-      component.form.patchValue({ billing: 'Other St' });
-      component.form.patchValue({ home: 'Changed St' });
-      expect(component.form.get('billing')?.value).toBe('Other St');
+      component.getControl('billing')?.patchValue('Other St');
+      component.getControl('home')?.patchValue('Changed St');
+      expect(component.getControl('billing')?.value).toBe('Other St');
     });
   });
 
   describe('submission', () => {
     it('runs the beforeSave hook and emits the processed data', async () => {
       const spy = jest.spyOn(component.formSubmit, 'emit');
-      component.form.patchValue({ name: 'Submit Test' });
+      component.getControl('name')?.patchValue('Submit Test');
 
       await component.submit();
 
       expect(mockHookRegistry.run).toHaveBeenCalledWith('clients:beforeSave', expect.anything());
-      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ name: 'Submit Test' }));
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tab1: expect.objectContaining({ name: 'Submit Test' }),
+        }),
+      );
     });
 
     it('allows submit when editable', () => {

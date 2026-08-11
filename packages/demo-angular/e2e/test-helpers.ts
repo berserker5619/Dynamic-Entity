@@ -47,5 +47,19 @@ export async function fillFieldByLabel(page: Page, label: string, value: string)
 
 export async function safeSelect(locator: Locator, value: string): Promise<void> {
   await expect(locator).toBeVisible({ timeout: 5000 });
-  await locator.selectOption(value);
+  try {
+    await locator.selectOption(value);
+  } catch {
+    try {
+      await locator.selectOption({ label: value });
+    } catch {
+      const options = await locator.locator('option').allInnerTexts();
+      const match = options.find(opt => opt.trim().toLowerCase() === value.trim().toLowerCase() || opt.trim().toLowerCase().includes(value.trim().toLowerCase()));
+      if (match) {
+        await locator.selectOption({ label: match.trim() });
+      } else {
+        await locator.selectOption(value);
+      }
+    }
+  }
 }

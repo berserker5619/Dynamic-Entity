@@ -26,7 +26,13 @@ import {
   applyPatchOnTrue,
   evaluateFieldVisibility,
   findTab,
+  getTabData,
+  getTabPath,
+  getValueByPath,
+  normalizeArrayStructures,
   resolveLabel,
+  setTabData,
+  setValueByPath,
 } from '@dynamic-entity/core';
 import { DynamicFieldComponent } from './dynamic-field/dynamic-field.component';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
@@ -255,36 +261,45 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     if (!this.config) return;
     const group: Record<string, AbstractControl> = {};
 
-    const walkTabs = (tabs: NestedTabConfig[]) => {
+    const buildTabControls = (tabs: NestedTabConfig[], parentGroup: Record<string, AbstractControl>) => {
       for (const tab of tabs) {
-        for (const field of tab.fields || []) {
-          this.buildFieldControl(field, group);
+        if (tab.flatData) {
+          for (const field of tab.fields || []) {
+            this.buildFieldControl(field, parentGroup);
+          }
+          if (tab.children) buildTabControls(tab.children, parentGroup);
+        } else {
+          const tabGroup: Record<string, AbstractControl> = {};
+          for (const field of tab.fields || []) {
+            this.buildFieldControl(field, tabGroup);
+          }
+          if (tab.children) buildTabControls(tab.children, tabGroup);
+          parentGroup[tab.id] = this.fb.group(tabGroup);
         }
-        if (tab.children) walkTabs(tab.children);
       }
     };
-    walkTabs(this.config.tabs || []);
 
+    buildTabControls(this.config.tabs || [], group);
     this.form = this.fb.group(group);
 
     if (this.initialData) {
       this.patchForm(this.initialData);
     }
 
-    const initialValues = this.form.value || {};
-    this.formValues.set(initialValues);
-    this.previousValues = { ...initialValues };
-    this.sessionBaseline.set({ ...initialValues });
+    const initialFlattened = this.flattenFormValues();
+    this.formValues.set(initialFlattened);
+    this.previousValues = { ...initialFlattened };
+    this.sessionBaseline.set({ ...initialFlattened });
     this.unlockedFields.set(new Set<string>());
 
     // Rebuilding must not stack subscriptions on successive config/data changes.
     this.valueSub?.unsubscribe();
-    this.valueSub = this.form.valueChanges.subscribe(val => {
-      const values = val || {};
-      this.formValues.set(values);
-      this.runPatchOnTrue(values);
-      this.previousValues = { ...values };
-      this.formChange.emit(values);
+    this.valueSub = this.form.valueChanges.subscribe(() => {
+      const flattened = this.flattenFormValues();
+      this.formValues.set(flattened);
+      this.runPatchOnTrue(flattened);
+      this.previousValues = { ...flattened };
+      this.formChange.emit(this.extractRecord());
     });
   }
 
@@ -320,20 +335,92 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private patchForm(data: Record<string, any>): void {
+    if (!data || !this.form) return;
     const fieldsById = new Map(this.allFields().map(f => [f.id, f]));
 
-    for (const [key, val] of Object.entries(data)) {
-      const ctrl = this.form.get(key);
-      if (!ctrl) continue;
-      if (ctrl instanceof FormArray && Array.isArray(val)) {
-        ctrl.clear();
-        for (const item of val) {
-          ctrl.push(this.buildArrayRow(fieldsById.get(key), item));
+    const walkTabs = (tabs: NestedTabConfig[]) => {
+      for (const tab of tabs) {
+        const tabData = getTabData(tab.id, data, this.config);
+        for (const field of tab.fields || []) {
+          let val = tabData && typeof tabData === 'object' ? tabData[field.id] : undefined;
+          if (field.refererField) {
+            const refVal = getValueByPath(data, field.refererField);
+            if (refVal !== undefined) val = refVal;
+          }
+          if (val === undefined) continue;
+
+          const ctrl = this.getControl(field.id, tab.id);
+          if (!ctrl) continue;
+
+          if (ctrl instanceof FormArray && Array.isArray(val)) {
+            ctrl.clear();
+            for (const item of val) {
+              ctrl.push(this.buildArrayRow(fieldsById.get(field.id), item));
+            }
+          } else {
+            ctrl.patchValue(val, { emitEvent: false });
+          }
         }
-      } else {
-        ctrl.patchValue(val, { emitEvent: false });
+        if (tab.children) walkTabs(tab.children);
       }
+    };
+
+    walkTabs(this.config.tabs || []);
+  }
+
+  /** Assemble full nested record from per-tab FormGroups, respecting flatData, refererField & arrays. */
+  extractRecord(): Record<string, any> {
+    if (!this.form || !this.config) return {};
+    let record: Record<string, any> = {};
+
+    const walkTabs = (tabs: NestedTabConfig[]) => {
+      for (const tab of tabs) {
+        const fieldValBag: Record<string, unknown> = {};
+        for (const field of tab.fields || []) {
+          const ctrl = this.getControl(field.id, tab.id);
+          if (ctrl) {
+            fieldValBag[field.id] = ctrl.value;
+          }
+        }
+
+        setTabData(record, tab.id, fieldValBag, this.config);
+
+        for (const field of tab.fields || []) {
+          if (field.refererField) {
+            const ctrl = this.getControl(field.id, tab.id);
+            if (ctrl) {
+              setValueByPath(record, field.refererField, ctrl.value);
+            }
+          }
+        }
+
+        if (tab.children) walkTabs(tab.children);
+      }
+    };
+
+    walkTabs(this.config.tabs || []);
+    record = normalizeArrayStructures(record, this.config);
+    return record;
+  }
+
+  private flattenFormValues(): Record<string, any> {
+    const out: Record<string, any> = {};
+    for (const field of this.allFields()) {
+      const ctrl = this.getControl(field.id);
+      if (ctrl) out[field.id] = ctrl.value;
     }
+    return out;
+  }
+
+  private getTabGroup(tabId: string): FormGroup | null {
+    const path = getTabPath(this.config?.tabs, tabId);
+    if (!path || path.length === 0) return this.form;
+    let curr: AbstractControl | null = this.form;
+    for (const p of path) {
+      if (!curr || !(curr instanceof FormGroup)) return null;
+      curr = curr.get(p);
+    }
+    return curr instanceof FormGroup ? curr : null;
   }
 
   // ─── autoPatch / patchOnTrue ──────────────────────────────────────────────
@@ -370,7 +457,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
 
       const patch = applyPatchOnTrue(mappings, values);
       for (const [targetId, value] of Object.entries(patch)) {
-        this.form.get(targetId)?.patchValue(value, { emitEvent: false });
+        this.getControl(targetId)?.patchValue(value, { emitEvent: false });
       }
     }
   }
@@ -380,7 +467,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     const tab = findTab(this.tabs, autoPatch.targetTab);
     const inTargetTab = (tab?.fields ?? []).some(f => f.id === targetId);
     if (tab && !inTargetTab) return null;
-    return this.form.get(targetId);
+    return this.getControl(targetId, autoPatch.targetTab);
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -422,8 +509,31 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     return false;
   }
 
-  getControl(fieldId: string): AbstractControl | null {
-    return this.form?.get(fieldId) ?? null;
+  getControl(fieldId: string, currentTabId?: string): AbstractControl | null {
+    if (!this.form) return null;
+
+    if (currentTabId) {
+      const tabGrp = this.getTabGroup(currentTabId);
+      const ctrl = tabGrp?.get(fieldId);
+      if (ctrl) return ctrl;
+    }
+
+    const rootCtrl = this.form.get(fieldId);
+    if (rootCtrl) return rootCtrl;
+
+    const findInGroup = (group: FormGroup): AbstractControl | null => {
+      for (const key of Object.keys(group.controls)) {
+        const c = group.controls[key];
+        if (key === fieldId) return c;
+        if (c instanceof FormGroup) {
+          const found = findInGroup(c);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    return findInGroup(this.form);
   }
 
   resolveTabLabel(tab: NestedTabConfig): string {
@@ -436,7 +546,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
       return;
     }
 
-    const rawData = this.form.getRawValue();
+    const rawData = this.extractRecord();
     let processedData = rawData;
 
     const hookKey = `${this.config?.entity}:beforeSave`;
@@ -455,7 +565,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   reset(): void {
     this.form.reset();
     if (this.initialData) this.patchForm(this.initialData);
-    const values = this.form.value || {};
+    const values = this.flattenFormValues();
     this.formValues.set(values);
     this.previousValues = { ...values };
     this.unlockedFields.set(new Set<string>());

@@ -156,12 +156,18 @@ export class AppComponent implements OnInit {
   }
 
   getRecordLabel(rec: VersionedRecord): string {
+    if (!rec) return 'Record';
     if (rec['name'] && rec['company'] && rec['status']) {
       return `${rec['name']} — ${rec['company']} · ${rec['status']}`;
     }
-    const keys = ['name', 'fullName', 'firstName', 'title', 'company', 'organizationName', 'studentName', 'patientName', 'description', '_id'];
+    const keys = ['name', 'fullName', 'firstName', 'title', 'company', 'organizationName', 'studentName', 'patientName', 'description'];
     for (const k of keys) {
       if (rec[k]) return String(rec[k]);
+      for (const val of Object.values(rec)) {
+        if (val && typeof val === 'object' && !Array.isArray(val) && (val as Record<string, unknown>)[k]) {
+          return String((val as Record<string, unknown>)[k]);
+        }
+      }
     }
     return `Record (${rec['_id'] || 'new'})`;
   }

@@ -1,7 +1,13 @@
 import { Component, Input } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
-import { resolveLabel, resolveOptionLabel, resolveOptionValue } from '@dynamic-entity/core';
+import {
+  getOptionStoredValue,
+  resolveLabel,
+  resolveOptionLabel,
+  resolveOptionValue,
+  valuesMatch,
+} from '@dynamic-entity/core';
 
 /** Radio field: a group of radio buttons built from field.options. */
 @Component({
@@ -18,14 +24,14 @@ import { resolveLabel, resolveOptionLabel, resolveOptionValue } from '@dynamic-e
           <span class="ngx-field__value">{{ getSelectedLabel() }}</span>
         } @else {
           <div class="ngx-field__radio-group">
-            @for (option of field.options || []; track getOptVal(option)) {
+            @for (option of field.options || []; track getOptLabel(option)) {
               <label class="ngx-field__radio-option" [attr.for]="field.id + '-' + getOptVal(option)">
                 <input
                   [id]="field.id + '-' + getOptVal(option)"
                   type="radio"
                   class="ngx-field__radio-input"
                   [formControl]="$any(control)"
-                  [value]="getOptVal(option)"
+                  [value]="getOptStoredVal(option)"
                   [attr.disabled]="field.disabled ? true : null"
                 />
                 <span class="ngx-field__radio-label">{{ getOptLabel(option) }}</span>
@@ -51,6 +57,10 @@ export class RadioFieldComponent {
     return resolveLabel(this.field?.label, this.language);
   }
 
+  getOptStoredVal(option: any): any {
+    return getOptionStoredValue(option);
+  }
+
   getOptVal(option: any): any {
     return resolveOptionValue(option, this.language);
   }
@@ -60,7 +70,7 @@ export class RadioFieldComponent {
   }
 
   getSelectedLabel(): string {
-    const selected = (this.field.options ?? []).find(o => this.getOptVal(o) === this.control.value);
-    return selected ? this.getOptLabel(selected) : (this.control.value ?? '—');
+    const selected = (this.field.options ?? []).find(o => valuesMatch(getOptionStoredValue(o), this.control?.value, this.language));
+    return selected ? this.getOptLabel(selected) : (typeof this.control?.value === 'object' ? resolveLabel(this.control.value, this.language) : (this.control?.value ?? '—'));
   }
 }

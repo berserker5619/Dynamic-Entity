@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoDemo, safeClick } from './test-helpers';
+import { gotoDemo, safeClick, safeSelect } from './test-helpers';
 
 test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Types & Multi-Tab Configuration)', () => {
   const COMPLEX_CONFIG = {
@@ -116,7 +116,7 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
 
     await page.locator('#fullName').fill('Dr. Marcus Vance');
     await page.locator('#annualBudget').fill('500000');
-    await page.locator('#industry').selectOption('health');
+    await safeSelect(page.locator('#industry'), 'health');
     await page.locator('#startDate').fill('2026-08-07');
 
     // monthYear renders as two separate selects (no id) inside field-container-contractMonth

@@ -13,10 +13,7 @@ import type { EntityPermissions } from './rbac.types';
 
 export type LocalizedText = Record<string, string>;
 
-export interface DropdownOption {
-  value: any;
-  label: LocalizedText;
-}
+export type DropdownOption = LocalizedText | { value: any; label: LocalizedText } | string | number;
 
 /** Full field-type vocabulary supported by the rich renderer. */
 export type RichFieldType =
