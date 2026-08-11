@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { gotoDemo, safeClick, safeSelect } from './test-helpers';
 
 test.describe('Dynamic Entity E2E - Rendering test_data.json Configurations', () => {
   const testDataPath = path.resolve(__dirname, '../../../test_data.json');
@@ -28,26 +29,43 @@ test.describe('Dynamic Entity E2E - Rendering test_data.json Configurations', ()
     ]);
   });
 
-  test('renders form configurations without any issues or errors', async ({ page }) => {
-    // Listen for uncaught JS errors
+  test('renders Entity Manager table with all 12 test_data.json entities', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', err => errors.push(err.message));
 
-    await page.goto('/');
+    await gotoDemo(page);
     await safeClick(page.getByRole('button', { name: 'Entity Manager' }));
     await expect(page.getByRole('heading', { level: 2, name: 'Manage Entities' })).toBeVisible();
 
-    // 12 configs from test_data.json + the seeded `orders` demo entity
-    // (clients and employees are overrides of test_data.json entries, not extra rows).
     const tableRows = page.locator('tbody tr');
-    await expect(tableRows).toHaveCount(13);
+    await expect(tableRows).toHaveCount(13); // 12 from test_data.json + 1 demo order config
 
-    // Verify no page errors occurred
     expect(errors).toEqual([]);
   });
-});
 
-async function safeClick(locator: any): Promise<void> {
-  await expect(locator).toBeVisible({ timeout: 5000 });
-  await locator.click();
-}
+  for (const cfg of entityConfigs) {
+    test(`renders entity form and switches tabs for "${cfg.entity}"`, async ({ page }) => {
+      const errors: string[] = [];
+      page.on('pageerror', err => errors.push(err.message));
+
+      await gotoDemo(page);
+      const entitySelect = page.locator('#entitySelect');
+      await safeSelect(entitySelect, cfg.entity);
+
+      await safeClick(page.getByRole('button', { name: /Add/i }));
+
+      // Check each visible tab in the config
+      const visibleTabs = (cfg.tabs || []).filter((t: any) => t.visibility !== false);
+      for (const tab of visibleTabs) {
+        const tabName = tab.label ? (tab.label['en'] || Object.values(tab.label)[0]) : tab.id;
+        const tabButton = page.getByRole('tab', { name: String(tabName) });
+        if (await tabButton.isVisible()) {
+          await safeClick(tabButton);
+          await expect(tabButton).toHaveAttribute('aria-selected', 'true');
+        }
+      }
+
+      expect(errors).toEqual([]);
+    });
+  }
+});
