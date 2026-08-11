@@ -44,7 +44,7 @@ test.describe('Dynamic Entity E2E - Rendering test_data.json Configurations', ()
   });
 
   for (const cfg of entityConfigs) {
-    test(`renders entity form and switches tabs for "${cfg.entity}"`, async ({ page }) => {
+    test(`renders entity form and switches tabs without JS errors for "${cfg.entity}"`, async ({ page }) => {
       const errors: string[] = [];
       page.on('pageerror', err => errors.push(err.message));
 
