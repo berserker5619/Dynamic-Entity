@@ -11,10 +11,11 @@ import {
   ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule } from '@angular/forms';
+import { AbstractControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
 import { findTab, formatDisplayValue, getTabData, resolveLabel } from '@dynamic-entity/core';
 import { DynamicFormComponent } from './dynamic-form.component';
+import { DynamicFieldComponent } from './dynamic-field/dynamic-field.component';
 import { RulesEvaluationService } from '../services/rules-evaluation.service';
 
 /**
@@ -25,7 +26,7 @@ import { RulesEvaluationService } from '../services/rules-evaluation.service';
 @Component({
   selector: 'ngx-dynamic-record-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DynamicFormComponent],
+  imports: [CommonModule, ReactiveFormsModule, DynamicFormComponent, DynamicFieldComponent],
   templateUrl: './dynamic-record-form.component.html',
   styles: [
     `
@@ -73,6 +74,16 @@ import { RulesEvaluationService } from '../services/rules-evaluation.service';
       .ngx-record-editor__subtitle {
         font-size: 13px;
         color: #6b7280;
+      }
+      .ngx-record-editor__header-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #374151;
+      }
+      .ngx-record-editor__header-toggle-text {
+        font-weight: 600;
       }
       .ngx-record-editor__banner {
         padding: 10px 14px;
@@ -122,6 +133,55 @@ import { RulesEvaluationService } from '../services/rules-evaluation.service';
         background: #fffbeb;
         border: 1px solid #fef3c7;
         color: #b45309;
+      }
+      .ngx-record-editor__rows {
+        border: 1px solid #f3f4f6;
+        border-radius: 8px;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .ngx-record-editor__rows-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .ngx-record-editor__row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        background: #f9fafb;
+      }
+      .ngx-record-editor__row-text {
+        flex: 1;
+        font-size: 13px;
+        overflow-wrap: anywhere;
+      }
+      .ngx-record-editor__row-btn {
+        background: none;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        padding: 2px 8px;
+      }
+      .ngx-record-editor__row-empty {
+        font-size: 12px;
+        color: #6b7280;
+        margin: 0;
+      }
+      .ngx-record-editor__drawer {
+        border: 1px solid #dbeafe;
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
       }
       .ngx-record-editor__summary-panel {
         background: #f9fafb;
@@ -226,6 +286,102 @@ export class DynamicRecordFormComponent implements OnChanges {
     return this.readonly || this.isReadOnly;
   }
 
+  // ─── Inline array-row editing ───────────────────────────────────────────────
+
+  /**
+   * A row of an `array` field is edited in a drawer, not inline in the tab panel.
+   *
+   * The drawer is rendered outside the tab container on purpose: the reference found that
+   * building a row's FormGroup inside the tab view races the tab's own initialisation, so
+   * the row form is kept detached and only pushed into the FormArray on save.
+   */
+  readonly inlineRowField = signal<NestedFieldConfig | null>(null);
+  readonly inlineRowIndex = signal<number | null>(null);
+  inlineRowForm: FormGroup | null = null;
+
+  /** `array` fields on the tab currently shown, so the template can list their rows. */
+  get arrayFieldsForActiveTab(): NestedFieldConfig[] {
+    const tabId = this.activeTabId;
+    const tab = tabId ? findTab(this.config?.tabs, tabId) : null;
+    return (tab?.fields ?? []).filter(f => f.type === 'array');
+  }
+
+  /**
+   * Rows currently held by an `array` field, read from the record value.
+   *
+   * Deliberately not read off the child's FormArray: that control only exists once the
+   * child has initialised, so rendering from it changed value mid-pass. `currentData` is a
+   * signal seeded from `initialData` and kept current by the child's `formChange`.
+   */
+  rowsOf(field: NestedFieldConfig): Record<string, unknown>[] {
+    const tabId = this.activeTabId;
+    const tabData = tabId ? getTabData(tabId, this.currentData(), this.config) : null;
+    const rows = (tabData as Record<string, unknown> | null)?.[field.id];
+    return Array.isArray(rows) ? (rows as Record<string, unknown>[]) : [];
+  }
+
+  /** One row rendered as text, so the list is readable without opening the drawer. */
+  rowSummary(field: NestedFieldConfig, row: Record<string, unknown>): string {
+    const value = row ?? {};
+    const parts = (field.children ?? [])
+      .map(child => value[child.id])
+      .filter(v => v !== null && v !== undefined && v !== '')
+      .map(v => (typeof v === 'object' ? JSON.stringify(v) : String(v)));
+    return parts.length ? parts.join(' · ') : '(empty)';
+  }
+
+  openAddRow(field: NestedFieldConfig): void {
+    if (this.sectionReadOnly) return;
+    this.inlineRowField.set(field);
+    this.inlineRowIndex.set(null);
+    this.inlineRowForm = this.dynamicFormComp?.createArrayRow(field) as FormGroup;
+  }
+
+  openEditRow(field: NestedFieldConfig, index: number): void {
+    if (this.sectionReadOnly) return;
+    this.inlineRowField.set(field);
+    this.inlineRowIndex.set(index);
+    this.inlineRowForm = this.dynamicFormComp?.createArrayRow(field, this.rowsOf(field)[index]) as FormGroup;
+  }
+
+  cancelRow(): void {
+    this.inlineRowField.set(null);
+    this.inlineRowIndex.set(null);
+    this.inlineRowForm = null;
+  }
+
+  /** Commit the drawer into the FormArray. Rules re-evaluate off the resulting value change. */
+  saveRow(): void {
+    const field = this.inlineRowField();
+    const form = this.dynamicFormComp;
+    if (!field || !form || !this.inlineRowForm) return;
+
+    if (this.inlineRowForm.invalid) {
+      this.inlineRowForm.markAllAsTouched();
+      return;
+    }
+
+    const array = form.getArrayControl(field.id, this.activeTabId ?? undefined);
+    if (!array) return;
+
+    const index = this.inlineRowIndex();
+    if (index === null) array.push(form.createArrayRow(field, this.inlineRowForm.value));
+    else array.at(index).patchValue(this.inlineRowForm.value);
+
+    array.updateValueAndValidity();
+    this.currentData.set(form.extractRecord());
+    this.cancelRow();
+  }
+
+  deleteRow(field: NestedFieldConfig, index: number): void {
+    if (this.sectionReadOnly) return;
+    const array = this.dynamicFormComp?.getArrayControl(field.id, this.activeTabId ?? undefined);
+    array?.removeAt(index);
+    array?.updateValueAndValidity();
+    if (this.dynamicFormComp) this.currentData.set(this.dynamicFormComp.extractRecord());
+    if (this.inlineRowIndex() === index) this.cancelRow();
+  }
+
   // ─── Per-tab section editing ────────────────────────────────────────────────
 
   /**
@@ -237,9 +393,31 @@ export class DynamicRecordFormComponent implements OnChanges {
    */
   readonly editingTabId = signal<string | null>(null);
 
-  /** The tab the inner form is showing. */
+  /**
+   * The tab the inner form is showing.
+   *
+   * Tracked here rather than read off the ViewChild. The child resolves its first tab as
+   * part of its own initialisation, so reading it during this component's render changed
+   * value mid-pass — an ExpressionChangedAfterItHasBeenChecked error. Seeded from the
+   * config and kept in step by the child's `activeTabChange` output.
+   */
+  private readonly activeTabIdSig = signal<string | null>(null);
+
   get activeTabId(): string | null {
-    return this.dynamicFormComp?.activeTabConfig?.id ?? null;
+    return this.activeTabIdSig();
+  }
+
+  onActiveTabChange(tabId: string): void {
+    if (this.activeTabIdSig() === tabId) return;
+    this.activeTabIdSig.set(tabId);
+    // Editing does not follow the user to another tab.
+    this.editingTabId.set(null);
+    this.cancelRow();
+  }
+
+  /** First tab a user can see, used to seed the active tab before the child reports one. */
+  private firstVisibleTabId(): string | null {
+    return this.config?.tabs?.find(t => t.visibility !== false)?.id ?? null;
   }
 
   /** Errors from the last save attempt, by field id. */
@@ -271,10 +449,25 @@ export class DynamicRecordFormComponent implements OnChanges {
     const form = this.dynamicFormComp;
     if (tabId && form) {
       const tab = findTab(this.config?.tabs, tabId);
-      const baselineTab = getTabData(tabId, this.originalBaseline(), this.config) ?? {};
+      const baselineTab = (getTabData(tabId, this.originalBaseline(), this.config) ?? {}) as Record<string, unknown>;
       for (const field of tab?.fields ?? []) {
-        form.getControl(field.id, tabId)?.setValue(baselineTab[field.id] ?? null);
+        const baselineValue = baselineTab[field.id];
+
+        // A FormArray cannot be restored with setValue — that demands a value shaped exactly
+        // like the current rows. Rebuild it from the baseline rows instead.
+        const array = form.getArrayControl(field.id, tabId);
+        if (array) {
+          array.clear();
+          for (const row of Array.isArray(baselineValue) ? baselineValue : []) {
+            array.push(form.createArrayRow(field, row));
+          }
+          array.updateValueAndValidity();
+          continue;
+        }
+
+        form.getControl(field.id, tabId)?.setValue(baselineValue ?? null);
       }
+      this.currentData.set(form.extractRecord());
     }
     this.sectionErrors.set({});
     this.editingTabId.set(null);
@@ -328,6 +521,7 @@ export class DynamicRecordFormComponent implements OnChanges {
     if (changes['initialData'] || changes['config']) {
       this.originalBaseline.set({ ...(this.initialData ?? {}) });
       this.currentData.set({ ...(this.initialData ?? {}) });
+      this.activeTabIdSig.set(this.firstVisibleTabId());
       // A different record is a different set of banners — re-arm them.
       this.dismissed.set(new Set<string>());
     }
@@ -340,6 +534,78 @@ export class DynamicRecordFormComponent implements OnChanges {
 
   get avatarLetter(): string {
     return (this.recordTitle || 'R').charAt(0).toUpperCase();
+  }
+
+  // ─── Header fields (isProfileImage / isHeaderToggle) ────────────────────────
+
+  /** Every field in the config, at any depth. */
+  private allFields(): NestedFieldConfig[] {
+    const out: NestedFieldConfig[] = [];
+    const walkFields = (fields: NestedFieldConfig[] | undefined) => {
+      for (const f of fields ?? []) {
+        out.push(f);
+        walkFields(f.children);
+      }
+    };
+    const walkTabs = (tabs: NestedTabConfig[] | undefined) => {
+      for (const t of tabs ?? []) {
+        walkFields(t.fields);
+        walkTabs(t.children);
+      }
+    };
+    walkTabs(this.config?.tabs);
+    return out;
+  }
+
+  /** The field flagged `isProfileImage`, rendered as the record avatar. */
+  get headerProfileField(): NestedFieldConfig | null {
+    return this.allFields().find(f => f.isProfileImage) ?? null;
+  }
+
+  /** The field flagged `isHeaderToggle`, rendered as a status switch in the header. */
+  get headerToggleField(): NestedFieldConfig | null {
+    return this.allFields().find(f => f.isHeaderToggle) ?? null;
+  }
+
+  /** Avatar image URL, when the profile field holds a persisted FileRef. */
+  get profileImageUrl(): string | null {
+    const field = this.headerProfileField;
+    if (!field) return null;
+    const value = this.fieldValue(field.id) as { url?: string } | null;
+    return value?.url ?? null;
+  }
+
+  get headerToggleValue(): boolean {
+    const field = this.headerToggleField;
+    return field ? this.fieldValue(field.id) === true : false;
+  }
+
+  /**
+   * Flip the header toggle. It writes straight to the control rather than going through
+   * section editing — the reference treats it as a record-level status switch, not part of
+   * any one tab's section.
+   */
+  toggleHeaderStatus(): void {
+    const field = this.headerToggleField;
+    if (!field || this.recordReadOnly) return;
+    const ctrl = this.controlFor(field.id);
+    if (!ctrl) return;
+    ctrl.setValue(!this.headerToggleValue);
+    if (this.dynamicFormComp) this.currentData.set(this.dynamicFormComp.extractRecord());
+  }
+
+  /** Locate a field's control wherever it lives, since header fields may be on any tab. */
+  private controlFor(fieldId: string): AbstractControl | null {
+    return this.dynamicFormComp?.getControl(fieldId) ?? null;
+  }
+
+  /** A field's current value, read from the record so it is stable during render. */
+  private fieldValue(fieldId: string): unknown {
+    for (const tab of this.config?.tabs ?? []) {
+      const data = getTabData(tab.id, this.currentData(), this.config) as Record<string, unknown> | null;
+      if (data && fieldId in data) return data[fieldId];
+    }
+    return undefined;
   }
 
   readonly isModified = computed(() => {

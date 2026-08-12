@@ -1,5 +1,5 @@
 import { SimpleChange } from '@angular/core';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { EntityFormConfig, FormRule } from '@dynamic-entity/core';
 import { DynamicFormComponent } from './dynamic-form.component';
@@ -510,5 +510,100 @@ describe('DynamicFormComponent — duplicate field ids across tabs', () => {
     component.form.get('personalDetails.gender')!.setValue('M');
 
     expect(component.getControl('gender')!.value).toBe('F');
+  });
+});
+
+/** Phase 4e — debounced change emission and builder preview mode. */
+describe('DynamicFormComponent — debounce and preview', () => {
+  const CONFIG: EntityFormConfig = {
+    entity: 'x',
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        fields: [
+          { id: 'name', type: 'text', label: { en: 'Name' } },
+          {
+            id: 'rows',
+            type: 'array',
+            label: { en: 'Rows' },
+            children: [{ id: 'a', type: 'text', label: { en: 'A' } }],
+          },
+        ],
+      },
+    ],
+  };
+
+  let fixture: ComponentFixture<DynamicFormComponent>;
+  let component: DynamicFormComponent;
+
+  function build(over: Partial<DynamicFormComponent> = {}): void {
+    fixture = TestBed.createComponent(DynamicFormComponent);
+    component = fixture.componentInstance;
+    component.config = CONFIG;
+    Object.assign(component, over);
+    component.ngOnInit();
+    component.ngOnChanges({ config: new SimpleChange(undefined, CONFIG, true) });
+    fixture.detectChanges();
+  }
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [DynamicFormComponent, ReactiveFormsModule],
+      providers: [
+        {
+          provide: ValidatorRegistryService,
+          useValue: { resolveAll: jest.fn().mockReturnValue([]), resolveFromConfig: jest.fn().mockReturnValue([]) },
+        },
+        { provide: HookRegistryService, useValue: { run: jest.fn(), has: jest.fn().mockReturnValue(false) } },
+        { provide: RbacService, useValue: { getPermissions: jest.fn().mockReturnValue({ canEdit: true }) } },
+      ],
+    }).compileComponents();
+  });
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('emits synchronously by default', () => {
+    build();
+    const seen: unknown[] = [];
+    component.formChange.subscribe(v => seen.push(v));
+
+    component.getControl('name', 'main')!.setValue('a');
+    expect(seen.length).toBe(1);
+  });
+
+  it('coalesces rapid changes when a debounce is set', fakeAsync(() => {
+    build({ changeDebounceMs: 300 });
+    const seen: unknown[] = [];
+    component.formChange.subscribe(v => seen.push(v));
+
+    const name = component.getControl('name', 'main')!;
+    name.setValue('a');
+    name.setValue('ab');
+    name.setValue('abc');
+    expect(seen.length).toBe(0);
+
+    tick(300);
+    expect(seen.length).toBe(1);
+
+    component.ngOnDestroy();
+  }));
+
+  describe('preview', () => {
+    it('seeds one empty row per array field so the structure is visible', () => {
+      build({ preview: true });
+      expect(component.getArrayControl('rows', 'main')!.length).toBe(1);
+    });
+
+    it('disables the form', () => {
+      build({ preview: true });
+      expect(component.form.disabled).toBe(true);
+    });
+
+    it('does neither when preview is off', () => {
+      build();
+      expect(component.getArrayControl('rows', 'main')!.length).toBe(0);
+      expect(component.form.disabled).toBe(false);
+    });
   });
 });

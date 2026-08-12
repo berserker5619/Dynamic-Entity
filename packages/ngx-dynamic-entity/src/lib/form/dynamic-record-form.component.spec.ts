@@ -506,3 +506,255 @@ describe('DynamicRecordFormComponent — section editing', () => {
     expect(component.sectionErrors()).toEqual({});
   });
 });
+
+/**
+ * Phase 4c — inline array-row editing. Rows are edited in a drawer rendered outside the tab
+ * panel, and only pushed into the FormArray on save.
+ */
+describe('DynamicRecordFormComponent — array row drawer', () => {
+  const CONFIG: EntityFormConfig = {
+    entity: 'employees',
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        fields: [
+          {
+            id: 'addresses',
+            type: 'array',
+            label: { en: 'Addresses' },
+            children: [
+              { id: 'street', type: 'text', label: { en: 'Street' }, validators: { required: true } },
+              { id: 'city', type: 'text', label: { en: 'City' } },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  let fixture: ComponentFixture<DynamicRecordFormComponent>;
+  let component: DynamicRecordFormComponent;
+
+  function build(data?: Record<string, unknown>): void {
+    fixture = TestBed.createComponent(DynamicRecordFormComponent);
+    component = fixture.componentInstance;
+    component.config = CONFIG;
+    component.initialData = data;
+    component.ngOnChanges({ config: new SimpleChange(undefined, CONFIG, true) });
+    fixture.detectChanges();
+    component.editSection();
+    fixture.detectChanges();
+  }
+
+  const arrayField = () => CONFIG.tabs[0].fields![0];
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [DynamicRecordFormComponent],
+      providers: [provideBuiltInFieldTypes()],
+    }).compileComponents();
+  });
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('lists existing rows', () => {
+    build({ main: { addresses: [{ street: '1 Main St', city: 'Berlin' }] } });
+
+    expect(component.rowsOf(arrayField()).length).toBe(1);
+    expect(component.rowSummary(arrayField(), component.rowsOf(arrayField())[0])).toContain('1 Main St');
+  });
+
+  it('opens an empty drawer for a new row', () => {
+    build();
+    component.openAddRow(arrayField());
+
+    expect(component.inlineRowField()?.id).toBe('addresses');
+    expect(component.inlineRowIndex()).toBeNull();
+    expect(component.inlineRowForm!.value).toEqual({ street: null, city: null });
+  });
+
+  it('does not push the row until save', () => {
+    build();
+    component.openAddRow(arrayField());
+    component.inlineRowForm!.patchValue({ street: '9 Elm', city: 'Munich' });
+
+    expect(component.rowsOf(arrayField()).length).toBe(0);
+
+    component.saveRow();
+    expect(component.rowsOf(arrayField()).length).toBe(1);
+    expect(component.rowsOf(arrayField())[0]).toEqual({ street: '9 Elm', city: 'Munich' });
+  });
+
+  it('refuses to save an invalid row and keeps the drawer open', () => {
+    build();
+    component.openAddRow(arrayField());
+    component.inlineRowForm!.patchValue({ city: 'Munich' }); // street is required
+
+    component.saveRow();
+
+    expect(component.rowsOf(arrayField()).length).toBe(0);
+    expect(component.inlineRowField()).not.toBeNull();
+  });
+
+  it('edits an existing row in place', () => {
+    build({ main: { addresses: [{ street: '1 Main St', city: 'Berlin' }] } });
+    component.openEditRow(arrayField(), 0);
+
+    expect(component.inlineRowIndex()).toBe(0);
+    expect(component.inlineRowForm!.value).toEqual({ street: '1 Main St', city: 'Berlin' });
+
+    component.inlineRowForm!.patchValue({ street: '2 Oak Ave' });
+    component.saveRow();
+
+    expect(component.rowsOf(arrayField()).length).toBe(1);
+    expect(component.rowsOf(arrayField())[0].street).toBe('2 Oak Ave');
+  });
+
+  it('leaves the array untouched on cancel', () => {
+    build({ main: { addresses: [{ street: '1 Main St', city: 'Berlin' }] } });
+    component.openEditRow(arrayField(), 0);
+    component.inlineRowForm!.patchValue({ street: 'Changed' });
+
+    component.cancelRow();
+
+    expect(component.rowsOf(arrayField())[0].street).toBe('1 Main St');
+    expect(component.inlineRowField()).toBeNull();
+  });
+
+  it('deletes a row', () => {
+    build({ main: { addresses: [{ street: 'A' }, { street: 'B' }] } });
+    component.deleteRow(arrayField(), 0);
+
+    expect(component.rowsOf(arrayField()).map(r => r.street)).toEqual(['B']);
+  });
+
+  it('closes the drawer when the row being edited is deleted', () => {
+    build({ main: { addresses: [{ street: 'A' }] } });
+    component.openEditRow(arrayField(), 0);
+    component.deleteRow(arrayField(), 0);
+
+    expect(component.inlineRowField()).toBeNull();
+  });
+
+  it('does nothing while the section is read-only', () => {
+    build({ main: { addresses: [{ street: 'A' }] } });
+    component.cancelSection();
+
+    component.openAddRow(arrayField());
+    expect(component.inlineRowField()).toBeNull();
+
+    component.deleteRow(arrayField(), 0);
+    expect(component.rowsOf(arrayField()).length).toBe(1);
+  });
+
+  it('surfaces the saved row in the extracted record', () => {
+    build();
+    component.openAddRow(arrayField());
+    component.inlineRowForm!.patchValue({ street: '9 Elm', city: 'Munich' });
+    component.saveRow();
+
+    const record = component.dynamicFormComp!.extractRecord();
+    expect(record.main.addresses).toEqual([{ street: '9 Elm', city: 'Munich' }]);
+  });
+});
+
+/** Phase 4d — header fields driven by `isProfileImage` and `isHeaderToggle`. */
+describe('DynamicRecordFormComponent — header fields', () => {
+  const CONFIG: EntityFormConfig = {
+    entity: 'employees',
+    name: { en: 'Employee' },
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        fields: [
+          { id: 'photo', type: 'image', label: { en: 'Photo' }, isProfileImage: true },
+          { id: 'active', type: 'boolean', label: { en: 'Active' }, isHeaderToggle: true },
+          { id: 'name', type: 'text', label: { en: 'Name' } },
+        ],
+      },
+    ],
+  };
+
+  let fixture: ComponentFixture<DynamicRecordFormComponent>;
+  let component: DynamicRecordFormComponent;
+
+  function build(data?: Record<string, unknown>, over: Partial<DynamicRecordFormComponent> = {}): void {
+    fixture = TestBed.createComponent(DynamicRecordFormComponent);
+    component = fixture.componentInstance;
+    component.config = CONFIG;
+    component.initialData = data;
+    Object.assign(component, over);
+    component.ngOnChanges({ config: new SimpleChange(undefined, CONFIG, true) });
+    fixture.detectChanges();
+  }
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [DynamicRecordFormComponent],
+      providers: [provideBuiltInFieldTypes()],
+    }).compileComponents();
+  });
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('finds the flagged header fields', () => {
+    build();
+    expect(component.headerProfileField?.id).toBe('photo');
+    expect(component.headerToggleField?.id).toBe('active');
+  });
+
+  it('falls back to the initial letter with no profile image', () => {
+    build();
+    expect(component.profileImageUrl).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="header-avatar-initial"]')).not.toBeNull();
+  });
+
+  it('renders the avatar from a persisted FileRef', () => {
+    build({ main: { photo: { url: 'https://cdn/a.png' } } });
+
+    expect(component.profileImageUrl).toBe('https://cdn/a.png');
+    const img = fixture.nativeElement.querySelector('[data-testid="header-profile-image"]');
+    expect(img.getAttribute('src')).toBe('https://cdn/a.png');
+  });
+
+  it('reflects and flips the header toggle', () => {
+    build({ main: { active: true } });
+    expect(component.headerToggleValue).toBe(true);
+
+    component.toggleHeaderStatus();
+    expect(component.headerToggleValue).toBe(false);
+    expect(component.dynamicFormComp!.getControl('active', 'main')!.value).toBe(false);
+  });
+
+  it('flips the toggle even though the section is not being edited', () => {
+    // A record-level status switch, not part of any one tab's section.
+    build({ main: { active: false } });
+    expect(component.isEditingActiveTab).toBe(false);
+
+    component.toggleHeaderStatus();
+    expect(component.headerToggleValue).toBe(true);
+  });
+
+  it('refuses to flip a read-only record', () => {
+    build({ main: { active: false } }, { isReadOnly: true });
+    component.toggleHeaderStatus();
+    expect(component.headerToggleValue).toBe(false);
+  });
+
+  it('renders no toggle when no field is flagged', () => {
+    const plain: EntityFormConfig = {
+      entity: 'x',
+      tabs: [{ id: 'main', label: { en: 'M' }, fields: [{ id: 'a', type: 'text', label: { en: 'A' } }] }],
+    };
+    fixture = TestBed.createComponent(DynamicRecordFormComponent);
+    component = fixture.componentInstance;
+    component.config = plain;
+    component.ngOnChanges({ config: new SimpleChange(undefined, plain, true) });
+    fixture.detectChanges();
+
+    expect(component.headerToggleField).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="header-toggle"]')).toBeNull();
+  });
+});

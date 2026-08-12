@@ -15,6 +15,7 @@ import {
 import { NgComponentOutlet } from '@angular/common';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import type {
   AutoPatchConfig,
   EntityFormConfig,
@@ -120,11 +121,24 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   @Input() showInfoBanners: boolean = true;
   @Input() loading: boolean = false;
   @Input() error: string | null = null;
+  /**
+   * Milliseconds to debounce `formChange`. The reference debounces at 300ms so a consumer
+   * re-rendering on every value change is not driven per keystroke. Zero emits
+   * synchronously, which the record editor relies on for its own bookkeeping.
+   */
+  @Input() changeDebounceMs: number = 0;
+  /**
+   * Preview mode: seed one empty row per `array` field so the structure is visible, then
+   * disable the form. Used by the builder's live preview.
+   */
+  @Input() preview: boolean = false;
 
   // ─── Outputs ──────────────────────────────────────────────────────────────
   @Output() formSubmit = new EventEmitter<Record<string, any>>();
   @Output() formChange = new EventEmitter<Record<string, any>>();
   @Output() formReset = new EventEmitter<void>();
+  /** The visible tab changed. Lets a host track it without reaching into this component. */
+  @Output() activeTabChange = new EventEmitter<string>();
 
   // ─── Services ─────────────────────────────────────────────────────────────
   private readonly fb = inject(FormBuilder);
@@ -271,6 +285,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   setActiveTab(tabId: string): void {
+    if (this.activeTab() !== tabId) this.activeTabChange.emit(tabId);
     this.activeTab.set(tabId);
     const parent = findTab(this.tabs, tabId);
     if (parent?.children?.length) {
@@ -358,9 +373,22 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     this.sessionBaseline.set({ ...initialFlattened });
     this.unlockedFields.set(new Set<string>());
 
+    if (this.preview) {
+      // Show what an array field looks like rather than an empty slot, then freeze.
+      for (const field of this.allFields()) {
+        if (field.type !== 'array') continue;
+        const array = this.getArrayControl(field.id);
+        if (array && array.length === 0) array.push(this.buildArrayRow(field, undefined));
+      }
+      this.form.disable({ emitEvent: false });
+    }
+
     // Rebuilding must not stack subscriptions on successive config/data changes.
     this.valueSub?.unsubscribe();
-    this.valueSub = this.form.valueChanges.subscribe(() => {
+    const changes$ = this.changeDebounceMs > 0
+      ? this.form.valueChanges.pipe(debounceTime(this.changeDebounceMs))
+      : this.form.valueChanges;
+    this.valueSub = changes$.subscribe(() => {
       const flattened = this.flattenFormValues();
       this.formValues.set(flattened);
       this.runPatchOnTrue(flattened);
@@ -388,6 +416,23 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   /** One row of an `array` field: a FormGroup when the field declares columns, else a bare control. */
+  /**
+   * The `FormArray` behind an `array` field, for callers that manage rows themselves —
+   * the record editor's inline row drawer.
+   */
+  getArrayControl(fieldId: string, tabId?: string): FormArray | null {
+    const ctrl = this.getControl(fieldId, tabId);
+    return ctrl instanceof FormArray ? ctrl : null;
+  }
+
+  /**
+   * Build one detached row for an `array` field, with the field's own validators applied.
+   * Exposed so a row can be edited outside the form and pushed on save.
+   */
+  createArrayRow(field: NestedFieldConfig, value?: unknown): AbstractControl {
+    return this.buildArrayRow(field, value);
+  }
+
   private buildArrayRow(field: NestedFieldConfig | undefined, item: unknown): AbstractControl {
     if (!field?.children?.length) return this.fb.control(item);
 

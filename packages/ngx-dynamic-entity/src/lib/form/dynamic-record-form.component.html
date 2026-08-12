@@ -2,9 +2,18 @@
   <!-- Record Header -->
   <div class="ngx-record-editor__header">
     <div class="ngx-record-editor__title-group">
-      <div class="ngx-record-editor__avatar">
-        {{ avatarLetter }}
-      </div>
+      @if (profileImageUrl) {
+        <img
+          class="ngx-record-editor__avatar"
+          data-testid="header-profile-image"
+          [src]="profileImageUrl"
+          [alt]="recordTitle"
+        />
+      } @else {
+        <div class="ngx-record-editor__avatar" data-testid="header-avatar-initial">
+          {{ avatarLetter }}
+        </div>
+      }
       <div>
         <h2 class="ngx-record-editor__title">
           {{ recordTitle }}
@@ -12,6 +21,23 @@
         <span class="ngx-record-editor__subtitle">Entity: {{ config.entity }}</span>
       </div>
     </div>
+
+    <!-- Record-level status switch, outside section editing -->
+    @if (headerToggleField; as toggleField) {
+      <label class="ngx-record-editor__header-toggle">
+        <span>{{ formatFieldLabel(toggleField) }}</span>
+        <input
+          type="checkbox"
+          role="switch"
+          data-testid="header-toggle"
+          [checked]="headerToggleValue"
+          [disabled]="recordReadOnly"
+          [attr.aria-checked]="headerToggleValue"
+          (change)="toggleHeaderStatus()"
+        />
+        <span class="ngx-record-editor__header-toggle-text">{{ headerToggleValue ? 'Yes' : 'No' }}</span>
+      </label>
+    }
   </div>
 
   <!-- Dismissible info banners (rules `info` action) -->
@@ -82,6 +108,70 @@
     </div>
   }
 
+  <!-- Array rows: listed here, edited in the drawer below -->
+  @for (arrayField of arrayFieldsForActiveTab; track arrayField.id) {
+    <div class="ngx-record-editor__rows" [attr.data-testid]="'rows-' + arrayField.id">
+      <div class="ngx-record-editor__rows-head">
+        <span class="ngx-record-editor__summary-label">{{ formatFieldLabel(arrayField) }}</span>
+        @if (!sectionReadOnly) {
+          <button
+            type="button"
+            class="ngx-form__reset"
+            [attr.data-testid]="'add-row-' + arrayField.id"
+            (click)="openAddRow(arrayField)"
+          >+ Row</button>
+        }
+      </div>
+
+      @for (row of rowsOf(arrayField); track $index) {
+        <div class="ngx-record-editor__row" [attr.data-testid]="'row-' + arrayField.id + '-' + $index">
+          <span class="ngx-record-editor__row-text">{{ rowSummary(arrayField, row) }}</span>
+          @if (!sectionReadOnly) {
+            <button type="button" class="ngx-record-editor__row-btn"
+              [attr.data-testid]="'edit-row-' + arrayField.id + '-' + $index"
+              (click)="openEditRow(arrayField, $index)">Edit</button>
+            <button type="button" class="ngx-record-editor__row-btn"
+              [attr.data-testid]="'delete-row-' + arrayField.id + '-' + $index"
+              (click)="deleteRow(arrayField, $index)">Delete</button>
+          }
+        </div>
+      } @empty {
+        <p class="ngx-record-editor__row-empty">No rows yet.</p>
+      }
+    </div>
+  }
+
+  <!--
+    Row drawer. Deliberately outside the tab panel: building a row's FormGroup inside the
+    tab view races the tab's own initialisation (the reference hit this with FormArray).
+  -->
+  @if (inlineRowField(); as rowField) {
+    <div class="ngx-record-editor__drawer" data-testid="row-drawer" [formGroup]="inlineRowForm!">
+      <div class="ngx-record-editor__rows-head">
+        <strong>{{ inlineRowIndex() === null ? 'Add' : 'Edit' }} {{ formatFieldLabel(rowField) }} row</strong>
+      </div>
+
+      <div class="ngx-form__panel">
+        @for (child of rowField.children ?? []; track child.id) {
+          <ngx-dynamic-field
+            [field]="child"
+            [control]="inlineRowForm!.get(child.id)!"
+            [config]="config"
+            [language]="language"
+            [readonly]="false"
+            [userRoles]="userRoles"
+            [style.gridColumn]="'span 12'"
+          />
+        }
+      </div>
+
+      <div class="ngx-record-editor__section-bar">
+        <button type="button" class="ngx-form__reset" data-testid="cancel-row" (click)="cancelRow()">Cancel</button>
+        <button type="button" class="ngx-form__submit" data-testid="save-row" (click)="saveRow()">Save row</button>
+      </div>
+    </div>
+  }
+
   <!-- Main Dynamic Form -->
   <ngx-dynamic-form
     [config]="config"
@@ -98,5 +188,6 @@
     (formChange)="onFormChange($event)"
     (formSubmit)="onFormSubmit($event)"
     (formReset)="onFormReset()"
+    (activeTabChange)="onActiveTabChange($event)"
   />
 </div>

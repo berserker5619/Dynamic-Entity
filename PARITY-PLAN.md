@@ -2,14 +2,14 @@
 
 _Target: the form-side feature set in `projects/Superpower_Web/docs/dynamic-entity-v2-architecture.md` (2127 lines, updated 2026-06-25), reproduced exactly in `@dynamic-entity/core` + `ngx-dynamic-entity` + `ngx-dynamic-entity-builder`._
 
-_Status: **Phases 1–3 and 5 shipped.** `main` @ `4e52191` + uncommitted phase 5 — 626 unit tests + 2 demo Karma + 46 e2e, build/test/lint/coverage green. Phases 4, 6, 7, 8 outstanding._
+_Status: **Phases 1–5 shipped.** 673 unit tests + 2 demo Karma + 46 e2e; build, lint, coverage and e2e green. Phases 6, 7, 8 outstanding._
 
 | Phase | State |
 |---|---|
 | 1 — Record shape, `flatData`, `refererField` | ✅ shipped (`a5f7a71`) |
 | 2 — Option value contract | ✅ shipped (`a5f7a71`) — see deviation note in §2 |
 | 3 — Tab model completeness | ✅ shipped (`fe36e86`) |
-| 4 — Record editor parity | ⬜ not started |
+| 4 — Record editor parity | ✅ shipped |
 | 5 — Entity reference caching + preload | ✅ shipped |
 | 6 — Named lookup lists + referenced fields | ⬜ not started |
 | 7 — Builder tree + dialogs | ⬜ not started |
@@ -232,7 +232,7 @@ Backend/API (`/configuration/dynamic_entity_v2`, `/formRule`, `/preferences`, co
 | 1 | Record shape / `flatData` / `refererField` | — | **Yes** | L | ✅ |
 | 2 | Option value contract | — | **Yes** | M | ✅ |
 | 3 | Tab model completeness | 1 | No | M | ✅ |
-| 4 | Record editor parity | 1, 3 | No | L | ⬜ |
+| 4 | Record editor parity | 1, 3 | No | L | ✅ |
 | 5 | Entity reference caching + preload | — | No | M | ✅ |
 | 6 | Named lookup lists + referenced fields | 3 | No | M | ⬜ |
 | 7 | Builder tree + dialogs | 3, 6 | No | L | ⬜ |
@@ -259,7 +259,8 @@ Backend/API (`/configuration/dynamic_entity_v2`, `/formRule`, `/preferences`, co
 | 6 | Material peer deps | **Accepted** — `@angular/material` + `@angular/cdk` move from optional to required on `ngx-dynamic-entity` in §8. |
 | 7 | Lookup lists | **`listName` in, `lookupSource` out.** The latter is dead in both the web app and the API. (§6.1) |
 | 8 | Lookup value identity | **Text, not `_id`.** Consistent with §2; a list-value rename is a data migration. (§6.2) |
+| 9 | Record editor mode | **`viewMode` input, default true.** View-first with per-tab section editing, matching `EntityRecordComponent`. Consumers set false for a directly editable record. (§4) |
 
 ## Still open
 
-Nothing blocking. Next up is phase 4 (record editor parity) — phase 5 is done, so its cache is already available to it.
+Nothing blocking. Next up is phase 6 (named lookup lists + referenced fields).
