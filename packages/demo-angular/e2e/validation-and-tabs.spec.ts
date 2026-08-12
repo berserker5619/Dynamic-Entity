@@ -20,34 +20,29 @@ test.describe('Dynamic Entity E2E - Validation, Roles, and Config Manager', () =
     await expect(recordButton(page, 'Valid Test Client')).toBeVisible();
   });
 
-  test('enforces readonly mode for viewer role', async ({ page }) => {
+  test('blocks saving for the viewer role, and allows it for a role with edit rights', async ({
+    page,
+  }) => {
     await safeClick(page.getByRole('button', { name: 'Viewer (Readonly)' }));
     await safeClick(recordButton(page, 'Acme Corp'));
-
     await expect(page.getByRole('heading', { level: 2, name: 'Edit Client' })).toBeVisible();
-    // Viewer role should not be able to edit — either Save is absent, or it's disabled,
-    // or key inputs are disabled. Accept any of these as valid readonly behavior.
-    const saveBtn = page.getByRole('button', { name: 'Save' });
-    const saveCount = await saveBtn.count();
-    let readonlyOk = false;
-    if (saveCount === 0) {
-      readonlyOk = true;
-    } else {
-      try {
-        await expect(saveBtn).toBeDisabled();
-        readonlyOk = true;
-      } catch {
-        try {
-          await expect(fieldByLabel(page, 'Name').locator('input')).toBeDisabled();
-          readonlyOk = true;
-        } catch {
-          // Not readonly — tolerate and log a warning (non-fatal)
-          // eslint-disable-next-line no-console
-          console.warn('Viewer role did not enforce readonly behavior in this run.');
-        }
-      }
-    }
-    await expect(page.getByRole('button', { name: /Back to List/i })).toBeVisible();
+
+    // `permissions.edit` on the clients config excludes `viewer`, and the form drops the whole
+    // actions block rather than disabling it — so Save and Reset are absent, not greyed out.
+    await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Reset' })).toHaveCount(0);
+    // The record stays readable — this is a permission check, not a hidden form.
+    await expect(fieldByLabel(page, 'Name').locator('input')).toHaveValue('Acme Corp');
+
+    // The same record, as a role that may edit: Save is live. Asserting both halves is what
+    // stops this passing for the wrong reason — a Save button disabled by a validation bug
+    // would otherwise look like a working permission check.
+    await safeClick(page.getByRole('button', { name: /Back to List/i }));
+    // Exact: "Entity Manager" in the nav also contains "Manager".
+    await safeClick(page.getByRole('button', { name: 'Manager', exact: true }));
+    await safeClick(recordButton(page, 'Acme Corp'));
+
+    await expect(page.getByRole('button', { name: 'Save' })).toBeEnabled();
   });
 
   test('edits config metadata and increments the version', async ({ page }) => {

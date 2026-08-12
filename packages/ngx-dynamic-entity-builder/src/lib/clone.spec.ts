@@ -30,6 +30,23 @@ describe('deepClone', () => {
     }
   });
 
+  it('prefers structuredClone when the runtime has it', () => {
+    // jsdom does not provide it, so the native path is otherwise never exercised here even
+    // though it is the one every browser takes.
+    const globals = globalThis as { structuredClone?: unknown };
+    const real = globals.structuredClone;
+    const native = jest.fn((value: unknown) => JSON.parse(JSON.stringify(value)));
+    globals.structuredClone = native;
+
+    try {
+      expect(deepClone(original)).toEqual(original);
+      expect(native).toHaveBeenCalledWith(original);
+    } finally {
+      if (real === undefined) delete globals.structuredClone;
+      else globals.structuredClone = real;
+    }
+  });
+
   it('handles primitives and null', () => {
     expect(deepClone(null)).toBeNull();
     expect(deepClone(7)).toBe(7);

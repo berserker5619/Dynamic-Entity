@@ -76,6 +76,67 @@ describe('formatDisplayValue', () => {
     // text ("Active"), so the stored text is shown as-is rather than an em dash.
     expect(formatDisplayValue('dropdown', opts, 'active')).toBe('active');
   });
+
+  // This is the read-only rendering path for every field type, and `viewMode` defaults to
+  // true — a record opens read-only, so this runs before anything else the user sees.
+  describe('every empty value reads as an em dash', () => {
+    it.each(['text', 'boolean', 'dropdown', 'multiSelect', 'date', 'password', 'unknown-type'])(
+      '%s',
+      type => {
+        expect(formatDisplayValue(type, opts, null)).toBe('—');
+        expect(formatDisplayValue(type, opts, undefined)).toBe('—');
+        expect(formatDisplayValue(type, opts, '')).toBe('—');
+      },
+    );
+  });
+
+  describe('dates', () => {
+    it('formats a datetime with both date and time', () => {
+      expect(formatDisplayValue('datetime', undefined, '2020-01-15T10:30:00Z')).toBe(
+        new Date('2020-01-15T10:30:00Z').toLocaleString(),
+      );
+    });
+
+    it('shows an em dash rather than "Invalid Date"', () => {
+      expect(formatDisplayValue('date', undefined, 'not-a-date')).toBe('—');
+      expect(formatDisplayValue('datetime', undefined, 'not-a-date')).toBe('—');
+    });
+  });
+
+  describe('choice values', () => {
+    it('resolves the option text for the active language', () => {
+      const bilingual: DropdownOption[] = [{ en: 'Active', de: 'Aktiv' }];
+      expect(formatDisplayValue('dropdown', bilingual, { en: 'Active', de: 'Aktiv' }, 'de')).toBe(
+        'Aktiv',
+      );
+    });
+
+    it('renders an unmatched object value as its own text', () => {
+      expect(formatDisplayValue('radio', opts, { en: 'Retired' })).toBe('Retired');
+    });
+
+    it('renders a multiSelect value that was stored unwrapped', () => {
+      // Defensive: a record saved before the field became a multiSelect holds a bare value.
+      expect(formatDisplayValue('multiSelect', opts, { en: 'Active' })).toBe('Active');
+      expect(formatDisplayValue('multiSelect', opts, 'Active')).toBe('Active');
+    });
+
+    it('mixes matched and unmatched entries in one line, dropping empties', () => {
+      expect(formatDisplayValue('multiSelect', opts, [{ en: 'Active' }, { en: 'Gone' }, ''])).toBe(
+        'Active, Gone',
+      );
+    });
+
+    it('falls back to no options at all', () => {
+      expect(formatDisplayValue('dropdown', undefined, { en: 'Active' })).toBe('Active');
+      expect(formatDisplayValue('multiSelect', undefined, [{ en: 'Active' }])).toBe('Active');
+    });
+  });
+
+  it('stringifies an unknown field type, resolving an object value', () => {
+    expect(formatDisplayValue('some-custom-type', undefined, { en: 'Custom' })).toBe('Custom');
+    expect(formatDisplayValue('some-custom-type', undefined, 42)).toBe('42');
+  });
 });
 
 describe('normalizeConfigOptions', () => {

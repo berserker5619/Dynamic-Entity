@@ -45,21 +45,31 @@ export async function fillFieldByLabel(page: Page, label: string, value: string)
   await input.fill(value);
 }
 
+/**
+ * Select an option by DOM value, falling back to its exact label.
+ *
+ * The label fallback is not optional: an option holding a `LocalizedText` is bound with
+ * `[ngValue]`, so its DOM value is Angular's `"1: Object"` and only the label identifies it.
+ *
+ * Matching is **exact**. A previous version fell back to a case-insensitive substring match,
+ * which meant `safeSelect(select, 'Active')` would happily land on "Inactive" — a test could
+ * assert the wrong option was chosen and still pass.
+ */
 export async function safeSelect(locator: Locator, value: string): Promise<void> {
   await expect(locator).toBeVisible({ timeout: 5000 });
   try {
-    await locator.selectOption(value);
+    await locator.selectOption(value, { timeout: 2000 });
+    return;
   } catch {
-    try {
-      await locator.selectOption({ label: value });
-    } catch {
-      const options = await locator.locator('option').allInnerTexts();
-      const match = options.find(opt => opt.trim().toLowerCase() === value.trim().toLowerCase() || opt.trim().toLowerCase().includes(value.trim().toLowerCase()));
-      if (match) {
-        await locator.selectOption({ label: match.trim() });
-      } else {
-        await locator.selectOption(value);
-      }
-    }
+    // Fall through to the label match below.
   }
+
+  const labels = (await locator.locator('option').allInnerTexts()).map(text => text.trim());
+  const match = labels.find(label => label === value.trim());
+  if (!match) {
+    throw new Error(
+      `safeSelect: no option with value or label "${value}". Options: ${labels.join(' | ')}`,
+    );
+  }
+  await locator.selectOption({ label: match });
 }

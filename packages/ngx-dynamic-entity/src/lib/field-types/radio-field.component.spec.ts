@@ -52,4 +52,70 @@ describe('RadioFieldComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ngx-field__value--masked')).toBeTruthy();
   });
+
+  it('renders no radios while masked — a masked field must not be editable', () => {
+    component.masked = true;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('input[type="radio"]').length).toBe(0);
+  });
+
+  describe('read-only display fallbacks', () => {
+    function readonlyText(value: unknown): string {
+      component.control = new FormControl(value);
+      component.readonly = true;
+      fixture.detectChanges();
+      return fixture.nativeElement.querySelector('.ngx-field__value').textContent.trim();
+    }
+
+    it('shows an em dash for an empty value', () => {
+      expect(readonlyText(null)).toBe('—');
+    });
+
+    it('shows the stored text when no option matches', () => {
+      // A record saved before this option was renamed away.
+      expect(readonlyText({ en: 'Medium' })).toBe('Medium');
+    });
+
+    it('shows a plain scalar value as-is', () => {
+      expect(readonlyText('Bespoke')).toBe('Bespoke');
+    });
+  });
+
+  it('re-resolves labels when the language changes', () => {
+    component.field = {
+      ...mockField,
+      options: [{ en: 'Small', de: 'Klein' }, { en: 'Large', de: 'Groß' }],
+    };
+    component.language = 'de';
+    fixture.detectChanges();
+
+    const labels = Array.from(
+      fixture.nativeElement.querySelectorAll('.ngx-field__radio-label'),
+    ).map((el: any) => el.textContent.trim());
+    expect(labels).toEqual(['Klein', 'Groß']);
+  });
+
+  it('falls back to en when the language input is cleared', () => {
+    component.language = '';
+    expect(component.language).toBe('en');
+  });
+
+  it('slugifies option text into radio ids so spaces never reach the id attribute', () => {
+    component.field = { ...mockField, options: [{ en: 'On Leave' }] };
+    fixture.detectChanges();
+
+    const input = fixture.nativeElement.querySelector('input[type="radio"]') as HTMLInputElement;
+    expect(input.id).toBe('size-on_leave');
+    expect(fixture.nativeElement.querySelector('label').getAttribute('for')).toBe(input.id);
+  });
+
+  it('disables every radio when the field is disabled', () => {
+    component.field = { ...mockField, disabled: true };
+    fixture.detectChanges();
+
+    const inputs: HTMLInputElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('input[type="radio"]'),
+    );
+    expect(inputs.every(i => i.disabled)).toBe(true);
+  });
 });

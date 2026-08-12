@@ -9,7 +9,7 @@ module.exports = {
   // Thresholds sit just under the current numbers: they are a ratchet against regression,
   // not a target to game. Raise them when coverage genuinely improves.
   coverageThreshold: {
-    global: { statements: 92, branches: 69, functions: 93, lines: 93 },
+    global: { statements: 95, branches: 75, functions: 95, lines: 96 },
   },
   // Ignore the built output so haste doesn't see two package.json manifests.
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
