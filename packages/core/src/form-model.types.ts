@@ -151,10 +151,15 @@ export interface NestedFieldConfig {
   colSpan?: number;
   /** Dot-path override for data binding ("tabId.fieldId"). */
   refererField?: string;
-  /** Named lookup list key for dynamic options. */
-  lookupSource?: string;
-  /** Named list key for dropdown/multiSelect options (instead of inline `options`). */
+  /**
+   * Named list key for dropdown/multiSelect options, instead of inline `options`.
+   * Resolved through `LOOKUP_REGISTRY`; inline `options` win when both are present.
+   */
   listName?: string;
+  // `lookupSource` is deliberately absent. It exists in Superpower_Web's model and the
+  // API schema, but nothing in either reads it — no service, pipeline, or component. A
+  // config that carries it still round-trips unharmed: `normalizeField` spreads unknown
+  // keys through. Declaring it here would only invite someone to depend on a no-op.
   defaultValue?: unknown;
   validators?: FieldValidators;
   /** Inline options for dropdown/radio/multiSelect (each a LocalizedText-labelled value). */

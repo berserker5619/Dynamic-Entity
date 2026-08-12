@@ -11,7 +11,7 @@ _Status: **Phases 1–3 and 5 shipped.** `main` @ `4e52191` + uncommitted phase 
 | 3 — Tab model completeness | ✅ shipped (`fe36e86`) |
 | 4 — Record editor parity | ⬜ not started |
 | 5 — Entity reference caching + preload | ✅ shipped |
-| 6 — Referenced fields (lookup sources dropped) | ⬜ not started |
+| 6 — Named lookup lists + referenced fields | ⬜ not started |
 | 7 — Builder tree + dialogs | ⬜ not started |
 | 8 — Material UI layer | ⬜ not started |
 
@@ -134,16 +134,58 @@ We have loaders + cascade filtering. The reference adds caching and label resolu
 
 ---
 
-## 6. Referenced fields (`listName`/`lookupSource` dropped)
+## 6. Named lookup lists + referenced fields
 
 Present in `core` types, read by nothing. Confirmed by grep.
 
 | Feature | Work |
 |---|---|
-| `listName`, `lookupSource` | **Dropped — not wanted.** No `LOOKUP_REGISTRY`, no lookup data source. The fields stay in the model for config compatibility but will never gain a runtime; options come from inline `options` or an entity reference. Builder data-source choice is therefore `none` \| `manual` \| `entity`, with no `lookup` branch to enforce. |
+| `listName` | **Required — decision reverted.** A named, centrally-managed option list resolved through a new `LOOKUP_REGISTRY`. See §6.1. |
+| `lookupSource` | **Dropped _(decided)_.** Dead in Superpower_Web *and* in Superpower-App: stored, Joi-validated and copied on sync, but read by no service, pipeline or component. Removed from `NestedFieldConfig`; configs carrying it still round-trip, since `normalizeField` spreads unknown keys. |
 | `isReferenced`, `referencedEntityKey`, `referencedFieldId`, `referencedSnapshot`, `hasDrift` | Live field references across configs + the referenced-field dialog and drift detection. |
 | `systemDefault` | Edit/delete protection (§3). |
 | `table.*` (`isName`, `isStatus`, `arrayVisible`, …) | Already in the model; consumer-facing metadata only — **no work**, we ship no table. |
+
+### 6.1 `listName` — named lookup lists
+
+The reference has a real feature behind this: `list.service.ts` fetches master lists by name
+(`getListByNames`), and `mapDropdown(listName, allLists, lang)` turns one into options. A
+master list is `{ listName, listValues: [{ code, name: { en, de }, sortOrder, _id }] }`.
+
+Note what its mapper does: it displays `name[lang]` but stores `name['en']` as the value. Our
+canonical option is the whole `LocalizedText`, which carries every language — strictly better,
+and it means a list value maps to an option directly with no lossy projection.
+
+**Deliver**
+- `core`: `LookupListValue` type and `normalizeLookupValues()` — sorts by `sortOrder`, maps
+  `name` to a `DropdownOption`, tolerates bare strings and `LocalizedText`.
+- `renderer`: `LOOKUP_REGISTRY` token (list name → values, as array/Promise/Observable) and a
+  `LookupRegistryService` that caches per list name and de-duplicates in-flight loads — the
+  same shape as `EntityReferenceService`, since one list is typically used by many fields.
+- Field options resolve in one place, not in three components: inline `options` win, else
+  `listName` resolves through the registry. `dropdown`, `radio` and `multiSelect` read from
+  that resolver.
+- `builder`: data source becomes `none` | `manual` | `lookup` | `entity`, with the reference's
+  mutual exclusion — picking one clears the others (doc §4.4). Inspector gets a list-name input.
+
+### 6.2 Value identity — text, not `_id` _(decided)_
+
+A list value carries a stable `_id` and `code`, but the reference stores `name.en` — the text —
+as the option value, and hedges with `isMatching(value | id | label)`. We keep **text as the
+value**, consistent with §2, rather than storing an id for `listName` fields only.
+
+The trade-off, accepted knowingly: renaming a list value orphans records saved under the old
+text. That is worse here than for inline options, because master lists are centrally managed —
+one admin edit reaches every record in every entity using that list. Treat a list-value rename
+as a data migration.
+
+Rejected alternative: store `_id`/`code` for `listName` fields and resolve text for display.
+Correct for renames, but it gives `listName` fields a different value shape from inline-option
+fields, reintroducing exactly the two-shape ambiguity §2 removed.
+
+The backend's `listValues` also carry `isSystemDefined` and `from`, which the reference's
+`mapDropdown` drops. Expose them on the value type so a consumer can act on them (e.g. block
+deleting a system-defined value); the library itself will not.
 
 ---
 
@@ -192,7 +234,7 @@ Backend/API (`/configuration/dynamic_entity_v2`, `/formRule`, `/preferences`, co
 | 3 | Tab model completeness | 1 | No | M | ✅ |
 | 4 | Record editor parity | 1, 3 | No | L | ⬜ |
 | 5 | Entity reference caching + preload | — | No | M | ✅ |
-| 6 | Referenced fields + drift detection | 3 | No | S | ⬜ |
+| 6 | Named lookup lists + referenced fields | 3 | No | M | ⬜ |
 | 7 | Builder tree + dialogs | 3, 6 | No | L | ⬜ |
 | 8 | Material UI layer | 4–7 | **Yes** (peer deps) | L | ⬜ |
 
@@ -215,6 +257,8 @@ Backend/API (`/configuration/dynamic_entity_v2`, `/formRule`, `/preferences`, co
 
 | 5 | Option shape | **Language-keyed object only.** Narrowed; legacy shapes upcast at the parse boundary. (§2) |
 | 6 | Material peer deps | **Accepted** — `@angular/material` + `@angular/cdk` move from optional to required on `ngx-dynamic-entity` in §8. |
+| 7 | Lookup lists | **`listName` in, `lookupSource` out.** The latter is dead in both the web app and the API. (§6.1) |
+| 8 | Lookup value identity | **Text, not `_id`.** Consistent with §2; a list-value rename is a data migration. (§6.2) |
 
 ## Still open
 
