@@ -9,17 +9,18 @@ import { resolveLabel } from '@dynamic-entity/core';
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <div class="ngx-field ngx-field--currency" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div class="ngx-field ngx-field--currency"
+      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
       <label class="ngx-field__label">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
       } @else if (readonly) {
-        <span class="ngx-field__value">{{ symbol }}{{ control.value }}</span>
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ symbol }}{{ control.value }}</span>
       } @else {
         <div class="ngx-field__currency-wrap">
           <span class="ngx-field__currency-symbol">{{ symbol }}</span>
           <input
-            class="ngx-field__input ngx-field__input--currency"
+            class="ngx-field__input ngx-field__input--currency" [attr.data-testid]="'field-' + field.id + '-input'"
             type="number"
             step="0.01"
             [formControl]="$any(control)"
@@ -28,7 +29,7 @@ import { resolveLabel } from '@dynamic-entity/core';
           />
         </div>
         @if (control.invalid && control.touched) {
-          <span class="ngx-field__error">This field has an error</span>
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">This field has an error</span>
         }
       }
     </div>

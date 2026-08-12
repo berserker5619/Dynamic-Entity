@@ -116,11 +116,12 @@
           </div>
         }
 
-        <div cdkDropList class="deb-field-list" (cdkDropListDropped)="onDrop($event)">
+        <div cdkDropList class="deb-field-list" data-testid="builder-field-list" (cdkDropListDropped)="onDrop($event)">
           @for (f of store.fields(); track f.id; let i = $index, count = $count) {
             <div
               cdkDrag
               class="deb-field-row"
+              data-testid="builder-field-row"
               [class.deb-field-row--active]="store.selectedFieldId() === f.id"
               (click)="store.selectField(f.id)"
             >
@@ -128,26 +129,30 @@
               <mat-icon class="deb-field-type" [matTooltip]="fieldTypeLabel(f.type)">{{ fieldTypeIcon(f.type) }}</mat-icon>
               <div class="deb-field-meta">
                 <div class="deb-row" style="gap:6px">
-                  <span class="deb-field-label">{{ fieldLabel(f) }}</span>
+                  <span class="deb-field-label" [attr.data-testid]="'row-label-' + f.id">{{ fieldLabel(f) }}</span>
                   <span class="deb-type-badge">{{ f.type }}</span>
                 </div>
-                <span class="deb-field-id">{{ f.id }}</span>
+                <span class="deb-field-id" [attr.data-testid]="'row-id-' + f.id">{{ f.id }}</span>
               </div>
               @if (f.validators?.required) { <span class="deb-req" title="Required">*</span> }
 
               <button mat-icon-button type="button" [disabled]="i === 0"
+                [attr.data-testid]="'row-up-' + f.id"
                 (click)="store.moveField(f.id, -1); $event.stopPropagation()" matTooltip="Move up">
                 <mat-icon>arrow_upward</mat-icon>
               </button>
               <button mat-icon-button type="button" [disabled]="i === count - 1"
+                [attr.data-testid]="'row-down-' + f.id"
                 (click)="store.moveField(f.id, 1); $event.stopPropagation()" matTooltip="Move down">
                 <mat-icon>arrow_downward</mat-icon>
               </button>
               <button mat-icon-button type="button"
+                [attr.data-testid]="'row-duplicate-' + f.id"
                 (click)="store.duplicateField(f.id); $event.stopPropagation()" matTooltip="Duplicate">
                 <mat-icon>content_copy</mat-icon>
               </button>
               <button mat-icon-button type="button" color="warn"
+                [attr.data-testid]="'row-delete-' + f.id"
                 (click)="store.removeField(f.id); $event.stopPropagation()" matTooltip="Delete">
                 <mat-icon>delete</mat-icon>
               </button>

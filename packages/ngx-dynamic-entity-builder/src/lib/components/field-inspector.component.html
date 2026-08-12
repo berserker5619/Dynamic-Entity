@@ -124,7 +124,7 @@
         </button>
       </div>
       @for (opt of f.options ?? []; track $index) {
-        <div class="deb-option-row">
+        <div class="deb-option-row" data-testid="option-row">
           <!-- One input: the displayed text is the stored value. -->
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
             <mat-label>Option ({{ lang() }})</mat-label>
@@ -194,7 +194,7 @@
       </button>
     </div>
     @for (entry of showWhenEntries(f); track entry.key) {
-      <div class="deb-option-row">
+      <div class="deb-option-row" data-testid="option-row">
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>Field id</mat-label>
           <input matInput [ngModel]="entry.key" (ngModelChange)="renameShowWhen(f, entry.key, $event)" />
@@ -224,7 +224,7 @@
         </button>
       </div>
       @for (mapping of f.patchOnTrue ?? []; track $index) {
-        <div class="deb-option-row">
+        <div class="deb-option-row" data-testid="option-row">
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>From field</mat-label>
             <input matInput [ngModel]="mapping.from"

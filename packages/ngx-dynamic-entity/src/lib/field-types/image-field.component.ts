@@ -15,10 +15,11 @@ import { FileUploadService } from '../services/file-upload.service';
   standalone: true,
   imports: [],
   template: `
-    <div class="ngx-field ngx-field--image" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div class="ngx-field ngx-field--image"
+      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
       <label class="ngx-field__label" [attr.for]="'field-' + field.id">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
       } @else {
         <div class="ngx-field__image-wrap">
           @if (previewUrl()) {
@@ -53,7 +54,7 @@ import { FileUploadService } from '../services/file-upload.service';
           }
         </div>
         @if (uploadError()) {
-          <span class="ngx-field__error">{{ uploadError() }}</span>
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">{{ uploadError() }}</span>
         }
       }
     </div>

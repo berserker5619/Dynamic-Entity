@@ -16,13 +16,14 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <div class="ngx-field ngx-field--radio" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div class="ngx-field ngx-field--radio"
+      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
       <fieldset class="ngx-field__fieldset">
         <legend class="ngx-field__label">{{ label }}</legend>
         @if (masked) {
-          <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
+          <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
         } @else if (readonly) {
-          <span class="ngx-field__value">{{ getSelectedLabel() }}</span>
+          <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ getSelectedLabel() }}</span>
         } @else {
           <div class="ngx-field__radio-group">
             @for (option of options(); track getOptLabel(option)) {
@@ -40,7 +41,7 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
             }
           </div>
           @if (control.invalid && control.touched) {
-            <span class="ngx-field__error">This field has an error</span>
+            <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">This field has an error</span>
           }
         }
       </fieldset>

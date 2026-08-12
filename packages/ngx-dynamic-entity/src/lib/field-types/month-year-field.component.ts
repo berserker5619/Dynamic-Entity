@@ -20,16 +20,17 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <div class="ngx-field ngx-field--month-year" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div class="ngx-field ngx-field--month-year"
+      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
       <label class="ngx-field__label">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
       } @else if (readonly) {
-        <span class="ngx-field__value">{{ formatValue(control.value) }}</span>
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ formatValue(control.value) }}</span>
       } @else {
         <div class="ngx-field__month-year-wrap">
           <select
-            class="ngx-field__input ngx-field__input--month"
+            class="ngx-field__input ngx-field__input--month" [attr.data-testid]="'field-' + field.id + '-month'"
             [value]="selectedMonth"
             (change)="onMonthChange($any($event.target).value)"
             [attr.disabled]="field.disabled ? true : null"
@@ -40,7 +41,7 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
             }
           </select>
           <select
-            class="ngx-field__input ngx-field__input--year"
+            class="ngx-field__input ngx-field__input--year" [attr.data-testid]="'field-' + field.id + '-year'"
             [value]="selectedYear"
             (change)="onYearChange($any($event.target).value)"
             [attr.disabled]="field.disabled ? true : null"
@@ -52,7 +53,7 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
           </select>
         </div>
         @if (control.invalid && control.touched) {
-          <span class="ngx-field__error">This field has an error</span>
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">This field has an error</span>
         }
       }
     </div>

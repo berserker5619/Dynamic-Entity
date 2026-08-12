@@ -27,20 +27,25 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { gotoDemo, safeClick } from './test-helpers';
+import {
+  builderFieldRows,
+  builderTabInputs,
+  gotoDemo,
+  safeClick,
+} from './test-helpers';
 
 // ─── Reusable builder action helpers ─────────────────────────────────────────
 
 /** Click a palette button by its exact catalog label. */
 async function addField(page: Page, label: string): Promise<void> {
-  const btn = page.locator('ngx-field-palette .deb-palette__item').filter({ hasText: label }).first();
+  const btn = page.locator('[data-testid^="palette-"]').filter({ hasText: label }).first();
   await expect(btn).toBeVisible({ timeout: 5000 });
   await btn.click();
 }
 
 /** Select the most recently added field row (builder auto-selects it, but we click for certainty). */
 async function selectLastField(page: Page): Promise<void> {
-  await page.locator('.deb-field-row').last().click();
+  await builderFieldRows(page).last().click();
 }
 
 /** Fill the Label (en) in the inspector. */
@@ -65,7 +70,7 @@ async function addOption(page: Page, value: string, label: string): Promise<void
   await addBtn.click();
   // One input per option: the displayed text IS the stored value, so `value` is unused.
   void value;
-  await page.locator('.deb-option-row').last().locator('input').fill(label);
+  await page.getByTestId('option-row').last().locator('input').fill(label);
 }
 
 /**
@@ -105,7 +110,7 @@ async function setEntityName(page: Page, name: string): Promise<void> {
 
 /** Rename the nth tab (0-indexed) in the Tab Manager panel. */
 async function setTabLabel(page: Page, index: number, label: string): Promise<void> {
-  const input = page.locator('ngx-tab-manager .deb-tabs__row mat-form-field input').nth(index);
+  const input = builderTabInputs(page).nth(index);
   await expect(input).toBeVisible({ timeout: 5000 });
   await input.fill(label);
 }
@@ -238,7 +243,7 @@ test.describe('Form Builder UI — employees entity (production-grade, from test
 
     // ─── 1. Set entity name ───────────────────────────────────────────────────
     await setEntityName(page, 'employees');
-    await expect(page.locator('.builder-preview h3')).toContainText('employees');
+    await expect(page.getByTestId('builder-preview').locator('h3')).toContainText('employees');
 
     // ─── 2. Set up all 8 tabs ─────────────────────────────────────────────────
     // Default tab is index 0 — rename it to "Primary Details"
@@ -265,7 +270,7 @@ test.describe('Form Builder UI — employees entity (production-grade, from test
     }
 
     // Verify all 8 tabs in the Tab Manager
-    const tabInputs = page.locator('ngx-tab-manager .deb-tabs__row mat-form-field input');
+    const tabInputs = builderTabInputs(page);
     await expect(tabInputs).toHaveCount(8);
     await expect(tabInputs.nth(0)).toHaveValue('Primary Details');
     await expect(tabInputs.nth(1)).toHaveValue('Work Details');
@@ -288,7 +293,7 @@ test.describe('Form Builder UI — employees entity (production-grade, from test
 
     // Total field count: 13 (primary) + 38 (work) + 4 (relieving) = 55
     const totalFields = PRIMARY_DETAILS_FIELDS.length + WORK_DETAILS_FIELDS.length + RELIEVING_DETAILS_FIELDS.length;
-    await expect(page.locator('.deb-field-row')).toHaveCount(totalFields);
+    await expect(builderFieldRows(page)).toHaveCount(totalFields);
 
     // ─── 6. Verify Config JSON panel ─────────────────────────────────────────
     const jsonPanel = page.locator('mat-expansion-panel').filter({ hasText: 'Config JSON' });
@@ -336,9 +341,9 @@ test.describe('Form Builder UI — employees entity (production-grade, from test
     await expect(saveBtn).toBeEnabled({ timeout: 5000 });
     await saveBtn.click();
 
-    await expect(page.locator('.builder-toast')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('.builder-toast')).toContainText('employees');
-    await expect(page.locator('.builder-toast')).not.toHaveClass(/builder-toast--error/);
+    await expect(page.getByTestId('builder-toast')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('builder-toast')).toContainText('employees');
+    await expect(page.getByTestId('builder-toast')).toHaveAttribute('data-error', 'false');
 
     // ─── 8. Entity is available in the dropdown ───────────────────────────────
     await expect(page.locator('#entitySelect option[value="employees"]')).toBeAttached({ timeout: 5000 });

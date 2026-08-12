@@ -14,7 +14,7 @@ import { LocalStore } from './mock/local-store.service';
   imports: [CommonModule, EntityBuilderComponent, DynamicFormComponent],
   template: `
     @if (message()) {
-      <div class="builder-toast" [class.builder-toast--error]="isError()">{{ message() }}</div>
+      <div class="builder-toast" data-testid="builder-toast" [attr.data-error]="isError()" [class.builder-toast--error]="isError()">{{ message() }}</div>
     }
 
     <ngx-entity-builder
@@ -26,7 +26,7 @@ import { LocalStore } from './mock/local-store.service';
       (save)="onSave($event)"
     >
       @if (draft(); as c) {
-        <div ngxBuilderPreview class="builder-preview">
+        <div ngxBuilderPreview class="builder-preview" data-testid="builder-preview">
           <h3>Live preview — {{ c.entity || 'Unnamed Entity' }}</h3>
           <ngx-dynamic-form [config]="c" [userRoles]="['admin']"></ngx-dynamic-form>
         </div>

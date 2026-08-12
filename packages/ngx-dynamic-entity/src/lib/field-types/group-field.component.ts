@@ -10,10 +10,11 @@ import { DynamicFieldComponent } from '../form/dynamic-field/dynamic-field.compo
   standalone: true,
   imports: [ReactiveFormsModule, forwardRef(() => DynamicFieldComponent)],
   template: `
-    <fieldset class="ngx-field ngx-field--group" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <fieldset class="ngx-field ngx-field--group"
+      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
       <legend class="ngx-field__legend">{{ label }}</legend>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
       } @else {
         <div class="ngx-field__group-children">
           @for (child of field.children ?? []; track child.id) {

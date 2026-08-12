@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { gotoDemo, safeClick } from './test-helpers';
+import {
+  builderFieldRows,
+  builderTabInputs,
+  gotoDemo,
+  safeClick,
+} from './test-helpers';
 
 test.describe('Dynamic Entity E2E - Full Builder Authoring & Full Data Entry Persistence', () => {
   test('builds custom entity config via Form Builder UI, saves, renders form, fills fields across all tabs, submits, and verifies persistence', async ({ page }) => {
@@ -18,35 +23,35 @@ test.describe('Dynamic Entity E2E - Full Builder Authoring & Full Data Entry Per
     await entityInput.fill('custom_full_coverage');
 
     // Rename Tab 1 (Main -> General Info)
-    const tab1Input = page.locator('ngx-tab-manager .deb-tabs__row mat-form-field input').first();
+    const tab1Input = builderTabInputs(page).first();
     await tab1Input.fill('General Info');
 
     // Add Tab 2 (Additional Details)
     const addTabBtn = page.locator('ngx-tab-manager button').filter({ hasText: 'Add' }).first();
     await addTabBtn.click();
-    const tab2Input = page.locator('ngx-tab-manager .deb-tabs__row mat-form-field input').nth(1);
+    const tab2Input = builderTabInputs(page).nth(1);
     await tab2Input.fill('Additional Details');
 
     // Add fields via Palette
-    const textBtn = page.locator('ngx-field-palette .deb-palette__item').filter({ hasText: 'Text' }).first();
+    const textBtn = page.locator('[data-testid^="palette-"]').filter({ hasText: 'Text' }).first();
     await textBtn.click();
 
-    const numberBtn = page.locator('ngx-field-palette .deb-palette__item').filter({ hasText: 'Number' }).first();
+    const numberBtn = page.locator('[data-testid^="palette-"]').filter({ hasText: 'Number' }).first();
     await numberBtn.click();
 
-    const dateBtn = page.locator('ngx-field-palette .deb-palette__item').filter({ hasText: 'Date' }).first();
+    const dateBtn = page.locator('[data-testid^="palette-"]').filter({ hasText: 'Date' }).first();
     await dateBtn.click();
 
     // Verify fields added to builder canvas
-    await expect(page.locator('.deb-field-row')).toHaveCount(3);
+    await expect(builderFieldRows(page)).toHaveCount(3);
 
     // ─── Step 2: Save Config in Form Builder Toolbar ──────────────────────
     const saveBtn = page.locator('mat-toolbar button').filter({ hasText: 'Save' });
     await expect(saveBtn).toBeEnabled({ timeout: 5000 });
     await saveBtn.click();
 
-    await expect(page.locator('.builder-toast')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('.builder-toast')).toContainText('custom_full_coverage');
+    await expect(page.getByTestId('builder-toast')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId('builder-toast')).toContainText('custom_full_coverage');
 
     // ─── Step 3: Switch to Renderer & Select New Entity ───────────────────
     await expect(page.locator('#entitySelect option[value="custom_full_coverage"]')).toBeAttached({ timeout: 5000 });
@@ -62,17 +67,17 @@ test.describe('Dynamic Entity E2E - Full Builder Authoring & Full Data Entry Per
     await expect(page.getByRole('tab', { name: 'Additional Details' })).toBeVisible();
 
     // Fill inputs on Tab 1
-    const textInput = page.locator('input.ngx-field__input[type="text"]').first();
+    const textInput = page.locator('[data-testid$="-input"][type="text"]').first();
     if (await textInput.isVisible()) {
       await textInput.fill('Johnathan Doe');
     }
 
-    const numberInput = page.locator('input.ngx-field__input[type="number"]').first();
+    const numberInput = page.locator('[data-testid$="-input"][type="number"]').first();
     if (await numberInput.isVisible()) {
       await numberInput.fill('75000');
     }
 
-    const dateInput = page.locator('input.ngx-field__input[type="date"]').first();
+    const dateInput = page.locator('[data-testid$="-input"][type="date"]').first();
     if (await dateInput.isVisible()) {
       await dateInput.fill('2026-08-11');
     }

@@ -14,16 +14,17 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <div class="ngx-field ngx-field--multiSelect" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div class="ngx-field ngx-field--multiSelect"
+      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
       <label class="ngx-field__label">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
       } @else if (readonly) {
-        <span class="ngx-field__value">{{ getLabels(control.value) }}</span>
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ getLabels(control.value) }}</span>
       } @else {
         <select
           [id]="field.id"
-          class="ngx-field__input"
+          class="ngx-field__input" [attr.data-testid]="'field-' + field.id + '-input'"
           [formControl]="$any(control)"
           [compareWith]="compareFn"
           [attr.disabled]="field.disabled ? true : null"
@@ -39,7 +40,7 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
           }
         </select>
         @if (control.invalid && control.touched) {
-          <span class="ngx-field__error">This field has an error</span>
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">This field has an error</span>
         }
       }
     </div>

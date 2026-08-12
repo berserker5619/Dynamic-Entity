@@ -9,17 +9,18 @@ import { resolveLabel } from '@dynamic-entity/core';
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <div class="ngx-field ngx-field--email" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div class="ngx-field ngx-field--email"
+      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
       <label class="ngx-field__label">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
       } @else if (readonly) {
-        <span class="ngx-field__value">
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">
           <a [href]="'mailto:' + control.value" class="ngx-field__email-link">{{ control.value || '—' }}</a>
         </span>
       } @else {
         <input
-          class="ngx-field__input"
+          class="ngx-field__input" [attr.data-testid]="'field-' + field.id + '-input'"
           type="email"
           autocomplete="email"
           [formControl]="$any(control)"
@@ -28,11 +29,11 @@ import { resolveLabel } from '@dynamic-entity/core';
         />
         @if (control.invalid && control.touched) {
           @if (control.errors?.['required']) {
-            <span class="ngx-field__error">Email is required</span>
+            <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">Email is required</span>
           } @else if (control.errors?.['email']) {
-            <span class="ngx-field__error">Enter a valid email address</span>
+            <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">Enter a valid email address</span>
           } @else {
-            <span class="ngx-field__error">This field has an error</span>
+            <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">This field has an error</span>
           }
         }
       }

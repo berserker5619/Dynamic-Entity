@@ -2,24 +2,24 @@
 
   <!-- Error message banner -->
   @if (error) {
-    <div class="ngx-form__error-banner" role="alert">{{ error }}</div>
+    <div class="ngx-form__error-banner" role="alert" data-testid="form-error">{{ error }}</div>
   }
 
   <!-- Rules Info Banners -->
   @for (infoKey of showInfoBanners ? Object.keys(ruleResult().infoBanners) : []; track infoKey) {
-    <div class="ngx-form__info-banner" role="status">
+    <div class="ngx-form__info-banner" role="status" [attr.data-testid]="'info-banner-' + infoKey">
       ℹ️ {{ ruleResult().infoBanners[infoKey] }}
     </div>
   }
 
   <!-- Rules Validation Errors & Warnings -->
   @for (errKey of Object.keys(ruleResult().validationErrors); track errKey) {
-    <div class="ngx-form__error-banner" role="alert">
+    <div class="ngx-form__error-banner" role="alert" [attr.data-testid]="'rule-error-' + errKey">
       ⚠️ {{ ruleResult().validationErrors[errKey] }}
     </div>
   }
   @for (warnKey of Object.keys(ruleResult().validationWarnings); track warnKey) {
-    <div class="ngx-form__warning-banner" role="status">
+    <div class="ngx-form__warning-banner" role="status" [attr.data-testid]="'rule-warning-' + warnKey">
       ⚡ {{ ruleResult().validationWarnings[warnKey] }}
     </div>
   }
@@ -37,11 +37,12 @@
 
   <!-- Primary Tab bar — only if visible tabs defined -->
   @if (visibleTabs.length > 0) {
-    <div class="ngx-form__tabs" role="tablist">
+    <div class="ngx-form__tabs" role="tablist" data-testid="tab-strip">
       @for (tab of visibleTabs; track tab.id) {
         <button
           type="button"
           class="ngx-form__tab"
+          [attr.data-testid]="'tab-' + tab.id"
           [class.ngx-form__tab--active]="activeTab() === tab.id"
           (click)="setActiveTab(tab.id)"
           role="tab"
@@ -55,11 +56,12 @@
 
   <!-- Sub-tab bar — only if active tab has sub-tabs -->
   @if (visibleSubTabs.length > 0) {
-    <div class="ngx-form__tabs ngx-form__tabs--sub" role="tablist" style="margin-top: -12px; margin-bottom: 12px; font-size: 13px;">
+    <div class="ngx-form__tabs ngx-form__tabs--sub" role="tablist" data-testid="subtab-strip" style="margin-top: -12px; margin-bottom: 12px; font-size: 13px;">
       @for (subTab of visibleSubTabs; track subTab.id) {
         <button
           type="button"
           class="ngx-form__tab ngx-form__tab--sub"
+          [attr.data-testid]="'subtab-' + subTab.id"
           [class.ngx-form__tab--active]="(activeSubTabConfig?.id) === subTab.id"
           (click)="setActiveSubTab(subTab.id)"
           role="tab"
@@ -73,12 +75,12 @@
 
   <!-- Module tab component OR Fields for active tab -->
   @if (activeTabModuleComponent) {
-    <div class="ngx-form__module-panel">
+    <div class="ngx-form__module-panel" data-testid="module-panel">
       <ng-container *ngComponentOutlet="activeTabModuleComponent; inputs: (activeSubTabConfig || activeTabConfig)?.moduleInputs"></ng-container>
     </div>
   } @else {
     <!-- Fields for active tab (Responsive 12-column grid) -->
-    <div class="ngx-form__panel">
+    <div class="ngx-form__panel" data-testid="form-panel">
       @for (field of fieldsForActiveTab; track field.id) {
         <div
           class="ngx-form__field-slot"
@@ -120,10 +122,11 @@
 
   <!-- Submit button — gated by RBAC and isSaving lock -->
   @if (!readonly && permissions.canEdit) {
-    <div class="ngx-form__actions">
+    <div class="ngx-form__actions" data-testid="form-actions">
       <button
         type="button"
         class="ngx-form__reset"
+        data-testid="form-reset"
         (click)="reset()"
         [disabled]="isSaving()"
       >
@@ -132,6 +135,7 @@
       <button
         type="submit"
         class="ngx-form__submit"
+        data-testid="form-submit"
         [disabled]="!canSubmit || form.invalid"
         title="Shortcut: Ctrl+S"
       >

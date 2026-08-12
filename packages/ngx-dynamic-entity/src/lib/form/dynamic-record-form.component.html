@@ -15,7 +15,7 @@
         </div>
       }
       <div>
-        <h2 class="ngx-record-editor__title">
+        <h2 class="ngx-record-editor__title" data-testid="record-title">
           {{ recordTitle }}
         </h2>
         <span class="ngx-record-editor__subtitle">Entity: {{ config.entity }}</span>
@@ -67,10 +67,11 @@
 
   <!-- Summary Panel (showOnMinimize fields with interactive jump) -->
   @if (summaryFields().length > 0) {
-    <div class="ngx-record-editor__summary-panel">
+    <div class="ngx-record-editor__summary-panel" data-testid="summary-panel">
       @for (sf of summaryFields(); track sf.id) {
         <div
           class="ngx-record-editor__summary-item"
+          [attr.data-testid]="'summary-' + sf.id"
           (click)="jumpToField(sf.id)"
           [title]="'Click to jump to ' + formatFieldLabel(sf)"
         >

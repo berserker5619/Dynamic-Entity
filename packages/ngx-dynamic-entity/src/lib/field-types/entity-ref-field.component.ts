@@ -19,18 +19,19 @@ import { EntityRefSelectionService } from '../services/entity-ref-selection.serv
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <div class="ngx-field ngx-field--entity-ref" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div class="ngx-field ngx-field--entity-ref"
+      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
       <label class="ngx-field__label" [attr.for]="'field-' + field.id">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
       } @else if (readonly) {
-        <span class="ngx-field__value">{{ getLabel(control.value) }}</span>
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ getLabel(control.value) }}</span>
       } @else {
         @if (loading()) {
-          <span class="ngx-field__value" role="status">Loading…</span>
+          <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-loading'" role="status">Loading…</span>
         } @else {
           <select
-            class="ngx-field__input"
+            class="ngx-field__input" [attr.data-testid]="'field-' + field.id + '-input'"
             [id]="'field-' + field.id"
             [formControl]="$any(control)"
             [attr.disabled]="field.disabled ? true : null"
@@ -42,11 +43,11 @@ import { EntityRefSelectionService } from '../services/entity-ref-selection.serv
             }
           </select>
           @if (awaitingParent()) {
-            <span class="ngx-field__hint">Select {{ parentFieldId }} first.</span>
+            <span class="ngx-field__hint" [attr.data-testid]="'field-' + field.id + '-hint'">Select {{ parentFieldId }} first.</span>
           }
         }
         @if (control.invalid && control.touched) {
-          <span class="ngx-field__error">This field has an error</span>
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">This field has an error</span>
         }
       }
     </div>

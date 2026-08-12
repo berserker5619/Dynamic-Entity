@@ -16,6 +16,7 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
   template: `
     <div
       class="ngx-field ngx-field--dropdown"
+      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type"
       [class.ngx-field--readonly]="readonly"
       [class.ngx-field--masked]="masked"
       [class.ngx-field--invalid]="control && control.invalid && control.touched"
@@ -25,13 +26,13 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
         @if (field.validators?.required) { <span class="ngx-field__req">*</span> }
       </label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
       } @else if (readonly) {
-        <span class="ngx-field__value">{{ getLabel(control.value) }}</span>
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ getLabel(control.value) }}</span>
       } @else {
         <select
           [id]="field.id"
-          class="ngx-field__input"
+          class="ngx-field__input" [attr.data-testid]="'field-' + field.id + '-input'"
           [formControl]="$any(control)"
           [compareWith]="compareFn"
           [attr.disabled]="field.disabled ? true : null"
@@ -48,7 +49,7 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
           }
         </select>
         @if (errorMessage) {
-          <span class="ngx-field__error" [id]="field.id + '-error'" role="alert">{{ errorMessage }}</span>
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" [id]="field.id + '-error'" role="alert">{{ errorMessage }}</span>
         }
       }
     </div>

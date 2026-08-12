@@ -44,7 +44,7 @@ export const SYSTEM_DEFAULT_CAN_EDIT = new InjectionToken<(roles: string[]) => b
 
       @for (tab of store.tabs(); track tab.id; let i = $index, count = $count) {
         <div class="deb-tab-card" [class.deb-tab-card--system]="tab.systemDefault">
-          <div class="deb-tabs__row">
+          <div class="deb-tabs__row" [attr.data-testid]="'tab-row-' + tab.id">
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-grow">
               <mat-label>{{ tab.id }} {{ tab.systemDefault ? '(System)' : '' }}</mat-label>
               <input
@@ -144,7 +144,7 @@ export const SYSTEM_DEFAULT_CAN_EDIT = new InjectionToken<(roles: string[]) => b
             <div class="deb-subtabs">
               <span class="deb-subtabs__title">Sub-tabs:</span>
               @for (sub of tab.children; track sub.id) {
-                <div class="deb-tabs__row deb-subtab-row">
+                <div class="deb-tabs__row deb-subtab-row" [attr.data-testid]="'subtab-row-' + sub.id">
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-grow">
                     <mat-label>{{ sub.id }}</mat-label>
                     <input

@@ -123,8 +123,8 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
     // monthYear renders as two separate selects (no id) inside field-container-contractMonth
     const monthYearContainer = page.locator('#field-container-contractMonth');
     if (await monthYearContainer.isVisible()) {
-      await monthYearContainer.locator('.ngx-field__input--month').selectOption('08');
-      await monthYearContainer.locator('.ngx-field__input--year').selectOption('2026');
+      await monthYearContainer.locator('[data-testid$="-month"]').selectOption('08');
+      await monthYearContainer.locator('[data-testid$="-year"]').selectOption('2026');
     }
 
     // ─── Step 5: Fill Tab 2 (Advanced Profile) ──────────────────────────────

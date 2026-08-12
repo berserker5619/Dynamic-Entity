@@ -1,5 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { builderPaletteButton, fieldByLabel, gotoDemo, recordButton, safeClick, safeSelect } from './test-helpers';
+import {
+  builderFieldRows,
+  builderPaletteButton,
+  fieldByLabel,
+  gotoDemo,
+  recordButton,
+  safeClick,
+  safeSelect,
+} from './test-helpers';
 
 test.describe('Dynamic Entity Demo E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
@@ -43,7 +51,7 @@ test.describe('Dynamic Entity Demo E2E Tests', () => {
     await safeClick(recordButton(page, 'Acme Corp'));
 
     await expect(page.getByRole('heading', { level: 2, name: 'Edit Client' })).toBeVisible();
-    await expect(fieldByLabel(page, 'Salary').locator('.ngx-field__value--masked')).toHaveText('XXXXXXXXX');
+    await expect(fieldByLabel(page, 'Salary').locator('[data-testid$="-masked"]')).toHaveText('XXXXXXXXX');
 
     await safeClick(page.getByRole('button', { name: /Back to List/i }));
     await safeClick(page.getByRole('button', { name: 'Admin' }));
@@ -56,13 +64,13 @@ test.describe('Dynamic Entity Demo E2E Tests', () => {
     await safeClick(page.getByRole('button', { name: 'Form Builder' }));
 
     const builder = page.locator('ngx-entity-builder');
-    const preview = page.locator('.builder-preview');
+    const preview = page.getByTestId('builder-preview');
     await expect(builder).toBeVisible();
     await expect(preview).toBeVisible();
 
     await safeClick(builderPaletteButton(page, 'Text'));
 
-    await expect(builder.locator('.deb-field-row')).toHaveCount(1);
-    await expect(preview.locator('.ngx-field')).toContainText('Text 1');
+    await expect(builderFieldRows(page)).toHaveCount(1);
+    await expect(preview.locator('[data-field-type]')).toContainText('Text 1');
   });
 });

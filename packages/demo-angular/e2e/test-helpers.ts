@@ -15,12 +15,55 @@ export function recordButton(page: Page, name: string): Locator {
   return page.getByRole('button', { name: new RegExp(name, 'i') });
 }
 
+/**
+ * Locators below address the DOM through `data-testid`, never through CSS classes.
+ *
+ * Class names are presentation: the builder tree (phase 7.1) and the Material rewrite
+ * (phase 9) both replace the markup these specs used to assert on. The hooks are the
+ * contract that survives both, so a rewrite lands under a green suite instead of taking
+ * the suite with it.
+ *
+ * Naming: a field is `field-{fieldId}`, its parts `field-{fieldId}-{part}` where part is
+ * one of input / value / masked / error / hint / month / year / add / row / remove-{i}.
+ * A field **root** also carries `data-field-type`, which is the only way to say "a field"
+ * without also matching its parts — every part id starts with `field-` too.
+ */
+
+/** A field's root element, found by its visible label. Prefer `fieldById` when the id is known. */
 export function fieldByLabel(page: Page, label: string): Locator {
-  return page.locator('.ngx-field').filter({ hasText: label }).first();
+  return page.locator('[data-field-type]').filter({ hasText: label }).first();
+}
+
+/** A field's root element by field id — exact, and immune to label or language changes. */
+export function fieldById(page: Page, fieldId: string): Locator {
+  return page.getByTestId(`field-${fieldId}`);
+}
+
+/** One part of a field: `fieldPart(page, 'salary', 'masked')`. */
+export function fieldPart(page: Page, fieldId: string, part: string): Locator {
+  return page.getByTestId(`field-${fieldId}-${part}`);
+}
+
+/** Every field row on the builder canvas — countable. */
+export function builderFieldRows(page: Page): Locator {
+  return page.getByTestId('builder-field-row');
+}
+
+/** The id badge of one builder row, which is how a spec proves a field was created. */
+export function builderRowId(page: Page, fieldId: string): Locator {
+  return page.getByTestId(`row-id-${fieldId}`);
+}
+
+/** Tab-name inputs in the builder's tab manager, in order. */
+export function builderTabInputs(page: Page): Locator {
+  return page.locator('[data-testid^="tab-row-"] mat-form-field input');
 }
 
 export function builderPaletteButton(page: Page, name: string): Locator {
-  return page.locator('ngx-field-palette .deb-palette__item').filter({ hasText: name }).first();
+  return page
+    .locator('[data-testid^="palette-"]')
+    .filter({ hasText: name })
+    .first();
 }
 
 export async function safeClick(locator: Locator): Promise<void> {

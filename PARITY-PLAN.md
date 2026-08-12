@@ -12,7 +12,7 @@ _Status: **Phases 1–6 shipped.** 804 unit tests + 2 demo Karma + 50 e2e; build
 | 4 — Record editor parity | ✅ shipped |
 | 5 — Entity reference caching + preload | ✅ shipped |
 | 6 — Named lookup lists (`listName`) | ✅ shipped |
-| 7 — Builder tree + dialogs + test hooks | ⬜ not started |
+| 7 — Builder tree + dialogs + test hooks | 🟡 7.3 shipped; 7.1, 7.2 outstanding |
 | 8 — Referenced fields + drift | ⬜ design first |
 | 9 — Material UI layer | ⬜ not started |
 
@@ -310,22 +310,35 @@ schedule problem here does not hold 7.2 or 7.3.
 - Dirty tracking and unsaved-changes guard.
 - **`applyEditorToField` semantics**, minus the id-change path. **Decided: keep the current id behaviour, do not revert to the reference's free-text ids.** New fields derive their id from the label; a config loaded from storage keeps every id it arrived with, because records are already stored under them. That is exactly the "new fields follow label→id, existing data untouched" rule, and it is already implemented and tested — no work in this phase.
 
-### 7.3 Test hooks for the Material rewrite — renderer work, carried here deliberately
+### 7.3 Test hooks for the Material rewrite — renderer work, carried here deliberately (shipped)
 
 §9 rewrites the markup that all 46 e2e specs assert against, and §9's stated mitigation was
 "budget for reworking those selectors". Most of that cost is avoidable, and the avoiding has to
 happen *before* the markup churns:
 
-- Add `data-testid` to the structural elements of the 18 field components — input, value,
-  label, error, hint — and to the tab strip, banners and the record-editor section controls.
-- Migrate the existing e2e specs off `.ngx-field__input` / bare `option` selectors and onto
-  those hooks, incrementally, keeping the suite green at every step.
-- From then on, `data-testid` is the contract the e2e suite asserts on; class names are
-  presentation and free to change.
+Shipped ahead of 7.1 and 7.2, because the tree editor breaks the same selectors §9 does:
+`.deb-field-row` alone had 22 assertions across five specs.
 
-This is cheap now and it removes the largest unknown from the largest remaining phase. Doing it
-inside §9 means changing markup and selectors in the same commits, which is how a rewrite loses
-its safety net.
+**The contract**
+- A field root is `field-{fieldId}` and also carries `data-field-type`. Both exist because
+  every *part* id also starts with `field-`, so `[data-field-type]` is the only way to say
+  "a field" without matching its own children.
+- Parts are `field-{fieldId}-{part}`: `input` / `value` / `masked` / `error` / `hint` /
+  `loading`, `month` and `year` for monthYear, and `add` / `row` / `remove-{i}` for arrays.
+- Form shell: `form-panel`, `module-panel`, `tab-strip`, `tab-{id}`, `subtab-{id}`,
+  `form-actions`, `form-submit`, `form-reset`, `form-error`, `info-banner-{key}`,
+  `rule-error-{key}`, `rule-warning-{key}`.
+- Builder: `builder-field-row` (repeated, countable), `row-id-{id}`, `row-label-{id}`,
+  `row-up|down|duplicate|delete-{id}`, `palette-{type}`, `tab-row-{id}`, `option-row`.
+
+**State**: all 50 e2e specs assert through hooks or roles — **zero** presentational selectors
+remain. Verified by renaming `deb-field-row`, `deb-field-id` and `deb-field-label` in the
+builder template and re-running the builder-heavy specs: 13/13 still passed, which is the
+property this phase exists to buy.
+
+From here `data-testid` is the contract the e2e suite asserts on; class names are presentation
+and free to change. Doing this inside §9 would have meant changing markup and selectors in the
+same commits, which is how a rewrite loses its safety net.
 
 ---
 

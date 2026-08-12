@@ -1,5 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { gotoDemo, safeClick } from './test-helpers';
+import {
+  builderFieldRows,
+  builderRowId,
+  gotoDemo,
+  safeClick,
+} from './test-helpers';
 
 /**
  * The Field id is read-only and derived from the label. These cover the contract in the
@@ -25,9 +30,9 @@ async function openBuilder(page: Page): Promise<void> {
 
 async function addTextField(page: Page, label: string): Promise<void> {
   await safeClick(
-    page.locator('ngx-field-palette .deb-palette__item').filter({ hasText: 'Text' }).first(),
+    page.locator('[data-testid^="palette-"]').filter({ hasText: 'Text' }).first(),
   );
-  await page.locator('.deb-field-row').last().click();
+  await builderFieldRows(page).last().click();
   await labelInput(page).fill(label);
 }
 
@@ -44,7 +49,7 @@ test.describe('Builder — field id derived from label', () => {
     await addTextField(page, 'Employee Count');
 
     await expect(idInput(page)).toHaveValue('employeeCount');
-    await expect(page.locator('.deb-field-row .deb-field-id').filter({ hasText: 'employeeCount' })).toBeVisible();
+    await expect(builderRowId(page, 'employeeCount')).toBeVisible();
   });
 
   test('keeps following the label on later edits', async ({ page }) => {

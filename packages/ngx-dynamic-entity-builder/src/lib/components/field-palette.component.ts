@@ -19,6 +19,7 @@ import { FIELD_TYPE_CATALOG, type FieldTypeMeta } from '../field-catalog';
           mat-stroked-button
           type="button"
           class="deb-palette__item"
+          [attr.data-testid]="'palette-' + meta.type"
           [matTooltip]="meta.description"
           (click)="pick.emit(meta.type)"
         >
