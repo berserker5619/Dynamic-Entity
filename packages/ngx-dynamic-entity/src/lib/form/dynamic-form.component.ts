@@ -31,6 +31,7 @@ import {
   getTabPath,
   getValueByPath,
   normalizeArrayStructures,
+  normalizeConfigOptions,
   resolveLabel,
   setTabData,
   setValueByPath,
@@ -242,6 +243,13 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['config'] && this.config) {
+      // Configs arrive as plain JSON from storage or an API, where TypeScript cannot enforce
+      // the option shape. Normalise here, at the library boundary, so everything downstream
+      // can rely on an option being a LocalizedText. Returns the same object when it already
+      // is, so a well-formed config costs nothing.
+      this.config = normalizeConfigOptions(this.config);
+    }
     if (changes['config'] || changes['initialData']) {
       this.buildForm();
       if (this.visibleTabs.length > 0 && !this.activeTab()) {

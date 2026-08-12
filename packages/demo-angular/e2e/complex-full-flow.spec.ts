@@ -19,9 +19,10 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
             type: 'dropdown',
             label: { en: 'Industry Sector' },
             options: [
-              { value: 'tech', label: { en: 'Technology' } },
-              { value: 'health', label: { en: 'Healthcare' } },
-              { value: 'finance', label: { en: 'Finance & Banking' } },
+              // Canonical option shape: the displayed text is the stored value.
+              { en: 'Technology' },
+              { en: 'Healthcare' },
+              { en: 'Finance & Banking' },
             ],
             colSpan: 4,
           },
@@ -116,7 +117,7 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
 
     await page.locator('#fullName').fill('Dr. Marcus Vance');
     await page.locator('#annualBudget').fill('500000');
-    await safeSelect(page.locator('#industry'), 'health');
+    await safeSelect(page.locator('#industry'), 'Healthcare');
     await page.locator('#startDate').fill('2026-08-07');
 
     // monthYear renders as two separate selects (no id) inside field-container-contractMonth
@@ -179,7 +180,7 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
     // Verify Tab 1 data retained
     await expect(page.locator('#fullName')).toHaveValue('Dr. Marcus Vance');
     await expect(page.locator('#annualBudget')).toHaveValue('500000');
-    await expect(page.locator('#industry')).toHaveValue('health');
+    await expect(page.locator('#industry').locator('option:checked')).toHaveText('Healthcare');
     await expect(page.locator('#startDate')).toHaveValue('2026-08-07');
 
     // Verify Tab 2 data retained

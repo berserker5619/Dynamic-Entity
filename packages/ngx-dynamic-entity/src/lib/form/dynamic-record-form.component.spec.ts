@@ -19,8 +19,8 @@ const config: EntityFormConfig = {
           label: { en: 'Status' },
           showOnMinimize: true,
           options: [
-            { value: 'active', label: { en: 'Active', de: 'Aktiv' } },
-            { value: 'inactive', label: { en: 'Inactive' } },
+            { en: 'Active', de: 'Aktiv' },
+            { en: 'Inactive' },
           ],
         },
         { id: 'notes', type: 'textarea', label: { en: 'Notes' } },
@@ -92,9 +92,9 @@ describe('DynamicRecordFormComponent', () => {
 
   describe('session baseline', () => {
     it('seeds the baseline from the loaded record, not the first keystroke', () => {
-      build({ name: 'Acme', status: 'active' });
+      build({ name: 'Acme', status: { en: 'Active', de: 'Aktiv' } });
 
-      expect(component.originalBaseline()).toEqual({ name: 'Acme', status: 'active' });
+      expect(component.originalBaseline()).toEqual({ name: 'Acme', status: { en: 'Active', de: 'Aktiv' } });
       expect(component.isModified()).toBe(false);
     });
 
@@ -139,7 +139,7 @@ describe('DynamicRecordFormComponent', () => {
     });
 
     it('formats summary values through the shared core formatter', () => {
-      build({ status: 'active', archived: true });
+      build({ status: { en: 'Active', de: 'Aktiv' }, archived: true });
 
       const status = component.summaryFields().find(f => f.id === 'status')!;
       const archived = component.summaryFields().find(f => f.id === 'archived')!;
@@ -149,7 +149,7 @@ describe('DynamicRecordFormComponent', () => {
     });
 
     it('honours the active language when formatting option labels', () => {
-      build({ status: 'active' });
+      build({ status: { en: 'Active', de: 'Aktiv' } });
       component.language = 'de';
 
       const status = component.summaryFields().find(f => f.id === 'status')!;

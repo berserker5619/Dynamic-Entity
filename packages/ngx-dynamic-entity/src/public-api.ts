@@ -30,6 +30,18 @@ export * from './lib/field-types/dropdown-field.component';
 export * from './lib/field-types/multi-select-field.component';
 export * from './lib/field-types/entity-ref-field.component';
 
+// Value helpers — a dropdown value is now a language-keyed object, so a consumer rendering
+// record values needs these. Re-exported so they don't have to depend on core directly.
+export {
+  resolveLabel,
+  resolveOptionLabel,
+  resolveOptionValue,
+  formatDisplayValue,
+  valuesMatch,
+  normalizeOption,
+  normalizeConfig,
+} from '@dynamic-entity/core';
+
 // Re-export core types so consumers need only one import
 export type {
   EntityFormConfig,

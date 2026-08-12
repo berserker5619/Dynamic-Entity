@@ -63,10 +63,9 @@ async function addOption(page: Page, value: string, label: string): Promise<void
   const addBtn = page.locator('ngx-field-inspector button').filter({ hasText: 'Option' }).first();
   await expect(addBtn).toBeVisible({ timeout: 5000 });
   await addBtn.click();
-  const rows = page.locator('.deb-option-row');
-  const last = rows.last();
-  await last.locator('mat-form-field').filter({ hasText: 'Value' }).locator('input').fill(value);
-  await last.locator('mat-form-field').filter({ hasText: /Label/ }).locator('input').fill(label);
+  // One input per option: the displayed text IS the stored value, so `value` is unused.
+  void value;
+  await page.locator('.deb-option-row').last().locator('input').fill(label);
 }
 
 /**

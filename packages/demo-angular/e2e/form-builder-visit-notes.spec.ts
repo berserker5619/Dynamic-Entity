@@ -81,10 +81,9 @@ async function addOption(page: Page, value: string, label: string): Promise<void
   const count = await optRows.count();
   const lastRow = optRows.nth(count - 1);
 
-  const valueInput = lastRow.locator('mat-form-field').filter({ hasText: 'Value' }).locator('input');
-  const labelInput = lastRow.locator('mat-form-field').filter({ hasText: /Label/ }).locator('input');
-  await valueInput.fill(value);
-  await labelInput.fill(label);
+  // One input per option: the displayed text IS the stored value, so `value` is unused.
+  void value;
+  await lastRow.locator('input').fill(label);
 }
 
 /** Set the entity name in the top-left settings panel. */

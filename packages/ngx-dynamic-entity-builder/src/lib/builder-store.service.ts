@@ -11,7 +11,7 @@ import type {
   PatchOnTrueMapping,
   RichFieldType,
 } from '@dynamic-entity/core';
-import { findTab, labelToId } from '@dynamic-entity/core';
+import { findTab, labelToId, normalizeConfigOptions } from '@dynamic-entity/core';
 import {
   createFieldConfig,
   getFieldTypeMeta,
@@ -71,7 +71,10 @@ export class BuilderStore {
   // ─── Initialisation ─────────────────────────────────────────────────────────
 
   load(config: EntityFormConfig): void {
-    const next = clone(config);
+    // The other boundary where a config enters the library (the renderer's ngOnChanges is
+    // the first). Authoring must start from the canonical option shape, or the builder
+    // would round-trip a legacy config straight back out unchanged.
+    const next = clone(normalizeConfigOptions(config));
     next.tabs = next.tabs ?? [];
     if (next.tabs.length === 0) {
       next.tabs = [{ id: 'default', label: { en: 'Default' }, fields: [] }];
@@ -459,43 +462,28 @@ export class BuilderStore {
     });
   }
 
-  updateOption(fieldId: string, index: number, patch: any): void {
-    if (patch && 'value' in patch) {
-      this.setOptionValue(fieldId, index, patch.value);
-    }
-  }
-
-  setOptionValue(fieldId: string, index: number, value: any): void {
+  /** Merge language keys into an option. `setOptionLabel` is the usual single-language path. */
+  updateOption(fieldId: string, index: number, patch: DropdownOption): void {
     this.mutate(draft => {
       const field = this.findFieldInTabs(draft.tabs, fieldId);
-      if (!field?.options?.[index]) return;
-      const existing = field.options[index];
-      if (typeof existing === 'object' && 'value' in existing) {
-        (existing as { value: any }).value = value;
-      } else if (typeof existing === 'object') {
-        const lang = draft.defaultLanguage ?? 'en';
-        field.options[index] = { value, label: existing as Record<string, string> };
-      } else {
-        field.options[index] = value;
-      }
+      const option = field?.options?.[index];
+      if (!option) return;
+      field.options![index] = { ...option, ...patch };
     });
   }
 
+  /**
+   * Set an option's text for one language.
+   *
+   * An option is a language-keyed object and the displayed text **is** the stored value,
+   * so this is the only way to edit one — there is no separate value to set.
+   */
   setOptionLabel(fieldId: string, index: number, language: string, value: string): void {
     this.mutate(draft => {
       const field = this.findFieldInTabs(draft.tabs, fieldId);
       const option = field?.options?.[index];
       if (!option) return;
-      if (typeof option === 'object' && 'label' in option && option.label) {
-        (option as { label: Record<string, string> }).label = {
-          ...(option as { label: Record<string, string> }).label,
-          [language]: value,
-        };
-      } else if (typeof option === 'object') {
-        field.options![index] = { ...(option as Record<string, string>), [language]: value };
-      } else {
-        field.options![index] = { [language]: value };
-      }
+      field.options![index] = { ...option, [language]: value };
     });
   }
 
@@ -661,7 +649,10 @@ export class BuilderStore {
   // ─── Tabs ───────────────────────────────────────────────────────────────────
 
   addTab(): string {
-    const id = this.uniqueId('tab', (this._config().tabs ?? []).map(t => ({ id: t.id })));
+    // Must be unique across the whole tree, not just the top level: a tab id is the record
+    // storage path, so a new top-level tab colliding with an existing sub-tab would make two
+    // tabs write to the same key and break findTab/getTabPath.
+    const id = this.uniqueId('tab', this.allTabIds().map(tid => ({ id: tid })));
     this.mutate(draft => {
       const tabs = draft.tabs ?? (draft.tabs = []);
       const lang = draft.defaultLanguage ?? 'en';
@@ -670,17 +661,21 @@ export class BuilderStore {
     return id;
   }
 
-  addSubTab(parentId: string): string {
-    const allTabIds: string[] = [];
-    const collectIds = (tabs: NestedTabConfig[]) => {
-      for (const t of tabs) {
-        allTabIds.push(t.id);
-        if (t.children) collectIds(t.children);
+  /** Every tab id in the tree, at any depth. Tab ids must be globally unique — they are paths. */
+  private allTabIds(): string[] {
+    const ids: string[] = [];
+    const collect = (tabs: NestedTabConfig[] | undefined) => {
+      for (const t of tabs ?? []) {
+        ids.push(t.id);
+        collect(t.children);
       }
     };
-    collectIds(this._config().tabs ?? []);
+    collect(this._config().tabs);
+    return ids;
+  }
 
-    const id = this.uniqueId('tab', allTabIds.map(tid => ({ id: tid })));
+  addSubTab(parentId: string): string {
+    const id = this.uniqueId('tab', this.allTabIds().map(tid => ({ id: tid })));
     this.mutate(draft => {
       const parent = findTab(draft.tabs, parentId);
       if (parent) {

@@ -91,18 +91,12 @@
       </div>
       @for (opt of f.options ?? []; track $index) {
         <div class="deb-option-row">
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Value</mat-label>
+          <!-- One input: the displayed text is the stored value. -->
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+            <mat-label>Option ({{ lang() }})</mat-label>
             <input
               matInput
-              [ngModel]="optionValue(opt)"
-              (ngModelChange)="store.setOptionValue(f.id, $index, $event)"
-            />
-          </mat-form-field>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Label ({{ lang() }})</mat-label>
-            <input
-              matInput
+              [attr.data-testid]="'option-' + $index"
               [ngModel]="optionLabel(opt)"
               (ngModelChange)="store.setOptionLabel(f.id, $index, lang(), $event)"
             />

@@ -12,6 +12,7 @@ import type {
   NestedFieldConfig,
   NestedTabConfig,
   PatchOnTrueMapping,
+  RawDropdownOption,
   RichFieldType,
 } from './form-model.types';
 
@@ -24,20 +25,104 @@ export function resolveLabel(text: LocalizedText | undefined | null, lang = 'en'
   return text[lang] ?? text['en'] ?? Object.values(text).find(Boolean) ?? '';
 }
 
-/** Resolve the actual stored value for an option (LocalizedText object, scalar, or opt.value). */
+/**
+ * The value an option stores. For the canonical shape that is the option object itself —
+ * the displayed text **is** the value.
+ *
+ * There is deliberately no `{ value, label }` branch here: options are normalised to one
+ * shape when a config enters the library (`normalizeConfigOptions`), so honouring a legacy
+ * wrapper at this depth would let un-normalised input produce scalar values alongside
+ * object values in the same form — the ambiguity the single shape exists to remove.
+ */
 export function getOptionStoredValue(option: unknown): any {
   if (option == null) return null;
   if (typeof option === 'string' || typeof option === 'number' || typeof option === 'boolean') {
     return option;
   }
-  if (typeof option === 'object') {
-    const opt = option as Record<string, any>;
-    if ('value' in opt && opt['value'] !== undefined) {
-      return opt['value'];
-    }
-    return opt;
-  }
   return option;
+}
+
+/**
+ * Upcast any legacy option shape to the canonical `LocalizedText`.
+ *
+ * `{ value, label }` keeps the **label** — the label is what the user picked and what the
+ * displayed-text-is-the-value contract stores. The old scalar `value` is dropped, so a
+ * record saved under it will no longer match by identity; `valuesMatch` covers that by
+ * comparing resolved labels.
+ */
+export function normalizeOption(option: RawDropdownOption | null | undefined): DropdownOption {
+  if (option === null || option === undefined) return { en: '' };
+  if (typeof option === 'string' || typeof option === 'number' || typeof option === 'boolean') {
+    return { en: String(option) };
+  }
+  if (typeof option === 'object') {
+    const o = option as Record<string, unknown>;
+    if ('label' in o && o['label'] !== undefined) return normalizeLocalizedText(o['label']);
+    if ('value' in o && o['value'] !== undefined) return normalizeLocalizedText(o['value']);
+    return normalizeLocalizedText(o);
+  }
+  return { en: String(option) };
+}
+
+/**
+ * Enforce the option-shape invariant on a whole config, at the point it enters the library.
+ *
+ * `DropdownOption` is `LocalizedText`, but a config arrives as plain JSON from storage or an
+ * API and TypeScript cannot police that. Without this the type is a compile-time claim the
+ * runtime never checks, and a legacy config would quietly produce scalar control values
+ * alongside object ones in the same form.
+ *
+ * Returns a new config when anything changed, and the original object when nothing did, so
+ * callers can use identity to skip redundant work.
+ */
+export function normalizeConfigOptions(config: EntityFormConfig): EntityFormConfig {
+  let changed = false;
+
+  /** Two canonical options are the same when they carry the same languages and text. */
+  const sameOption = (a: DropdownOption, b: unknown): boolean => {
+    if (a === b) return true;
+    if (!b || typeof b !== 'object' || Array.isArray(b)) return false;
+    const other = b as Record<string, unknown>;
+    const aKeys = Object.keys(a);
+    if (aKeys.length !== Object.keys(other).length) return false;
+    return aKeys.every(k => a[k] === other[k]);
+  };
+
+  const normalizeFieldOptions = (field: NestedFieldConfig): NestedFieldConfig => {
+    const children = field.children?.map(normalizeFieldOptions);
+    const childrenChanged = !!children?.some((c, i) => c !== field.children![i]);
+
+    let options = field.options;
+    if (Array.isArray(options)) {
+      const next = options
+        .filter(opt => opt !== null && opt !== undefined)
+        .map(opt => normalizeOption(opt as RawDropdownOption));
+      // Compared by value, not reference: `normalizeLocalizedText` always allocates, so an
+      // already-canonical option comes back as an equal-but-distinct object.
+      if (next.length !== options.length || next.some((o, i) => !sameOption(o, options![i]))) {
+        options = next;
+        changed = true;
+      }
+    }
+
+    if (options === field.options && !childrenChanged) return field;
+    changed = true;
+    return { ...field, ...(children ? { children } : {}), ...(options ? { options } : {}) };
+  };
+
+  const normalizeTabOptions = (tab: NestedTabConfig): NestedTabConfig => {
+    const fields = tab.fields?.map(normalizeFieldOptions);
+    const children = tab.children?.map(normalizeTabOptions);
+    const fieldsChanged = !!fields?.some((f, i) => f !== tab.fields![i]);
+    const childrenChanged = !!children?.some((c, i) => c !== tab.children![i]);
+
+    if (!fieldsChanged && !childrenChanged) return tab;
+    return { ...tab, ...(fields ? { fields } : {}), ...(children ? { children } : {}) };
+  };
+
+  const tabs = config.tabs?.map(normalizeTabOptions);
+  if (!changed) return config;
+  return { ...config, tabs: tabs ?? [] };
 }
 
 /** Check if two values (scalars or LocalizedText objects) match. */
@@ -48,9 +133,28 @@ export function valuesMatch(val1: unknown, val2: unknown, lang = 'en'): boolean 
     const l1 = resolveOptionLabel(val1, lang);
     const l2 = resolveOptionLabel(val2, lang);
     if (l1 && l2 && l1 === l2) return true;
-    return JSON.stringify(val1) === JSON.stringify(val2);
+    return canonicalizeValue(val1) === canonicalizeValue(val2);
   }
   return String(val1) === String(val2);
+}
+
+/**
+ * Order-independent projection of a value for equality.
+ *
+ * `JSON.stringify` was used here and is key-order sensitive: `{en:'A',de:'B'}` and
+ * `{de:'B',en:'A'}` are the same option written by two different serialisers, and must not
+ * compare unequal just because the keys arrived in a different order.
+ */
+function canonicalizeValue(value: unknown): string {
+  if (value == null) return '';
+  if (typeof value !== 'object') return String(value);
+  if (Array.isArray(value)) return value.map(canonicalizeValue).join('|');
+
+  const obj = value as Record<string, unknown>;
+  return Object.keys(obj)
+    .sort()
+    .map(key => `${key}:${canonicalizeValue(obj[key])}`)
+    .join('|');
 }
 
 /** Resolve option value for dropdown/radio/multiSelect options as a display string. */
@@ -363,22 +467,14 @@ export function normalizeField(field: unknown): NestedFieldConfig {
     }));
   }
 
-  // Normalize options — only include if the raw field had options or children
+  // Normalise options to the one canonical shape: a language-keyed object whose displayed
+  // text is the stored value. Legacy shapes ({value,label}, bare string/number) are upcast
+  // here, at the parse boundary, so nothing downstream has to branch on shape.
+  // Nullish entries are dropped rather than upcast: a blank option is a phantom choice in
+  // the dropdown, which is worse than the missing entry it came from.
   const rawOptions = f['options'];
   const normalizedOptions = Array.isArray(rawOptions)
-    ? rawOptions.map((opt: unknown) => {
-        if (!opt) return { value: '', label: { en: '' } };
-        if (typeof opt === 'string') return { value: opt, label: { en: opt } };
-        if (typeof opt === 'object') {
-          const o = opt as Record<string, unknown>;
-          // Already { value, label: LocalizedText }
-          if ('value' in o && 'label' in o) return { value: o['value'], label: normalizeLocalizedText(o['label']) };
-          // Plain LocalizedText used as option label/value directly
-          const loc = normalizeLocalizedText(o);
-          return { value: loc, label: loc };
-        }
-        return { value: opt, label: { en: String(opt) } };
-      })
+    ? rawOptions.filter((opt: unknown) => opt !== null && opt !== undefined).map(opt => normalizeOption(opt as RawDropdownOption))
     : undefined;
 
   const normalized: NestedFieldConfig = {

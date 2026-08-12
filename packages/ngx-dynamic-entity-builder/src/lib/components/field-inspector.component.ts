@@ -116,11 +116,6 @@ export class FieldInspectorComponent {
     return resolveLabel(field.placeholder, this.lang());
   }
 
-  protected optionValue(option: DropdownOption): string {
-    const val = getOptionStoredValue(option);
-    return typeof val === 'object' ? '' : (val ?? '');
-  }
-
   protected optionLabel(option: DropdownOption): string {
     return resolveOptionLabel(option, this.lang());
   }

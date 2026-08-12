@@ -13,7 +13,33 @@ import type { EntityPermissions } from './rbac.types';
 
 export type LocalizedText = Record<string, string>;
 
-export type DropdownOption = LocalizedText | { value: any; label: LocalizedText } | string | number;
+/**
+ * A dropdown / radio / multiSelect option is a language-keyed object, and nothing else.
+ * The displayed text **is** the stored value — there is no separate value/label wrapper.
+ *
+ *   { en: 'Active', de: 'Aktiv' }
+ *
+ * One canonical shape means a rule comparing `EQUAL 'Active'` compares one thing, not
+ * whichever of four shapes a config happened to be authored in.
+ *
+ * **There is no referential integrity between a record and its option list.** Because the
+ * text is the value, renaming an option in the builder ("Active" → "Enabled") does not
+ * migrate records already saved as `{ en: 'Active' }`. Those records keep the old object,
+ * stop matching any current option, and fall back to displaying their stored text. That is
+ * inherent to this contract, not a defect — treat an option rename as a data migration.
+ */
+export type DropdownOption = LocalizedText;
+
+/**
+ * What a *raw* option may look like before `normalizeField` runs — configs written against
+ * older shapes, or hand-authored JSON. Wide on input, single shape once normalised.
+ * Never use this as the type of `NestedFieldConfig.options`.
+ */
+export type RawDropdownOption =
+  | LocalizedText
+  | { value: unknown; label: LocalizedText | string }
+  | string
+  | number;
 
 /** Full field-type vocabulary supported by the rich renderer. */
 export type RichFieldType =

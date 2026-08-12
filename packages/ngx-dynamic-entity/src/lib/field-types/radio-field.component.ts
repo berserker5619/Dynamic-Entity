@@ -25,9 +25,9 @@ import {
         } @else {
           <div class="ngx-field__radio-group">
             @for (option of field.options || []; track getOptLabel(option)) {
-              <label class="ngx-field__radio-option" [attr.for]="field.id + '-' + getOptVal(option)">
+              <label class="ngx-field__radio-option" [attr.for]="getRadioId(option)">
                 <input
-                  [id]="field.id + '-' + getOptVal(option)"
+                  [id]="getRadioId(option)"
                   type="radio"
                   class="ngx-field__radio-input"
                   [formControl]="$any(control)"
@@ -59,6 +59,16 @@ export class RadioFieldComponent {
 
   getOptStoredVal(option: any): any {
     return getOptionStoredValue(option);
+  }
+
+  /**
+   * Stable DOM id for one radio, so the <label for> association works.
+   * Slugified because the option text is the value now — "On Leave" must not put a space
+   * into an id attribute.
+   */
+  getRadioId(option: any): string {
+    const text = String(this.getOptVal(option) ?? 'opt');
+    return `${this.field.id}-${text.trim().replace(/\s+/g, '_').toLowerCase()}`;
   }
 
   getOptVal(option: any): any {

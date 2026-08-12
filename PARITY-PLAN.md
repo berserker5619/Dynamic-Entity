@@ -2,7 +2,18 @@
 
 _Target: the form-side feature set in `projects/Superpower_Web/docs/dynamic-entity-v2-architecture.md` (2127 lines, updated 2026-06-25), reproduced exactly in `@dynamic-entity/core` + `ngx-dynamic-entity` + `ngx-dynamic-entity-builder`._
 
-_Baseline: `main` @ `4f426b5` — 538 unit tests, 32 e2e, all green._
+_Status: **Phases 1–3 shipped.** `main` @ `00deec9` — 540 unit tests + 2 demo Karma, build/test/lint green. Phases 4–8 outstanding._
+
+| Phase | State |
+|---|---|
+| 1 — Record shape, `flatData`, `refererField` | ✅ shipped (`a5f7a71`) |
+| 2 — Option value contract | ✅ shipped (`a5f7a71`) — see deviation note in §2 |
+| 3 — Tab model completeness | ✅ shipped (`fe36e86`) |
+| 4 — Record editor parity | ⬜ not started |
+| 5 — Entity reference caching + preload | ⬜ not started |
+| 6 — `listName`/`lookupSource`, referenced fields | ⬜ not started |
+| 7 — Builder tree + dialogs | ⬜ not started |
+| 8 — Material UI layer | ⬜ not started |
 
 ---
 
@@ -59,6 +70,23 @@ Ours: `DropdownOption { value: any; label: LocalizedText }` with a scalar value.
 
 Consequences to accept: every stored record's dropdown/radio/multiSelect value changes shape, `DropdownOption { value, label }` leaves the public API, and comparison operators (`EQUAL`, `IN`, `showWhen`) must compare resolved labels rather than scalars. That last point is the sharp edge — rule and `showWhen` evaluation gets an option-aware comparison path, with tests pinning it.
 
+**✅ Shipped, then tightened to one shape.** The first cut left `DropdownOption` as a permissive four-way union, which made the public type unnarrowable and let a single field mix shapes. **Decided: language-keyed object only.**
+
+```ts
+export type DropdownOption = LocalizedText;                 // the one canonical shape
+export type RawDropdownOption =                              // parse boundary only
+  LocalizedText | { value: unknown; label: LocalizedText | string } | string | number;
+```
+
+`normalizeOption()` upcasts every legacy shape at the parse boundary, so old configs still load — a `{ value, label }` wrapper keeps its **label**, since the label is what the user picked and the displayed text is the stored value. All 503 options in `test_data.json` were already canonical, so the reference data needed no change.
+
+Knock-on effects, all shipped:
+- The builder's option editor is **one input per option**, not Value + Label. `setOptionValue` is gone — there is no separate value to set.
+- The renderer re-exports `resolveLabel`, `resolveOptionLabel`, `formatDisplayValue`, `valuesMatch`, `normalizeOption`, `normalizeConfig`. A consumer now holds objects as values and needs these to render them without depending on `core` directly.
+- Demo records store the option object (`status: { en: 'Active' }`), matching the reference contract.
+
+**Known limitation:** a record saved under the old scalar (`"active"`) no longer matches an option whose text is `"Active"` — case differs, so `valuesMatch` fails and the raw stored text is displayed rather than an em dash. Pinned by a test. Migrating stored records is a consumer-side data task, deliberately out of scope.
+
 **Deliver**: `DynamicChoice`-equivalent behaviour in dropdown/radio/multiSelect — `ControlValueAccessor`, `resolveLabel` display, per-option deterministic ids (`${fieldId}_${slug}`, already present on radio).
 
 ---
@@ -72,7 +100,7 @@ The builder's tab manager does add / label / move / remove only. Missing everyth
 - **`moduleName` / `moduleInputs`** — a tab renders a consumer component instead of fields. `COMMON_MODULES_REGISTRY` already exists as a token and is unused; wire it, and render the module in the tab body.
 - **`isPrimaryTab`** — flag, used by entity-ref label building (§5).
 - **`visibility`, `maskData`, `systemDefault`** per tab in the inspector.
-- **`systemDefault` protection** — edit/delete guarded (doc F12: IT roles for system fields/tabs). Ship as a `canEditSystemDefaults` predicate the consumer supplies; the library must not hardcode role names.
+- **`systemDefault` protection** — edit/delete guarded (doc F12: IT roles for system fields/tabs). **Decided: consumer-supplied predicates.** A `SYSTEM_DEFAULT_GUARD` token providing `{ canEditSystemDefaults(ctx), canAddToSystemTab(ctx) }`; the library never hardcodes `IT` / `SuperUser`. Absent a provider, system defaults are locked — fail closed, not open.
 
 ---
 
@@ -123,12 +151,29 @@ Present in `core` types, read by nothing. Confirmed by grep.
 
 - **Tree editor** (`ListNodeComponent`) — recursive tab/field tree with drag-drop, replacing the current flat palette+list.
 - **Referenced-field dialog** and **connection-source config dialog**.
-- **`applyEditorToField` semantics** — including the id-change path. Note ours now derives ids from labels and renders the id read-only, which is a **deliberate divergence** from the reference's free-text id. Flagging it: parity here would mean reverting that.
+- **`applyEditorToField` semantics**, minus the id-change path. **Decided: keep the current id behaviour, do not revert to the reference's free-text ids.** New fields derive their id from the label; a config loaded from storage keeps every id it arrived with, because records are already stored under them. That is exactly the "new fields follow label→id, existing data untouched" rule, and it is already implemented and tested — no work in this phase.
 - Dirty tracking and unsaved-changes guard.
 
 ---
 
-## 8. Explicitly out of scope
+## 8. UI layer — Angular Material
+
+_Decision 0.2. Behavioural parity is exact; visual parity is "Material equivalent", not pixel-matched to PrimeNG._
+
+The builder is already Material. The renderer's 18 field components are hand-rolled HTML with `ngx-field__*` classes and no Material dependency.
+
+**Deliver**
+- Rebuild the field components on Material: `mat-form-field` + `matInput` (text, textarea, number, currency, email, password), `mat-select` (dropdown, multiSelect, entity-ref), `mat-radio-group`, `mat-checkbox` / `mat-slide-toggle` (checkbox, boolean), `mat-datepicker` (date, datetime, monthYear), and Material surfaces for group/array/image/file.
+- Tabs move to `mat-tab-group`; info/warning/error banners to a Material surface; the criticalField lock to `mat-icon-button`.
+- Keep every current behaviour: the 5-input contract (ADR-008), masking, readonly rendering, contextual error messages, the lock, cascade hints.
+
+**Contract change** — `@angular/material` and `@angular/cdk` are currently **optional** peer dependencies of `ngx-dynamic-entity`. They become **required**. That is a real cost for a consumer who wanted a dependency-free renderer; flagging it rather than burying it.
+
+**Risk** — this rewrites the components the existing e2e specs assert against (`.ngx-field__input`, `option` elements, etc.). Budget for reworking those selectors. Do this **after** phases 4–7, so behaviour is settled before the markup churns; doing it earlier means paying the e2e rework twice.
+
+---
+
+## 9. Explicitly out of scope
 
 Not portable into a form library; these belong to the consumer app or the backend.
 
@@ -140,25 +185,37 @@ Backend/API (`/configuration/dynamic_entity_v2`, `/formRule`, `/preferences`, co
 
 ## Sequence and effort
 
-| # | Phase | Depends on | Breaking | Rough size |
-|---|---|---|---|---|
-| 1 | Record shape / `flatData` / `refererField` | — | **Yes** | L |
-| 2 | Option value contract | — | **Yes** | M |
-| 3 | Tab model completeness | 1 | No | M |
-| 4 | Record editor parity | 1, 3 | No | L |
-| 5 | Entity reference caching + preload | — | No | M |
-| 6 | `listName`/`lookupSource`, referenced fields | 3 | No | M |
-| 7 | Builder tree + dialogs | 3, 6 | No | L |
+| # | Phase | Depends on | Breaking | Size | State |
+|---|---|---|---|---|---|
+| 1 | Record shape / `flatData` / `refererField` | — | **Yes** | L | ✅ |
+| 2 | Option value contract | — | **Yes** | M | ✅ |
+| 3 | Tab model completeness | 1 | No | M | ✅ |
+| 4 | Record editor parity | 1, 3 | No | L | ⬜ |
+| 5 | Entity reference caching + preload | — | No | M | ⬜ |
+| 6 | `listName`/`lookupSource`, referenced fields | 3 | No | M | ⬜ |
+| 7 | Builder tree + dialogs | 3, 6 | No | L | ⬜ |
+| 8 | Material UI layer | 4–7 | **Yes** (peer deps) | L | ⬜ |
 
-1 and 2 land together in one release — both are contract changes, and shipping them separately breaks consumers twice.
+1 and 2 landed together, as planned — both were contract changes, and shipping them separately would have broken consumers twice. **8 goes last on purpose**: it churns the markup every e2e spec asserts against, so behaviour should be settled first.
+
+**Recommended next**: 5 before 4. It has no dependencies, it is self-contained, and phase 4's record editor benefits from the cache already being in place.
 
 **Gate for every phase**: `turbo run build test lint` green, coverage thresholds held or raised, and e2e proving the feature in the browser. Same bar as the work already merged.
 
 ---
 
-## Open decisions
+## Decisions — all resolved
 
-1. **§0.2** — behavioural parity (this plan) or visual parity as well (adds PrimeNG, replaces the renderer)?
-2. **§2** — adopt `LocalizedText`-as-value outright, or dual-mode behind a flag?
-3. **§7** — keep label-derived read-only field ids, or revert to the reference's free-text ids?
-4. **§3/§6** — role checks: consumer-supplied predicates (recommended) or hardcoded IT/SuperUser names as the reference does?
+| # | Question | Decision |
+|---|---|---|
+| 1 | Visual parity? | **Both** — behavioural parity exact, visual rebuilt on **Angular Material**, not pixel-matched to PrimeNG. No PrimeNG dependency. (§8) |
+| 2 | Option values | **Follow Superpower_Web** — `LocalizedText` is the stored value. Shipped as a permissive union so old configs still load (§2). |
+| 3 | Field ids | **New fields derive from the label; existing data keeps its ids.** Already implemented — no revert to free-text ids. (§7) |
+| 4 | Role checks | **Consumer-supplied predicates** via token; no hardcoded role names, fail closed when absent. (§3) |
+
+| 5 | Option shape | **Language-keyed object only.** Narrowed; legacy shapes upcast at the parse boundary. (§2) |
+| 6 | Material peer deps | **Accepted** — `@angular/material` + `@angular/cdk` move from optional to required on `ngx-dynamic-entity` in §8. |
+
+## Still open
+
+Nothing blocking. Next up is phase 5 (entity-reference caching + preload), recommended ahead of phase 4.

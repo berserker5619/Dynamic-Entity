@@ -16,11 +16,11 @@ describe('MultiSelectFieldComponent', () => {
     component.field = { 
       label: { en: 'Tags' },
       options: [
-        { value: '1', label: { en: 'One' } },
-        { value: '2', label: { en: 'Two' } }
+        { en: 'One' },
+        { en: 'Two' }
       ]
     } as any;
-    component.control = new FormControl(['1', '2']);
+    component.control = new FormControl([{ en: 'One' }, { en: 'Two' }]);
     fixture.detectChanges();
   });
 

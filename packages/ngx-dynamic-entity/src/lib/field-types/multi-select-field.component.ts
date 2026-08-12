@@ -5,7 +5,6 @@ import {
   getOptionStoredValue,
   resolveLabel,
   resolveOptionLabel,
-  resolveOptionValue,
   valuesMatch,
 } from '@dynamic-entity/core';
 
@@ -65,10 +64,6 @@ export class MultiSelectFieldComponent {
 
   getOptStoredVal(option: any): any {
     return getOptionStoredValue(option);
-  }
-
-  getOptVal(option: any): any {
-    return resolveOptionValue(option, this.language);
   }
 
   getOptLabel(option: any): string {

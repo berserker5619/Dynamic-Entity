@@ -16,11 +16,11 @@ describe('DropdownFieldComponent', () => {
     component.field = { 
       label: { en: 'Color' },
       options: [
-        { value: 'r', label: { en: 'Red' } },
-        { value: 'b', label: { en: 'Blue' } }
+        { en: 'Red' },
+        { en: 'Blue' }
       ]
     } as any;
-    component.control = new FormControl('r');
+    component.control = new FormControl({ en: 'Red' });
     fixture.detectChanges();
   });
 

@@ -1,4 +1,4 @@
-import type { EntityFormConfig } from 'ngx-dynamic-entity';
+import type { EntityFormConfig, LocalizedText } from 'ngx-dynamic-entity';
 import testDataRaw from '../../../../../test_data.json';
 
 export const TEST_DATA_CONFIGS: EntityFormConfig[] = testDataRaw as EntityFormConfig[];
@@ -26,8 +26,8 @@ export const CLIENTS_CONFIG: EntityFormConfig = {
           type: 'dropdown',
           label: { en: 'Status' },
           options: [
-            { value: 'active', label: { en: 'Active' } },
-            { value: 'inactive', label: { en: 'Inactive' } },
+            { en: 'Active' },
+            { en: 'Inactive' },
           ],
           visibility: true,
         },
@@ -44,7 +44,15 @@ export const CLIENTS_CONFIG: EntityFormConfig = {
 };
 
 let seq = 1;
-const rec = (name: string, email: string, company: string, status: string, salary: number, notes = '') => ({
+// `status` holds the option object itself — for dropdowns the displayed text IS the value.
+const rec = (
+  name: string,
+  email: string,
+  company: string,
+  status: LocalizedText,
+  salary: number,
+  notes = '',
+) => ({
   _id: `client_${String(seq++).padStart(3, '0')}`,
   _configVersion: 1,
   name,
@@ -56,18 +64,18 @@ const rec = (name: string, email: string, company: string, status: string, salar
 });
 
 export const CLIENTS_RECORDS: Record<string, unknown>[] = [
-  rec('Acme Corp', 'ops@acme.com', 'Acme', 'active', 120000, 'Key account'),
-  rec('Globex', 'hello@globex.com', 'Globex', 'active', 98000),
-  rec('Initech', 'tps@initech.com', 'Initech', 'inactive', 76000, 'Churned Q2'),
-  rec('Umbrella', 'contact@umbrella.com', 'Umbrella', 'active', 143000),
-  rec('Soylent', 'green@soylent.com', 'Soylent', 'inactive', 54000),
-  rec('Stark Industries', 'tony@stark.com', 'Stark', 'active', 210000, 'Enterprise'),
-  rec('Wayne Enterprises', 'bruce@wayne.com', 'Wayne', 'active', 195000),
-  rec('Wonka', 'golden@wonka.com', 'Wonka', 'inactive', 61000),
-  rec('Cyberdyne', 'sky@cyberdyne.com', 'Cyberdyne', 'active', 132000, 'AI division'),
-  rec('Hooli', 'nucleus@hooli.com', 'Hooli', 'active', 88000),
-  rec('Pied Piper', 'richard@piedpiper.com', 'Pied Piper', 'active', 72000),
-  rec('Vehement', 'info@vehement.com', 'Vehement', 'inactive', 47000),
+  rec('Acme Corp', 'ops@acme.com', 'Acme', { en: 'Active' }, 120000, 'Key account'),
+  rec('Globex', 'hello@globex.com', 'Globex', { en: 'Active' }, 98000),
+  rec('Initech', 'tps@initech.com', 'Initech', { en: 'Inactive' }, 76000, 'Churned Q2'),
+  rec('Umbrella', 'contact@umbrella.com', 'Umbrella', { en: 'Active' }, 143000),
+  rec('Soylent', 'green@soylent.com', 'Soylent', { en: 'Inactive' }, 54000),
+  rec('Stark Industries', 'tony@stark.com', 'Stark', { en: 'Active' }, 210000, 'Enterprise'),
+  rec('Wayne Enterprises', 'bruce@wayne.com', 'Wayne', { en: 'Active' }, 195000),
+  rec('Wonka', 'golden@wonka.com', 'Wonka', { en: 'Inactive' }, 61000),
+  rec('Cyberdyne', 'sky@cyberdyne.com', 'Cyberdyne', { en: 'Active' }, 132000, 'AI division'),
+  rec('Hooli', 'nucleus@hooli.com', 'Hooli', { en: 'Active' }, 88000),
+  rec('Pied Piper', 'richard@piedpiper.com', 'Pied Piper', { en: 'Active' }, 72000),
+  rec('Vehement', 'info@vehement.com', 'Vehement', { en: 'Inactive' }, 47000),
 ];
 
 export const MASKED_ROLES = ['IT_SUPPORT'];
@@ -87,9 +95,9 @@ export const EMPLOYEES_CONFIG: EntityFormConfig = {
           type: 'dropdown',
           label: { en: 'Status' },
           options: [
-            { value: 'active', label: { en: 'Active' } },
-            { value: 'inactive', label: { en: 'Inactive' } },
-            { value: 'on-leave', label: { en: 'On Leave' } },
+            { en: 'Active' },
+            { en: 'Inactive' },
+            { en: 'On Leave' },
           ],
           table: { visible: true },
         },
@@ -114,9 +122,9 @@ export const EMPLOYEES_CONFIG: EntityFormConfig = {
           type: 'dropdown',
           label: { en: 'Department' },
           options: [
-            { value: 'eng', label: { en: 'Engineering' } },
-            { value: 'sales', label: { en: 'Sales' } },
-            { value: 'hr', label: { en: 'HR' } },
+            { en: 'Engineering' },
+            { en: 'Sales' },
+            { en: 'HR' },
           ],
           table: { visible: true },
         },
@@ -145,12 +153,12 @@ export const EMPLOYEES_CONFIG: EntityFormConfig = {
 };
 
 export const EMPLOYEES_RECORDS: Record<string, unknown>[] = [
-  { _id: 'emp_001', personal: { firstName: 'John', lastName: 'Doe', status: 'active', contact: { email: 'john@x.com', phone: '111-222' } }, department: 'eng', salary: 82000, joined: '2020-01-15', addressesTab: { addresses: [{ street: '1 Main St', city: 'Berlin', zip: '10115' }, { street: '2 Oak Ave', city: 'Munich', zip: '80331' }] } },
-  { _id: 'emp_002', personal: { firstName: 'Jane', lastName: 'Smith', status: 'inactive', contact: { email: 'jane@x.com', phone: '333-444' } }, department: 'sales', salary: 91000, joined: '2019-06-01', addressesTab: { addresses: [{ street: '9 Elm Rd', city: 'Hamburg', zip: '20095' }] } },
-  { _id: 'emp_003', personal: { firstName: 'Ravi', lastName: 'Kumar', status: 'on-leave', contact: { email: 'ravi@x.com', phone: '555-666' } }, department: 'eng', salary: 78000, joined: '2021-03-22', addressesTab: { addresses: [] } },
-  { _id: 'emp_004', personal: { firstName: 'Mei', lastName: 'Chen', status: 'active', contact: { email: 'mei@x.com', phone: '777-888' } }, department: 'hr', salary: 69000, joined: '2022-11-08', addressesTab: { addresses: [{ street: '5 Pine St', city: 'Cologne', zip: '50667' }] } },
-  { _id: 'emp_005', personal: { firstName: 'Omar', lastName: 'Farid', status: 'active', contact: { email: 'omar@x.com', phone: '999-000' } }, department: 'sales', salary: 88000, joined: '2018-09-30', addressesTab: { addresses: [{ street: '7 Birch Ln', city: 'Berlin', zip: '10437' }] } },
-  { _id: 'emp_006', personal: { firstName: 'Sara', lastName: 'Lopez', status: 'inactive', contact: { email: 'sara@x.com', phone: '121-212' } }, department: 'eng', salary: 95000, joined: '2017-02-14', addressesTab: { addresses: [{ street: '3 Cedar Ct', city: 'Munich', zip: '80333' }] } },
+  { _id: 'emp_001', personal: { firstName: 'John', lastName: 'Doe', status: { en: 'Active' }, contact: { email: 'john@x.com', phone: '111-222' } }, department: { en: 'Engineering' }, salary: 82000, joined: '2020-01-15', addressesTab: { addresses: [{ street: '1 Main St', city: 'Berlin', zip: '10115' }, { street: '2 Oak Ave', city: 'Munich', zip: '80331' }] } },
+  { _id: 'emp_002', personal: { firstName: 'Jane', lastName: 'Smith', status: { en: 'Inactive' }, contact: { email: 'jane@x.com', phone: '333-444' } }, department: { en: 'Sales' }, salary: 91000, joined: '2019-06-01', addressesTab: { addresses: [{ street: '9 Elm Rd', city: 'Hamburg', zip: '20095' }] } },
+  { _id: 'emp_003', personal: { firstName: 'Ravi', lastName: 'Kumar', status: { en: 'On Leave' }, contact: { email: 'ravi@x.com', phone: '555-666' } }, department: { en: 'Engineering' }, salary: 78000, joined: '2021-03-22', addressesTab: { addresses: [] } },
+  { _id: 'emp_004', personal: { firstName: 'Mei', lastName: 'Chen', status: { en: 'Active' }, contact: { email: 'mei@x.com', phone: '777-888' } }, department: { en: 'HR' }, salary: 69000, joined: '2022-11-08', addressesTab: { addresses: [{ street: '5 Pine St', city: 'Cologne', zip: '50667' }] } },
+  { _id: 'emp_005', personal: { firstName: 'Omar', lastName: 'Farid', status: { en: 'Active' }, contact: { email: 'omar@x.com', phone: '999-000' } }, department: { en: 'Sales' }, salary: 88000, joined: '2018-09-30', addressesTab: { addresses: [{ street: '7 Birch Ln', city: 'Berlin', zip: '10437' }] } },
+  { _id: 'emp_006', personal: { firstName: 'Sara', lastName: 'Lopez', status: { en: 'Inactive' }, contact: { email: 'sara@x.com', phone: '121-212' } }, department: { en: 'Engineering' }, salary: 95000, joined: '2017-02-14', addressesTab: { addresses: [{ street: '3 Cedar Ct', city: 'Munich', zip: '80333' }] } },
 ];
 
 /**

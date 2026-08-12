@@ -12,8 +12,8 @@ describe('RadioFieldComponent', () => {
     type: 'radio',
     label: { en: 'Size' },
     options: [
-      { value: 's', label: { en: 'Small' } },
-      { value: 'l', label: { en: 'Large' } },
+      { en: 'Small' },
+      { en: 'Large' },
     ],
   };
 
@@ -25,7 +25,7 @@ describe('RadioFieldComponent', () => {
     fixture = TestBed.createComponent(RadioFieldComponent);
     component = fixture.componentInstance;
     component.field = mockField;
-    component.control = new FormControl('l');
+    component.control = new FormControl({ en: 'Large' });
     fixture.detectChanges();
   });
 
@@ -34,7 +34,7 @@ describe('RadioFieldComponent', () => {
       fixture.nativeElement.querySelectorAll('input[type="radio"]'),
     );
     expect(inputs.length).toBe(2);
-    expect(inputs.map(i => i.id)).toEqual(['size-s', 'size-l']);
+    expect(inputs.map(i => i.id)).toEqual(['size-small', 'size-large']);
   });
 
   it('resolves the selected option label when readonly', () => {

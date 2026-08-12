@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 import {
   DynamicFormComponent,
   EntityFormConfig,
-  VersionedRecord
+  LocalizedText,
+  VersionedRecord,
+  resolveLabel
 } from 'ngx-dynamic-entity';
 import { BuilderPageComponent } from './builder-page.component';
 import { LocalStore } from './mock/local-store.service';
@@ -155,10 +157,20 @@ export class AppComponent implements OnInit {
     this.view.set('list');
   }
 
+  /** Render any cell value as text, resolving language-keyed dropdown values. */
+  private asText(value: unknown): string {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return resolveLabel(value as LocalizedText, 'en');
+    }
+    return String(value ?? '');
+  }
+
   getRecordLabel(rec: VersionedRecord): string {
     if (!rec) return 'Record';
     if (rec['name'] && rec['company'] && rec['status']) {
-      return `${rec['name']} — ${rec['company']} · ${rec['status']}`;
+      // A dropdown value is a language-keyed object — resolve it before interpolating,
+      // or the row reads "[object Object]".
+      return `${rec['name']} — ${rec['company']} · ${this.asText(rec['status'])}`;
     }
     const keys = ['name', 'fullName', 'firstName', 'title', 'company', 'organizationName', 'studentName', 'patientName', 'description'];
     for (const k of keys) {

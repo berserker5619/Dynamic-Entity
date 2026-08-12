@@ -11,6 +11,9 @@ import {
   normalizeConfig,
   normalizeField,
   normalizeLocalizedText,
+  normalizeConfigOptions,
+  valuesMatch,
+  normalizeOption,
   normalizeTab,
   resolveEffectiveMask,
   resolveLabel,
@@ -50,18 +53,159 @@ describe('resolveLabel', () => {
 });
 
 describe('formatDisplayValue', () => {
-  const opts: DropdownOption[] = [
-    { value: 'active', label: { en: 'Active' } },
-    { value: 'inactive', label: { en: 'Inactive' } },
-  ];
+  // Canonical option shape: the displayed text is the stored value.
+  const opts: DropdownOption[] = [{ en: 'Active' }, { en: 'Inactive' }];
   it('handles empties, boolean, password, dropdown, multiSelect, date', () => {
     expect(formatDisplayValue('text', undefined, '')).toBe('—');
     expect(formatDisplayValue('boolean', undefined, true)).toBe('Yes');
     expect(formatDisplayValue('boolean', undefined, false)).toBe('No');
     expect(formatDisplayValue('password', undefined, 'secret')).toBe('••••••••');
-    expect(formatDisplayValue('dropdown', opts, 'active')).toBe('Active');
-    expect(formatDisplayValue('multiSelect', opts, ['active', 'inactive'])).toBe('Active, Inactive');
+    expect(formatDisplayValue('dropdown', opts, { en: 'Active' })).toBe('Active');
+    expect(formatDisplayValue('multiSelect', opts, [{ en: 'Active' }, { en: 'Inactive' }])).toBe(
+      'Active, Inactive',
+    );
     expect(formatDisplayValue('date', undefined, '2020-01-15')).toBe(new Date('2020-01-15').toLocaleDateString());
+  });
+
+  it('matches a stored value against the option text, whatever case it was saved in', () => {
+    expect(formatDisplayValue('dropdown', opts, 'Active')).toBe('Active');
+  });
+
+  it('falls back to the raw text for a legacy value with no matching option', () => {
+    // Records saved under the old scalar `value` ("active") no longer match the option
+    // text ("Active"), so the stored text is shown as-is rather than an em dash.
+    expect(formatDisplayValue('dropdown', opts, 'active')).toBe('active');
+  });
+});
+
+describe('normalizeConfigOptions', () => {
+  const legacy = (): EntityFormConfig => ({
+    entity: 'x',
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        fields: [
+          {
+            id: 'status',
+            type: 'dropdown',
+            label: { en: 'Status' },
+            options: [{ value: 'a', label: { en: 'Active' } } as never, 'Bare' as never, null as never],
+          },
+          {
+            id: 'grp',
+            type: 'group',
+            label: { en: 'G' },
+            children: [
+              { id: 'inner', type: 'radio', label: { en: 'I' }, options: [7 as never] },
+            ],
+          },
+        ],
+        children: [
+          {
+            id: 'sub',
+            label: { en: 'Sub' },
+            fields: [{ id: 'deep', type: 'dropdown', label: { en: 'D' }, options: ['X' as never] }],
+          },
+        ],
+      },
+    ],
+  });
+
+  it('upcasts options on fields, group children, and nested tabs', () => {
+    const out = normalizeConfigOptions(legacy());
+
+    expect(out.tabs[0].fields![0].options).toEqual([{ en: 'Active' }, { en: 'Bare' }]);
+    expect(out.tabs[0].fields![1].children![0].options).toEqual([{ en: '7' }]);
+    expect(out.tabs[0].children![0].fields![0].options).toEqual([{ en: 'X' }]);
+  });
+
+  it('drops nullish options rather than inventing a blank choice', () => {
+    expect(normalizeConfigOptions(legacy()).tabs[0].fields![0].options).toHaveLength(2);
+  });
+
+  it('does not mutate the config it was given', () => {
+    const input = legacy();
+    normalizeConfigOptions(input);
+    expect(input.tabs[0].fields![0].options).toHaveLength(3);
+  });
+
+  it('returns the same object when every option is already canonical', () => {
+    const canonical: EntityFormConfig = {
+      entity: 'x',
+      tabs: [
+        {
+          id: 'main',
+          label: { en: 'Main' },
+          fields: [{ id: 's', type: 'dropdown', label: { en: 'S' }, options: [{ en: 'Active' }] }],
+        },
+      ],
+    };
+
+    // Identity, so a well-formed config costs nothing and callers can skip redundant work.
+    expect(normalizeConfigOptions(canonical)).toBe(canonical);
+  });
+
+  it('is idempotent', () => {
+    const once = normalizeConfigOptions(legacy());
+    expect(normalizeConfigOptions(once)).toBe(once);
+  });
+
+  it('tolerates a config with no tabs or no options', () => {
+    const bare: EntityFormConfig = { entity: 'x', tabs: [] };
+    expect(normalizeConfigOptions(bare)).toBe(bare);
+  });
+});
+
+describe('valuesMatch', () => {
+  it('matches identical scalars and objects', () => {
+    expect(valuesMatch('a', 'a')).toBe(true);
+    expect(valuesMatch({ en: 'Active' }, { en: 'Active' })).toBe(true);
+  });
+
+  it('ignores key order — the same option from two serialisers must compare equal', () => {
+    expect(valuesMatch({ en: 'A', de: 'B' }, { de: 'B', en: 'A' })).toBe(true);
+  });
+
+  it('matches an object against the scalar text it resolves to', () => {
+    expect(valuesMatch({ en: 'Active' }, 'Active')).toBe(true);
+  });
+
+  it('does not match different options', () => {
+    expect(valuesMatch({ en: 'Active' }, { en: 'Inactive' })).toBe(false);
+  });
+
+  it('treats null and undefined as equal, and neither as equal to a value', () => {
+    expect(valuesMatch(null, undefined)).toBe(true);
+    expect(valuesMatch(null, 'a')).toBe(false);
+  });
+});
+
+describe('normalizeOption', () => {
+  it('passes a canonical LocalizedText through', () => {
+    expect(normalizeOption({ en: 'Active', de: 'Aktiv' })).toEqual({ en: 'Active', de: 'Aktiv' });
+  });
+
+  it('keeps the label from a legacy { value, label } wrapper', () => {
+    expect(normalizeOption({ value: 'active', label: { en: 'Active' } })).toEqual({ en: 'Active' });
+  });
+
+  it('coerces a legacy string-labelled wrapper', () => {
+    expect(normalizeOption({ value: 1, label: 'One' })).toEqual({ en: 'One' });
+  });
+
+  it('wraps bare primitives', () => {
+    expect(normalizeOption('Active')).toEqual({ en: 'Active' });
+    expect(normalizeOption(42)).toEqual({ en: '42' });
+  });
+
+  it('falls back to the value when a wrapper has no label', () => {
+    expect(normalizeOption({ value: 'Active' })).toEqual({ en: 'Active' });
+  });
+
+  it('yields an empty option for null/undefined', () => {
+    expect(normalizeOption(null)).toEqual({ en: '' });
+    expect(normalizeOption(undefined)).toEqual({ en: '' });
   });
 });
 
@@ -187,11 +331,21 @@ describe('normalizeField', () => {
     expect(result.label).toEqual({ en: 'My Field' });
   });
 
-  it('normalizes string options to DropdownOption', () => {
-    const raw = { id: 'status', type: 'dropdown', label: { en: 'Status' }, options: ['Active', 'Inactive'] };
+  it('normalizes every legacy option shape to a LocalizedText', () => {
+    const raw = {
+      id: 'status',
+      type: 'dropdown',
+      label: { en: 'Status' },
+      options: ['Active', { value: 'x', label: { en: 'Inactive' } }, 7, { en: 'Pending', de: 'Offen' }],
+    };
     const result = normalizeField(raw);
-    expect(result.options).toHaveLength(2);
-    expect(result.options![0]).toEqual({ value: 'Active', label: { en: 'Active' } });
+
+    expect(result.options).toEqual([
+      { en: 'Active' },
+      { en: 'Inactive' },
+      { en: '7' },
+      { en: 'Pending', de: 'Offen' },
+    ]);
   });
 
   it('normalizes object-keyed children map', () => {

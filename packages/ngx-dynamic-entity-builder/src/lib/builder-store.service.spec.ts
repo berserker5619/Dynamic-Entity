@@ -126,12 +126,27 @@ describe('BuilderStore', () => {
       store.addOption(id);
       expect(store.fields()[0].options?.length).toBe(2);
 
-      store.updateOption(id, 0, { value: 'active' });
+      // One canonical shape: the displayed text is the stored value.
       store.setOptionLabel(id, 0, 'en', 'Active');
-      expect(store.fields()[0].options?.[0]).toEqual({ value: 'active', label: { en: 'Active' } });
+      expect(store.fields()[0].options?.[0]).toEqual({ en: 'Active' });
 
       store.removeOption(id, 0);
       expect(store.fields()[0].options?.length).toBe(1);
+    });
+
+    it('adds a translation without dropping the existing language', () => {
+      store.addOption(id);
+      store.setOptionLabel(id, 0, 'en', 'Active');
+      store.setOptionLabel(id, 0, 'de', 'Aktiv');
+
+      expect(store.fields()[0].options?.[0]).toEqual({ en: 'Active', de: 'Aktiv' });
+    });
+
+    it('merges language keys via updateOption', () => {
+      store.addOption(id);
+      store.updateOption(id, 0, { en: 'Active', de: 'Aktiv' });
+
+      expect(store.fields()[0].options?.[0]).toMatchObject({ en: 'Active', de: 'Aktiv' });
     });
   });
 
@@ -507,6 +522,76 @@ describe('BuilderStore', () => {
       store.moveTab(b, -1); // already first
       store.moveTab('ghost', 1);
       expect(store.tabs().map(t => t.id)).toEqual([b, a]);
+    });
+  });
+
+  /** Phase 3 tab-model APIs: nesting, primary tab, flatData, module tabs. */
+  describe('nested tabs and tab flags', () => {
+    beforeEach(() => store.setEntityName('clients'));
+
+    it('adds a sub-tab under its parent with a unique id', () => {
+      const parent = store.addTab();
+      const child = store.addSubTab(parent);
+
+      const parentTab = store.tabs().find(t => t.id === parent);
+      expect(parentTab?.children?.map(c => c.id)).toEqual([child]);
+      expect(child).not.toBe(parent);
+    });
+
+    it('keeps sub-tab ids unique against the whole tree, not just siblings', () => {
+      const parent = store.addTab();
+      const first = store.addSubTab(parent);
+      const second = store.addSubTab(parent);
+      const topLevel = store.addTab();
+
+      expect(new Set([parent, first, second, topLevel]).size).toBe(4);
+    });
+
+    it('ignores a sub-tab added to a parent that does not exist', () => {
+      const before = JSON.stringify(store.config());
+      store.addSubTab('ghost');
+      expect(JSON.stringify(store.config())).toBe(before);
+    });
+
+    it('nests a sub-tab under a sub-tab', () => {
+      const parent = store.addTab();
+      const child = store.addSubTab(parent);
+      const grandchild = store.addSubTab(child);
+
+      const found = store.tabs().find(t => t.id === parent)?.children?.[0];
+      expect(found?.children?.map(c => c.id)).toEqual([grandchild]);
+    });
+
+    it('marks exactly one tab primary, clearing any previous one', () => {
+      const a = store.addTab();
+      const b = store.addTab();
+
+      store.setPrimaryTab(a);
+      expect(store.tabs().filter(t => t.isPrimaryTab).map(t => t.id)).toEqual([a]);
+
+      store.setPrimaryTab(b);
+      expect(store.tabs().filter(t => t.isPrimaryTab).map(t => t.id)).toEqual([b]);
+    });
+
+    it('clears the primary flag on nested tabs too', () => {
+      const parent = store.addTab();
+      const child = store.addSubTab(parent);
+
+      store.setPrimaryTab(child);
+      expect(store.tabs().find(t => t.id === parent)?.children?.[0].isPrimaryTab).toBe(true);
+
+      store.setPrimaryTab(parent);
+      expect(store.tabs().find(t => t.id === parent)?.children?.[0].isPrimaryTab).toBe(false);
+    });
+
+    it('sets flatData and moduleName through updateTab', () => {
+      const id = store.addTab();
+      store.updateTab(id, { flatData: true, moduleName: 'documents-view' });
+
+      expect(store.tabs().find(t => t.id === id)).toMatchObject({
+        flatData: true,
+        moduleName: 'documents-view',
+      });
     });
   });
 
