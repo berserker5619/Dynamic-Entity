@@ -111,6 +111,13 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   @Input() userRoles: string[] = [];
   @Input() language: string = 'en';
   @Input() readonly: boolean = false;
+  /** Field ids forced read-only while the rest of the form stays editable. */
+  @Input() readOnlyFields: string[] = [];
+  /**
+   * Render rule `info` banners inline. The record editor sets this false and renders its
+   * own dismissible versions, so the two do not double up.
+   */
+  @Input() showInfoBanners: boolean = true;
   @Input() loading: boolean = false;
   @Input() error: string | null = null;
 
@@ -287,6 +294,19 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   /** A critical field stays read-only until the user deliberately unlocks it. */
   isFieldLocked(field: NestedFieldConfig): boolean {
     return !!field.criticalField && !this.unlockedFields().has(field.id);
+  }
+
+  /**
+   * Whether this field renders read-only, from any of the four reasons: the whole form,
+   * the field's own flag, a caller-supplied `readOnlyFields` entry, or a criticalField lock.
+   */
+  isFieldReadonly(field: NestedFieldConfig): boolean {
+    return (
+      this.readonly ||
+      !!field.readonly ||
+      this.readOnlyFields.includes(field.id) ||
+      this.isFieldLocked(field)
+    );
   }
 
   toggleFieldLock(field: NestedFieldConfig): void {

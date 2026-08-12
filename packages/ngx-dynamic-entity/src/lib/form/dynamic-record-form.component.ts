@@ -7,13 +7,15 @@ import {
   SimpleChanges,
   signal,
   computed,
+  inject,
   ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
-import { formatDisplayValue, resolveLabel } from '@dynamic-entity/core';
+import { findTab, formatDisplayValue, getTabData, resolveLabel } from '@dynamic-entity/core';
 import { DynamicFormComponent } from './dynamic-form.component';
+import { RulesEvaluationService } from '../services/rules-evaluation.service';
 
 /**
  * DynamicRecordFormComponent — comprehensive tabbed record view & edit component.
@@ -78,6 +80,44 @@ import { DynamicFormComponent } from './dynamic-form.component';
         font-size: 13px;
         font-weight: 500;
       }
+      .ngx-record-editor__banner--info {
+        background: #eff6ff;
+        border: 1px solid #dbeafe;
+        color: #1d4ed8;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .ngx-record-editor__banner-dismiss {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: inherit;
+        font-size: 14px;
+        line-height: 1;
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+      .ngx-record-editor__banner-dismiss:hover {
+        background: rgba(0, 0, 0, 0.06);
+      }
+      .ngx-record-editor__banner--error {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #b91c1c;
+      }
+      .ngx-record-editor__section-bar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+      .ngx-record-editor__section-hint {
+        margin-right: auto;
+        font-size: 12px;
+        color: #6b7280;
+      }
       .ngx-record-editor__banner--warning {
         background: #fffbeb;
         border: 1px solid #fef3c7;
@@ -127,15 +167,157 @@ export class DynamicRecordFormComponent implements OnChanges {
   @Input() readonly: boolean = false;
   @Input() loading: boolean = false;
   @Input() error: string | null = null;
+  /** Whole record read-only, regardless of RBAC. Equivalent to the reference's `isReadOnly`. */
+  @Input() isReadOnly: boolean = false;
+  /** Specific field ids forced read-only while the rest of the record stays editable. */
+  @Input() readOnlyFields: string[] = [];
+  /**
+   * Open the record read-only, with a per-tab "Edit section" flow — one tab is edited and
+   * validated at a time. This is Superpower_Web's `EntityRecordComponent` model and the
+   * default here.
+   *
+   * Set false for a directly editable record with no view/edit distinction.
+   */
+  @Input() viewMode: boolean = true;
 
   @Output() formSubmit = new EventEmitter<Record<string, any>>();
   @Output() formChange = new EventEmitter<Record<string, any>>();
   @Output() formReset = new EventEmitter<void>();
+  /** One tab section was saved. Carries the whole record, plus which tab was edited. */
+  @Output() sectionSave = new EventEmitter<{ tabId: string; record: Record<string, any> }>();
 
   @ViewChild(DynamicFormComponent) dynamicFormComp?: DynamicFormComponent;
 
+  private readonly rulesEvaluation = inject(RulesEvaluationService);
+
   readonly currentData = signal<Record<string, any>>({});
   readonly originalBaseline = signal<Record<string, any>>({});
+
+  /**
+   * Info banners the user has dismissed, by field id.
+   *
+   * The reference's contract: an info banner persists until dismissed, **not** until the
+   * value changes. Dismissal is keyed by field so re-triggering a different field's rule
+   * still shows. Re-armed when a different record is loaded.
+   */
+  private readonly dismissed = signal<ReadonlySet<string>>(new Set<string>());
+
+  /**
+   * Info banners from the rules engine that are still showing.
+   *
+   * A getter, not a `computed`: the source is `dynamicFormComp`, a ViewChild. A computed
+   * evaluated before the view initialises would capture no dependency on the child's
+   * `ruleResult` signal and then never recompute. Read per change-detection pass instead.
+   */
+  get infoBanners(): { fieldId: string; message: string }[] {
+    const result = this.dynamicFormComp?.ruleResult();
+    const gone = this.dismissed();
+    return Object.entries(result?.infoBanners ?? {})
+      .filter(([fieldId]) => !gone.has(fieldId))
+      .map(([fieldId, message]) => ({ fieldId, message: String(message) }));
+  }
+
+  dismissInfoBanner(fieldId: string): void {
+    this.dismissed.set(new Set(this.dismissed()).add(fieldId));
+  }
+
+  /** True when nothing in the record may be edited. */
+  get recordReadOnly(): boolean {
+    return this.readonly || this.isReadOnly;
+  }
+
+  // ─── Per-tab section editing ────────────────────────────────────────────────
+
+  /**
+   * The tab currently open for editing, or null when the record is being viewed.
+   *
+   * The reference edits one tab section at a time rather than the whole record, and
+   * validates only that section on save — a required field on an untouched tab must not
+   * block saving the tab you are actually working on.
+   */
+  readonly editingTabId = signal<string | null>(null);
+
+  /** The tab the inner form is showing. */
+  get activeTabId(): string | null {
+    return this.dynamicFormComp?.activeTabConfig?.id ?? null;
+  }
+
+  /** Errors from the last save attempt, by field id. */
+  readonly sectionErrors = signal<Record<string, string>>({});
+
+  /** Template access to `Object.keys` for iterating the error map. */
+  protected readonly Object = Object;
+
+  get isEditingActiveTab(): boolean {
+    // Without view mode there is no view/edit distinction — everything is always editable.
+    if (!this.viewMode) return true;
+    return !!this.activeTabId && this.editingTabId() === this.activeTabId;
+  }
+
+  /** Fields render read-only unless their own tab is the one being edited. */
+  get sectionReadOnly(): boolean {
+    return this.recordReadOnly || !this.isEditingActiveTab;
+  }
+
+  editSection(): void {
+    if (!this.viewMode || this.recordReadOnly || !this.activeTabId) return;
+    this.sectionErrors.set({});
+    this.editingTabId.set(this.activeTabId);
+  }
+
+  /** Discard this section's edits, restoring each field from the session baseline. */
+  cancelSection(): void {
+    const tabId = this.editingTabId();
+    const form = this.dynamicFormComp;
+    if (tabId && form) {
+      const tab = findTab(this.config?.tabs, tabId);
+      const baselineTab = getTabData(tabId, this.originalBaseline(), this.config) ?? {};
+      for (const field of tab?.fields ?? []) {
+        form.getControl(field.id, tabId)?.setValue(baselineTab[field.id] ?? null);
+      }
+    }
+    this.sectionErrors.set({});
+    this.editingTabId.set(null);
+  }
+
+  /**
+   * Validate this section only, then emit it. Validation is scoped two ways: Angular
+   * validity of the tab's own controls, and rules filtered to this tab — a rule targeting
+   * a hidden tab must not block the save (the reference's OV0-968 fix).
+   */
+  saveSection(): void {
+    const tabId = this.editingTabId();
+    const form = this.dynamicFormComp;
+    if (!tabId || !form) return;
+
+    const tab = findTab(this.config?.tabs, tabId);
+    const errors: Record<string, string> = {};
+
+    for (const field of tab?.fields ?? []) {
+      const ctrl = form.getControl(field.id, tabId);
+      if (ctrl?.invalid) {
+        ctrl.markAsTouched();
+        errors[field.id] = `${resolveLabel(field.label, this.language)} is invalid.`;
+      }
+    }
+
+    const scoped = this.rulesEvaluation.filterForTab(this.rules, tabId, this.config);
+    const ruleErrors = this.rulesEvaluation.evaluate(scoped, form.formValues(), this.originalBaseline())
+      .validationErrors;
+    Object.assign(errors, ruleErrors);
+
+    if (Object.keys(errors).length > 0) {
+      this.sectionErrors.set(errors);
+      return;
+    }
+
+    this.sectionErrors.set({});
+    this.editingTabId.set(null);
+
+    const record = form.extractRecord();
+    this.currentData.set(record);
+    this.sectionSave.emit({ tabId, record });
+  }
 
   /**
    * Seed the session baseline from the loaded record so `VALUE_CHANGED` rules and the
@@ -146,6 +328,8 @@ export class DynamicRecordFormComponent implements OnChanges {
     if (changes['initialData'] || changes['config']) {
       this.originalBaseline.set({ ...(this.initialData ?? {}) });
       this.currentData.set({ ...(this.initialData ?? {}) });
+      // A different record is a different set of banners — re-arm them.
+      this.dismissed.set(new Set<string>());
     }
   }
 

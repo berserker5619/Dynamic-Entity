@@ -14,6 +14,24 @@
     </div>
   </div>
 
+  <!-- Dismissible info banners (rules `info` action) -->
+  @for (banner of infoBanners; track banner.fieldId) {
+    <div
+      class="ngx-record-editor__banner ngx-record-editor__banner--info"
+      role="status"
+      [attr.data-testid]="'info-banner-' + banner.fieldId"
+    >
+      <span>ℹ️ {{ banner.message }}</span>
+      <button
+        type="button"
+        class="ngx-record-editor__banner-dismiss"
+        [attr.data-testid]="'dismiss-' + banner.fieldId"
+        [attr.aria-label]="'Dismiss: ' + banner.message"
+        (click)="dismissInfoBanner(banner.fieldId)"
+      >✕</button>
+    </div>
+  }
+
   <!-- Modification baseline banner -->
   @if (isModified()) {
     <div class="ngx-record-editor__banner ngx-record-editor__banner--warning">
@@ -37,6 +55,33 @@
     </div>
   }
 
+  <!-- Section edit bar: one tab is edited at a time, and validated on its own -->
+  @if (viewMode && !recordReadOnly) {
+    <div class="ngx-record-editor__section-bar">
+      @if (isEditingActiveTab) {
+        <span class="ngx-record-editor__section-hint">Editing this section</span>
+        <button type="button" class="ngx-form__reset" data-testid="cancel-section" (click)="cancelSection()">
+          Cancel
+        </button>
+        <button type="button" class="ngx-form__submit" data-testid="save-section" (click)="saveSection()">
+          Save section
+        </button>
+      } @else {
+        <button type="button" class="ngx-form__reset" data-testid="edit-section" (click)="editSection()">
+          Edit section
+        </button>
+      }
+    </div>
+  }
+
+  @if (Object.keys(sectionErrors()).length > 0) {
+    <div class="ngx-record-editor__banner ngx-record-editor__banner--error" role="alert" data-testid="section-errors">
+      @for (key of Object.keys(sectionErrors()); track key) {
+        <div>⚠️ {{ sectionErrors()[key] }}</div>
+      }
+    </div>
+  }
+
   <!-- Main Dynamic Form -->
   <ngx-dynamic-form
     [config]="config"
@@ -45,7 +90,9 @@
     [originalData]="originalBaseline()"
     [userRoles]="userRoles"
     [language]="language"
-    [readonly]="readonly"
+    [readonly]="sectionReadOnly"
+    [readOnlyFields]="readOnlyFields"
+    [showInfoBanners]="false"
     [loading]="loading"
     [error]="error"
     (formChange)="onFormChange($event)"

@@ -6,7 +6,7 @@
   }
 
   <!-- Rules Info Banners -->
-  @for (infoKey of Object.keys(ruleResult().infoBanners); track infoKey) {
+  @for (infoKey of showInfoBanners ? Object.keys(ruleResult().infoBanners) : []; track infoKey) {
     <div class="ngx-form__info-banner" role="status">
       ℹ️ {{ ruleResult().infoBanners[infoKey] }}
     </div>
@@ -91,7 +91,7 @@
             [config]="config"
             [currentTabId]="(activeSubTabConfig || activeTabConfig)?.id"
             [language]="language"
-            [readonly]="readonly || !!field.readonly || isFieldLocked(field)"
+            [readonly]="isFieldReadonly(field)"
             [userRoles]="userRoles"
           />
           @if (field.criticalField && !readonly) {
