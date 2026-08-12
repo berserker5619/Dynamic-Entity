@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { routes } from './app.routes';
 import { COMMON_MODULES_REGISTRY, provideBuiltInFieldTypes, provideNgxDynamicEntity } from 'ngx-dynamic-entity';
-import { MASKED_ROLES, ORDER_REFERENCE_DATA } from './mock/sample-data';
+import { CLIENT_TIER_LIST, MASKED_ROLES, ORDER_REFERENCE_DATA } from './mock/sample-data';
 import { SampleModuleTabComponent } from './mock/sample-module.component';
 
 export const appConfig: ApplicationConfig = {
@@ -33,6 +33,11 @@ export const appConfig: ApplicationConfig = {
               c => !ctx?.parentValue || c.record.country === ctx.parentValue,
             ),
           ),
+      },
+      // Named master lists for fields that set `listName`. A loader, not a bare Promise, so
+      // an unused list is never fetched.
+      lookups: {
+        clientTier: () => Promise.resolve(CLIENT_TIER_LIST),
       },
     }),
     // Field components are opt-in so unused ones tree-shake out. The demo renders every

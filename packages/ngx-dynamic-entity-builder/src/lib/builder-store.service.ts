@@ -450,6 +450,64 @@ export class BuilderStore {
 
   // ─── Options (dropdown / multiSelect / radio) ────────────────────────────────
 
+  /**
+   * Where a choice field's options come from.
+   *
+   * `entity` is absent on purpose: in this model an entity reference is a field *type*
+   * (`entity-ref`), not a data source a dropdown can switch to, so offering it here would mean
+   * mutating the field's type — and rebuilding its control — from a source picker. The
+   * exclusion that matters within a choice field is inline `options` vs `listName`.
+   */
+  fieldDataSource(field: NestedFieldConfig | undefined): 'none' | 'manual' | 'lookup' {
+    if (!field) return 'none';
+    // Presence, not emptiness: a source the author has picked but not filled in yet — no
+    // options authored, no list name typed — must still read as that source, or the editor
+    // for it disappears the moment they select it.
+    if (Array.isArray(field.options)) return 'manual';
+    if (typeof field.listName === 'string') return 'lookup';
+    return 'none';
+  }
+
+  /**
+   * Switch a choice field's data source, clearing the one it is leaving.
+   *
+   * The reference makes these mutually exclusive (doc §4.4) and it has to stay that way here:
+   * `optionsFor` resolves inline options first, so a field left holding both would silently
+   * ignore its list.
+   */
+  setFieldDataSource(fieldId: string, source: 'none' | 'manual' | 'lookup'): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
+      if (!field) return;
+      if (source === 'manual') {
+        delete field.listName;
+        field.options = field.options?.length ? field.options : [];
+      } else if (source === 'lookup') {
+        delete field.options;
+        field.listName = field.listName ?? '';
+      } else {
+        delete field.options;
+        delete field.listName;
+      }
+    });
+  }
+
+  /** Set the named list a choice field reads its options from. */
+  setListName(fieldId: string, listName: string): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
+      if (!field) return;
+      const trimmed = listName.trim();
+      if (trimmed) {
+        field.listName = trimmed;
+        // Belt and braces: inline options would win over the list at render time.
+        delete field.options;
+      } else {
+        field.listName = '';
+      }
+    });
+  }
+
   addOption(fieldId: string): void {
     this.mutate(draft => {
       const field = this.findFieldInTabs(draft.tabs, fieldId);
@@ -459,6 +517,8 @@ export class BuilderStore {
       const lang = draft.defaultLanguage ?? 'en';
       options.push({ [lang]: `Option ${n}` });
       field.options = options;
+      // Authoring an inline option makes this a manual field — see `setFieldDataSource`.
+      delete field.listName;
     });
   }
 
@@ -806,7 +866,17 @@ export class BuilderStore {
       }
 
       const meta = getFieldTypeMeta(field.type);
-      if (meta?.hasOptions && (!field.options || field.options.length === 0)) {
+      // A field on the lookup source has no inline options by design — its options arrive from
+      // the registry at runtime. Warn only about the missing list name.
+      if (meta?.hasOptions && typeof field.listName === 'string') {
+        if (!field.listName.trim()) {
+          problems.push({
+            level: 'warning',
+            message: `Field "${field.id}" reads options from a named list but has no list name.`,
+            fieldId: field.id,
+          });
+        }
+      } else if (meta?.hasOptions && (!field.options || field.options.length === 0)) {
         problems.push({
           level: 'warning',
           message: `Field "${field.id}" is a ${field.type} but has no options.`,

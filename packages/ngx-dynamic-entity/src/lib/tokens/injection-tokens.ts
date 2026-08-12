@@ -1,6 +1,11 @@
 import { InjectionToken } from '@angular/core';
 import type { Type } from '@angular/core';
-import type { CommonModuleEntry, EntityReferenceLoader, FileUploadHandler } from '@dynamic-entity/core';
+import type {
+  CommonModuleEntry,
+  EntityReferenceLoader,
+  FileUploadHandler,
+  LookupListSource,
+} from '@dynamic-entity/core';
 import { InMemoryEntityRefCacheStore, type EntityRefCacheStore } from '../services/entity-ref-cache';
 
 /** Roles that see XXXXXXXXX for masked fields (ADR-003) */
@@ -30,6 +35,26 @@ export const FIELD_TYPE_SETS = new InjectionToken<Record<string, Type<any>>[]>('
 export const ENTITY_REF_REGISTRY = new InjectionToken<Map<string, EntityReferenceLoader>>(
   'ENTITY_REF_REGISTRY',
 );
+
+/**
+ * Registry: list name → the values of a named master list (`field.listName`).
+ *
+ * A source may be the values themselves (array / Promise / Observable) or a **loader function**,
+ * which is what you want for anything fetched: a bare Promise is created when the provider is
+ * built, so every list would load whether or not a form uses it.
+ *
+ * Values are normalised by `normalizeLookupValues` — bare strings and `LocalizedText` are
+ * accepted alongside the full `{ code, name, sortOrder }` shape.
+ *
+ * @example
+ * provideNgxDynamicEntity({
+ *   lookups: {
+ *     employeeStatus: () => listService.getByName('employeeStatus'),
+ *     grades: ['Junior', 'Senior'],
+ *   },
+ * })
+ */
+export const LOOKUP_REGISTRY = new InjectionToken<Map<string, LookupListSource>>('LOOKUP_REGISTRY');
 
 /** Registry: validator key → ValidatorFn */
 export const VALIDATOR_REGISTRY = new InjectionToken<Map<string, any>>('VALIDATOR_REGISTRY');

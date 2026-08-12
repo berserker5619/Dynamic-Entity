@@ -1,6 +1,6 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, inject, signal } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
-import type { NestedFieldConfig } from '@dynamic-entity/core';
+import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
 import {
   getOptionStoredValue,
   resolveLabel,
@@ -8,6 +8,7 @@ import {
   resolveOptionValue,
   valuesMatch,
 } from '@dynamic-entity/core';
+import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-registry.service';
 
 /** Radio field: a group of radio buttons built from field.options. */
 @Component({
@@ -24,7 +25,7 @@ import {
           <span class="ngx-field__value">{{ getSelectedLabel() }}</span>
         } @else {
           <div class="ngx-field__radio-group">
-            @for (option of field.options || []; track getOptLabel(option)) {
+            @for (option of options(); track getOptLabel(option)) {
               <label class="ngx-field__radio-option" [attr.for]="getRadioId(option)">
                 <input
                   [id]="getRadioId(option)"
@@ -47,11 +48,34 @@ import {
   `,
 })
 export class RadioFieldComponent {
-  @Input() field!: NestedFieldConfig;
+  private readonly lookups = inject(LookupRegistryService);
+
+  private _field!: NestedFieldConfig;
+  private _language = 'en';
+
+  /** Setter-based so options resolve however the input is set — see `refreshChoiceOptions`. */
+  @Input() set field(value: NestedFieldConfig) {
+    this._field = value;
+    refreshChoiceOptions(this, this.lookups);
+  }
+  get field(): NestedFieldConfig {
+    return this._field;
+  }
+
+  @Input() set language(value: string) {
+    this._language = value || 'en';
+    refreshChoiceOptions(this, this.lookups);
+  }
+  get language(): string {
+    return this._language;
+  }
+
   @Input() control!: AbstractControl;
-  @Input() language: string = 'en';
   @Input() readonly: boolean = false;
   @Input() masked: boolean = false;
+
+  /** Inline `options`, or the field's named list resolved through the registry (§6.3). */
+  readonly options = signal<DropdownOption[]>([]);
 
   get label(): string {
     return resolveLabel(this.field?.label, this.language);
@@ -79,8 +103,16 @@ export class RadioFieldComponent {
     return resolveOptionLabel(option, this.language);
   }
 
+  /** Read-only display — synchronous, per §6.2. See `DropdownFieldComponent.getLabel`. */
   getSelectedLabel(): string {
-    const selected = (this.field.options ?? []).find(o => valuesMatch(getOptionStoredValue(o), this.control?.value, this.language));
-    return selected ? this.getOptLabel(selected) : (typeof this.control?.value === 'object' ? resolveLabel(this.control.value, this.language) : (this.control?.value ?? '—'));
+    const value = this.control?.value;
+    // `typeof null === 'object'`, so without this guard an empty value fell through to
+    // `resolveLabel(null)` and rendered as blank — dropdown and multiSelect both show an em dash.
+    if (value === null || value === undefined || value === '') return '—';
+    const selected = this.options().find(o => valuesMatch(getOptionStoredValue(o), value, this.language));
+    if (selected) return this.getOptLabel(selected);
+    const cached = this.lookups.labelFor(this.field?.listName, value, this.language);
+    if (cached) return cached;
+    return typeof value === 'object' ? resolveLabel(value, this.language) : (value ?? '—');
   }
 }

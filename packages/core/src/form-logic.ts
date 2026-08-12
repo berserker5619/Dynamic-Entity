@@ -133,9 +133,49 @@ export function valuesMatch(val1: unknown, val2: unknown, lang = 'en'): boolean 
     const l1 = resolveOptionLabel(val1, lang);
     const l2 = resolveOptionLabel(val2, lang);
     if (l1 && l2 && l1 === l2) return true;
+    if (matchesInAnyLanguage(val1, val2)) return true;
     return canonicalizeValue(val1) === canonicalizeValue(val2);
   }
   return String(val1) === String(val2);
+}
+
+/**
+ * Match on **any** language, not only the active one.
+ *
+ * The stored value carries every language (§2), so renaming one language of an option must not
+ * orphan a record whose other languages still match: a record holding
+ * `{ en: 'Active', de: 'Aktiv' }` still matches an option renamed to
+ * `{ en: 'Active', de: 'Aktiviert' }` while `lang` is `de`. Without this, a rename in a
+ * language nobody is looking at silently breaks display and comparison in the one they are.
+ *
+ * Two objects match when they agree on a shared key; an object and a scalar match when any of
+ * the object's texts equals the scalar (the legacy single-language record). Keys are compared
+ * like-for-like rather than as a flat value set — this helper alone will not equate
+ * `{ en: 'A' }` with `{ de: 'A' }`. Note that `valuesMatch` as a whole is already looser than
+ * that: `resolveLabel` falls back to the first available language, so two objects with no
+ * language in common but the same spelling match on the label comparison above, and did
+ * before this existed. This adds a rule; it does not tighten the ones around it.
+ *
+ * The accepted cost: two options that share one language's text but differ in another now
+ * compare equal. That is the correct reading for a renamed value, which is the case this
+ * exists to serve.
+ */
+function matchesInAnyLanguage(val1: unknown, val2: unknown): boolean {
+  const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+    typeof v === 'object' && v !== null && !Array.isArray(v);
+
+  if (isPlainObject(val1) && isPlainObject(val2)) {
+    return Object.keys(val1).some(key => {
+      const a = val1[key];
+      const b = val2[key];
+      return typeof a === 'string' && a !== '' && a === b;
+    });
+  }
+
+  const [obj, scalar] = isPlainObject(val1) ? [val1, val2] : isPlainObject(val2) ? [val2, val1] : [];
+  if (!obj || scalar === undefined || typeof scalar === 'object') return false;
+  const text = String(scalar);
+  return text !== '' && Object.values(obj).some(v => typeof v === 'string' && v === text);
 }
 
 /**

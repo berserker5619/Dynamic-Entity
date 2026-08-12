@@ -1,9 +1,10 @@
 import { EnvironmentProviders, makeEnvironmentProviders, Type } from '@angular/core';
-import type { EntityReferenceLoader } from '@dynamic-entity/core';
+import type { EntityReferenceLoader, LookupListSource } from '@dynamic-entity/core';
 import {
   ENTITY_REF_REGISTRY,
   FIELD_TYPE_REGISTRY,
   HOOK_REGISTRY,
+  LOOKUP_REGISTRY,
   MASKED_ROLES,
   VALIDATOR_REGISTRY,
 } from '../tokens/injection-tokens';
@@ -18,6 +19,12 @@ export interface NgxDynamicEntityConfig {
    * Each receives `{ parentValue, filters, lang }` and may return an array, Promise, or Observable.
    */
   entityRefs?: Record<string, EntityReferenceLoader>;
+  /**
+   * Named master lists keyed by list name, for fields that set `listName`.
+   * Each may be the values themselves (array/Promise/Observable) or a loader function — prefer
+   * a loader for anything fetched, so an unused list is never loaded.
+   */
+  lookups?: Record<string, LookupListSource>;
   /** Custom validator functions keyed by validator name */
   validators?: Record<string, any>;
   /** Hook functions keyed by hook name */
@@ -39,6 +46,7 @@ export const provideNgxDynamicEntity = (config: NgxDynamicEntityConfig = {}): En
     { provide: MASKED_ROLES, useValue: config.maskedRoles ?? [] },
     { provide: FIELD_TYPE_REGISTRY, useValue: new Map(Object.entries(config.fieldTypes ?? {})) },
     { provide: ENTITY_REF_REGISTRY, useValue: new Map(Object.entries(config.entityRefs ?? {})) },
+    { provide: LOOKUP_REGISTRY, useValue: new Map(Object.entries(config.lookups ?? {})) },
     { provide: VALIDATOR_REGISTRY, useValue: new Map(Object.entries(config.validators ?? {})) },
     { provide: HOOK_REGISTRY, useValue: new Map(Object.entries(config.hooks ?? {})) },
   ]);

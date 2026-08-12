@@ -249,4 +249,47 @@ describe('FieldInspectorComponent', () => {
       expect(store.selectedField()?.patchOnTrue).toEqual([{ from: '', to: '' }]);
     });
   });
+
+  describe('data source', () => {
+    const listNameInput = () => host.querySelector('[data-testid="list-name"]') as HTMLInputElement;
+
+    beforeEach(() => {
+      store.setEntityName('clients');
+      store.addField('dropdown');
+      fixture.detectChanges();
+    });
+
+    it('is offered for choice fields only', () => {
+      expect(host.querySelector('[data-testid="data-source"]')).not.toBeNull();
+
+      store.addField('text');
+      fixture.detectChanges();
+      expect(host.querySelector('[data-testid="data-source"]')).toBeNull();
+    });
+
+    it('shows the option editor, not the list name, while the source is manual', () => {
+      expect(listNameInput()).toBeNull();
+      expect(host.textContent).toContain('Options');
+    });
+
+    it('swaps the option editor for a list name when the source becomes a list', () => {
+      store.setFieldDataSource(store.selectedField()!.id, 'lookup');
+      fixture.detectChanges();
+
+      expect(listNameInput()).not.toBeNull();
+      expect(host.querySelector('[data-testid="option-0"]')).toBeNull();
+    });
+
+    it('writes the typed list name to the field', () => {
+      store.setFieldDataSource(store.selectedField()!.id, 'lookup');
+      fixture.detectChanges();
+
+      const input = listNameInput();
+      input.value = 'employeeStatus';
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      expect(store.selectedField()?.listName).toBe('employeeStatus');
+    });
+  });
 });

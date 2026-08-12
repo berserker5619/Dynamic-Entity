@@ -11,7 +11,9 @@ export const CLIENTS_CONFIG: EntityFormConfig = {
   entity: 'clients',
   version: 1,
   maskData: false,
-  permissions: {},
+  // Everyone may view; the viewer role may not edit. This is what makes the role switcher
+  // mean something — `DynamicFormComponent.canSubmit` reads it through `RbacService`.
+  permissions: { edit: ['admin', 'manager', 'IT_SUPPORT'] },
   tabs: [
     {
       id: 'general',
@@ -31,6 +33,15 @@ export const CLIENTS_CONFIG: EntityFormConfig = {
           ],
           visibility: true,
         },
+        {
+          // Options come from a named master list, resolved through LOOKUP_REGISTRY at runtime.
+          // Nothing about the tier values lives in this config.
+          id: 'tier',
+          type: 'dropdown',
+          label: { en: 'Tier' },
+          listName: 'clientTier',
+          visibility: true,
+        },
         { id: 'salary', type: 'number', label: { en: 'Salary' }, visibility: true, maskData: true },
         { id: 'notes', type: 'textarea', label: { en: 'Notes' }, visibility: true },
       ],
@@ -43,6 +54,17 @@ export const CLIENTS_CONFIG: EntityFormConfig = {
   ],
 };
 
+/**
+ * A named master list, as a consuming app would hold it: values out of authoring order with an
+ * explicit `sortOrder`, several languages, and metadata (`code`, `isSystemDefined`) that the
+ * option shape drops but `LookupRegistryService.valuesFor` still exposes.
+ */
+export const CLIENT_TIER_LIST = [
+  { _id: 'tier_silver', code: 'SLV', name: { en: 'Silver', de: 'Silber' }, sortOrder: 2 },
+  { _id: 'tier_gold', code: 'GLD', name: { en: 'Gold', de: 'Gold' }, sortOrder: 1, isSystemDefined: true },
+  { _id: 'tier_bronze', code: 'BRZ', name: { en: 'Bronze', de: 'Bronze' }, sortOrder: 3 },
+];
+
 let seq = 1;
 // `status` holds the option object itself — for dropdowns the displayed text IS the value.
 const rec = (
@@ -52,6 +74,7 @@ const rec = (
   status: LocalizedText,
   salary: number,
   notes = '',
+  tier?: unknown,
 ) => ({
   _id: `client_${String(seq++).padStart(3, '0')}`,
   _configVersion: 1,
@@ -59,13 +82,19 @@ const rec = (
   email,
   company,
   status,
+  tier,
   salary,
   notes,
 });
 
 export const CLIENTS_RECORDS: Record<string, unknown>[] = [
-  rec('Acme Corp', 'ops@acme.com', 'Acme', { en: 'Active' }, 120000, 'Key account'),
-  rec('Globex', 'hello@globex.com', 'Globex', { en: 'Active' }, 98000),
+  rec('Acme Corp', 'ops@acme.com', 'Acme', { en: 'Active' }, 120000, 'Key account', {
+    en: 'Gold',
+    de: 'Gold',
+  }),
+  // Saved by a German-speaking user against an older single-language list. The registry's
+  // label layer still resolves it to "Silver" in English (parity plan §6.2).
+  rec('Globex', 'hello@globex.com', 'Globex', { en: 'Active' }, 98000, '', 'Silber'),
   rec('Initech', 'tps@initech.com', 'Initech', { en: 'Inactive' }, 76000, 'Churned Q2'),
   rec('Umbrella', 'contact@umbrella.com', 'Umbrella', { en: 'Active' }, 143000),
   rec('Soylent', 'green@soylent.com', 'Soylent', { en: 'Inactive' }, 54000),

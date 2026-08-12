@@ -150,6 +150,110 @@ describe('BuilderStore', () => {
     });
   });
 
+  describe('data source — inline options vs a named list', () => {
+    let id: string;
+    beforeEach(() => {
+      store.setEntityName('clients');
+      id = store.addField('dropdown');
+    });
+
+    it('reports the source a field is currently using', () => {
+      // A new choice field is seeded with an empty `options` array, so it starts manual.
+      expect(store.fieldDataSource(store.fields()[0])).toBe('manual');
+
+      store.setFieldDataSource(id, 'lookup');
+      expect(store.fieldDataSource(store.fields()[0])).toBe('lookup');
+
+      store.setFieldDataSource(id, 'none');
+      expect(store.fieldDataSource(store.fields()[0])).toBe('none');
+    });
+
+    it('stays on the lookup source before a name is typed', () => {
+      store.setFieldDataSource(id, 'lookup');
+      expect(store.fieldDataSource(store.fields()[0])).toBe('lookup');
+      expect(store.fields()[0].listName).toBe('');
+    });
+
+    it('warns about a missing list name instead of missing options', () => {
+      store.setFieldDataSource(id, 'lookup');
+      const messages = () => store.problems().map(p => p.message);
+      expect(messages().some(m => /has no list name/.test(m))).toBe(true);
+      expect(messages().some(m => /has no options/.test(m))).toBe(false);
+
+      store.setListName(id, 'employeeStatus');
+      expect(messages().some(m => /has no list name|has no options/.test(m))).toBe(false);
+    });
+
+    it('clears inline options when switching to a named list', () => {
+      store.addOption(id);
+      store.setFieldDataSource(id, 'lookup');
+
+      expect(store.fields()[0].options).toBeUndefined();
+      expect(store.fields()[0].listName).toBe('');
+    });
+
+    it('clears the list name when switching back to authored options', () => {
+      store.setFieldDataSource(id, 'lookup');
+      store.setListName(id, 'employeeStatus');
+
+      store.setFieldDataSource(id, 'manual');
+
+      expect(store.fields()[0].listName).toBeUndefined();
+      expect(store.fields()[0].options).toEqual([]);
+    });
+
+    it('keeps authored options when re-selecting the source it already has', () => {
+      store.addOption(id);
+      store.setOptionLabel(id, 0, 'en', 'Active');
+
+      store.setFieldDataSource(id, 'manual');
+
+      expect(store.fields()[0].options).toEqual([{ en: 'Active' }]);
+    });
+
+    it('clears both when the source is set back to none', () => {
+      store.addOption(id);
+      store.setFieldDataSource(id, 'none');
+
+      expect(store.fields()[0].options).toBeUndefined();
+      expect(store.fields()[0].listName).toBeUndefined();
+    });
+
+    it('drops inline options when a list name is set directly', () => {
+      store.addOption(id);
+      store.setListName(id, 'employeeStatus');
+
+      expect(store.fields()[0].options).toBeUndefined();
+      expect(store.fields()[0].listName).toBe('employeeStatus');
+    });
+
+    it('trims the list name, and an empty one leaves the field on the lookup source', () => {
+      store.setListName(id, '  employeeStatus  ');
+      expect(store.fields()[0].listName).toBe('employeeStatus');
+
+      store.setListName(id, '   ');
+      expect(store.fields()[0].listName).toBe('');
+    });
+
+    it('makes a field manual again as soon as an option is authored', () => {
+      store.setFieldDataSource(id, 'lookup');
+      store.setListName(id, 'employeeStatus');
+
+      store.addOption(id);
+
+      expect(store.fields()[0].listName).toBeUndefined();
+      expect(store.fieldDataSource(store.fields()[0])).toBe('manual');
+    });
+
+    it('reports none for a missing field, and ignores mutations aimed at one', () => {
+      expect(store.fieldDataSource(undefined)).toBe('none');
+      const before = JSON.stringify(store.config());
+      store.setFieldDataSource('ghost', 'lookup');
+      store.setListName('ghost', 'x');
+      expect(JSON.stringify(store.config())).toBe(before);
+    });
+  });
+
   describe('tabs', () => {
     beforeEach(() => store.setEntityName('clients'));
 
@@ -406,8 +510,10 @@ describe('BuilderStore', () => {
     });
 
     it('finds and edits a field inside a nested tab', () => {
+      // Edited without selecting it first: the mutation has to find the field by walking the
+      // nested tab tree, not by reading the current selection.
       store.setFieldLabel('deep', 'de', 'Tief');
-      expect(store.selectedField.name).toBeDefined(); // signal exists
+
       store.selectField('deep');
       expect(store.selectedField()?.label).toEqual({ en: 'Deep', de: 'Tief' });
     });

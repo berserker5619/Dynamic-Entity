@@ -80,9 +80,43 @@
       }
     }
 
-    <!-- Options (dropdown / multiSelect) -->
+    <!-- Options (dropdown / radio / multiSelect) -->
     @if (meta()?.hasOptions) {
       <mat-divider></mat-divider>
+      <span class="deb-section-title">Data source</span>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+        <mat-label>Options come from</mat-label>
+        <mat-select
+          data-testid="data-source"
+          [ngModel]="store.fieldDataSource(f)"
+          (ngModelChange)="store.setFieldDataSource(f.id, $event)"
+        >
+          <mat-option value="none">Nothing yet</mat-option>
+          <mat-option value="manual">Options authored here</mat-option>
+          <mat-option value="lookup">A named list</mat-option>
+        </mat-select>
+      </mat-form-field>
+    }
+
+    <!-- Named lookup list -->
+    @if (meta()?.hasOptions && store.fieldDataSource(f) === 'lookup') {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+        <mat-label>List name</mat-label>
+        <input
+          matInput
+          data-testid="list-name"
+          [ngModel]="f.listName ?? ''"
+          (ngModelChange)="store.setListName(f.id, $event)"
+        />
+      </mat-form-field>
+      <p class="deb-hint">
+        The consuming app resolves this name through its lookup registry. Options are not
+        authored here.
+      </p>
+    }
+
+    <!-- Inline options -->
+    @if (meta()?.hasOptions && store.fieldDataSource(f) !== 'lookup') {
       <div class="deb-row" style="justify-content: space-between;">
         <span class="deb-section-title">Options</span>
         <button mat-stroked-button type="button" (click)="store.addOption(f.id)">

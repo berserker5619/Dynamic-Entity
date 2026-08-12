@@ -1,12 +1,13 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, inject, signal } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
-import type { NestedFieldConfig } from '@dynamic-entity/core';
+import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
 import {
   getOptionStoredValue,
   resolveLabel,
   resolveOptionLabel,
   valuesMatch,
 } from '@dynamic-entity/core';
+import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-registry.service';
 
 @Component({
   selector: 'ngx-dropdown-field',
@@ -38,7 +39,7 @@ import {
           [attr.aria-describedby]="errorMessage ? field.id + '-error' : null"
         >
           <option [value]="''">{{ placeholder || 'Select...' }}</option>
-          @for (option of field.options || []; track getOptLabel(option)) {
+          @for (option of options(); track getOptLabel(option)) {
             @if (isObjectVal(option)) {
               <option [ngValue]="getOptStoredVal(option)">{{ getOptLabel(option) }}</option>
             } @else {
@@ -54,11 +55,34 @@ import {
   `,
 })
 export class DropdownFieldComponent {
-  @Input() field!: NestedFieldConfig;
+  private readonly lookups = inject(LookupRegistryService);
+
+  private _field!: NestedFieldConfig;
+  private _language = 'en';
+
+  /** Setter-based so options resolve however the input is set — see `refreshChoiceOptions`. */
+  @Input() set field(value: NestedFieldConfig) {
+    this._field = value;
+    refreshChoiceOptions(this, this.lookups);
+  }
+  get field(): NestedFieldConfig {
+    return this._field;
+  }
+
+  @Input() set language(value: string) {
+    this._language = value || 'en';
+    refreshChoiceOptions(this, this.lookups);
+  }
+  get language(): string {
+    return this._language;
+  }
+
   @Input() control!: AbstractControl;
-  @Input() language: string = 'en';
   @Input() readonly: boolean = false;
   @Input() masked: boolean = false;
+
+  /** Inline `options`, or the field's named list resolved through the registry (§6.3). */
+  readonly options = signal<DropdownOption[]>([]);
 
   readonly compareFn = (o1: any, o2: any): boolean => valuesMatch(o1, o2, this.language);
 
@@ -83,10 +107,18 @@ export class DropdownFieldComponent {
     return resolveOptionLabel(option, this.language);
   }
 
+  /**
+   * Read-only display. Never awaits (§6.2): a warm list resolves the label, a cold one falls
+   * back to the stored text — which under the §2 contract *is* the display value, so it is
+   * never wrong, only unlocalised.
+   */
   getLabel(value: any): string {
     if (value == null || value === '') return '—';
-    const option = (this.field.options || []).find(o => valuesMatch(getOptionStoredValue(o), value, this.language));
-    return option ? this.getOptLabel(option) : (typeof value === 'object' ? resolveLabel(value, this.language) : (value ?? '—'));
+    const option = this.options().find(o => valuesMatch(getOptionStoredValue(o), value, this.language));
+    if (option) return this.getOptLabel(option);
+    const cached = this.lookups.labelFor(this.field?.listName, value, this.language);
+    if (cached) return cached;
+    return typeof value === 'object' ? resolveLabel(value, this.language) : (value ?? '—');
   }
 
   get errorMessage(): string {
