@@ -23,6 +23,12 @@ export interface ReferenceLoaderContext {
   filters?: Record<string, unknown>;
   /** Active language, for loaders that localise their labels. */
   lang?: string;
+  /**
+   * `entityReference.displayFields` — the record paths used to build each option's label.
+   * Passed through so a loader can project only what it needs, and because the resolved
+   * labels depend on it, which makes it part of the cache identity.
+   */
+  displayFields?: string[];
 }
 
 /** Minimal structural stand-in for `Observable<T>` — avoids an rxjs dependency in core. */
@@ -155,6 +161,59 @@ export function applyCascadeFilter(
   }
 
   return options;
+}
+
+/** Cache-key field separator. A character that cannot occur in an entity key or filter. */
+const KEY_SEP = '|';
+
+/**
+ * Cache key for one set of reference options.
+ *
+ * Both `displayFields` and `filters` are sorted before serialising: the same request written
+ * with keys in a different order must hit the same cache entry, not fork it. The entity key
+ * is the first segment so a cache can invalidate one entity by prefix without walking every
+ * entry (see `EntityReferenceService.invalidate`).
+ */
+export function buildReferenceCacheKey(
+  entityKey: string,
+  ctx: {
+    lang?: string;
+    displayFields?: string[];
+    filters?: Record<string, unknown>;
+    /** Part of the identity only when the loader filters by it — see `CascadeDataService`. */
+    parentValue?: unknown;
+  } = {},
+): string {
+  const lang = ctx.lang ?? 'en';
+  const fields = [...(ctx.displayFields ?? [])].sort().join(',');
+  const parent = ctx.parentValue === undefined ? '' : stableStringify(ctx.parentValue);
+  const filters = ctx.filters
+    ? Object.keys(ctx.filters)
+        .sort()
+        .map(k => `${k}=${stableStringify(ctx.filters![k])}`)
+        .join('&')
+    : '';
+
+  return [entityKey, lang, fields, filters, parent].join(KEY_SEP);
+}
+
+/** The entity key a cache key was built for. */
+export function entityKeyFromCacheKey(cacheKey: string): string {
+  return cacheKey.split(KEY_SEP)[0];
+}
+
+/** Order-independent serialisation, so `{a:1,b:2}` and `{b:2,a:1}` produce one key. */
+function stableStringify(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    return `{${Object.keys(obj)
+      .sort()
+      .map(k => `${k}:${stableStringify(obj[k])}`)
+      .join(',')}}`;
+  }
+  return String(value);
 }
 
 /** Every field that cascades off `parentFieldId`, searched across the whole field tree. */

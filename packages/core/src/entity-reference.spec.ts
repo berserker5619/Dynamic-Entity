@@ -1,6 +1,8 @@
 import type { EntityReferenceConfig, NestedFieldConfig } from './form-model.types';
 import {
   applyCascadeFilter,
+  buildReferenceCacheKey,
+  entityKeyFromCacheKey,
   buildReferenceLabel,
   findCascadeChildren,
   getByPath,
@@ -168,5 +170,64 @@ describe('findCascadeChildren', () => {
   it('returns [] when nothing cascades off the field', () => {
     expect(findCascadeChildren(fields, 'city')).toEqual([]);
     expect(findCascadeChildren(undefined, 'country')).toEqual([]);
+  });
+});
+
+describe('buildReferenceCacheKey', () => {
+  it('starts with the entity key so a cache can invalidate by prefix', () => {
+    expect(buildReferenceCacheKey('countries').startsWith('countries')).toBe(true);
+    expect(entityKeyFromCacheKey(buildReferenceCacheKey('countries'))).toBe('countries');
+  });
+
+  it('defaults the language to en', () => {
+    expect(buildReferenceCacheKey('c')).toBe(buildReferenceCacheKey('c', { lang: 'en' }));
+  });
+
+  it('separates languages', () => {
+    expect(buildReferenceCacheKey('c', { lang: 'en' })).not.toBe(
+      buildReferenceCacheKey('c', { lang: 'de' }),
+    );
+  });
+
+  it('is order-independent on displayFields', () => {
+    expect(buildReferenceCacheKey('c', { displayFields: ['a', 'b'] })).toBe(
+      buildReferenceCacheKey('c', { displayFields: ['b', 'a'] }),
+    );
+  });
+
+  it('is order-independent on filters, including nested objects', () => {
+    expect(buildReferenceCacheKey('c', { filters: { a: 1, b: { x: 1, y: 2 } } })).toBe(
+      buildReferenceCacheKey('c', { filters: { b: { y: 2, x: 1 }, a: 1 } }),
+    );
+  });
+
+  it('separates different filter values', () => {
+    expect(buildReferenceCacheKey('c', { filters: { active: true } })).not.toBe(
+      buildReferenceCacheKey('c', { filters: { active: false } }),
+    );
+  });
+
+  it('treats an absent parentValue as distinct from a present one', () => {
+    expect(buildReferenceCacheKey('c')).not.toBe(buildReferenceCacheKey('c', { parentValue: 'de' }));
+  });
+
+  it('separates parent values', () => {
+    expect(buildReferenceCacheKey('c', { parentValue: 'de' })).not.toBe(
+      buildReferenceCacheKey('c', { parentValue: 'fr' }),
+    );
+  });
+
+  it('does not collide across entities that share a prefix', () => {
+    expect(entityKeyFromCacheKey(buildReferenceCacheKey('country'))).toBe('country');
+    expect(entityKeyFromCacheKey(buildReferenceCacheKey('countryRegion'))).toBe('countryRegion');
+  });
+
+  it('serialises array filters stably', () => {
+    expect(buildReferenceCacheKey('c', { filters: { ids: [1, 2] } })).toBe(
+      buildReferenceCacheKey('c', { filters: { ids: [1, 2] } }),
+    );
+    expect(buildReferenceCacheKey('c', { filters: { ids: [1, 2] } })).not.toBe(
+      buildReferenceCacheKey('c', { filters: { ids: [2, 1] } }),
+    );
   });
 });

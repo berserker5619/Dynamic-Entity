@@ -12,6 +12,8 @@ export * from './lib/services/validator-registry.service';
 export * from './lib/services/entity-ref-registry.service';
 export * from './lib/services/entity-ref-selection.service';
 export * from './lib/services/cascade-data.service';
+export * from './lib/services/entity-reference.service';
+export * from './lib/services/entity-ref-cache';
 export * from './lib/services/rbac.service';
 export * from './lib/services/rules-evaluation.service';
 

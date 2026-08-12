@@ -167,3 +167,116 @@ describe('CascadeDataService', () => {
     });
   });
 });
+
+/**
+ * Preload (Parity Plan phase 5). Warms the option cache for a config's cascades so that
+ * changing a parent resolves from memory rather than a round-trip.
+ */
+describe('CascadeDataService — preload', () => {
+  const CONFIG = {
+    entity: 'orders',
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        fields: [
+          { id: 'plain', type: 'text' as const, label: { en: 'Plain' } },
+          {
+            id: 'city',
+            type: 'entity-ref' as const,
+            label: { en: 'City' },
+            entityReference: {
+              enabled: true,
+              linkedEntityKey: 'cities',
+              parentField: 'country',
+              lookupFilter: 'country',
+            },
+          },
+        ],
+        children: [
+          {
+            id: 'sub',
+            label: { en: 'Sub' },
+            fields: [
+              {
+                id: 'district',
+                type: 'entity-ref' as const,
+                label: { en: 'District' },
+                entityReference: {
+                  enabled: true,
+                  linkedEntityKey: 'districts',
+                  parentField: 'city',
+                  lookupFilter: 'city',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('loads every cascading entity once, including nested tabs', async () => {
+    const cities = jest.fn().mockResolvedValue(CITIES);
+    const districts = jest.fn().mockResolvedValue([]);
+    const service = configure({ cities, districts });
+
+    await service.initializeCascadeData('orders', CONFIG as never);
+
+    expect(cities).toHaveBeenCalledTimes(1);
+    expect(districts).toHaveBeenCalledTimes(1);
+  });
+
+  it('joins an in-flight run rather than fetching twice', async () => {
+    const cities = jest.fn().mockResolvedValue(CITIES);
+    const service = configure({ cities, districts: () => [] });
+
+    await Promise.all([
+      service.initializeCascadeData('orders', CONFIG as never),
+      service.initializeCascadeData('orders', CONFIG as never),
+    ]);
+
+    expect(cities).toHaveBeenCalledTimes(1);
+  });
+
+  it('waitForData reports false before a preload and true after', async () => {
+    const service = configure({ cities: () => CITIES, districts: () => [] });
+
+    expect(await service.waitForData('orders')).toBe(false);
+    await service.initializeCascadeData('orders', CONFIG as never);
+    expect(await service.waitForData('orders')).toBe(true);
+  });
+
+  it('serves child options from cache with no further loader call', async () => {
+    const cities = jest.fn().mockResolvedValue(CITIES);
+    const service = configure({ cities, districts: () => [] });
+    await service.initializeCascadeData('orders', CONFIG as never);
+
+    const field = CONFIG.tabs[0].fields[1];
+    expect(service.getCachedChildOptions(field as never, 'de').map(o => o.label)).toEqual([
+      'Berlin',
+      'Munich',
+    ]);
+    expect(cities).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns [] from the cache-only path when nothing was preloaded', () => {
+    const service = configure({ cities: () => CITIES });
+    expect(service.getCachedChildOptions(CONFIG.tabs[0].fields[1] as never, 'de')).toEqual([]);
+  });
+
+  it('clearCache lets a later preload run again', async () => {
+    const cities = jest.fn().mockResolvedValue(CITIES);
+    const service = configure({ cities, districts: () => [] });
+
+    await service.initializeCascadeData('orders', CONFIG as never);
+    service.clearCache('orders');
+    await service.initializeCascadeData('orders', CONFIG as never);
+
+    // The preload re-runs, but the option cache still answers, so no second fetch.
+    expect(cities).toHaveBeenCalledTimes(1);
+    expect(await service.waitForData('orders')).toBe(true);
+  });
+});

@@ -2,7 +2,7 @@
 
 _Target: the form-side feature set in `projects/Superpower_Web/docs/dynamic-entity-v2-architecture.md` (2127 lines, updated 2026-06-25), reproduced exactly in `@dynamic-entity/core` + `ngx-dynamic-entity` + `ngx-dynamic-entity-builder`._
 
-_Status: **Phases 1–3 shipped.** `main` @ `00deec9` — 540 unit tests + 2 demo Karma, build/test/lint green. Phases 4–8 outstanding._
+_Status: **Phases 1–3 and 5 shipped.** `main` @ `4e52191` + uncommitted phase 5 — 626 unit tests + 2 demo Karma + 46 e2e, build/test/lint/coverage green. Phases 4, 6, 7, 8 outstanding._
 
 | Phase | State |
 |---|---|
@@ -10,8 +10,8 @@ _Status: **Phases 1–3 shipped.** `main` @ `00deec9` — 540 unit tests + 2 dem
 | 2 — Option value contract | ✅ shipped (`a5f7a71`) — see deviation note in §2 |
 | 3 — Tab model completeness | ✅ shipped (`fe36e86`) |
 | 4 — Record editor parity | ⬜ not started |
-| 5 — Entity reference caching + preload | ⬜ not started |
-| 6 — `listName`/`lookupSource`, referenced fields | ⬜ not started |
+| 5 — Entity reference caching + preload | ✅ shipped |
+| 6 — Referenced fields (lookup sources dropped) | ⬜ not started |
 | 7 — Builder tree + dialogs | ⬜ not started |
 | 8 — Material UI layer | ⬜ not started |
 
@@ -134,13 +134,13 @@ We have loaders + cascade filtering. The reference adds caching and label resolu
 
 ---
 
-## 6. Field-level features with no runtime
+## 6. Referenced fields (`listName`/`lookupSource` dropped)
 
 Present in `core` types, read by nothing. Confirmed by grep.
 
 | Feature | Work |
 |---|---|
-| `listName`, `lookupSource` | A `LOOKUP_REGISTRY` token: named list key → options. Plus the builder's **single-data-source enforcement** (`none` \| `manual` \| `lookup` \| `entity`) — selecting one clears the others (doc §4.4). |
+| `listName`, `lookupSource` | **Dropped — not wanted.** No `LOOKUP_REGISTRY`, no lookup data source. The fields stay in the model for config compatibility but will never gain a runtime; options come from inline `options` or an entity reference. Builder data-source choice is therefore `none` \| `manual` \| `entity`, with no `lookup` branch to enforce. |
 | `isReferenced`, `referencedEntityKey`, `referencedFieldId`, `referencedSnapshot`, `hasDrift` | Live field references across configs + the referenced-field dialog and drift detection. |
 | `systemDefault` | Edit/delete protection (§3). |
 | `table.*` (`isName`, `isStatus`, `arrayVisible`, …) | Already in the model; consumer-facing metadata only — **no work**, we ship no table. |
@@ -191,14 +191,14 @@ Backend/API (`/configuration/dynamic_entity_v2`, `/formRule`, `/preferences`, co
 | 2 | Option value contract | — | **Yes** | M | ✅ |
 | 3 | Tab model completeness | 1 | No | M | ✅ |
 | 4 | Record editor parity | 1, 3 | No | L | ⬜ |
-| 5 | Entity reference caching + preload | — | No | M | ⬜ |
-| 6 | `listName`/`lookupSource`, referenced fields | 3 | No | M | ⬜ |
+| 5 | Entity reference caching + preload | — | No | M | ✅ |
+| 6 | Referenced fields + drift detection | 3 | No | S | ⬜ |
 | 7 | Builder tree + dialogs | 3, 6 | No | L | ⬜ |
 | 8 | Material UI layer | 4–7 | **Yes** (peer deps) | L | ⬜ |
 
 1 and 2 landed together, as planned — both were contract changes, and shipping them separately would have broken consumers twice. **8 goes last on purpose**: it churns the markup every e2e spec asserts against, so behaviour should be settled first.
 
-**Recommended next**: 5 before 4. It has no dependencies, it is self-contained, and phase 4's record editor benefits from the cache already being in place.
+**Next**: 4 (record editor parity). 5 is done, so its cache is already in place for it.
 
 **Gate for every phase**: `turbo run build test lint` green, coverage thresholds held or raised, and e2e proving the feature in the browser. Same bar as the work already merged.
 
@@ -218,4 +218,4 @@ Backend/API (`/configuration/dynamic_entity_v2`, `/formRule`, `/preferences`, co
 
 ## Still open
 
-Nothing blocking. Next up is phase 5 (entity-reference caching + preload), recommended ahead of phase 4.
+Nothing blocking. Next up is phase 4 (record editor parity) — phase 5 is done, so its cache is already available to it.

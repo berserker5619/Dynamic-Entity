@@ -418,3 +418,97 @@ describe('DynamicFormComponent', () => {
     });
   });
 });
+
+/**
+ * The same field id may legitimately appear on two different tabs — `test_data.json`'s
+ * employees config has `gender` on both `primaryDetails` and `personalDetails`. Since
+ * phase 1 gave each tab its own FormGroup, the record stores them separately. These pin
+ * that, and the one place where the id alone is still ambiguous.
+ */
+describe('DynamicFormComponent — duplicate field ids across tabs', () => {
+  const DUPES: EntityFormConfig = {
+    entity: 'employees',
+    tabs: [
+      {
+        id: 'primaryDetails',
+        label: { en: 'Primary' },
+        fields: [{ id: 'gender', type: 'text', label: { en: 'Gender' } }],
+      },
+      {
+        id: 'personalDetails',
+        label: { en: 'Personal' },
+        fields: [{ id: 'gender', type: 'text', label: { en: 'Gender' } }],
+      },
+    ],
+  };
+
+  let fixture: ComponentFixture<DynamicFormComponent>;
+  let component: DynamicFormComponent;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [DynamicFormComponent, ReactiveFormsModule],
+      providers: [
+        {
+          provide: ValidatorRegistryService,
+          useValue: { resolveAll: jest.fn().mockReturnValue([]), resolveFromConfig: jest.fn().mockReturnValue([]) },
+        },
+        { provide: HookRegistryService, useValue: { run: jest.fn(), has: jest.fn().mockReturnValue(false) } },
+        { provide: RbacService, useValue: { getPermissions: jest.fn().mockReturnValue({ canEdit: true }) } },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(DynamicFormComponent);
+    component = fixture.componentInstance;
+    component.config = DUPES;
+    component.ngOnInit();
+    component.ngOnChanges({ config: new SimpleChange(undefined, DUPES, true) });
+    fixture.detectChanges();
+  });
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('builds one control per tab, not one shared control', () => {
+    expect(component.form.get('primaryDetails.gender')).toBeTruthy();
+    expect(component.form.get('personalDetails.gender')).toBeTruthy();
+    expect(component.form.get('primaryDetails.gender')).not.toBe(
+      component.form.get('personalDetails.gender'),
+    );
+  });
+
+  it('keeps the two values independent', () => {
+    component.form.get('primaryDetails.gender')!.setValue('F');
+    component.form.get('personalDetails.gender')!.setValue('M');
+
+    expect(component.form.get('primaryDetails.gender')!.value).toBe('F');
+    expect(component.form.get('personalDetails.gender')!.value).toBe('M');
+  });
+
+  it('loads each tab\u2019s value into its own control', () => {
+    const data = { primaryDetails: { gender: 'F' }, personalDetails: { gender: 'M' } };
+    component.initialData = data;
+    component.ngOnChanges({ initialData: new SimpleChange(undefined, data, true) });
+
+    expect(component.form.get('primaryDetails.gender')!.value).toBe('F');
+    expect(component.form.get('personalDetails.gender')!.value).toBe('M');
+  });
+
+  it('resolves the right control when the tab is named', () => {
+    component.form.get('primaryDetails.gender')!.setValue('F');
+    component.form.get('personalDetails.gender')!.setValue('M');
+
+    expect(component.getControl('gender', 'primaryDetails')!.value).toBe('F');
+    expect(component.getControl('gender', 'personalDetails')!.value).toBe('M');
+  });
+
+  it('falls back to the first match when the id alone is given', () => {
+    // Known ambiguity: without a tab, a duplicated id resolves to whichever tab comes
+    // first. Everything on the record path passes the tab; this only affects the
+    // id-only callers (autoPatch/patchOnTrue targets and the rules value bag), where a
+    // duplicated id cannot express which tab was meant.
+    component.form.get('primaryDetails.gender')!.setValue('F');
+    component.form.get('personalDetails.gender')!.setValue('M');
+
+    expect(component.getControl('gender')!.value).toBe('F');
+  });
+});

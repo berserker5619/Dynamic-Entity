@@ -1,6 +1,7 @@
 import { InjectionToken } from '@angular/core';
 import type { Type } from '@angular/core';
 import type { CommonModuleEntry, EntityReferenceLoader, FileUploadHandler } from '@dynamic-entity/core';
+import { InMemoryEntityRefCacheStore, type EntityRefCacheStore } from '../services/entity-ref-cache';
 
 /** Roles that see XXXXXXXXX for masked fields (ADR-003) */
 export const MASKED_ROLES = new InjectionToken<string[]>('MASKED_ROLES');
@@ -66,6 +67,18 @@ export const COMMON_MODULES_REGISTRY = new InjectionToken<CommonModuleEntry[]>(
  * { provide: UPLOAD_HANDLER, useFactory: () => (file: File) => myUploadService.upload(file) }
  */
 export const UPLOAD_HANDLER = new InjectionToken<FileUploadHandler>('UPLOAD_HANDLER');
+
+/**
+ * Backing store for the entity-reference options cache. Defaults to in-memory.
+ * Provide your own to make the cache outlive a page refresh.
+ *
+ * @example
+ * { provide: ENTITY_REF_CACHE_STORE, useClass: SessionStorageRefCache }
+ */
+export const ENTITY_REF_CACHE_STORE = new InjectionToken<EntityRefCacheStore>(
+  'ENTITY_REF_CACHE_STORE',
+  { providedIn: 'root', factory: () => new InMemoryEntityRefCacheStore() },
+);
 
 /**
  * Consumer-provided predicate function to check whether user roles can edit system default tabs or fields.

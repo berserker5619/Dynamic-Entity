@@ -7,10 +7,11 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "lint": "turbo run lint",
+    "lint": "node scripts/check-control-chars.mjs && turbo run lint",
     "test": "turbo run test",
     "dev": "turbo run dev",
-    "test:coverage": "turbo run test:coverage"
+    "test:coverage": "turbo run test:coverage",
+    "check:chars": "node scripts/check-control-chars.mjs"
   },
   "devDependencies": {
     "eslint": "^8.57.1",
