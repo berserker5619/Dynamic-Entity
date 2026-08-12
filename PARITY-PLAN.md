@@ -12,7 +12,7 @@ _Status: **Phases 1–6 shipped.** 804 unit tests + 2 demo Karma + 50 e2e; build
 | 4 — Record editor parity | ✅ shipped |
 | 5 — Entity reference caching + preload | ✅ shipped |
 | 6 — Named lookup lists (`listName`) | ✅ shipped |
-| 7 — Builder tree + dialogs + test hooks | 🟡 7.3 shipped; 7.1, 7.2 outstanding |
+| 7 — Builder: fixes, tree, dialogs, test hooks | 🟡 7.3 shipped; 7.0 blocks 7.1; 7.2 outstanding |
 | 8 — Referenced fields + drift | ⬜ design first |
 | 9 — Material UI layer | ⬜ not started |
 
@@ -294,7 +294,45 @@ deleting a system-defined value); the library itself will not.
 
 ## 7. Builder parity + test hooks
 
-Three separable pieces, listed in risk order so the tree can slip without blocking the rest.
+Four pieces. 7.3 shipped first; 7.0 blocks 7.1; the rest are in risk order so the tree can slip
+without holding anything else.
+
+### 7.0 Before the tree — four fixes _(blocking 7.1)_
+
+From an architecture and test-automation review of the shipped phases. Each is cheap, each is
+worth more before the builder churns than after, and two of them are defects in phase 6's own
+work rather than pre-existing gaps.
+
+**7.0.1 — Pin the rule operators against object values.** `valuesMatch` is not an option
+helper: it sits under six rule operators — `EQUAL`, `NOT_EQUAL`, both `CONTAINS` forms, `IN`,
+`NOT_IN` ([rules-engine.ts:25-82](packages/core/src/rules-engine.ts#L25-L82)). §6.4 widened it
+to match on any shared language key, and every test for that widening lives in
+`lookup-list.spec.ts`. Meanwhile `rules-engine.operators.spec.ts` is nine tests containing **no
+object-valued comparison at all**, even though §2 made every choice value a `LocalizedText`.
+So the operator layer's most common real input is untested, and phase 6 loosened the comparison
+underneath it: two options sharing one language's text now satisfy `EQUAL` where they did not
+before, and nothing would catch it. Add object-value cases across all six operators. This is
+the highest-risk change-to-coverage mismatch in the repo.
+
+**7.0.2 — Enforce the option/list exclusivity at the parse boundary, not in the UI.** A config
+can carry `options` *and* `listName` together. The builder prevents it while authoring; nothing
+prevents it on the way in, so a hand-edited or legacy config keeps a dead `listName` forever,
+the author sees "Options authored here" with no hint it is there, and it survives every
+round-trip. Rendering is well-defined (inline wins, `optionsFor`), so this is not a bug in
+behaviour — it is the §2 failure shape repeating: *the invariant is a claim the runtime never
+checks*. Drop `listName` in `normalizeField` when inline options exist, and warn in the builder
+when a loaded config had both.
+
+**7.0.3 — Make e2e failures diagnosable.** `retries: 0` with `trace: 'on-first-retry'`
+([playwright.config.ts:7-12](packages/demo-angular/playwright.config.ts#L7-L12)) means the trace
+condition can never fire: every failure yields a screenshot and nothing else — no DOM, no
+network, no timeline. Set `trace: 'retain-on-failure'`. One line, and it is the difference
+between reading a CI failure and trying to reproduce it.
+
+**7.0.4 — Add per-file coverage floors.** Thresholds are global per package, so a new file can
+ship at 40% behind a 95% aggregate. That is not hypothetical: it is what would have hidden
+`lookup-list.ts` had nobody gone looking. Jest takes per-glob thresholds; a per-file floor turns
+the ratchet from an average into a gate.
 
 ### 7.1 Tree editor — the risk
 
@@ -302,6 +340,17 @@ Three separable pieces, listed in risk order so the tree can slip without blocki
 flat palette+list. Recursive drag-drop across three nesting levels is the only genuinely
 uncertain work in this phase; everything else is ordinary. Ship it behind its own commit so a
 schedule problem here does not hold 7.2 or 7.3.
+
+**Carry the structural work with it, not after it.** `BuilderStore` is 896 lines and already
+owns tabs, fields, options, entity refs, rules, permissions, validation and mutation; the canvas
+lives in a 189-line `entity-builder.component.html`. Adding recursive tree mutation on top is
+how a god service becomes permanent. Extract the canvas into its own component and split the
+store along the seams it already has (tabs / fields / rules / permissions) **as part of** this
+phase — the tree is the last cheap moment to do it.
+
+**Prove the test hooks held.** After the tree lands, rename its CSS classes and re-run the
+builder-heavy specs. They must stay green. That is the property §7.3 bought, and this is the
+step that confirms it survived — nothing automated enforces it.
 
 ### 7.2 Dialogs and dirty tracking — ordinary
 
@@ -427,7 +476,7 @@ Backend/API (`/configuration/dynamic_entity_v2`, `/formRule`, `/preferences`, co
 | 4 | Record editor parity | 1, 3 | No | L | ✅ |
 | 5 | Entity reference caching + preload | — | No | M | ✅ |
 | 6 | Named lookup lists (`listName`) | 3 | No | M | ✅ |
-| 7 | Builder tree + dialogs + test hooks | 3, 6 | No | L | ⬜ |
+| 7 | Builder: fixes, tree, dialogs, test hooks | 3, 6 | No | L | 🟡 7.3 done |
 | 8 | Referenced fields + drift | 6, 7 | No | L+ | ⬜ design first |
 | 9 | Material UI layer | 4–8 | **Yes** (peer deps) | L | ⬜ |
 
@@ -441,7 +490,7 @@ is authored, and behind its own design gate because its cost is a new library bo
 feature. **8 is not on 9's critical path** in any way except sequence: if its design gate does
 not close, ship 9 without it.
 
-**Next**: 7 (builder tree, dialogs, `data-testid` hooks), then 8's design gate, then 9.
+**Next**: 7.0 (four fixes, blocking), then 7.1, then 7.2, then 8's design gate, then 9.
 
 **Gate for every phase**: `turbo run build test lint` green, coverage thresholds held or raised, and e2e proving the feature in the browser. Same bar as the work already merged.
 
@@ -449,6 +498,34 @@ Thresholds are a ratchet, not a target: they sit just under the current numbers 
 coverage genuinely improves (core 92/84/96/96, renderer 95/81/96/97, builder 95/75/95/96 —
 statements/branches/functions/lines). A test that cannot fail is worse than no test; the suite
 carries no conditional assertions or swallowed failures.
+
+---
+
+## Hardening backlog
+
+Everything else the review turned up. Nothing here blocks a phase; each item names where it
+should land so it does not become a permanent "later". Ranked within each group.
+
+**Design**
+
+| # | Finding | Where |
+|---|---|---|
+| H1 | **Two public surfaces with no consumer.** `findUnmatchedValues` and `LookupRegistryService.valuesFor` are exported and unit-tested, and nothing calls them — not the demo, not an e2e. For an app that is harmless; for a library it is semver-locked API whose real-world shape has never been exercised. *Tested* and *proven* are different words. | Give the orphan report a caller in the demo, or mark both experimental until §8 supplies one. |
+| H2 | **Choice fields resolve options twice on mount.** `field` and `language` are both setters and both call `refreshChoiceOptions`. The registry dedupes the load, so there is no double fetch — but every mount does a wasted synchronous pass, and a 60-field form does 60 of them. | §9, when the components are rewritten anyway. Coalesce on a microtask or guard on first init. |
+| H3 | **`canSubmit` is unreachable-false.** `DynamicFormComponent.canSubmit` is `permissions.canEdit && !readonly`, evaluated inside a template block already guarded by `!readonly && permissions.canEdit` — so it is always true where it is read. Harmless, but it reads like a second line of defence that is not one. | Any pass through the form template. |
+
+**Test automation**
+
+| # | Finding | Where |
+|---|---|---|
+| H4 | **Magic counts coupled to seed data.** `toHaveCount(13)` for configs, `14` for option rows, `12` for fields. They break on any unrelated fixture edit and say nothing about intent when they do — adding the `tier` field came one assertion away from tripping the config-table count. | Assert the specific thing ("a row for `visitNotes` exists") or derive the count from the fixture. Incrementally, as each spec is touched. |
+| H5 | **The demo Karma suite is two tests.** Neither smoke test nor coverage — a build step that always passes. | Give it a job (harness-level smoke) or delete it. |
+| H6 | **`settle()` under-waits by construction.** The `setTimeout(0)` flush in `choice-lookup.spec.ts` works because the registry resolves in exactly one microtask hop; add a chained resolver and it passes on stale state instead of failing. | `fakeAsync` + `flushMicrotasks`, or resolve inside the zone. Next time that spec is edited. |
+| H7 | **`safeClick` still swallows its enabled check.** The last escape hatch left in the e2e helpers now that `safeSelect` is honest. Defensible — some elements do not expose enabled state — but it should be narrowed to the roles that need it rather than applied to every click. | Next e2e helper change. |
+
+**Standing** — nothing automated proves the suite *can* fail. The §7.3 decoupling was verified by
+renaming classes by hand, once. Repeat that check by hand at each markup rewrite (§7.1, §9); do
+not pretend a tool is doing it.
 
 ---
 
@@ -504,10 +581,15 @@ changes.
 
 ## Still open
 
-Three, all cheap, none blocking phase 7:
+Four, none blocking 7.0 — which is itself the next thing to do:
 
 - **§8's design gate** — the `CONFIG_SOURCE` question, drift timing, and drifted-field
   rendering. Answer before phase 8 starts.
 - **Publish or stay internal** — decides how much of the packaging checklist is urgent.
 - **`changeDebounceMs` default** — currently 0 against the reference's 300 ms (§4). Deliberate,
   but worth revisiting once §9's Material inputs change the keystroke cost.
+- **The jest worker warning.** Core's unit run prints `A worker process has failed to exit
+  gracefully` under parallel turbo execution. All tests pass and the task exits 0; it does not
+  reproduce with `--detectOpenHandles` on core alone, and core has no timers. Probably a
+  jest-worker teardown artifact — but it has appeared in every full run since phase 6, and an
+  unexplained warning is where a real leak eventually hides.
