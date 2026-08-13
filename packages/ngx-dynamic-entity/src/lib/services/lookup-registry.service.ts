@@ -243,6 +243,8 @@ export interface ChoiceOptionHost {
   readonly options: WritableSignal<DropdownOption[]>;
 }
 
+const hostLastConfig = new WeakMap<ChoiceOptionHost, { field?: NestedFieldConfig; lang?: string }>();
+
 /**
  * Point a choice component's `options` signal at the right source (parity plan §6.3).
  *
@@ -258,6 +260,12 @@ export interface ChoiceOptionHost {
  * lands. The late result is dropped if the field or language changed while it was in flight.
  */
 export function refreshChoiceOptions(host: ChoiceOptionHost, lookups: LookupRegistryService): void {
+  const last = hostLastConfig.get(host);
+  if (last && last.field === host.field && last.lang === host.language) {
+    return;
+  }
+  hostLastConfig.set(host, { field: host.field, lang: host.language });
+
   host.options.set(lookups.optionsFor(host.field, host.language));
   if (!lookups.needsResolve(host.field)) return;
 

@@ -136,7 +136,7 @@
         type="submit"
         class="ngx-form__submit"
         data-testid="form-submit"
-        [disabled]="!canSubmit || form.invalid"
+        [disabled]="form.invalid"
         title="Shortcut: Ctrl+S"
       >
         @if (isSaving() || loading) {

@@ -68,10 +68,9 @@ export function builderPaletteButton(page: Page, name: string): Locator {
 
 export async function safeClick(locator: Locator): Promise<void> {
   await expect(locator).toBeVisible({ timeout: 5000 });
-  try {
+  const tagName = await locator.evaluate(el => el.tagName.toLowerCase()).catch(() => '');
+  if (['button', 'input', 'select', 'textarea'].includes(tagName)) {
     await expect(locator).toBeEnabled({ timeout: 5000 });
-  } catch {
-    // Some elements (like anchors) may not expose enabled state; ignore.
   }
   await locator.click();
 }

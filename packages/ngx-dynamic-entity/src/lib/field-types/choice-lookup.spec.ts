@@ -12,9 +12,11 @@ import { DropdownFieldComponent } from './dropdown-field.component';
 import { MultiSelectFieldComponent } from './multi-select-field.component';
 import { RadioFieldComponent } from './radio-field.component';
 
-/** Flush pending microtasks. The registry's promises are created outside the Angular zone,
- * so `whenStable()` resolves before they settle. */
-const settle = (): Promise<void> => new Promise(resolve => setTimeout(resolve, 0));
+/** Flush pending microtasks & timers. Handles multi-hop microtask resolution cleanly. */
+const settle = async (): Promise<void> => {
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
+};
 
 const STATUS_LIST = [
   { name: { en: 'Active', de: 'Aktiv' }, sortOrder: 1 },

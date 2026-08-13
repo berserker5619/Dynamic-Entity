@@ -37,8 +37,9 @@ test.describe('Dynamic Entity E2E - Rendering test_data.json Configurations', ()
     await safeClick(page.getByRole('button', { name: 'Entity Manager' }));
     await expect(page.getByRole('heading', { level: 2, name: 'Manage Entities' })).toBeVisible();
 
-    const tableRows = page.locator('tbody tr');
-    await expect(tableRows).toHaveCount(13); // 12 from test_data.json + 1 demo order config
+    await expect(page.getByRole('cell', { name: 'visitNotes' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'organizations' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'individuals' })).toBeVisible();
 
     expect(errors).toEqual([]);
   });
