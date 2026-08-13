@@ -32,6 +32,12 @@ import { getFieldTypeMeta } from '../field-catalog';
         <div class="deb-row" style="gap:6px">
           <span class="deb-field-label" [attr.data-testid]="'row-label-' + field.id">{{ fieldLabel(field) }}</span>
           <span class="deb-type-badge">{{ field.type }}</span>
+          @if (field.isReferenced) {
+            <mat-icon style="font-size: 16px; width: 16px; height: 16px; color: #1976d2;" matTooltip="Referenced field (linked to {{ field.referencedEntityKey }})">link</mat-icon>
+          }
+          @if (field.hasDrift) {
+            <mat-icon style="font-size: 16px; width: 16px; height: 16px; color: #d32f2f;" data-testid="drift-warning-icon" matTooltip="Drift detected: source field has evolved">sync_problem</mat-icon>
+          }
         </div>
         <span class="deb-field-id" [attr.data-testid]="'row-id-' + field.id">{{ field.id }}</span>
       </div>

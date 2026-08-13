@@ -5,8 +5,10 @@
   "scripts": {
     "build": "npx ng-packagr -p ng-package.json",
     "test": "jest",
-    "lint": "tsc --noEmit && tsc --noEmit -p tsconfig.spec.json",
-    "test:coverage": "jest --coverage"
+    "lint": "tsc --noEmit && tsc --noEmit -p tsconfig.spec.json"
+  },
+  "dependencies": {
+    "ngx-dynamic-entity": "*"
   },
   "peerDependencies": {
     "@angular/cdk": "^17.0.0",
@@ -15,6 +17,7 @@
     "@angular/forms": "^17.0.0",
     "@angular/material": "^17.0.0",
     "@dynamic-entity/core": "^0.1.0",
+    "ngx-dynamic-entity": "^0.1.0",
     "rxjs": "^7.0.0"
   },
   "devDependencies": {

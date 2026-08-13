@@ -4,5 +4,5 @@
     "entryFile": "src/public-api.ts"
   },
   "assets": [],
-  "allowedNonPeerDependencies": ["@dynamic-entity/core"]
+  "allowedNonPeerDependencies": ["@dynamic-entity/core", "ngx-dynamic-entity"]
 }

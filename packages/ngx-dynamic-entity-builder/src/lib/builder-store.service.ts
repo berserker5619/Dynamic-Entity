@@ -11,7 +11,7 @@ import type {
   PatchOnTrueMapping,
   RichFieldType,
 } from '@dynamic-entity/core';
-import { findTab, labelToId, normalizeConfigOptions } from '@dynamic-entity/core';
+import { findTab, labelToId, normalizeConfigOptions, computeFieldDrift, createFieldSnapshot } from '@dynamic-entity/core';
 import {
   createFieldConfig,
   getFieldTypeMeta,
@@ -524,6 +524,73 @@ export class BuilderStore {
         delete field.options;
       } else {
         field.listName = '';
+      }
+    });
+  }
+
+  /** Link a field to a field defined in another entity configuration (Phase 8). */
+  linkReferencedField(fieldId: string, sourceEntityKey: string, sourceField: NestedFieldConfig): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
+      if (!field) return;
+      field.isReferenced = true;
+      field.referencedEntityKey = sourceEntityKey;
+      field.referencedFieldId = sourceField.id;
+      field.referencedSnapshot = createFieldSnapshot(sourceField);
+      field.hasDrift = false;
+      // Copy label, type, validators, options from source
+      if (sourceField.label) field.label = clone(sourceField.label);
+      if (sourceField.type) field.type = sourceField.type;
+      if (sourceField.validators) field.validators = clone(sourceField.validators);
+      if (sourceField.options) field.options = clone(sourceField.options);
+    });
+  }
+
+  /** Unlink a referenced field back to an independent field. */
+  unlinkReferencedField(fieldId: string): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
+      if (!field) return;
+      delete field.isReferenced;
+      delete field.referencedEntityKey;
+      delete field.referencedFieldId;
+      delete field.referencedSnapshot;
+      delete field.hasDrift;
+    });
+  }
+
+  /** Sync a drifted referenced field with the updated source field definition. */
+  syncReferencedField(fieldId: string, currentSourceField: NestedFieldConfig): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, fieldId);
+      if (!field || !field.isReferenced) return;
+      field.referencedSnapshot = createFieldSnapshot(currentSourceField);
+      field.hasDrift = false;
+      if (currentSourceField.label) field.label = clone(currentSourceField.label);
+      if (currentSourceField.type) field.type = currentSourceField.type;
+      if (currentSourceField.validators) field.validators = clone(currentSourceField.validators);
+      if (currentSourceField.options) field.options = clone(currentSourceField.options);
+    });
+  }
+
+  /** Scan all referenced fields in the config and update their hasDrift state against current source configs. */
+  checkDrift(sourceConfigs: Record<string, EntityFormConfig>): void {
+    this.mutate(draft => {
+      const scanFields = (fields: NestedFieldConfig[]) => {
+        for (const f of fields) {
+          if (f.isReferenced && f.referencedEntityKey && f.referencedFieldId) {
+            const sourceConfig = sourceConfigs[f.referencedEntityKey];
+            const sourceField = sourceConfig
+              ? this.findFieldInTabs(sourceConfig.tabs ?? [], f.referencedFieldId)
+              : undefined;
+            f.hasDrift = computeFieldDrift(f, sourceField ?? undefined);
+          }
+          if (f.children?.length) scanFields(f.children);
+        }
+      };
+
+      for (const tab of draft.tabs ?? []) {
+        if (tab.fields?.length) scanFields(tab.fields);
       }
     });
   }

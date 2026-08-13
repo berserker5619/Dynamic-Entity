@@ -8,4 +8,5 @@ export * from './entity-reference.types';
 export * from './lookup-list';
 export * from './file-ref.types';
 export * from './constants';
+export * from './referenced-field';
 

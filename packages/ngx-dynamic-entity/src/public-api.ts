@@ -17,6 +17,7 @@ export * from './lib/services/entity-ref-cache';
 export * from './lib/services/lookup-registry.service';
 export * from './lib/services/rbac.service';
 export * from './lib/services/rules-evaluation.service';
+export * from './lib/services/config-source.service';
 
 // Components — the library ships form UI only; rendering a data table is the consumer's choice.
 export * from './lib/form/dynamic-form.component';

@@ -15,6 +15,7 @@ import { BuilderStore } from '../builder-store.service';
 import { getFieldTypeMeta, type FieldTypeMeta } from '../field-catalog';
 import { EntityReferenceConfigComponent } from './entity-reference-config.component';
 import { FieldRulesListComponent } from './field-rules-list.component';
+import { ReferencedFieldConfigComponent } from './referenced-field-config.component';
 
 /**
  * FieldInspectorComponent — edits every property of the currently selected field.
@@ -35,6 +36,7 @@ import { FieldRulesListComponent } from './field-rules-list.component';
     MatTooltipModule,
     EntityReferenceConfigComponent,
     FieldRulesListComponent,
+    ReferencedFieldConfigComponent,
   ],
   templateUrl: './field-inspector.component.html',
   styles: [

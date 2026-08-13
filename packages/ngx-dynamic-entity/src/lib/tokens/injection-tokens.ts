@@ -109,7 +109,22 @@ export const ENTITY_REF_CACHE_STORE = new InjectionToken<EntityRefCacheStore>(
  * Consumer-provided predicate function to check whether user roles can edit system default tabs or fields.
  * Defaults to allowing edits if not provided.
  */
+/**
+ * Consumer-provided predicate function to check whether user roles can edit system default tabs or fields.
+ * Defaults to allowing edits if not provided.
+ */
 export const SYSTEM_DEFAULT_CAN_EDIT = new InjectionToken<(roles: string[]) => boolean>(
   'SYSTEM_DEFAULT_CAN_EDIT',
 );
+
+export type ConfigSourceHandler = (
+  entityKey: string,
+) => any;
+
+/**
+ * Registry/Resolver for resolving an EntityFormConfig by entity key across entities (Phase 8).
+ * Enables cross-entity field referencing (`isReferenced`, `referencedEntityKey`, `referencedFieldId`, `hasDrift`).
+ */
+export const CONFIG_SOURCE = new InjectionToken<ConfigSourceHandler>('CONFIG_SOURCE');
+
 

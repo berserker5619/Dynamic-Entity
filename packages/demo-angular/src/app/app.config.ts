@@ -2,14 +2,20 @@ import { ApplicationConfig } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { routes } from './app.routes';
-import { COMMON_MODULES_REGISTRY, provideBuiltInFieldTypes, provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+import { COMMON_MODULES_REGISTRY, CONFIG_SOURCE, provideBuiltInFieldTypes, provideNgxDynamicEntity } from 'ngx-dynamic-entity';
 import { CLIENT_TIER_LIST, MASKED_ROLES, ORDER_REFERENCE_DATA } from './mock/sample-data';
 import { SampleModuleTabComponent } from './mock/sample-module.component';
+import { LocalStore } from './mock/local-store.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
     provideAnimations(), // required by Angular Material (the form builder)
+    {
+      provide: CONFIG_SOURCE,
+      useFactory: (store: LocalStore) => (entityKey: string) => store.getConfig(entityKey) ?? undefined,
+      deps: [LocalStore],
+    },
     {
       provide: COMMON_MODULES_REGISTRY,
       useValue: [
