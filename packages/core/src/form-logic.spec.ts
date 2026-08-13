@@ -216,6 +216,30 @@ describe('normalizeConfigOptions', () => {
     const bare: EntityFormConfig = { entity: 'x', tabs: [] };
     expect(normalizeConfigOptions(bare)).toBe(bare);
   });
+
+  it('drops listName when field carries inline options', () => {
+    const configWithBoth: EntityFormConfig = {
+      entity: 'x',
+      tabs: [
+        {
+          id: 'main',
+          label: { en: 'Main' },
+          fields: [
+            {
+              id: 'status',
+              type: 'dropdown',
+              label: { en: 'Status' },
+              options: [{ en: 'Active' }],
+              listName: 'statusList',
+            },
+          ],
+        },
+      ],
+    };
+    const result = normalizeConfigOptions(configWithBoth);
+    expect(result.tabs[0].fields![0].listName).toBeUndefined();
+    expect(result.tabs[0].fields![0].options).toEqual([{ en: 'Active' }]);
+  });
 });
 
 describe('valuesMatch', () => {
@@ -417,6 +441,19 @@ describe('normalizeField', () => {
     const result = normalizeField(raw);
     expect(result.children).toHaveLength(1);
     expect(result.children![0].id).toBe('street');
+  });
+
+  it('drops listName when inline options exist', () => {
+    const raw = {
+      id: 'status',
+      type: 'dropdown',
+      label: 'Status',
+      options: ['Active'],
+      listName: 'statusList',
+    };
+    const result = normalizeField(raw);
+    expect(result.listName).toBeUndefined();
+    expect(result.options).toEqual([{ en: 'Active' }]);
   });
 });
 

@@ -282,6 +282,38 @@ describe('BuilderStore', () => {
       expect(store.config().version).toBe(3);
     });
 
+    it('warns and drops listName when loaded config carries both inline options and listName', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const input: EntityFormConfig = {
+        entity: 'clients',
+        version: 1,
+        tabs: [
+          {
+            id: 'main',
+            label: { en: 'Main' },
+            fields: [
+              {
+                id: 'status',
+                type: 'dropdown',
+                label: { en: 'Status' },
+                options: [{ en: 'Active' }],
+                listName: 'statusList',
+              },
+            ],
+          },
+        ],
+      };
+
+      store.load(input);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[BuilderStore] Field "status" carries both inline options and listName "statusList". Inline options win; listName was dropped.',
+      );
+      expect(store.fields()[0].listName).toBeUndefined();
+      expect(store.fields()[0].options).toEqual([{ en: 'Active' }]);
+      warnSpy.mockRestore();
+    });
+
     it('exportConfig returns a detached copy', () => {
       store.setEntityName('clients');
       store.addField('text');

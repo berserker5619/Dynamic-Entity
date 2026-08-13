@@ -10,6 +10,7 @@ module.exports = {
   // not a target to game. Raise them when coverage genuinely improves.
   coverageThreshold: {
     global: { statements: 95, branches: 75, functions: 95, lines: 96 },
+    './src/**/*.ts': { statements: 85, branches: 70, functions: 85, lines: 85 },
   },
   // Ignore the built output so haste doesn't see two package.json manifests.
   modulePathIgnorePatterns: ['<rootDir>/dist/'],

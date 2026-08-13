@@ -93,6 +93,8 @@ export function normalizeConfigOptions(config: EntityFormConfig): EntityFormConf
     const childrenChanged = !!children?.some((c, i) => c !== field.children![i]);
 
     let options = field.options;
+    let listName = field.listName;
+
     if (Array.isArray(options)) {
       const next = options
         .filter(opt => opt !== null && opt !== undefined)
@@ -105,9 +107,22 @@ export function normalizeConfigOptions(config: EntityFormConfig): EntityFormConf
       }
     }
 
-    if (options === field.options && !childrenChanged) return field;
+    if (options && options.length > 0 && typeof listName === 'string') {
+      listName = undefined;
+      changed = true;
+    }
+
+    if (options === field.options && listName === field.listName && !childrenChanged) return field;
     changed = true;
-    return { ...field, ...(children ? { children } : {}), ...(options ? { options } : {}) };
+    const res: NestedFieldConfig = {
+      ...field,
+      ...(children ? { children } : {}),
+      ...(options ? { options } : {}),
+    };
+    if (listName === undefined && typeof field.listName === 'string') {
+      delete res.listName;
+    }
+    return res;
   };
 
   const normalizeTabOptions = (tab: NestedTabConfig): NestedTabConfig => {
@@ -526,6 +541,11 @@ export function normalizeField(field: unknown): NestedFieldConfig {
 
   // Only attach options when they were present in the raw data
   if (normalizedOptions !== undefined) normalized.options = normalizedOptions;
+
+  // Option/list exclusivity: inline options win over listName. Drop listName when inline options exist.
+  if (normalized.options && normalized.options.length > 0 && typeof normalized.listName === 'string') {
+    delete normalized.listName;
+  }
 
   return normalized;
 }

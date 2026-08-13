@@ -71,6 +71,17 @@ export class BuilderStore {
   // ─── Initialisation ─────────────────────────────────────────────────────────
 
   load(config: EntityFormConfig): void {
+    // Check if any fields carry both inline options and listName before normalizing options
+    const fieldsWithBoth = this.getAllFields(config.tabs ?? []).filter(
+      f => Array.isArray(f.options) && f.options.length > 0 && typeof f.listName === 'string' && f.listName.trim() !== '',
+    );
+    for (const f of fieldsWithBoth) {
+      console.warn(
+        `[BuilderStore] Field "${f.id}" carries both inline options and listName "${f.listName}". ` +
+          `Inline options win; listName was dropped.`,
+      );
+    }
+
     // The other boundary where a config enters the library (the renderer's ngOnChanges is
     // the first). Authoring must start from the canonical option shape, or the builder
     // would round-trip a legacy config straight back out unchanged.

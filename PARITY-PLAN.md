@@ -12,7 +12,7 @@ _Status: **Phases 1–6 shipped.** 804 unit tests + 2 demo Karma + 50 e2e; build
 | 4 — Record editor parity | ✅ shipped |
 | 5 — Entity reference caching + preload | ✅ shipped |
 | 6 — Named lookup lists (`listName`) | ✅ shipped |
-| 7 — Builder: fixes, tree, dialogs, test hooks | 🟡 7.3 shipped; 7.0 blocks 7.1; 7.2 outstanding |
+| 7 — Builder: fixes, tree, dialogs, test hooks | 🟡 7.0 & 7.3 shipped; 7.1 & 7.2 outstanding |
 | 8 — Referenced fields + drift | ⬜ design first |
 | 9 — Material UI layer | ⬜ not started |
 
