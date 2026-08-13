@@ -32,6 +32,7 @@ import { BuilderStore } from './builder-store.service';
 import { FieldInspectorComponent } from './components/field-inspector.component';
 import { FieldPaletteComponent } from './components/field-palette.component';
 import { TabManagerComponent } from './components/tab-manager.component';
+import { EntityBuilderCanvasComponent } from './components/entity-builder-canvas.component';
 import { getFieldTypeMeta } from './field-catalog';
 
 /** RBAC actions surfaced in the settings panel. */
@@ -64,6 +65,7 @@ const EMPTY_ROLES: readonly string[] = Object.freeze([]);
     FieldPaletteComponent,
     TabManagerComponent,
     FieldInspectorComponent,
+    EntityBuilderCanvasComponent,
   ],
   templateUrl: './entity-builder.component.html',
   styleUrl: './entity-builder.component.css',

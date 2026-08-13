@@ -45,10 +45,13 @@ export class BuilderStore {
    */
   private readonly manualIds = new Set<string>();
 
+  private readonly _isDirty = signal<boolean>(false);
+
   readonly config = this._config.asReadonly();
   readonly selectedFieldId = this._selectedFieldId.asReadonly();
   readonly activeLanguage = this._activeLanguage.asReadonly();
   readonly rules = this._rules.asReadonly();
+  readonly isDirty = this._isDirty.asReadonly();
 
   readonly tabs = computed<NestedTabConfig[]>(() => this._config().tabs ?? []);
 
@@ -99,6 +102,7 @@ export class BuilderStore {
     // Editing a label must never rewrite one, so freeze every id the config arrived with.
     this.manualIds.clear();
     for (const field of this.getAllFields(next.tabs)) this.manualIds.add(field.id);
+    this._isDirty.set(false);
   }
 
   reset(entity = ''): void {
@@ -106,6 +110,11 @@ export class BuilderStore {
     this._selectedFieldId.set(null);
     this._rules.set([]);
     this.manualIds.clear();
+    this._isDirty.set(false);
+  }
+
+  resetDirty(): void {
+    this._isDirty.set(false);
   }
 
   private emptyConfig(entity = ''): EntityFormConfig {
@@ -823,6 +832,7 @@ export class BuilderStore {
     draft.tabs = draft.tabs ?? [];
     fn(draft);
     this._config.set(draft);
+    this._isDirty.set(true);
   }
 
   private uniqueId(prefix: string, existing: { id: string }[]): string {
