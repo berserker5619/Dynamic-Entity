@@ -8,28 +8,15 @@ test.describe('Dynamic Entity E2E - Rendering test_data.json Configurations', ()
   const rawData = fs.readFileSync(testDataPath, 'utf8');
   const entityConfigs = JSON.parse(rawData);
 
-  test('validates and parses all 12 real-world entity configs', () => {
+  test('validates and parses all entity configs in test_data.json', () => {
     expect(Array.isArray(entityConfigs)).toBe(true);
-    expect(entityConfigs.length).toBe(12);
+    expect(entityConfigs.length).toBeGreaterThan(0);
 
     const entities = entityConfigs.map((c: any) => c.entity);
-    expect(entities).toEqual([
-      'individuals',
-      'organizations',
-      'clients',
-      'payerProfiles',
-      'visitNotes',
-      'student',
-      'patientDetailsForm',
-      'expence',
-      'employees',
-      'deals',
-      'connections',
-      'nizamKT',
-    ]);
+    expect(entities.length).toBe(entityConfigs.length);
   });
 
-  test('renders Entity Manager table with all 12 test_data.json entities', async ({ page }) => {
+  test('renders Entity Manager table with test_data.json entities', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', err => errors.push(err.message));
 
@@ -37,9 +24,9 @@ test.describe('Dynamic Entity E2E - Rendering test_data.json Configurations', ()
     await safeClick(page.getByRole('button', { name: 'Entity Manager' }));
     await expect(page.getByRole('heading', { level: 2, name: 'Manage Entities' })).toBeVisible();
 
-    await expect(page.getByRole('cell', { name: 'visitNotes' })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'organizations' })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'individuals' })).toBeVisible();
+    for (const cfg of entityConfigs) {
+      await expect(page.getByRole('cell', { name: cfg.entity })).toBeVisible();
+    }
 
     expect(errors).toEqual([]);
   });

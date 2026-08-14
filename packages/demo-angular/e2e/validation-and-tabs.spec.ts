@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 import { fieldByLabel, gotoDemo, recordButton, safeClick } from './test-helpers';
+
+const testDataPath = path.resolve(__dirname, '../../../test_data.json');
+const rawData = fs.readFileSync(testDataPath, 'utf8');
+const entityConfigs = JSON.parse(rawData);
 
 test.describe('Dynamic Entity E2E - Validation, Roles, and Config Manager', () => {
   test.beforeEach(async ({ page }) => {
@@ -49,8 +55,8 @@ test.describe('Dynamic Entity E2E - Validation, Roles, and Config Manager', () =
     await safeClick(page.getByRole('button', { name: 'Entity Manager' }));
 
     await expect(page.getByRole('heading', { level: 2, name: 'Manage Entities' })).toBeVisible();
-    // 12 configs from test_data.json + the seeded `orders` demo entity.
-    await expect(page.locator('tbody tr')).toHaveCount(13);
+    // configs from test_data.json + the seeded `orders` demo entity.
+    await expect(page.locator('tbody tr')).toHaveCount(entityConfigs.length + 1);
 
     await page.locator('tr').filter({ hasText: 'clients' }).getByRole('button', { name: /Edit Metadata/i }).click();
     await expect(page.getByRole('heading', { level: 3, name: /Edit Config: clients/i })).toBeVisible();
