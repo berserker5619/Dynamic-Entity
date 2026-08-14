@@ -1,6 +1,6 @@
-# Parity Plan — Superpower_Web Dynamic Entity V2 → packages
+# Parity Plan — Dynamic Entity V2 → packages
 
-_Target: the form-side feature set in `projects/Superpower_Web/docs/dynamic-entity-v2-architecture.md` (2127 lines, updated 2026-06-25), reproduced exactly in `@dynamic-entity/core` + `ngx-dynamic-entity` + `ngx-dynamic-entity-builder`._
+_Target: the full dynamic entity feature set reproduced in `@dynamic-entity/core` + `ngx-dynamic-entity` + `ngx-dynamic-entity-builder`._
 
 _Status: **Phases 1–6 shipped.** 804 unit tests + 2 demo Karma + 50 e2e; build, lint, coverage and e2e green. Phases 7–9 outstanding._
 
@@ -163,12 +163,12 @@ consumer-registered loaders — no built-in behaviour.
 
 ## 6. Named lookup lists (`listName`) (shipped)
 
-Model fields with no runtime, confirmed by grep across both Superpower codebases.
+Model fields with no runtime.
 
 | Feature | Work |
 |---|---|
 | `listName` | **Required — decision reverted.** A named, centrally-managed option list resolved through a new `LOOKUP_REGISTRY`. **This phase**, §6.1–6.4. |
-| `lookupSource` | **Dropped _(decided)_.** Dead in Superpower_Web *and* in Superpower-App: stored, Joi-validated and copied on sync, but read by no service, pipeline or component. Removed from `NestedFieldConfig`; configs carrying it still round-trip, since `normalizeField` spreads unknown keys. |
+| `lookupSource` | **Dropped _(decided)_.** Stored and copied on sync, but read by no service, pipeline or component. Removed from `NestedFieldConfig`; configs carrying it still round-trip, since `normalizeField` spreads unknown keys. |
 | `isReferenced`, `referencedEntityKey`, `referencedFieldId`, `referencedSnapshot`, `hasDrift` | Live field references across configs, the referenced-field dialog and drift detection. **Split out to §8** — it needs a config-source boundary the library does not have. |
 | `systemDefault` | Edit/delete protection (§3). |
 | `table.*` (`isName`, `isStatus`, `arrayVisible`, …) | Already in the model; consumer-facing metadata only — **no work**, we ship no table. |
@@ -555,7 +555,7 @@ registry — so phases 1 and 2 broke no external consumer, and neither will 6–
   flag for tree-shaking, and start a changelog at the first tag that matters.
 
 **Not decided here**: whether these packages get published externally at all, or stay internal
-to the Superpower apps. The rules above hold either way; only the urgency of the last bullet
+to workspace apps. The rules above hold either way; only the urgency of the last bullet
 changes.
 
 ---
@@ -564,8 +564,8 @@ changes.
 
 | # | Question | Decision |
 |---|---|---|
-| 1 | Visual parity? | **Both** — behavioural parity exact, visual rebuilt on **Angular Material**, not pixel-matched to PrimeNG. No PrimeNG dependency. (§9) |
-| 2 | Option values | **Follow Superpower_Web** — `LocalizedText` is the stored value. Superseded in detail by #5. (§2) |
+| 1 | Visual parity? | **Both** — behavioural parity exact, visual built on **Angular Material**. (§9) |
+| 2 | Option values | `LocalizedText` is the stored value. Superseded in detail by #5. (§2) |
 | 3 | Field ids | **New fields derive from the label; existing data keeps its ids.** No revert to the reference's free-text ids. (§7) |
 | 4 | Role checks | **Consumer-supplied predicates** via token; no hardcoded role names, fail closed when absent. (§3) |
 | 5 | Option shape | **Language-keyed object only.** Narrowed; legacy shapes upcast at the parse boundary. (§2) |

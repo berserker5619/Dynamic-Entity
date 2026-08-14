@@ -233,7 +233,7 @@ export class DynamicRecordFormComponent implements OnChanges {
   @Input() readOnlyFields: string[] = [];
   /**
    * Open the record read-only, with a per-tab "Edit section" flow — one tab is edited and
-   * validated at a time. This is Superpower_Web's `EntityRecordComponent` model and the
+   * validated at a time. This is the framework's `EntityRecordComponent` model and the
    * default here.
    *
    * Set false for a directly editable record with no view/edit distinction.
