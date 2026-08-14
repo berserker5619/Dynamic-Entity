@@ -1,114 +1,202 @@
 /* Angular Material prebuilt theme — required by the form builder */
 @import '@angular/material/prebuilt-themes/indigo-pink.css';
 
+/* ─── Premium Modern Design System ─── */
 :root {
+  --font-heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Primary Palette */
   --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --primary-light: #e0e7ff;
+  --primary-50: #eeef2;
+  --primary-100: #e0e7ff;
+  --primary-500: #6366f1;
+  --primary-600: #4f46e5;
+  --primary-700: #4338ca;
+  --primary-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  --primary-glow: rgba(99, 102, 241, 0.25);
+
+  /* Surface & Background Palette */
   --bg: #f8fafc;
+  --bg-gradient: radial-gradient(circle at 50% 0%, #f1f5f9 0%, #f8fafc 100%);
   --surface: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.88);
+  --surface-hover: #f1f5f9;
+
+  /* Text & Border */
   --text: #0f172a;
   --text-muted: #64748b;
+  --text-light: #94a3b8;
   --border: #e2e8f0;
-  --radius: 10px;
-  --radius-sm: 6px;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --border-focus: #818cf8;
+
+  /* Radii & Shadows */
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-pill: 9999px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 20px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  --shadow-glow: 0 8px 24px -4px var(--primary-glow);
+  --transition-fast: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── Global Reset & Body Styling ─── */
+* {
+  box-sizing: border-box;
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: var(--bg);
+  font-family: var(--font-body);
+  background: var(--bg);
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
   color: var(--text);
   margin: 0;
   padding: 24px;
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
+}
+
+/* Custom Thin Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ─── Demo Container & Layout ─── */
 .demo-container {
-  max-width: 1280px;
+  max-width: 1320px;
   margin: 0 auto;
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Sleek Glassmorphic Header ─── */
 .demo-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
   margin-bottom: 24px;
-  padding: 16px 24px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  padding: 14px 24px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+  flex-wrap: wrap;
 }
 
 .demo-header h1 {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 19px;
+  font-weight: 800;
   margin: 0;
-  color: var(--text);
-  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.demo-header h1::before {
+  content: "⚡";
+  font-size: 18px;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .demo-nav {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
 }
 
 .nav-link {
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: none;
   background: transparent;
   color: var(--text-muted);
+  font-family: var(--font-heading);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
-  transition: all 0.15s ease-in-out;
+  transition: var(--transition-fast);
 }
 
 .nav-link:hover {
-  background: var(--bg);
   color: var(--text);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .nav-link--active {
-  background: var(--primary-light);
-  color: var(--primary);
-  border-color: #c7d2fe;
+  background: var(--surface);
+  color: var(--primary-600);
+  box-shadow: var(--shadow-sm);
 }
 
 .role-switcher {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .role-btn {
-  padding: 6px 14px;
+  padding: 6px 13px;
   border: 1px solid var(--border);
   background: var(--surface);
-  color: var(--text);
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  font-weight: 500;
+  color: var(--text-muted);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease-in-out;
+  transition: var(--transition-fast);
 }
 
 .role-btn:hover {
   background: var(--bg);
+  color: var(--text);
+  border-color: #cbd5e1;
 }
 
 .role-btn--active {
-  background: var(--primary);
+  background: var(--primary-gradient);
   color: white;
-  border-color: var(--primary);
-  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
 }
 
 .view-toggle {
@@ -120,12 +208,20 @@ body {
 /* ─── Renderer Form Styling ─── */
 .form-wrapper {
   background: var(--surface);
-  padding: 28px;
+  padding: 32px;
   border-radius: var(--radius);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow-md);
-  max-width: 840px;
+  box-shadow: var(--shadow-lg);
+  max-width: 860px;
   margin: 0 auto;
+  transition: var(--transition-normal);
+}
+
+.form-wrapper h2 {
+  margin: 0 0 20px 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .ngx-form {
@@ -137,35 +233,33 @@ body {
 
 .ngx-form__tabs {
   display: flex;
-  gap: 6px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 2px;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0;
 }
 
 .ngx-form__tab {
-  padding: 8px 18px;
-  border: 1px solid transparent;
+  padding: 10px 20px;
+  border: none;
   background: transparent;
   color: var(--text-muted);
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  font-family: var(--font-heading);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease-in-out;
+  position: relative;
+  transition: var(--transition-fast);
+  margin-bottom: -2px;
 }
 
 .ngx-form__tab:hover {
   color: var(--text);
-  background: var(--bg);
 }
 
 .ngx-form__tab--active {
-  background: var(--surface);
-  color: var(--primary);
-  border: 1px solid var(--border);
-  border-bottom-color: var(--surface);
-  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.02);
+  color: var(--primary-600);
+  border-bottom: 2px solid var(--primary-600);
 }
 
 .ngx-field {
@@ -182,30 +276,32 @@ body {
 }
 
 .ngx-field__req {
-  color: #dc2626;
+  color: #ef4444;
   font-weight: 700;
+  margin-left: 2px;
 }
 
 .ngx-field__input {
   width: 100%;
-  padding: 9px 12px;
+  padding: 10px 14px;
   font-size: 14px;
+  font-family: var(--font-body);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
   box-sizing: border-box;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: var(--transition-fast);
 }
 
 .ngx-field__input:focus {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
 .ngx-field--invalid .ngx-field__input {
-  border-color: #ef4444;
+  border-color: #f87171;
 }
 
 .ngx-field--invalid .ngx-field__input:focus {
@@ -216,17 +312,23 @@ body {
   color: #dc2626;
   font-size: 12px;
   font-weight: 500;
-  margin-top: 2px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .ngx-form__info-banner,
 .ngx-form__warning-banner,
 .ngx-form__error-banner {
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 500;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .ngx-form__info-banner {
@@ -248,8 +350,8 @@ body {
 }
 
 .ngx-form__actions {
-  margin-top: 24px;
-  padding-top: 16px;
+  margin-top: 28px;
+  padding-top: 20px;
   border-top: 1px solid var(--border);
   display: flex;
   gap: 12px;
@@ -257,40 +359,46 @@ body {
 }
 
 .ngx-form__submit {
-  background: var(--primary);
+  background: var(--primary-gradient);
   color: white;
   border: none;
-  padding: 9px 22px;
+  padding: 10px 24px;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  font-family: var(--font-heading);
   font-weight: 600;
   font-size: 14px;
-  transition: background 0.15s;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+  transition: var(--transition-fast);
 }
 
 .ngx-form__submit:hover:not(:disabled) {
-  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
 }
 
 .ngx-form__submit:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .ngx-form__reset {
   background: var(--surface);
   border: 1px solid var(--border);
-  color: var(--text);
-  padding: 9px 20px;
+  color: var(--text-muted);
+  padding: 10px 20px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 14px;
-  font-weight: 500;
-  transition: background 0.15s;
+  font-weight: 600;
+  transition: var(--transition-fast);
 }
 
 .ngx-form__reset:hover {
   background: var(--bg);
+  color: var(--text);
 }
 
 /* ─── Entity Manager Table ─── */
@@ -307,38 +415,44 @@ body {
 
 .ngx-table__th {
   background: #f8fafc;
-  padding: 12px 16px;
+  padding: 14px 18px;
   text-align: left;
-  font-weight: 600;
-  font-size: 13px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 12px;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
 .ngx-table__td {
-  padding: 12px 16px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--border);
   font-size: 14px;
 }
 
+.ngx-table__row {
+  transition: background 0.15s ease;
+}
+
 .ngx-table__row:hover {
-  background: #f8fafc;
+  background: #f1f5f9;
 }
 
 .ngx-table__action {
   background: white;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 500;
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: var(--transition-fast);
 }
 
 .ngx-table__action:hover {
-  border-color: var(--primary);
-  color: var(--primary);
+  border-color: var(--primary-500);
+  color: var(--primary-600);
+  background: var(--primary-50);
 }

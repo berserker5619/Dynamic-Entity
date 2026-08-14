@@ -1,13 +1,13 @@
 <div class="demo-container">
   <header class="demo-header">
     <div style="display: flex; align-items: center; gap: 16px;">
-      <h1>Dynamic Entity Demo</h1>
+      <h1>Dynamic Entity Demo Studio</h1>
       <div style="display: flex; align-items: center; gap: 8px;">
         <label for="entitySelect" style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Entity Config:</label>
         <select
           id="entitySelect"
           class="ngx-field__input"
-          style="width: auto; padding: 6px 12px; font-weight: 600; background: #fff;"
+          style="width: auto; padding: 6px 14px; font-weight: 600; background: var(--surface); border-radius: var(--radius-sm);"
           [value]="selectedEntity()"
           (change)="onEntityChange($any($event.target).value)"
         >
@@ -28,7 +28,7 @@
     </nav>
 
     <div class="role-switcher">
-      <span>Current Role:</span>
+      <span>Role:</span>
       <button class="role-btn" [class.role-btn--active]="currentRole() === 'admin'"
         (click)="setRole('admin')">Admin</button>
       <button class="role-btn" [class.role-btn--active]="currentRole() === 'manager'"
@@ -58,16 +58,30 @@
     @if (view() === 'list' || view() === 'form') {
     @if (config()) {
     @if (view() === 'list') {
-    <input class="ngx-field__input" style="max-width: 320px; margin-bottom: 16px" placeholder="Search clients…"
-      [value]="searchTerm()" (input)="onSearchChange($any($event.target).value)" />
-    <div style="display: flex; flex-direction: column; gap: 8px; max-width: 640px;">
+    <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+      <input class="ngx-field__input" style="max-width: 340px; box-shadow: var(--shadow-sm);" placeholder="Search clients…"
+        [value]="searchTerm()" (input)="onSearchChange($any($event.target).value)" />
+      <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">
+        Showing {{ records().length }} of {{ totalRecords() }} records
+      </span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px; max-width: 680px;">
       @for (rec of records(); track rec['_id']) {
       <button type="button" (click)="onRowClick(rec)"
-        style="text-align: left; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer;">
-        <strong>{{ getRecordLabel(rec) }}</strong>
+        style="text-align: left; padding: 14px 18px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm); transition: var(--transition-fast);"
+        onmouseover="this.style.borderColor='var(--primary-500)'; this.style.transform='translateY(-1px)'; this.style.boxShadow='var(--shadow-md)';"
+        onmouseout="this.style.borderColor='var(--border)'; this.style.transform='none'; this.style.boxShadow='var(--shadow-sm)';"
+      >
+        <span style="font-family: var(--font-heading); font-weight: 600; color: var(--text); font-size: 14px;">
+          {{ getRecordLabel(rec) }}
+        </span>
+        <span style="font-size: 12px; color: var(--primary-600); font-weight: 600;">Edit →</span>
       </button>
       } @empty {
-      <p style="color: var(--text-muted); font-style: italic;">No records found for {{ selectedEntity() }}. Click <strong>+ Add {{ selectedEntity() === 'clients' ? 'Client' : 'Record' }}</strong> to create one!</p>
+      <div style="padding: 24px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius-sm); text-align: center;">
+        <p style="color: var(--text-muted); margin: 0; font-size: 14px;">No records found for <strong>{{ selectedEntity() }}</strong>. Click <strong>+ Add {{ selectedEntity() === 'clients' ? 'Client' : 'Record' }}</strong> to create one!</p>
+      </div>
       }
     </div>
     } @else {
@@ -78,14 +92,14 @@
     </div>
     }
     } @else {
-    <p>Loading configuration for {{ selectedEntity() }}...</p>
+    <p style="color: var(--text-muted); font-size: 14px;">Loading configuration for {{ selectedEntity() }}...</p>
     }
     }
 
     @if (view() === 'config') {
     <div class="config-manager">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h2>Manage Entities</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin:0; font-size: 20px; font-weight: 700;">Manage Entities</h2>
         <button class="ngx-form__submit" (click)="selectedConfig.set({ entity: '' })">+ Create New Entity</button>
       </div>
 
@@ -112,10 +126,10 @@
 
       @if (selectedConfig() || !allConfigs().length) {
       <div class="form-wrapper" style="margin-top: 2rem;">
-        <h3>{{ selectedConfig()?.entity ? 'Edit Config: ' + selectedConfig()?.entity : 'Create New Entity' }}</h3>
-        <textarea #configJson style="width: 100%; height: 300px; font-family: monospace;"
+        <h3 style="margin-top:0;">{{ selectedConfig()?.entity ? 'Edit Config: ' + selectedConfig()?.entity : 'Create New Entity' }}</h3>
+        <textarea #configJson style="width: 100%; height: 300px; font-family: monospace; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);"
           [value]="selectedConfig() | json"></textarea>
-        <div style="margin-top: 12px; text-align: right;">
+        <div style="margin-top: 14px; text-align: right;">
           <button class="ngx-form__submit" (click)="onConfigSubmit(JSON.parse(configJson.value))">Save Config</button>
         </div>
       </div>
