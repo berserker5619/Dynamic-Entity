@@ -2,28 +2,30 @@
 
 > Production-Grade, Low-Code Enterprise Form Engine & Visual Builder for Angular 17+
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/nizamudeen5619/Dynamic-Entity)
+[![npm core](https://img.shields.io/npm/v/@dynamic-entity/core.svg?label=@dynamic-entity/core&color=blue)](https://www.npmjs.com/package/@dynamic-entity/core)
+[![npm renderer](https://img.shields.io/npm/v/ngx-dynamic-entity.svg?label=ngx-dynamic-entity&color=red)](https://www.npmjs.com/package/ngx-dynamic-entity)
+[![npm builder](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg?label=ngx-dynamic-entity-builder&color=purple)](https://www.npmjs.com/package/ngx-dynamic-entity-builder)
 [![Angular](https://img.shields.io/badge/angular-17%2B-red.svg)](https://angular.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Dynamic Entity** is a complete, enterprise-grade suite of packages for declarative form creation, dynamic table rendering, rule evaluation, role-based access control (RBAC), and visual drag-and-drop form authoring in Angular 17.
+**Dynamic Entity** is a complete, enterprise-grade suite of packages for declarative form creation, dynamic table rendering, rule evaluation, role-based access control (RBAC), and visual drag-and-drop form authoring in Angular 17+.
 
 ---
 
-## 📦 Packages in the Monorepo
+## 📦 Published Packages
 
-| Package | Version | Description |
-|---|---|---|
-| [`@dynamic-entity/core`](./packages/core) | `1.0.0` | Framework-agnostic schema models, validation engine, rules evaluator & utilities. |
-| [`ngx-dynamic-entity`](./packages/ngx-dynamic-entity) | `1.0.0` | Angular 17 standalone UI library for rendering dynamic forms & entity tables. |
-| [`ngx-dynamic-entity-builder`](./packages/ngx-dynamic-entity-builder) | `1.0.0` | Standalone visual drag-and-drop builder for authoring `EntityConfig` schemas. |
-| `demo-angular` | `1.0.0` | Showcase Angular demo application with Playwright E2E test suite. |
+| Package | Version | NPM | Description |
+|---|---|---|---|
+| [`@dynamic-entity/core`](./packages/core) | `1.0.0` | [![npm](https://img.shields.io/npm/v/@dynamic-entity/core.svg)](https://www.npmjs.com/package/@dynamic-entity/core) | Framework-agnostic schema models, validation engine, rules evaluator & utilities. |
+| [`ngx-dynamic-entity`](./packages/ngx-dynamic-entity) | `1.0.0` | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity.svg)](https://www.npmjs.com/package/ngx-dynamic-entity) | Angular 17 standalone UI library for rendering dynamic forms & entity tables. |
+| [`ngx-dynamic-entity-builder`](./packages/ngx-dynamic-entity-builder) | `1.0.0` | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg)](https://www.npmjs.com/package/ngx-dynamic-entity-builder) | Standalone visual drag-and-drop builder for authoring `EntityConfig` schemas. |
+| `demo-angular` | `1.0.0` | — | Showcase Angular demo application with Playwright E2E test suite. |
 
 ---
 
 ## ✨ Features
 
-- **18 Unified Field Types**: Text, Text Area, Number, Currency, Date, Month & Year, Checkbox, Radio, Select, Multi-Select, Boolean Switch, Group, Array, Image Upload, File Attachment, Entity Reference, Connection, Lookup List.
+- **18 Unified Field Types**: Text, Text Area, Number, Currency, Date, Month & Year, Time, Checkbox, Radio, Select, Multi-Select, Boolean Switch, Group, Array, Image Upload, File Attachment, Entity Reference, Connection, Lookup List.
 - **Reactive Rules Engine**: Evaluate `SHOW_WHEN`, `ENABLE_WHEN`, `REQUIRE_WHEN`, `CALCULATE` rules dynamically as form values change.
 - **Role-Based Access Control (RBAC)**: Field-level permission enforcement (`READ_WRITE`, `READ_ONLY`, `MASKED`, `HIDDEN`).
 - **Cross-Entity Referenced Fields**: Link fields to external source entities with real-time drift detection and one-click syncing.
@@ -45,7 +47,7 @@ npm install @dynamic-entity/core ngx-dynamic-entity ngx-dynamic-entity-builder
 
 ```typescript
 import { Component } from '@angular/core';
-import { DynamicFormComponent } from 'ngx-dynamic-entity';
+import { DynamicFormComponent, provideNgxDynamicEntity, provideBuiltInFieldTypes } from 'ngx-dynamic-entity';
 import type { EntityFormConfig } from '@dynamic-entity/core';
 
 @Component({
@@ -63,17 +65,20 @@ import type { EntityFormConfig } from '@dynamic-entity/core';
 })
 export class RecordEditorComponent {
   config: EntityFormConfig = {
-    key: 'client',
-    version: '1.0.0',
-    labels: { en: 'Client Profile' },
+    entity: 'client',
+    version: 1,
+    name: { en: 'Client Profile' },
     tabs: [
       {
         id: 'general',
-        title: { en: 'General' },
+        label: { en: 'General' },
+        visibility: true,
+        systemDefault: true,
+        isPrimaryTab: true,
         fields: [
-          { id: 'firstName', type: 'text', label: { en: 'First Name' }, required: true },
-          { id: 'lastName', type: 'text', label: { en: 'Last Name' }, required: true },
-          { id: 'email', type: 'text', label: { en: 'Email' }, validators: [{ type: 'email' }] }
+          { id: 'firstName', type: 'text', label: { en: 'First Name' }, visibility: true, validators: { required: true } },
+          { id: 'lastName', type: 'text', label: { en: 'Last Name' }, visibility: true, validators: { required: true } },
+          { id: 'email', type: 'text', label: { en: 'Email' }, visibility: true, validators: { required: true } }
         ]
       }
     ]
@@ -100,36 +105,34 @@ import type { EntityFormConfig } from '@dynamic-entity/core';
   imports: [EntityBuilderComponent],
   template: `
     <ngx-entity-builder
-      [config]="initialConfig"
+      [config]="config"
       (configChange)="onConfigUpdated($event)"
     />
   `
 })
 export class SchemaDesignerComponent {
-  initialConfig: EntityFormConfig = { /* ... */ };
+  config!: EntityFormConfig;
 
   onConfigUpdated(newConfig: EntityFormConfig) {
-    console.log('Schema updated:', newConfig);
+    console.log('Updated Schema Config:', newConfig);
   }
 }
 ```
 
 ---
 
-## 🧪 Testing & Verification
-
-Run tests across all monorepo packages:
+## 🧪 Testing
 
 ```bash
-# Run turbo pipeline across all packages (build, test, lint)
-npx turbo run build test lint
+# Run unit tests across all workspace packages
+npm test
 
-# Run Playwright E2E test suite (54 specs)
-npm run e2e --workspace=demo-angular
+# Run Playwright E2E browser tests
+npm run e2e
 ```
 
 ---
 
-## 📜 License
+## 📄 License
 
-Distributed under the [MIT License](LICENSE).
+[MIT](LICENSE) © Nizamudeen

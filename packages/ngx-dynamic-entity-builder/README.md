@@ -1,54 +1,36 @@
 # ngx-dynamic-entity-builder
 
-Visual drag-and-drop Angular form builder for `@dynamic-entity/core` and `ngx-dynamic-entity`.
+[![npm version](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg?color=purple)](https://www.npmjs.com/package/ngx-dynamic-entity-builder)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
 
-## Features
-- **Visual palette & canvas** — drag-and-drop authoring for all 19 field type keys, from the
-  shared catalog in `@dynamic-entity/core` (so the builder can never drift from the renderer).
-- **Inspector** — properties, validation, options, display flags, `showWhen` conditions,
-  `criticalField`, `showOnMinimize`, and `patchOnTrue`.
-- **Entity reference config** — registry key, display fields, static filters, parent→child
-  cascade (`parentField` + `lookupFilter`/`lookupPath`), and `autoPatch` mappings.
-- **Rules** — author a rule with `RuleFormComponent`, manage the set per field with
-  `FieldRulesListComponent` (reorder, enable/disable, edit, delete).
-- **Tab & module manager** — primary and nested tab structures.
-- **Live preview** — projected content slot; the builder does not depend on the renderer.
+Visual drag-and-drop Angular form builder component for `@dynamic-entity/core` and `ngx-dynamic-entity`.
 
-## Installation
+---
+
+## 📦 Installation
+
 ```bash
 npm install ngx-dynamic-entity-builder @dynamic-entity/core
 ```
 
-`ngx-dynamic-entity` is not required — pass a rendered preview in as projected content if you
-want one.
+---
 
-## Usage
+## ✨ Features
+
+- **Visual Palette & Canvas**: Drag-and-drop authoring for all 18 catalog field types from `@dynamic-entity/core`.
+- **Property Inspector**: Configure validators, options, display flags, `criticalField`, `maskData`, `autoPatch`, and `patchOnTrue`.
+- **Entity Reference Designer**: Registry key mapping, display fields, static filters, and parent→child cascades (`parentField` + `lookupFilter`).
+- **Rules Manager**: Create, reorder, edit, and toggle reactive rules (`RuleFormComponent` & `FieldRulesListComponent`).
+- **Tab & Tree Manager**: Organize primary tabs, sub-tabs, nested groups, and dynamic array field lists up to 3 levels deep.
+- **Live Preview Slot**: Projected content slot for live rendering without hard dependencies on the renderer.
+
+---
+
+## 🚀 Usage
+
 ```html
 <ngx-entity-builder
   [config]="initialConfig"
-  [rules]="initialRules"
   (configChange)="onConfigUpdated($event)"
 />
 ```
-
-## Rules are stored beside the config
-
-`BuilderStore` keeps rules separate from `EntityFormConfig` — they are persisted per form, not
-inside the config object. Load and export them explicitly:
-
-```ts
-store.load(config);
-store.loadRules(rules);
-// …authoring…
-const config = store.exportConfig();
-const rules = store.exportRules();
-```
-
-Reordering rules renumbers `priority` contiguously from 1.
-
-## Sub-components
-
-Each panel is individually importable: `FieldPaletteComponent`, `FieldInspectorComponent`,
-`TabManagerComponent`, `RuleFormComponent`, `FieldRulesListComponent`,
-`EntityReferenceConfigComponent`. All read and write through the `BuilderStore` provided by
-`EntityBuilderComponent`.
