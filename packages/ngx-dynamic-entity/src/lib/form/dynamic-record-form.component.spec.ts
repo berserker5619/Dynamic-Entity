@@ -92,15 +92,16 @@ describe('DynamicRecordFormComponent', () => {
 
   describe('session baseline', () => {
     it('seeds the baseline from the loaded record, not the first keystroke', () => {
-      build({ name: 'Acme', status: { en: 'Active', de: 'Aktiv' } });
+      const record = { general: { name: 'Acme', status: { en: 'Active', de: 'Aktiv' } } };
+      build(record);
 
-      expect(component.originalBaseline()).toEqual({ name: 'Acme', status: { en: 'Active', de: 'Aktiv' } });
+      expect(component.originalBaseline()).toEqual(record);
       expect(component.isModified()).toBe(false);
     });
 
     it('reports a modification once the data diverges', () => {
-      build({ name: 'Acme' });
-      component.onFormChange({ name: 'Acme Corp' });
+      build({ general: { name: 'Acme' } });
+      component.onFormChange({ general: { name: 'Acme Corp' } });
 
       expect(component.isModified()).toBe(true);
     });
@@ -115,19 +116,21 @@ describe('DynamicRecordFormComponent', () => {
     });
 
     it('does not overwrite an established baseline on later changes', () => {
-      build({ name: 'Acme' });
-      component.onFormChange({ name: 'Changed' });
-      component.onFormChange({ name: 'Changed again' });
+      build({ general: { name: 'Acme' } });
+      component.onFormChange({ general: { name: 'Changed' } });
+      component.onFormChange({ general: { name: 'Changed again' } });
 
-      expect(component.originalBaseline()).toEqual({ name: 'Acme' });
+      expect(component.originalBaseline()).toEqual({ general: { name: 'Acme' } });
     });
 
     it('re-seeds when a different record is loaded', () => {
-      build({ name: 'Acme' });
-      component.initialData = { name: 'Globex' };
-      component.ngOnChanges({ initialData: new SimpleChange({ name: 'Acme' }, { name: 'Globex' }, false) });
+      const first = { general: { name: 'Acme' } };
+      const second = { general: { name: 'Globex' } };
+      build(first);
+      component.initialData = second;
+      component.ngOnChanges({ initialData: new SimpleChange(first, second, false) });
 
-      expect(component.originalBaseline()).toEqual({ name: 'Globex' });
+      expect(component.originalBaseline()).toEqual(second);
       expect(component.isModified()).toBe(false);
     });
   });
@@ -139,7 +142,7 @@ describe('DynamicRecordFormComponent', () => {
     });
 
     it('formats summary values through the shared core formatter', () => {
-      build({ status: { en: 'Active', de: 'Aktiv' }, archived: true });
+      build({ general: { status: { en: 'Active', de: 'Aktiv' } }, meta: { archived: true } });
 
       const status = component.summaryFields().find(f => f.id === 'status')!;
       const archived = component.summaryFields().find(f => f.id === 'archived')!;
@@ -149,11 +152,41 @@ describe('DynamicRecordFormComponent', () => {
     });
 
     it('honours the active language when formatting option labels', () => {
-      build({ status: { en: 'Active', de: 'Aktiv' } });
+      build({ general: { status: { en: 'Active', de: 'Aktiv' } } });
       component.language = 'de';
 
       const status = component.summaryFields().find(f => f.id === 'status')!;
       expect(component.formatFieldValue(status)).toBe('Aktiv');
+    });
+
+    it('finds a summary field that lives on a nested sub-tab', () => {
+      build({ meta: { nested: { deep: 'found' } } });
+
+      const deep = component.summaryFields().find(f => f.id === 'deep')!;
+      expect(component.formatFieldValue(deep)).toBe('found');
+    });
+
+    /**
+     * The summary once read the record flat while the form patched by tab path, so a flat
+     * record rendered real values in the drawer over a form whose controls were all empty —
+     * data loss disguised as a successful load. Summary and form must agree.
+     */
+    it('does not show a value the form did not load', () => {
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      try {
+        build({ status: { en: 'Active' } }); // flat, but `general` is not a flatData tab
+
+        const status = component.summaryFields().find(f => f.id === 'status')!;
+        expect(component.formatFieldValue(status)).toBe('—');
+        expect(component.dynamicFormComp?.getControl('status', 'general')?.value ?? null).toBeNull();
+
+        // The renderer's own diagnostic should be describing this exact situation.
+        expect(
+          warn.mock.calls.some(c => String(c[0]).includes('initialData has top-level')),
+        ).toBe(true);
+      } finally {
+        warn.mockRestore();
+      }
     });
 
     it('renders an em dash for an empty value', () => {

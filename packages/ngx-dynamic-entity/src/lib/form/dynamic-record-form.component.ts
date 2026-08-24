@@ -19,6 +19,12 @@ import { DynamicFieldComponent } from './dynamic-field/dynamic-field.component';
 import { RulesEvaluationService } from '../services/rules-evaluation.service';
 
 /**
+ * Distinguishes "no tab holds this field" from "the field holds undefined", so the tab walk
+ * can keep searching in the first case and stop in the second.
+ */
+const FIELD_NOT_FOUND = Symbol('field-not-found');
+
+/**
  * DynamicRecordFormComponent — comprehensive tabbed record view & edit component.
  * Supports cross-tab rule evaluation, profile header, summary drawer (showOnMinimize),
  * interactive quick-jump links, and baseline modification tracking.
@@ -599,13 +605,33 @@ export class DynamicRecordFormComponent implements OnChanges {
     return this.dynamicFormComp?.getControl(fieldId) ?? null;
   }
 
-  /** A field's current value, read from the record so it is stable during render. */
+  /**
+   * A field's current value, read from the record so it is stable during render.
+   *
+   * Resolved through `getTabData` so it honours exactly the nesting contract the form
+   * patches with — `{ tabId: { fieldId } }`, or the record root when the tab sets
+   * `flatData`. Reading the record flat instead is not a shortcut: it makes the summary
+   * display values the form never loaded, which reads as "the data is there" while every
+   * control behind it is empty.
+   *
+   * Walks sub-tabs as well: a summary, header, or profile field may sit on any tab at any
+   * depth.
+   */
   private fieldValue(fieldId: string): unknown {
-    for (const tab of this.config?.tabs ?? []) {
-      const data = getTabData(tab.id, this.currentData(), this.config) as Record<string, unknown> | null;
-      if (data && fieldId in data) return data[fieldId];
-    }
-    return undefined;
+    const visit = (tabs: NestedTabConfig[] = []): unknown => {
+      for (const tab of tabs) {
+        const data = getTabData(tab.id, this.currentData(), this.config) as Record<string, unknown> | null;
+        if (data && fieldId in data) return data[fieldId];
+        if (tab.children) {
+          const found = visit(tab.children);
+          if (found !== FIELD_NOT_FOUND) return found;
+        }
+      }
+      return FIELD_NOT_FOUND;
+    };
+
+    const result = visit(this.config?.tabs);
+    return result === FIELD_NOT_FOUND ? undefined : result;
   }
 
   readonly isModified = computed(() => {
@@ -653,7 +679,7 @@ export class DynamicRecordFormComponent implements OnChanges {
 
   /** Summary values render through the shared core formatter, not a local stringifier. */
   formatFieldValue(field: NestedFieldConfig): string {
-    return formatDisplayValue(field.type, field.options, this.currentData()[field.id], this.language);
+    return formatDisplayValue(field.type, field.options, this.fieldValue(field.id), this.language);
   }
 
   jumpToField(fieldId: string): void {
