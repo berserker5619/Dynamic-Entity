@@ -71,6 +71,21 @@ export interface FieldValidators {
   minLength?: number;
   maxLength?: number;
   pattern?: string;
+  /**
+   * Built-in email format check.
+   *
+   * Separate from `pattern` on purpose. The builder used to express "email" by writing a
+   * regex into `pattern`, which meant a field could not have both, setting a custom pattern
+   * made the Email box appear ticked, and un-ticking Email deleted the custom pattern.
+   */
+  email?: boolean;
+  /**
+   * Names of validators registered through `provideNgxDynamicEntity({ validators })`.
+   *
+   * Without this, a custom validator was reachable only through the untyped `string[]` form
+   * of this config, so naming one from a typed schema required an `as any` cast.
+   */
+  custom?: string[];
 }
 
 /** Per-field table-display metadata (a consumer's own table can read these; the library renders no table). */

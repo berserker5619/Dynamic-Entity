@@ -908,3 +908,69 @@ describe('BuilderStore', () => {
     });
   });
 });
+
+/**
+ * `email` used to be expressed by writing a regex into `pattern`, so a field could not have
+ * both, a custom pattern made the Email box appear ticked, and un-ticking Email deleted it.
+ */
+describe('BuilderStore — email validator is independent of pattern', () => {
+  let store: BuilderStore;
+
+  /** Must match LEGACY_EMAIL_PATTERN in builder-store.service.ts exactly. */
+  const LEGACY = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$';
+
+  beforeEach(() => {
+    store = new BuilderStore();
+    store.load({
+      entity: 'x',
+      version: 1,
+      tabs: [{ id: 't', label: { en: 'T' }, fields: [{ id: 'f', type: 'text', label: { en: 'F' } }] }],
+    });
+  });
+
+  const field = () => store.fields().find(f => f.id === 'f')!;
+
+  it('sets its own flag rather than writing a pattern', () => {
+    store.toggleFlagValidator('f', 'email', true);
+
+    expect(field().validators?.email).toBe(true);
+    expect(field().validators?.pattern).toBeUndefined();
+    expect(store.hasFlagValidator(field(), 'email')).toBe(true);
+  });
+
+  it('does not report a custom pattern as email', () => {
+    store.updateField('f', { validators: { pattern: '^ACME-' } });
+
+    expect(store.hasFlagValidator(field(), 'email')).toBe(false);
+  });
+
+  it('keeps a custom pattern when email is turned off', () => {
+    store.updateField('f', { validators: { pattern: '^ACME-', email: true } });
+    store.toggleFlagValidator('f', 'email', false);
+
+    expect(field().validators?.email).toBeUndefined();
+    expect(field().validators?.pattern).toBe('^ACME-');
+  });
+
+  it('lets a field carry both an email check and a custom pattern', () => {
+    store.updateField('f', { validators: { pattern: '^ACME-' } });
+    store.toggleFlagValidator('f', 'email', true);
+
+    expect(field().validators?.email).toBe(true);
+    expect(field().validators?.pattern).toBe('^ACME-');
+  });
+
+  it('still recognises a config authored with the legacy pattern encoding', () => {
+    store.updateField('f', { validators: { pattern: LEGACY } });
+
+    expect(store.hasFlagValidator(field(), 'email')).toBe(true);
+  });
+
+  it('clears the legacy encoding once the flag is toggled', () => {
+    store.updateField('f', { validators: { pattern: LEGACY } });
+    store.toggleFlagValidator('f', 'email', true);
+
+    expect(field().validators?.email).toBe(true);
+    expect(field().validators?.pattern).toBeUndefined();
+  });
+});

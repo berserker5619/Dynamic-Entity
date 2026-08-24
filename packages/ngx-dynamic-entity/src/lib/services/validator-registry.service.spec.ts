@@ -139,3 +139,61 @@ describe('ValidatorRegistryService', () => {
     });
   });
 });
+
+/**
+ * The object form of FieldValidators hardcoded the built-ins and consulted the consumer
+ * registry only for the `string[]` form. Since NestedFieldConfig.validators is typed as the
+ * object, naming a registered validator from a typed schema required an `as any` cast.
+ */
+describe('ValidatorRegistryService — typed config reaches custom validators', () => {
+  let service: ValidatorRegistryService;
+
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        ValidatorRegistryService,
+        {
+          provide: VALIDATOR_REGISTRY,
+          useValue: new Map([['noShouting', (c: FormControl) => (/[A-Z]{3,}/.test(String(c.value ?? '')) ? { shouting: true } : null)]]),
+        },
+      ],
+    });
+    service = TestBed.inject(ValidatorRegistryService);
+  });
+
+  it('resolves a registered validator named in the object form', () => {
+    const fns = service.resolveFromConfig({ custom: ['noShouting'] });
+    expect(fns.length).toBe(1);
+
+    const control = new FormControl('HELLO');
+    expect(fns[0](control)).toEqual({ shouting: true });
+    control.setValue('hello');
+    expect(fns[0](control)).toBeNull();
+  });
+
+  it('ignores an unknown validator name rather than throwing', () => {
+    expect(service.resolveFromConfig({ custom: ['doesNotExist'] })).toEqual([]);
+  });
+
+  it('combines custom validators with the built-ins', () => {
+    const fns = service.resolveFromConfig({ required: true, custom: ['noShouting'] });
+    expect(fns.length).toBe(2);
+  });
+
+  it('applies the email flag independently of pattern', () => {
+    const fns = service.resolveFromConfig({ email: true, pattern: '^a' });
+    expect(fns.length).toBe(2);
+
+    const control = new FormControl('abc');
+    // matches the pattern, but is not a valid email
+    expect(fns.some(fn => fn(control) !== null)).toBe(true);
+  });
+
+  it('treats email alone as an email check', () => {
+    const fns = service.resolveFromConfig({ email: true });
+    expect(fns.length).toBe(1);
+    expect(fns[0](new FormControl('someone@example.com'))).toBeNull();
+    expect(fns[0](new FormControl('nope'))).not.toBeNull();
+  });
+});

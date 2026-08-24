@@ -50,6 +50,16 @@ export class ValidatorRegistryService {
     if (config.minLength !== undefined) fnList.push(Validators.minLength(config.minLength));
     if (config.maxLength !== undefined) fnList.push(Validators.maxLength(config.maxLength));
     if (config.pattern) fnList.push(Validators.pattern(config.pattern));
+    if (config.email) fnList.push(Validators.email);
+
+    // Named validators from the consumer registry. This branch previously hardcoded the
+    // built-ins and consulted the registry only for the `string[]` form of this config, so
+    // a validator the consumer had registered could not be named from a typed schema
+    // without casting it to `any`.
+    for (const key of config.custom ?? []) {
+      const fn = this.resolve(key);
+      if (fn) fnList.push(fn);
+    }
 
     return fnList;
   }

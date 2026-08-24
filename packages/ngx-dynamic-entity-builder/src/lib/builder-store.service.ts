@@ -31,6 +31,15 @@ const clone = deepClone;
 
 const ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
+/**
+ * The regex the builder used to write into `pattern` to mean "email".
+ *
+ * Retained only to recognise configs authored before `FieldValidators.email` existed, so
+ * they still show Email as ticked and do not leave a stray pattern behind when it is
+ * un-ticked. Nothing writes it any more.
+ */
+const LEGACY_EMAIL_PATTERN = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$';
+
 @Injectable()
 export class BuilderStore {
   private readonly _config = signal<EntityFormConfig>(this.emptyConfig());
@@ -452,8 +461,13 @@ export class BuilderStore {
         if (on) field.validators.required = true;
         else delete field.validators.required;
       } else if (validator === 'email') {
-        if (on) field.validators.pattern = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$';
-        else delete field.validators.pattern;
+        // Writes its own flag, not `pattern`. Sharing `pattern` meant a field could not have
+        // both an email check and a custom regex, setting a custom pattern made the Email box
+        // appear ticked, and un-ticking Email deleted whatever pattern the author had written.
+        if (on) field.validators.email = true;
+        else delete field.validators.email;
+        // Clear the legacy encoding either way, so a config touched here stops carrying both.
+        if (field.validators.pattern === LEGACY_EMAIL_PATTERN) delete field.validators.pattern;
       }
     });
   }
@@ -478,7 +492,12 @@ export class BuilderStore {
 
   hasFlagValidator(field: NestedFieldConfig, validator: FlagValidator): boolean {
     if (validator === 'required') return !!field.validators?.required;
-    if (validator === 'email') return !!field.validators?.pattern;
+    if (validator === 'email') {
+      // This used to report *any* pattern as email, so writing a custom regex silently
+      // ticked the box. The legacy encoding is still recognised so a config authored by the
+      // old builder keeps showing Email as ticked.
+      return !!field.validators?.email || field.validators?.pattern === LEGACY_EMAIL_PATTERN;
+    }
     return false;
   }
 
