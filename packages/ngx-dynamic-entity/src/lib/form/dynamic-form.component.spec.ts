@@ -606,4 +606,111 @@ describe('DynamicFormComponent — debounce and preview', () => {
       expect(component.form.disabled).toBe(false);
     });
   });
+
+  /**
+   * The record shape is the library's sharpest edge: a flat record handed to a nested tab
+   * populates nothing and reports nothing. These specs pin the dev-mode diagnostic that
+   * makes that visible, and — just as importantly — pin the cases it must stay quiet for.
+   */
+  describe('initialData shape diagnostics', () => {
+    const nestedConfig: EntityFormConfig = {
+      entity: 'clients',
+      version: 1,
+      tabs: [
+        {
+          id: 'general',
+          label: { en: 'General' },
+          fields: [
+            { id: 'firstName', type: 'text', label: { en: 'First name' } },
+            { id: 'lastName', type: 'text', label: { en: 'Last name' } },
+          ],
+        },
+      ],
+    };
+
+    const flatConfig: EntityFormConfig = {
+      ...nestedConfig,
+      tabs: [{ ...nestedConfig.tabs![0], flatData: true }],
+    };
+
+    let warn: jest.SpyInstance;
+
+    beforeEach(() => {
+      warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => warn.mockRestore());
+
+    function buildWith(config: EntityFormConfig, initialData: Record<string, unknown>): void {
+      fixture = TestBed.createComponent(DynamicFormComponent);
+      component = fixture.componentInstance;
+      component.config = config;
+      component.initialData = initialData;
+      component.ngOnInit();
+      component.ngOnChanges({ config: new SimpleChange(undefined, config, true) });
+      fixture.detectChanges();
+    }
+
+    /**
+     * Other parts of the library warn too (an unregistered field type, for one), and this
+     * TestBed registers no field components. Match on our own message so the assertions
+     * measure this diagnostic and nothing else.
+     */
+    const shapeWarnings = (): string[] =>
+      warn.mock.calls
+        .map(c => String(c[0]))
+        .filter(m => m.startsWith('[ngx-dynamic-entity] initialData'));
+
+    it('warns when a flat record is given to a tab that is not flatData', () => {
+      buildWith(nestedConfig, { firstName: 'Alice' });
+
+      expect(shapeWarnings()).toHaveLength(1);
+      expect(shapeWarnings()[0]).toContain('firstName');
+      expect(shapeWarnings()[0]).toContain('flatData: true');
+    });
+
+    it('names every field that went unpopulated', () => {
+      buildWith(nestedConfig, { firstName: 'Alice', lastName: 'Smith' });
+
+      expect(shapeWarnings()[0]).toContain('firstName');
+      expect(shapeWarnings()[0]).toContain('lastName');
+    });
+
+    it('stays silent when the tab sets flatData, and the values land', () => {
+      buildWith(flatConfig, { firstName: 'Alice' });
+
+      expect(shapeWarnings()).toHaveLength(0);
+      expect(component.getControl('firstName')?.value).toBe('Alice');
+    });
+
+    it('stays silent when the record is correctly nested by tab id', () => {
+      buildWith(nestedConfig, { general: { firstName: 'Alice' } });
+
+      expect(shapeWarnings()).toHaveLength(0);
+      expect(component.getControl('firstName', 'general')?.value).toBe('Alice');
+    });
+
+    it('ignores top-level keys that are not field ids', () => {
+      buildWith(nestedConfig, { general: { firstName: 'Alice' }, id: 'rec-1', _configVersion: 1 });
+
+      expect(shapeWarnings()).toHaveLength(0);
+    });
+
+    it('ignores a field id whose value is explicitly undefined', () => {
+      buildWith(nestedConfig, { firstName: undefined });
+
+      expect(shapeWarnings()).toHaveLength(0);
+    });
+
+    it('warns once per key even when initialData is patched repeatedly', () => {
+      buildWith(nestedConfig, { firstName: 'Alice' });
+      expect(shapeWarnings()).toHaveLength(1);
+
+      const next = { firstName: 'Bob' };
+      component.initialData = next;
+      component.ngOnChanges({ initialData: new SimpleChange({ firstName: 'Alice' }, next, false) });
+
+      expect(shapeWarnings()).toHaveLength(1);
+    });
+  });
 });

@@ -10,6 +10,7 @@ import {
   signal,
   computed,
   inject,
+  isDevMode,
   HostListener,
 } from '@angular/core';
 import { NgComponentOutlet } from '@angular/common';
@@ -448,6 +449,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   private patchForm(data: Record<string, any>): void {
     if (!data || !this.form) return;
     const fieldsById = new Map(this.allFields().map(f => [f.id, f]));
+    const patchedFieldIds = new Set<string>();
 
     const walkTabs = (tabs: NestedTabConfig[]) => {
       for (const tab of tabs) {
@@ -471,13 +473,68 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
           } else {
             ctrl.patchValue(val, { emitEvent: false });
           }
+          patchedFieldIds.add(field.id);
         }
         if (tab.children) walkTabs(tab.children);
       }
     };
 
     walkTabs(this.config.tabs || []);
+    this.warnUnconsumedInitialData(data, fieldsById, patchedFieldIds);
   }
+
+  /**
+   * A record is nested by tab id (`{ tabId: { fieldId: value } }`) unless the tab sets
+   * `flatData: true`. Handing a flat record to a nested tab finds nothing, so the fields
+   * stay empty — with no error and no clue. That silent miss is the most expensive way to
+   * lose an hour with this library, so name it in dev builds.
+   *
+   * Only top-level keys that match a known field id are reported: anything else is assumed
+   * to be the consumer's own record metadata (ids, timestamps, `_configVersion`) and is not
+   * our business.
+   */
+  private warnUnconsumedInitialData(
+    data: Record<string, any>,
+    fieldsById: Map<string, NestedFieldConfig>,
+    patchedFieldIds: Set<string>,
+  ): void {
+    if (!isDevMode() || !this.config) return;
+
+    const tabIds = new Set<string>();
+    const collectTabIds = (tabs: NestedTabConfig[]) => {
+      for (const tab of tabs) {
+        tabIds.add(tab.id);
+        if (tab.children) collectTabIds(tab.children);
+      }
+    };
+    collectTabIds(this.config.tabs || []);
+
+    const unconsumed = Object.keys(data).filter(
+      key =>
+        !tabIds.has(key) && // a tab id at the root is the nested container, not a stray field
+        data[key] !== undefined &&
+        fieldsById.has(key) &&
+        !patchedFieldIds.has(key) &&
+        !this.warnedUnconsumedKeys.has(key),
+    );
+    if (!unconsumed.length) return;
+
+    for (const key of unconsumed) this.warnedUnconsumedKeys.add(key);
+
+    const shown = unconsumed.slice(0, 5).join(', ');
+    const more = unconsumed.length > 5 ? ` (+${unconsumed.length - 5} more)` : '';
+    const plural = unconsumed.length === 1;
+    console.warn(
+      `[ngx-dynamic-entity] initialData has top-level ${plural ? 'key' : 'keys'} matching ` +
+        `${plural ? 'a field that was' : 'fields that were'} not populated: ${shown}${more}. ` +
+        `A record is nested by tab id ({ tabId: { fieldId: value } }) unless the tab sets ` +
+        `flatData: true. Either nest the value under its tab id, or set flatData: true on ` +
+        `the tab holding ${plural ? 'that field' : 'those fields'}.`,
+    );
+  }
+
+  /** Warn once per key per form instance — patchForm re-runs on every initialData change. */
+  private readonly warnedUnconsumedKeys = new Set<string>();
 
   /** Assemble full nested record from per-tab FormGroups, respecting flatData, refererField & arrays. */
   extractRecord(): Record<string, any> {
