@@ -17,6 +17,10 @@ module.exports = {
   moduleNameMapper: {
     // Resolve the core types to source — no build step needed for tests.
     '^@dynamic-entity/core$': '<rootDir>/../core/src/index.ts',
+    // Same for the renderer. Previously this resolved through the renderer's
+    // "main" field, which pointed into its local dist/ — so tests silently
+    // depended on a prior build. Mapping to source removes that ordering trap.
+    '^ngx-dynamic-entity$': '<rootDir>/../ngx-dynamic-entity/src/public-api.ts',
   },
   transform: {
     '^.+\\.(ts|mjs|js|html)$': [

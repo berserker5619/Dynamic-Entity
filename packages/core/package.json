@@ -34,5 +34,6 @@
     "typescript",
     "types"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "sideEffects": false
 }
