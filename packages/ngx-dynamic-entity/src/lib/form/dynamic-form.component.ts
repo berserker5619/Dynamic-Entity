@@ -258,6 +258,29 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     return this.permissions.canEdit && !this.readonly;
   }
 
+  /**
+   * Errors raised by `validation` rules, keyed by the target they point at.
+   *
+   * A rule can declare the record invalid independently of Angular's validators, so form
+   * validity alone is not the whole picture. `DynamicRecordFormComponent.saveSection()`
+   * has always honoured these; `submit()` did not, which meant the same rule blocked one
+   * save path and merely painted a banner on the other — and anything wiring
+   * `(formSubmit)` to persistence wrote records the rules engine had already rejected.
+   */
+  get ruleValidationErrors(): Record<string, string> {
+    return this.ruleResult().validationErrors;
+  }
+
+  /** True when a `validation` rule is currently blocking submission. */
+  get hasRuleErrors(): boolean {
+    return Object.keys(this.ruleValidationErrors).length > 0;
+  }
+
+  /** Single source of truth for both the submit guard and the button's disabled state. */
+  get submitBlocked(): boolean {
+    return this.form.invalid || this.hasRuleErrors;
+  }
+
   ngOnInit(): void {
     this.selectionSub = this.entityRefSelection.selection$.subscribe(({ fieldId, option }) => {
       this.runAutoPatch(fieldId, option?.record);
@@ -373,6 +396,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     this.previousValues = { ...initialFlattened };
     this.sessionBaseline.set({ ...initialFlattened });
     this.unlockedFields.set(new Set<string>());
+    this.syncHiddenFieldState(initialFlattened);
 
     if (this.preview) {
       // Show what an array field looks like rather than an empty slot, then freeze.
@@ -393,6 +417,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
       const flattened = this.flattenFormValues();
       this.formValues.set(flattened);
       this.runPatchOnTrue(flattened);
+      this.syncHiddenFieldState(flattened);
       this.previousValues = { ...flattened };
       this.formChange.emit(this.extractRecord());
     });
@@ -640,6 +665,59 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
+  /**
+   * The fields the render filter operates on — a tab's own fields, at every tab depth.
+   * Deliberately not `allFields()`: `group` and `array` children are shown or hidden with
+   * their parent, and toggling a child's state independently would fight the parent's.
+   */
+  private tabFields(): NestedFieldConfig[] {
+    const out: NestedFieldConfig[] = [];
+    const walk = (tabs: NestedTabConfig[] | undefined) => {
+      for (const tab of tabs ?? []) {
+        out.push(...(tab.fields ?? []));
+        walk(tab.children);
+      }
+    };
+    walk(this.config?.tabs);
+    return out;
+  }
+
+  /**
+   * Keep a hidden field's control out of form validity.
+   *
+   * A field hidden by a rule or a `showWhen` condition is filtered out of the render, but
+   * its validators stay attached — so a hidden *required* field holds `form.invalid` true
+   * forever, permanently disabling Save with nothing on screen to explain why.
+   *
+   * Disabling is the fix rather than stripping validators: Angular excludes disabled
+   * controls from validity, and the field's own validators survive intact for when it
+   * comes back. Values are untouched — `flattenFormValues` and `extractRecord` both read
+   * `control.value`, which a disabled control still carries, so rule evaluation and the
+   * emitted record see exactly what they saw before. That also keeps this from feeding
+   * back on itself: hiding a field cannot change the values the rules are evaluated over.
+   *
+   * The visibility predicate is the same one `fieldsForActiveTab` filters with, so what is
+   * rendered and what counts toward validity cannot drift apart.
+   */
+  private syncHiddenFieldState(values: Record<string, any>): void {
+    if (this.preview) return; // preview freezes the whole form on purpose
+
+    const hiddenByRule = new Set(this.ruleResult().hiddenFields);
+
+    for (const field of this.tabFields()) {
+      const ctrl = this.getControl(field.id);
+      if (!ctrl) continue;
+
+      const hidden = hiddenByRule.has(field.id) || !evaluateFieldVisibility(field, values);
+
+      if (hidden) {
+        if (ctrl.enabled) ctrl.disable({ emitEvent: false });
+      } else if (ctrl.disabled && !field.disabled) {
+        ctrl.enable({ emitEvent: false });
+      }
+    }
+  }
+
   /** Every field in the config, including `group`/`array` children. */
   private allFields(): NestedFieldConfig[] {
     const out: NestedFieldConfig[] = [];
@@ -709,7 +787,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   async submit(): Promise<void> {
-    if (!this.canSubmit || this.form.invalid) {
+    if (!this.canSubmit || this.submitBlocked) {
       this.form.markAllAsTouched();
       return;
     }

@@ -1,6 +1,6 @@
 import { SimpleChange } from '@angular/core';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormArray, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import type { EntityFormConfig, FormRule } from '@dynamic-entity/core';
 import { DynamicFormComponent } from './dynamic-form.component';
 import { EntityRefSelectionService } from '../services/entity-ref-selection.service';
@@ -604,6 +604,151 @@ describe('DynamicFormComponent — debounce and preview', () => {
       build();
       expect(component.getArrayControl('rows', 'main')!.length).toBe(0);
       expect(component.form.disabled).toBe(false);
+    });
+  });
+
+  /**
+   * Two ways a form could silently do the wrong thing: submit a record the rules engine had
+   * already rejected, and deadlock behind a required field nobody can see.
+   */
+  describe('submission gating', () => {
+    const blockingRule = (message: string): FormRule => ({
+      formConfigId: 'clients',
+      fieldId: 'name',
+      conditions: [{ operator: 'IS_NOT_EMPTY', compareType: 'value' }],
+      action: { type: 'validation', value: message, severity: 'error' },
+      targets: [{ id: 'name', type: 'field' }],
+      enabled: true,
+      priority: 0,
+    });
+
+    function buildValid(rules?: FormRule[]): void {
+      fixture = TestBed.createComponent(DynamicFormComponent);
+      component = fixture.componentInstance;
+      component.config = mockConfig;
+      if (rules) component.rules = rules;
+      component.ngOnInit();
+      component.ngOnChanges({ config: new SimpleChange(undefined, mockConfig, true) });
+      fixture.detectChanges();
+      component.getControl('name')?.patchValue('Acme');
+      fixture.detectChanges();
+    }
+
+    it('submits when the form is valid and no rule objects', async () => {
+      buildValid();
+      const emitted = jest.fn();
+      component.formSubmit.subscribe(emitted);
+
+      expect(component.submitBlocked).toBe(false);
+      await component.submit();
+
+      expect(emitted).toHaveBeenCalledTimes(1);
+    });
+
+    /**
+     * saveSection() in the record editor has always honoured rule validation errors;
+     * submit() did not. The same rule blocked one save path and merely painted a banner on
+     * the other, so anything wiring (formSubmit) to persistence wrote rejected records.
+     */
+    it('refuses to submit while a validation rule is failing', async () => {
+      buildValid([blockingRule('Name is not allowed')]);
+      const emitted = jest.fn();
+      component.formSubmit.subscribe(emitted);
+
+      expect(component.hasRuleErrors).toBe(true);
+      expect(component.submitBlocked).toBe(true);
+      await component.submit();
+
+      expect(emitted).not.toHaveBeenCalled();
+    });
+
+    it('exposes the rule errors that are blocking it', () => {
+      buildValid([blockingRule('Name is not allowed')]);
+      expect(component.ruleValidationErrors).toEqual({ name: 'Name is not allowed' });
+    });
+  });
+
+  /**
+   * A field hidden by a rule or a showWhen condition keeps its validators, so a hidden
+   * required field held form.invalid true forever and left Save permanently disabled with
+   * nothing on screen to explain it.
+   */
+  describe('hidden fields and validity', () => {
+    const conditionalConfig: EntityFormConfig = {
+      entity: 'clients',
+      version: 1,
+      tabs: [
+        {
+          id: 'main',
+          label: { en: 'Main' },
+          fields: [
+            { id: 'isEmployee', type: 'boolean', label: { en: 'Employee' } },
+            {
+              id: 'staffId',
+              type: 'text',
+              label: { en: 'Staff Id' },
+              showWhen: { isEmployee: true },
+              validators: { required: true },
+            },
+          ],
+        },
+      ],
+    };
+
+    /**
+     * The suite-wide ValidatorRegistryService mock resolves every field to no validators,
+     * which would make "is the form invalid?" vacuously false here. These specs are about
+     * required-ness specifically, so they need a resolver that actually honours it.
+     */
+    function buildConditional(): void {
+      TestBed.overrideProvider(ValidatorRegistryService, {
+        useValue: {
+          resolveAll: () => [],
+          resolveFromConfig: (v?: { required?: boolean }) => (v?.required ? [Validators.required] : []),
+        },
+      });
+
+      fixture = TestBed.createComponent(DynamicFormComponent);
+      component = fixture.componentInstance;
+      component.config = conditionalConfig;
+      component.ngOnInit();
+      component.ngOnChanges({ config: new SimpleChange(undefined, conditionalConfig, true) });
+      fixture.detectChanges();
+    }
+
+    it('does not hold the form invalid for a required field that is hidden', () => {
+      buildConditional();
+
+      expect(component.fieldsForActiveTab.map(f => f.id)).toEqual(['isEmployee']);
+      expect(component.getControl('staffId')?.disabled).toBe(true);
+      expect(component.form.invalid).toBe(false);
+      expect(component.submitBlocked).toBe(false);
+    });
+
+    it('re-applies the requirement once the field becomes visible', () => {
+      buildConditional();
+      component.getControl('isEmployee')?.patchValue(true);
+      fixture.detectChanges();
+
+      expect(component.fieldsForActiveTab.map(f => f.id)).toEqual(['isEmployee', 'staffId']);
+      expect(component.getControl('staffId')?.enabled).toBe(true);
+      expect(component.form.invalid).toBe(true);
+      expect(component.submitBlocked).toBe(true);
+    });
+
+    it('keeps a hidden field’s value, so rules still see it', () => {
+      buildConditional();
+      component.getControl('isEmployee')?.patchValue(true);
+      fixture.detectChanges();
+      component.getControl('staffId')?.patchValue('E-1');
+      fixture.detectChanges();
+
+      component.getControl('isEmployee')?.patchValue(false);
+      fixture.detectChanges();
+
+      expect(component.getControl('staffId')?.disabled).toBe(true);
+      expect(component.getControl('staffId')?.value).toBe('E-1');
+      expect(component.extractRecord()['main'].staffId).toBe('E-1');
     });
   });
 
