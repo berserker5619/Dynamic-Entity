@@ -3,26 +3,38 @@
 [![npm version](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg?color=purple)](https://www.npmjs.com/package/ngx-dynamic-entity-builder)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
 
-Visual drag-and-drop Angular form builder component for `@dynamic-entity/core` and `ngx-dynamic-entity`.
+Visual Angular builder for authoring `EntityFormConfig` schemas consumed by `ngx-dynamic-entity`. Supports Angular 17 through 22.
 
 ---
 
 ## 📦 Installation
 
 ```bash
-npm install ngx-dynamic-entity-builder @dynamic-entity/core
+npm install ngx-dynamic-entity-builder ngx-dynamic-entity @dynamic-entity/core
+```
+
+Unlike the renderer, **the builder requires Angular Material and the CDK**, and needs animations enabled:
+
+```typescript
+// app.config.ts
+import { provideAnimations } from '@angular/platform-browser/animations';
+
+export const appConfig: ApplicationConfig = {
+  providers: [provideAnimations()],
+};
 ```
 
 ---
 
 ## ✨ Features
 
-- **Visual Palette & Canvas**: Drag-and-drop authoring for all 18 catalog field types from `@dynamic-entity/core`.
-- **Property Inspector**: Configure validators, options, display flags, `criticalField`, `maskData`, `autoPatch`, and `patchOnTrue`.
-- **Entity Reference Designer**: Registry key mapping, display fields, static filters, and parent→child cascades (`parentField` + `lookupFilter`).
-- **Rules Manager**: Create, reorder, edit, and toggle reactive rules (`RuleFormComponent` & `FieldRulesListComponent`).
-- **Tab & Tree Manager**: Organize primary tabs, sub-tabs, nested groups, and dynamic array field lists up to 3 levels deep.
-- **Live Preview Slot**: Projected content slot for live rendering without hard dependencies on the renderer.
+- **Palette & canvas** — click a field type in the palette to add it; drag to reorder within the canvas and tree.
+- **Property inspector** — configure validators, options, display flags, `criticalField`, `maskData`, `autoPatch`, and `patchOnTrue`.
+- **Entity reference designer** — registry key mapping, display fields, static filters, and parent→child cascades (`parentField` + `lookupFilter`).
+- **Rules manager** — create, reorder, edit, and toggle reactive rules (`RuleFormComponent`, `FieldRulesListComponent`).
+- **Tab & tree manager** — organize primary tabs, sub-tabs, nested groups, and array field lists. Nesting is recursive; no depth limit is enforced.
+- **Live preview slot** — a projected content slot, so the builder renders a preview without depending on the renderer package.
+- **All 19 field types** from the `@dynamic-entity/core` catalog.
 
 ---
 
@@ -31,6 +43,32 @@ npm install ngx-dynamic-entity-builder @dynamic-entity/core
 ```html
 <ngx-entity-builder
   [config]="initialConfig"
+  [languages]="['en', 'de']"
+  [availableRoles]="['admin', 'editor']"
   (configChange)="onConfigUpdated($event)"
+  (save)="onSave($event)"
 />
 ```
+
+### Inputs
+
+| Input | Type | Notes |
+|---|---|---|
+| `config` | `EntityFormConfig \| undefined` | Omit to start from an empty schema. |
+| `languages` | `string[]` | Locales offered for localized labels. Defaults to `['en']`. |
+| `availableRoles` | `string[]` | Roles offered in the permissions editor. |
+| `commonModules` | `readonly CommonModuleEntry[]` | Shared-module options for tabs. |
+
+### Outputs
+
+| Output | Payload |
+|---|---|
+| `configChange` | `EntityFormConfig` — emitted on every edit. |
+| `save` | `EntityFormConfig` — emitted when the user saves. |
+
+---
+
+## ⚠️ Known limitations
+
+- **Field ids must be unique across the entire schema**, not just within a tab. Rules, `showWhen` conditions, and `autoPatch` mappings all address fields by bare id, so two fields sharing an id in different tabs will interfere with one another.
+- **Structural edits apply to top-level tabs only.** Removing, duplicating, moving, and reordering a field works for fields on a top-level tab; a field inside a sub-tab can be selected and edited but not yet restructured.

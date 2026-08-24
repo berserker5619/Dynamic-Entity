@@ -1,14 +1,14 @@
 # Dynamic Entity Ecosystem 🚀
 
-> Production-Grade, Low-Code Enterprise Form Engine & Visual Builder for Angular 17+
+> Declarative form engine & visual schema builder for Angular 17–22
 
 [![npm core](https://img.shields.io/npm/v/@dynamic-entity/core.svg?label=@dynamic-entity/core&color=blue)](https://www.npmjs.com/package/@dynamic-entity/core)
 [![npm renderer](https://img.shields.io/npm/v/ngx-dynamic-entity.svg?label=ngx-dynamic-entity&color=red)](https://www.npmjs.com/package/ngx-dynamic-entity)
 [![npm builder](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg?label=ngx-dynamic-entity-builder&color=purple)](https://www.npmjs.com/package/ngx-dynamic-entity-builder)
-[![Angular](https://img.shields.io/badge/angular-17%2B-red.svg)](https://angular.io/)
+[![Angular](https://img.shields.io/badge/angular-17%20%7C%2018%20%7C%2019%20%7C%2020%20%7C%2021%20%7C%2022-red.svg)](https://angular.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Dynamic Entity** is a complete, enterprise-grade suite of packages for declarative form creation, dynamic table rendering, rule evaluation, role-based access control (RBAC), and visual drag-and-drop form authoring in Angular 17+.
+**Dynamic Entity** renders tabbed, deeply nested forms from a declarative `EntityFormConfig` schema, evaluates reactive rules as values change, applies role-based field visibility and masking, and ships a visual editor for authoring those schemas.
 
 ---
 
@@ -16,22 +16,22 @@
 
 | Package | Version | NPM | Description |
 |---|---|---|---|
-| [`@dynamic-entity/core`](./packages/core) | `1.0.0` | [![npm](https://img.shields.io/npm/v/@dynamic-entity/core.svg)](https://www.npmjs.com/package/@dynamic-entity/core) | Framework-agnostic schema models, validation engine, rules evaluator & utilities. |
-| [`ngx-dynamic-entity`](./packages/ngx-dynamic-entity) | `1.0.0` | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity.svg)](https://www.npmjs.com/package/ngx-dynamic-entity) | Angular 17 standalone UI library for rendering dynamic forms & entity tables. |
-| [`ngx-dynamic-entity-builder`](./packages/ngx-dynamic-entity-builder) | `1.0.0` | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg)](https://www.npmjs.com/package/ngx-dynamic-entity-builder) | Standalone visual drag-and-drop builder for authoring `EntityConfig` schemas. |
-| `demo-angular` | `1.0.0` | — | Showcase Angular demo application with Playwright E2E test suite. |
+| [`@dynamic-entity/core`](./packages/core) | `1.0.0` | [![npm](https://img.shields.io/npm/v/@dynamic-entity/core.svg)](https://www.npmjs.com/package/@dynamic-entity/core) | Framework-agnostic schema models, pure form logic, and the rules evaluator. No Angular, no RxJS. |
+| [`ngx-dynamic-entity`](./packages/ngx-dynamic-entity) | `1.0.0` | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity.svg)](https://www.npmjs.com/package/ngx-dynamic-entity) | Angular standalone form renderer and tabbed record editor. |
+| [`ngx-dynamic-entity-builder`](./packages/ngx-dynamic-entity-builder) | `1.0.0` | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg)](https://www.npmjs.com/package/ngx-dynamic-entity-builder) | Standalone visual builder for authoring `EntityFormConfig` schemas. |
+| `demo-angular` | — | — | Showcase application with the Playwright E2E suite. Not published. |
 
 ---
 
 ## ✨ Features
 
-- **18 Unified Field Types**: Text, Text Area, Number, Currency, Date, Month & Year, Time, Checkbox, Radio, Select, Multi-Select, Boolean Switch, Group, Array, Image Upload, File Attachment, Entity Reference, Connection, Lookup List.
-- **Reactive Rules Engine**: Evaluate `SHOW_WHEN`, `ENABLE_WHEN`, `REQUIRE_WHEN`, `CALCULATE` rules dynamically as form values change.
-- **Role-Based Access Control (RBAC)**: Field-level permission enforcement (`READ_WRITE`, `READ_ONLY`, `MASKED`, `HIDDEN`).
-- **Cross-Entity Referenced Fields**: Link fields to external source entities with real-time drift detection and one-click syncing.
-- **Named Lookup Lists**: Asynchronous & synchronous resolution of localized multi-language option lists with fallbacks.
-- **Visual Drag & Drop Builder**: Tree editor supporting recursive tab, group, and array structuring up to 3 levels deep.
-- **100% Standalone & Signals-Native**: Built natively on Angular 17 Signals, Standalone Components, and CDK Drag & Drop.
+- **19 field types** — `text`, `textarea`, `number`, `currency`, `email`, `password`, `date`, `datetime`, `monthYear`, `dropdown`, `radio`, `checkbox`, `boolean`, `multiSelect`, `entity-ref`, `group`, `array`, `image`, `file`. Every type is a standalone component you can register individually, or swap for your own.
+- **Reactive rules engine** — three action types (`visibility` to show/hide a field or tab, `validation` to attach an error or warning, `info` to raise a banner) driven by 18 condition operators including `EQUAL`, `CONTAINS`, `IN`, `DATE_BEFORE`, `HAS_ITEMS` and `VALUE_CHANGED`. Conditions within a rule are ANDed; rules apply in `priority` order.
+- **Role-based field visibility & masking** — per-entity `view`/`edit`/`delete` role lists, plus `maskData` to render a field as `XXXXXXXXX` for configured roles. **This is presentational only — see [Security](#-security).**
+- **Cross-entity referenced fields** — link a field to a source entity, snapshot what was copied, and detect drift when the source changes. Drift is surfaced in the builder.
+- **Named lookup lists** — sync or async master lists resolved by name, with localized labels, fallbacks, and an integrity report for values that no longer match any option.
+- **Visual builder** — click-to-add palette, drag-and-drop reordering, and a recursive tree editor for tabs, sub-tabs, groups, and arrays.
+- **100% standalone** — every component is `standalone: true`; the packages contain no `NgModule`. Signals are used for internal state; component inputs and outputs are decorator-based.
 
 ---
 
@@ -40,14 +40,37 @@
 ### 1. Installation
 
 ```bash
-npm install @dynamic-entity/core ngx-dynamic-entity ngx-dynamic-entity-builder
+npm install @dynamic-entity/core ngx-dynamic-entity
 ```
 
-### 2. Render a Dynamic Form in Angular
+Add the builder only if you need the visual schema editor:
+
+```bash
+npm install ngx-dynamic-entity-builder
+```
+
+### 2. Register the providers
+
+Field types are **not** registered automatically — this is what keeps unused ones out of your bundle. Without this step the form renders no fields.
+
+```typescript
+// app.config.ts
+import { ApplicationConfig } from '@angular/core';
+import { provideNgxDynamicEntity, provideBuiltInFieldTypes } from 'ngx-dynamic-entity';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideNgxDynamicEntity({}),
+    provideBuiltInFieldTypes(), // or provideFieldTypes({ text: TextFieldComponent, ... })
+  ],
+};
+```
+
+### 3. Render a form
 
 ```typescript
 import { Component } from '@angular/core';
-import { DynamicFormComponent, provideNgxDynamicEntity, provideBuiltInFieldTypes } from 'ngx-dynamic-entity';
+import { DynamicFormComponent } from 'ngx-dynamic-entity';
 import type { EntityFormConfig } from '@dynamic-entity/core';
 
 @Component({
@@ -57,11 +80,11 @@ import type { EntityFormConfig } from '@dynamic-entity/core';
   template: `
     <ngx-dynamic-form
       [config]="config"
-      [initialValue]="initialRecord"
-      [role]="'editor'"
+      [initialData]="record"
+      [userRoles]="roles"
       (formSubmit)="onSave($event)"
     />
-  `
+  `,
 })
 export class RecordEditorComponent {
   config: EntityFormConfig = {
@@ -73,62 +96,77 @@ export class RecordEditorComponent {
         id: 'general',
         label: { en: 'General' },
         visibility: true,
-        systemDefault: true,
-        isPrimaryTab: true,
+        flatData: true, // store this tab's fields at the record root — see "Record shape"
         fields: [
           { id: 'firstName', type: 'text', label: { en: 'First Name' }, visibility: true, validators: { required: true } },
           { id: 'lastName', type: 'text', label: { en: 'Last Name' }, visibility: true, validators: { required: true } },
-          { id: 'email', type: 'text', label: { en: 'Email' }, visibility: true, validators: { required: true } }
-        ]
-      }
-    ]
+          { id: 'email', type: 'email', label: { en: 'Email' }, visibility: true, validators: { required: true } },
+        ],
+      },
+    ],
   };
 
-  initialRecord = { firstName: 'Alice', lastName: 'Smith' };
+  record: Record<string, unknown> = { firstName: 'Alice', lastName: 'Smith' };
+  roles: string[] = ['editor'];
 
-  onSave(record: any) {
-    console.log('Saved record:', record);
-  }
-}
-```
-
-### 3. Embed the Visual Form Builder
-
-```typescript
-import { Component } from '@angular/core';
-import { EntityBuilderComponent } from 'ngx-dynamic-entity-builder';
-import type { EntityFormConfig } from '@dynamic-entity/core';
-
-@Component({
-  selector: 'app-schema-designer',
-  standalone: true,
-  imports: [EntityBuilderComponent],
-  template: `
-    <ngx-entity-builder
-      [config]="config"
-      (configChange)="onConfigUpdated($event)"
-    />
-  `
-})
-export class SchemaDesignerComponent {
-  config!: EntityFormConfig;
-
-  onConfigUpdated(newConfig: EntityFormConfig) {
-    console.log('Updated Schema Config:', newConfig);
+  onSave(value: Record<string, unknown>): void {
+    console.log('Saved record:', value);
   }
 }
 ```
 
 ---
 
+## 🗂 Record shape
+
+**This is the most common source of confusion — read it before wiring up `initialData`.**
+
+By default a record is **nested by tab id**:
+
+```typescript
+{ general: { firstName: 'Alice' }, billing: { vatNumber: 'GB123' } }
+```
+
+Set `flatData: true` on a tab to store that tab's fields at the record root instead:
+
+```typescript
+{ firstName: 'Alice', lastName: 'Smith' }
+```
+
+The same shape applies in **both directions**: `initialData` is read with it, and `(formSubmit)` emits with it. Passing a flat record to a tab that is not marked `flatData` leaves those fields empty — the values are simply not found where the form looks for them.
+
+---
+
+## 🔐 Security
+
+`EntityPermissions` (`view` / `edit` / `delete` role lists) and `maskData` control **what the browser renders**. They are a UI convenience, not an access-control boundary:
+
+- A masked value is replaced with `XXXXXXXXX` in the template, but the real value remains in the form control and is included in the `(formSubmit)` payload.
+- Any role check performed here runs on the client and can be bypassed.
+
+**Authorize on the server.** Never send a user data they are not permitted to see, and re-check every permission when the submitted record reaches your API.
+
+---
+
+## 🎨 Styling
+
+The renderer ships **no stylesheet**. Field components emit stable BEM-style hooks — `ngx-field`, `ngx-field__label`, `ngx-field__input`, `ngx-field__error` — and it is up to you to style them. This is deliberate: the library has no Angular Material dependency and imposes no design system, so it drops into a Tailwind, CSS-modules, or hand-rolled setup without conflict.
+
+`packages/demo-angular/src/styles.css` is a working reference implementation.
+
+> The **builder** does depend on Angular Material and requires `provideAnimations()`.
+
+---
+
 ## 🧪 Testing
 
 ```bash
-# Run unit tests across all workspace packages
-npm test
+npm test          # unit tests across all workspace packages
+npm run build     # build every package
+npm run lint      # type-check every package
 
-# Run Playwright E2E browser tests
-npm run e2e
+# Playwright E2E (from the demo app)
+cd packages/demo-angular && npx playwright test
 ```
 
 ---

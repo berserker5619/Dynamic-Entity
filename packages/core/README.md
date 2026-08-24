@@ -5,6 +5,8 @@
 
 Framework-agnostic core models, pure form logic, rules evaluation engine, and field type vocabulary for the `@dynamic-entity` ecosystem.
 
+Contains no Angular and no RxJS — it is plain TypeScript and can be used from any framework, or on a server.
+
 ---
 
 ## 📦 Installation
@@ -17,24 +19,62 @@ npm install @dynamic-entity/core
 
 ## ✨ Features
 
-- **Nested Entity Form Model (`EntityFormConfig`)**: Expresses tabbed hierarchies, nested groups, arrays, and field table display metadata.
-- **Pure Form Logic**: Framework-independent utilities for label resolution, display value formatting, nested data access, and masking.
-- **Rules Engine**: Pure condition evaluation for 18 rule operators (`EQUALS`, `NOT_EQUAL`, `CONTAINS`, `GREATER_THAN`, `VALUE_CHANGED`, etc.) with action targeting (hidden fields/tabs, validation errors/warnings, info banners).
-- **Canonical Field Catalog**: Single source of truth for 18 rich field type keys (`text`, `currency`, `monthYear`, `entityRef`, `referencedField`, `image`, `file`, etc.), consumed by both the renderer and the builder.
-- **Entity Reference Contracts**: `EntityReferenceLoader`, option normalisation, and pure cascade filtering (`lookupFilter` / `lookupPath`) — no framework, no rxjs.
-- **File Contracts**: Canonical `FileRef` and `FileUploadHandler` shared by image and file fields.
+- **Nested entity form model (`EntityFormConfig`)** — tabbed hierarchies, sub-tabs, nested groups, arrays, and field table display metadata.
+- **Pure form logic** — label resolution, display value formatting, nested data access, and masking, all as side-effect-free functions.
+- **Rules engine** — condition evaluation over 18 operators (`EQUAL`, `NOT_EQUAL`, `CONTAINS`, `NOT_CONTAINS`, `STARTS_WITH`, `ENDS_WITH`, `IS_EMPTY`, `IS_NOT_EMPTY`, `LESS_THAN`, `MORE_THAN`, `LESS_THAN_EQUAL`, `MORE_THAN_EQUAL`, `DATE_BEFORE`, `DATE_AFTER`, `IN`, `NOT_IN`, `HAS_ITEMS`, `VALUE_CHANGED`) producing three action types: `visibility`, `validation`, and `info`.
+- **Canonical field catalog** — `FIELD_TYPE_CATALOG` is the single source of truth for the 19 field type keys (`text`, `textarea`, `number`, `currency`, `email`, `password`, `date`, `datetime`, `monthYear`, `dropdown`, `radio`, `checkbox`, `boolean`, `multiSelect`, `entity-ref`, `group`, `array`, `image`, `file`), consumed by both the renderer and the builder.
+- **Entity reference contracts** — `EntityReferenceLoader`, option normalisation, and pure cascade filtering (`lookupFilter` / `lookupPath`).
+- **File contracts** — canonical `FileRef` and `FileUploadHandler`, shared by the image and file field types.
 
 ---
 
 ## 🚀 Quick Start
 
 ```typescript
-import { evaluateFormRules, resolveLabel, FIELD_CATALOG } from '@dynamic-entity/core';
+import {
+  evaluateFormRules,
+  resolveLabel,
+  FIELD_TYPE_CATALOG,
+  type FormRule,
+} from '@dynamic-entity/core';
 
-// 1. Resolve localized label
+// 1. Resolve a localized label
 const label = resolveLabel({ en: 'First Name', de: 'Vorname' }, 'en'); // "First Name"
 
-// 2. Evaluate rules dynamically
-const result = evaluateFormRules(rules, { annualBudget: 6000000 });
-console.log(result.infoBanners); // [{ severity: 'warning', message: 'Budget exceeds $5,000,000' }]
+// 2. Inspect the field type vocabulary
+console.log(FIELD_TYPE_CATALOG.length); // 19
+
+// 3. Raise an info banner on the `annualBudget` field when it exceeds 5,000,000
+const rules: FormRule[] = [
+  {
+    formConfigId: 'client',
+    fieldId: 'annualBudget',
+    conditions: [{ operator: 'MORE_THAN', value: 5_000_000, compareType: 'value' }],
+    action: { type: 'info', value: 'Budget exceeds $5,000,000' },
+    targets: [{ id: 'annualBudget', type: 'field' }],
+    enabled: true,
+    priority: 0,
+  },
+];
+
+const result = evaluateFormRules(rules, { annualBudget: 6_000_000 });
+console.log(result.infoBanners); // { annualBudget: 'Budget exceeds $5,000,000' }
+```
+
+`evaluateFormRules` returns a `RuleEvaluationResult`:
+
+```typescript
+{
+  hiddenFields: string[];                        // field ids hidden by a visibility rule
+  hiddenTabs: string[];                          // tab ids hidden by a visibility rule
+  validationErrors: Record<string, string>;      // target id → message
+  validationWarnings: Record<string, string>;    // target id → message
+  infoBanners: Record<string, string>;           // target id → message
+}
+```
+
+Each map is keyed by the **target id** the rule points at, not by rule id. Pass a baseline record as the third argument to enable the `VALUE_CHANGED` operator:
+
+```typescript
+const result = evaluateFormRules(rules, currentValues, originalValues);
 ```

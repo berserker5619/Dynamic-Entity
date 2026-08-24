@@ -41,5 +41,15 @@
     "low-code"
   ],
   "license": "MIT",
-  "sideEffects": false
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nizamudeen5619/Dynamic-Entity.git",
+    "directory": "packages/ngx-dynamic-entity-builder"
+  },
+  "homepage": "https://github.com/nizamudeen5619/Dynamic-Entity/tree/main/packages/ngx-dynamic-entity-builder#readme",
+  "bugs": {
+    "url": "https://github.com/nizamudeen5619/Dynamic-Entity/issues"
+  },
+  "author": "Nizamudeen"
 }
