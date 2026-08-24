@@ -79,6 +79,12 @@ export class EntityBuilderComponent implements OnChanges {
   @Input() languages: string[] = ['en'];
   /** Optional role list — enables multi-select role pickers for RBAC instead of free text. */
   @Input() availableRoles: string[] = [];
+  /**
+   * Roles of the person using the builder. Distinct from `availableRoles`, which is the
+   * vocabulary a schema may reference. Passed to the `SYSTEM_DEFAULT_CAN_EDIT` predicate so
+   * it can decide whether this user may edit system-default tabs.
+   */
+  @Input() userRoles: string[] = [];
   /** Optional common-module definitions for module tabs; defaults to the built-in list from core. */
   @Input() commonModules: readonly CommonModuleEntry[] = COMMON_MODULES;
 
@@ -101,6 +107,9 @@ export class EntityBuilderComponent implements OnChanges {
     if (changes['languages'] && this.languages.length) {
       const active = this.store.activeLanguage();
       if (!this.languages.includes(active)) this.store.setActiveLanguage(this.languages[0]);
+    }
+    if (changes['userRoles']) {
+      this.store.setUserRoles(this.userRoles);
     }
   }
 

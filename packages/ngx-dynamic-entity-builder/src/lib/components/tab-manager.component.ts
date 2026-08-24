@@ -1,4 +1,4 @@
-import { Component, InjectionToken, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -9,9 +9,19 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import type { NestedTabConfig } from '@dynamic-entity/core';
 import { resolveLabel } from '@dynamic-entity/core';
+import { SYSTEM_DEFAULT_CAN_EDIT } from 'ngx-dynamic-entity';
 import { BuilderStore } from '../builder-store.service';
 
-export const SYSTEM_DEFAULT_CAN_EDIT = new InjectionToken<(roles: string[]) => boolean>('SYSTEM_DEFAULT_CAN_EDIT');
+/**
+ * Re-exported so existing imports from this package keep working.
+ *
+ * This file used to declare its own `new InjectionToken('SYSTEM_DEFAULT_CAN_EDIT')` while
+ * `ngx-dynamic-entity` exported another under the same name. InjectionToken identity is by
+ * object reference, so a consumer providing the renderer's — the documented one — was
+ * providing a token nothing injected, and the predicate silently never ran. One token now,
+ * defined in the lower-level package that both depend on.
+ */
+export { SYSTEM_DEFAULT_CAN_EDIT };
 
 /**
  * TabManagerComponent — add / rename / reorder / remove tabs & sub-tabs with systemDefault protection.
@@ -240,7 +250,10 @@ export class TabManagerComponent {
   protected canEditTab(tab: NestedTabConfig): boolean {
     if (!tab.systemDefault) return true;
     if (this.canEditSystemDefaultsFn) {
-      return this.canEditSystemDefaultsFn([]);
+      // The predicate's entire contract is (roles) => boolean. This passed a hardcoded []
+      // regardless of who was using the builder, so any predicate that actually inspected
+      // roles answered false for everyone and locked every system-default tab.
+      return this.canEditSystemDefaultsFn(this.store.userRoles());
     }
     return true;
   }

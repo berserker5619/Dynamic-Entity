@@ -47,11 +47,20 @@ export class BuilderStore {
 
   private readonly _isDirty = signal<boolean>(false);
 
+  /**
+   * Roles of the person using the builder — distinct from `availableRoles`, which is the
+   * vocabulary a schema may reference. Needed so the SYSTEM_DEFAULT_CAN_EDIT predicate can
+   * be asked a real question; it was previously called with a hardcoded empty array, which
+   * made any role-checking predicate answer false for everyone.
+   */
+  private readonly _userRoles = signal<string[]>([]);
+
   readonly config = this._config.asReadonly();
   readonly selectedFieldId = this._selectedFieldId.asReadonly();
   readonly activeLanguage = this._activeLanguage.asReadonly();
   readonly rules = this._rules.asReadonly();
   readonly isDirty = this._isDirty.asReadonly();
+  readonly userRoles = this._userRoles.asReadonly();
 
   readonly tabs = computed<NestedTabConfig[]>(() => this._config().tabs ?? []);
 
@@ -156,6 +165,11 @@ export class BuilderStore {
 
   setActiveLanguage(language: string): void {
     this._activeLanguage.set(language);
+  }
+
+  /** Roles of the person using the builder, for SYSTEM_DEFAULT_CAN_EDIT. */
+  setUserRoles(roles: string[]): void {
+    this._userRoles.set(roles ?? []);
   }
 
   // ─── Helper Traversal ───────────────────────────────────────────────────────
