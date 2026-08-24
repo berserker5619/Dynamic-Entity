@@ -8,8 +8,11 @@ import {
   getTabData,
   labelToId,
   normalizeArrayStructures,
+  getValueByPath,
+  isUnsafePath,
   normalizeConfig,
   normalizeField,
+  setValueByPath,
   normalizeLocalizedText,
   normalizeConfigOptions,
   valuesMatch,
@@ -511,5 +514,62 @@ describe('applyPatchOnTrue', () => {
   it('skips when source field does not exist', () => {
     const patch = applyPatchOnTrue([{ from: 'missing', to: 'target' }], { other: 'val' });
     expect(patch).toEqual({});
+  });
+});
+
+/**
+ * Dot-paths come from config — `refererField`, tab ids — and config is authored in a
+ * low-code builder or fetched from an API. It is data, so it must not be able to reach
+ * an object's prototype.
+ */
+describe('prototype pollution guards', () => {
+  afterEach(() => {
+    // Fail loudly if any case above actually polluted the prototype.
+    delete (Object.prototype as Record<string, unknown>)['polluted'];
+    delete (Object.prototype as Record<string, unknown>)['isAdmin'];
+  });
+
+  it('refuses to write through __proto__', () => {
+    const target: Record<string, unknown> = {};
+    setValueByPath(target, '__proto__.isAdmin', true);
+
+    expect(({} as Record<string, unknown>)['isAdmin']).toBeUndefined();
+    expect(target['isAdmin']).toBeUndefined();
+  });
+
+  it('refuses to write through constructor.prototype', () => {
+    const target: Record<string, unknown> = {};
+    setValueByPath(target, 'constructor.prototype.polluted', true);
+
+    expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
+  });
+
+  it('refuses to write through a nested __proto__ segment', () => {
+    const target: Record<string, unknown> = {};
+    setValueByPath(target, 'employment.__proto__.isAdmin', true);
+
+    expect(({} as Record<string, unknown>)['isAdmin']).toBeUndefined();
+  });
+
+  it('still writes ordinary nested paths', () => {
+    const target: Record<string, unknown> = {};
+    setValueByPath(target, 'employment.jobTitle', 'Engineer');
+
+    expect(target).toEqual({ employment: { jobTitle: 'Engineer' } });
+  });
+
+  it('refuses to read through __proto__', () => {
+    expect(getValueByPath({ a: 1 }, '__proto__')).toBeUndefined();
+    expect(getValueByPath({ a: 1 }, '__proto__.constructor')).toBeUndefined();
+  });
+
+  it('still reads ordinary nested paths', () => {
+    expect(getValueByPath({ employment: { jobTitle: 'Engineer' } }, 'employment.jobTitle')).toBe('Engineer');
+  });
+
+  it('reports whether a path is unsafe', () => {
+    expect(isUnsafePath('a.__proto__.b')).toBe(true);
+    expect(isUnsafePath('a.constructor')).toBe(true);
+    expect(isUnsafePath('employment.jobTitle')).toBe(false);
   });
 });

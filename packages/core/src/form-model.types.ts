@@ -131,6 +131,12 @@ export interface ReferencedSnapshot {
   type?: RichFieldType;
   validators?: FieldValidators;
   options?: DropdownOption[];
+  /**
+   * Present only on snapshots taken after listName drift was supported. Drift compares it
+   * solely when the key exists, so an older snapshot is not reported as drifted merely for
+   * predating the field.
+   */
+  listName?: string;
 }
 
 /** A field in the nested form model. `group`/`array` carry `children`. */

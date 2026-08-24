@@ -200,7 +200,7 @@ function matchesInAnyLanguage(val1: unknown, val2: unknown): boolean {
  * `{de:'B',en:'A'}` are the same option written by two different serialisers, and must not
  * compare unequal just because the keys arrived in a different order.
  */
-function canonicalizeValue(value: unknown): string {
+export function canonicalizeValue(value: unknown): string {
   if (value == null) return '';
   if (typeof value !== 'object') return String(value);
   if (Array.isArray(value)) return value.map(canonicalizeValue).join('|');
@@ -293,10 +293,28 @@ export function formatDisplayValue(
 
 // ─── Nested record access & Dot-Notation ──────────────────────────────────────
 
+/**
+ * Keys that must never be walked or written through when building a path.
+ *
+ * Paths here come from config (`refererField`, tab ids), and config is authored in a
+ * low-code builder or loaded from an API — it is data, not code the library controls. A
+ * path of `__proto__.isAdmin` would otherwise write onto `Object.prototype` and affect
+ * every object in the running application.
+ */
+const UNSAFE_PATH_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/** True when a dot-path contains a segment that could reach an object's prototype. */
+export function isUnsafePath(path: string): boolean {
+  return path.split('.').some(part => UNSAFE_PATH_KEYS.has(part));
+}
+
 /** Extract a nested property value by dot-notation path (e.g. "employment.jobTitle"). */
 export function getValueByPath(obj: any, path: string): unknown {
   if (!obj || !path) return undefined;
   const parts = path.split('.');
+  // Reading through `__proto__` would surface prototype internals as a field value.
+  if (parts.some(part => UNSAFE_PATH_KEYS.has(part))) return undefined;
+
   let curr = obj;
   for (const part of parts) {
     if (curr == null) return undefined;
@@ -309,6 +327,8 @@ export function getValueByPath(obj: any, path: string): unknown {
 export function setValueByPath(obj: any, path: string, value: unknown): void {
   if (!obj || !path) return;
   const parts = path.split('.');
+  if (parts.some(part => UNSAFE_PATH_KEYS.has(part))) return;
+
   let curr = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
@@ -378,6 +398,8 @@ export function setTabData(
     Object.assign(target, formValue);
     return target;
   }
+  // Tab ids are config data too, and this walk creates intermediate objects the same way.
+  if (path.some(p => UNSAFE_PATH_KEYS.has(p))) return target;
 
   let curr = target;
   for (let i = 0; i < path.length - 1; i++) {
