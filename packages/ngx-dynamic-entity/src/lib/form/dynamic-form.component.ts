@@ -250,12 +250,46 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     );
   }
 
-  get permissions() {
-    return this.rbacService.getPermissions(this.config, this.userRoles);
+  /**
+   * Entity-level permissions for the current roles.
+   *
+   * Cached rather than recomputed: this is read from the template several times per change
+   * detection pass, and a fresh object each time is both wasted allocation and a new
+   * identity for anything comparing by reference. Invalidated in `ngOnChanges` when
+   * `config` or `userRoles` change, which are its only inputs.
+   */
+  get permissions(): ReturnType<RbacService['getPermissions']> {
+    return (this.permissionsCache ??= this.rbacService.getPermissions(this.config, this.userRoles));
+  }
+
+  private permissionsCache: ReturnType<RbacService['getPermissions']> | null = null;
+
+  /**
+   * Whether the current roles may see this record at all.
+   *
+   * `permissions.view` used to be computed and thrown away — a user whose roles failed it
+   * still received the complete form with every value in the DOM. It is honoured now.
+   *
+   * As with masking, this is presentational: it stops the browser rendering data, it does
+   * not stop the data reaching the browser. Authorize on the server.
+   */
+  get canView(): boolean {
+    return this.permissions.canView;
+  }
+
+  /**
+   * Whether the current roles may delete this record.
+   *
+   * The library ships no delete affordance, so this is surfaced for the consumer to gate
+   * their own — exposed rather than dropped, because a permission the schema declares
+   * should be answerable.
+   */
+  get canDelete(): boolean {
+    return this.permissions.canDelete;
   }
 
   get canSubmit(): boolean {
-    return this.permissions.canEdit && !this.readonly;
+    return this.canView && this.permissions.canEdit && !this.readonly;
   }
 
   /**
@@ -288,6 +322,9 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['config'] || changes['userRoles']) {
+      this.permissionsCache = null;
+    }
     if (changes['config'] && this.config) {
       // Configs arrive as plain JSON from storage or an API, where TypeScript cannot enforce
       // the option shape. Normalise here, at the library boundary, so everything downstream

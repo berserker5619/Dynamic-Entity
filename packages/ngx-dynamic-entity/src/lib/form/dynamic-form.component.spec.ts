@@ -77,7 +77,14 @@ describe('DynamicFormComponent', () => {
           useValue: { resolveAll: jest.fn().mockReturnValue([]), resolveFromConfig: jest.fn().mockReturnValue([]) },
         },
         { provide: HookRegistryService, useValue: mockHookRegistry },
-        { provide: RbacService, useValue: { getPermissions: jest.fn().mockReturnValue({ canEdit: true }) } },
+        {
+          // Mirrors the real service's shape: view and delete are part of the contract, and
+          // a partial object here silently makes them undefined at every call site.
+          provide: RbacService,
+          useValue: {
+            getPermissions: jest.fn().mockReturnValue({ canView: true, canEdit: true, canDelete: true }),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -454,7 +461,14 @@ describe('DynamicFormComponent — duplicate field ids across tabs', () => {
           useValue: { resolveAll: jest.fn().mockReturnValue([]), resolveFromConfig: jest.fn().mockReturnValue([]) },
         },
         { provide: HookRegistryService, useValue: { run: jest.fn(), has: jest.fn().mockReturnValue(false) } },
-        { provide: RbacService, useValue: { getPermissions: jest.fn().mockReturnValue({ canEdit: true }) } },
+        {
+          // Mirrors the real service's shape: view and delete are part of the contract, and
+          // a partial object here silently makes them undefined at every call site.
+          provide: RbacService,
+          useValue: {
+            getPermissions: jest.fn().mockReturnValue({ canView: true, canEdit: true, canDelete: true }),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -556,7 +570,14 @@ describe('DynamicFormComponent — debounce and preview', () => {
           useValue: { resolveAll: jest.fn().mockReturnValue([]), resolveFromConfig: jest.fn().mockReturnValue([]) },
         },
         { provide: HookRegistryService, useValue: { run: jest.fn(), has: jest.fn().mockReturnValue(false) } },
-        { provide: RbacService, useValue: { getPermissions: jest.fn().mockReturnValue({ canEdit: true }) } },
+        {
+          // Mirrors the real service's shape: view and delete are part of the contract, and
+          // a partial object here silently makes them undefined at every call site.
+          provide: RbacService,
+          useValue: {
+            getPermissions: jest.fn().mockReturnValue({ canView: true, canEdit: true, canDelete: true }),
+          },
+        },
       ],
     }).compileComponents();
   });
@@ -604,6 +625,92 @@ describe('DynamicFormComponent — debounce and preview', () => {
       build();
       expect(component.getArrayControl('rows', 'main')!.length).toBe(0);
       expect(component.form.disabled).toBe(false);
+    });
+  });
+
+  /**
+   * `permissions.view` and `permissions.delete` were computed and discarded — a user whose
+   * roles failed `view` still received the whole form with every value in the DOM.
+   */
+  describe('entity permissions', () => {
+    const restricted: EntityFormConfig = {
+      ...mockConfig,
+      permissions: { view: ['manager'], edit: ['manager'], delete: ['admin'] },
+    };
+
+    /**
+     * These specs are about what RbacService actually computes from roles, so they run
+     * against the real one rather than the suite-wide stub — hence a fresh module.
+     */
+    beforeEach(async () => {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [DynamicFormComponent, ReactiveFormsModule],
+        providers: [
+          {
+            provide: ValidatorRegistryService,
+            useValue: { resolveAll: () => [], resolveFromConfig: () => [] },
+          },
+          { provide: HookRegistryService, useValue: { run: jest.fn(), has: () => false } },
+        ],
+      }).compileComponents();
+    });
+
+    function buildAs(roles: string[]): void {
+      fixture = TestBed.createComponent(DynamicFormComponent);
+      component = fixture.componentInstance;
+      component.config = restricted;
+      component.userRoles = roles;
+      component.ngOnInit();
+      component.ngOnChanges({ config: new SimpleChange(undefined, restricted, true) });
+      fixture.detectChanges();
+    }
+
+    const html = (): string => fixture.nativeElement.innerHTML as string;
+
+    it('renders nothing of the record when view permission is denied', () => {
+      buildAs(['guest']);
+
+      expect(component.canView).toBe(false);
+      expect(html()).toContain('form-access-denied');
+      expect(html()).not.toContain('form-panel');
+    });
+
+    it('renders the form when view permission is granted', () => {
+      buildAs(['manager']);
+
+      expect(component.canView).toBe(true);
+      expect(html()).toContain('form-panel');
+      expect(html()).not.toContain('form-access-denied');
+    });
+
+    it('refuses to submit for a user who may not view the record', async () => {
+      buildAs(['guest']);
+      const emitted = jest.fn();
+      component.formSubmit.subscribe(emitted);
+
+      expect(component.canSubmit).toBe(false);
+      await component.submit();
+
+      expect(emitted).not.toHaveBeenCalled();
+    });
+
+    it('answers canDelete so a consumer can gate its own delete affordance', () => {
+      buildAs(['admin']);
+      expect(component.canDelete).toBe(true);
+
+      buildAs(['manager']);
+      expect(component.canDelete).toBe(false);
+    });
+
+    it('recomputes permissions when userRoles change', () => {
+      buildAs(['guest']);
+      expect(component.canView).toBe(false);
+
+      component.userRoles = ['manager'];
+      component.ngOnChanges({ userRoles: new SimpleChange(['guest'], ['manager'], false) });
+
+      expect(component.canView).toBe(true);
     });
   });
 
