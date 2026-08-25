@@ -24,15 +24,31 @@ export * from './lib/form/dynamic-form.component';
 export * from './lib/form/dynamic-record-form.component';
 export * from './lib/form/dynamic-field/dynamic-field.component';
 
-// Field type components (individually importable — reusability rule)
+// Field type components — every one, individually importable.
+//
+// The tree-shaking seam is `provideFieldTypes({ image: ImageFieldComponent })`: register
+// only what you use and the rest never enters the bundle. That only works for components a
+// consumer can name, and ten of these were unreachable — so wanting eleven of the eighteen
+// meant calling provideBuiltInFieldTypes() and bundling all of them, which is exactly what
+// the seam exists to avoid.
 export * from './lib/field-types/text-field.component';
 export * from './lib/field-types/textarea-field.component';
 export * from './lib/field-types/number-field.component';
+export * from './lib/field-types/currency-field.component';
+export * from './lib/field-types/email-field.component';
+export * from './lib/field-types/password-field.component';
 export * from './lib/field-types/checkbox-field.component';
+export * from './lib/field-types/boolean-field.component';
 export * from './lib/field-types/date-field.component';
+export * from './lib/field-types/month-year-field.component';
 export * from './lib/field-types/dropdown-field.component';
+export * from './lib/field-types/radio-field.component';
 export * from './lib/field-types/multi-select-field.component';
 export * from './lib/field-types/entity-ref-field.component';
+export * from './lib/field-types/group-field.component';
+export * from './lib/field-types/array-field.component';
+export * from './lib/field-types/image-field.component';
+export * from './lib/field-types/file-field.component';
 
 // Value helpers — a dropdown value is now a language-keyed object, so a consumer rendering
 // record values needs these. Re-exported so they don't have to depend on core directly.

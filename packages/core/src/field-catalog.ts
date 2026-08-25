@@ -272,12 +272,44 @@ export const FIELD_TYPE_CATALOG: FieldTypeMeta[] = [
   },
 ];
 
-const CATALOG_BY_TYPE = new Map<string, FieldTypeMeta>(
-  FIELD_TYPE_CATALOG.map(meta => [meta.type, meta]),
-);
+/**
+ * Lookup index over `FIELD_TYPE_CATALOG`.
+ *
+ * Built lazily and invalidated on registration rather than frozen at module evaluation.
+ * It used to be built once when this module first loaded, which meant pushing an entry onto
+ * the exported `FIELD_TYPE_CATALOG` array had no effect on lookups: the builder's palette
+ * and `createFieldConfig` could never see a custom type, even though the renderer's own
+ * `provideFieldTypes` registry genuinely is open. Half the registry was extensible and the
+ * half the builder depends on was not.
+ */
+let catalogIndex: Map<string, FieldTypeMeta> | null = null;
+
+function index(): Map<string, FieldTypeMeta> {
+  if (!catalogIndex || catalogIndex.size !== FIELD_TYPE_CATALOG.length) {
+    catalogIndex = new Map(FIELD_TYPE_CATALOG.map(meta => [meta.type, meta]));
+  }
+  return catalogIndex;
+}
 
 export function getFieldTypeMeta(type: string): FieldTypeMeta | undefined {
-  return CATALOG_BY_TYPE.get(type);
+  return index().get(type);
+}
+
+/**
+ * Register a custom field type so the builder's palette, `getFieldTypeMeta`, and
+ * `createFieldConfig` know about it.
+ *
+ * This describes the type to the *authoring* side. The renderer still needs a component for
+ * it, registered separately with `provideFieldTypes({ [type]: MyComponent })` — the two
+ * registries are deliberately independent, so core stays free of any component reference.
+ *
+ * Re-registering an existing type replaces its metadata.
+ */
+export function registerFieldType(meta: FieldTypeMeta): void {
+  const existing = FIELD_TYPE_CATALOG.findIndex(m => m.type === meta.type);
+  if (existing >= 0) FIELD_TYPE_CATALOG[existing] = meta;
+  else FIELD_TYPE_CATALOG.push(meta);
+  catalogIndex = null;
 }
 
 export function humanizeId(id: string): string {

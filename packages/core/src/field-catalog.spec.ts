@@ -4,6 +4,7 @@ import {
   createFieldConfig,
   getFieldTypeMeta,
   humanizeId,
+  registerFieldType,
 } from './field-catalog';
 
 /**
@@ -146,5 +147,73 @@ describe('createFieldConfig', () => {
     for (const meta of FIELD_TYPE_CATALOG) {
       expect(createFieldConfig(meta.type, `${meta.idPrefix}_1`).type).toBe(meta.type);
     }
+  });
+});
+
+/**
+ * The lookup index was built once at module evaluation, so a type pushed onto the exported
+ * FIELD_TYPE_CATALOG array was invisible to every lookup — the builder's palette and
+ * createFieldConfig could never see a custom type.
+ */
+describe('field catalog is open for extension', () => {
+  const CUSTOM = 'signature' as RichFieldType;
+
+  const meta = (label: string): Parameters<typeof registerFieldType>[0] => ({
+    type: CUSTOM,
+    label,
+    icon: 'draw',
+    description: 'Captured signature',
+    idPrefix: 'sig',
+    hasOptions: false,
+    isEntityRef: false,
+    flagValidators: ['required'],
+    paramValidators: [],
+    supportsDefaultValue: false,
+    supportsPlaceholder: false,
+  });
+
+  let originalLength: number;
+
+  beforeEach(() => {
+    originalLength = FIELD_TYPE_CATALOG.length;
+  });
+
+  afterEach(() => {
+    // Drop anything the test registered, then re-register a built-in so the lazy index
+    // rebuilds against the restored array.
+    FIELD_TYPE_CATALOG.length = originalLength;
+    registerFieldType(FIELD_TYPE_CATALOG[0]);
+  });
+
+  it('resolves a newly registered type', () => {
+    expect(getFieldTypeMeta(CUSTOM)).toBeUndefined();
+
+    registerFieldType(meta('Signature'));
+
+    expect(getFieldTypeMeta(CUSTOM)?.label).toBe('Signature');
+    expect(FIELD_TYPE_CATALOG.length).toBe(originalLength + 1);
+  });
+
+  it('creates a field config for a registered custom type', () => {
+    registerFieldType(meta('Signature'));
+
+    const field = createFieldConfig(CUSTOM, 'sig');
+    expect(field.id).toBe('sig');
+    expect(field.type).toBe(CUSTOM);
+  });
+
+  it('replaces metadata when a type is registered twice', () => {
+    registerFieldType(meta('Signature'));
+    registerFieldType(meta('Signature Pad'));
+
+    expect(getFieldTypeMeta(CUSTOM)?.label).toBe('Signature Pad');
+    expect(FIELD_TYPE_CATALOG.filter(m => m.type === CUSTOM).length).toBe(1);
+  });
+
+  it('still resolves the built-in types', () => {
+    registerFieldType(meta('Signature'));
+
+    expect(getFieldTypeMeta('text')).toBeDefined();
+    expect(getFieldTypeMeta('entity-ref')).toBeDefined();
   });
 });
