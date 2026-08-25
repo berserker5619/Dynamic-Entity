@@ -254,7 +254,7 @@
           },
           {
             "id": "dailyShiftStart",
-            "type": "time",
+            "type": "text",
             "label": {
               "en": "Daily Shift Start Time"
             },
@@ -282,7 +282,7 @@
           },
           {
             "id": "orgRef",
-            "type": "entityRef",
+            "type": "entity-ref",
             "label": {
               "en": "Linked Parent Organization"
             },
@@ -290,7 +290,7 @@
             "colSpan": 6,
             "entityReference": {
               "enabled": true,
-              "targetEntity": "organizations",
+              "linkedEntityKey": "organizations",
               "displayFields": [
                 "orgName",
                 "website"
@@ -299,7 +299,7 @@
           },
           {
             "id": "syncedClientName",
-            "type": "referencedField",
+            "type": "text",
             "label": {
               "en": "Synced Source Client Name (Referenced)"
             },
@@ -310,8 +310,15 @@
             "referencedFieldId": "name",
             "hasDrift": false,
             "referencedSnapshot": {
-              "snapshotValue": "Acme Global",
-              "updatedAt": "2026-08-14T08:00:00Z"
+              "label": {
+                "en": "Client Name",
+                "de": "Kundenname"
+              },
+              "type": "text",
+              "validators": {
+                "required": true,
+                "minLength": 2
+              }
             }
           }
         ]
