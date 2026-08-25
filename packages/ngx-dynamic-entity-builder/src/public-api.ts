@@ -8,7 +8,6 @@ export * from './lib/components/tab-manager.component';
 export * from './lib/components/rule-form.component';
 export * from './lib/components/field-rules-list.component';
 export * from './lib/components/entity-reference-config.component';
-export * from './lib/components/connection-source-config.component';
 export * from './lib/components/entity-builder-canvas.component';
 export * from './lib/components/entity-builder-tree-node.component';
 

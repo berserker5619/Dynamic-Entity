@@ -1,12 +1,13 @@
 import { SimpleChange } from '@angular/core';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { FormArray, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import type { EntityFormConfig, FormRule } from '@dynamic-entity/core';
+import type { EntityFormConfig, FormRule, RecordMigration } from '@dynamic-entity/core';
 import { DynamicFormComponent } from './dynamic-form.component';
 import { EntityRefSelectionService } from '../services/entity-ref-selection.service';
 import { HookRegistryService } from '../services/hook-registry.service';
 import { RbacService } from '../services/rbac.service';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
+import { RECORD_MIGRATIONS } from '../tokens/injection-tokens';
 
 const mockConfig: EntityFormConfig = {
   entity: 'clients',
@@ -964,5 +965,103 @@ describe('DynamicFormComponent — debounce and preview', () => {
 
       expect(shapeWarnings()).toHaveLength(1);
     });
+  });
+});
+
+/**
+ * EntityFormConfig.version and _configVersion used to be declarations nothing acted on: a
+ * schema could move on while saved records kept their old shape, with nothing reconciling
+ * the two. Registered migrations are applied where a record enters the renderer.
+ */
+describe('record migration', () => {
+  // Own fixture: this suite builds its own TestBed rather than the shared one above.
+  let fixture: ComponentFixture<DynamicFormComponent>;
+  let component: DynamicFormComponent;
+
+  const versionedConfig = (version: number): EntityFormConfig => ({
+    entity: 'clients',
+    version,
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        flatData: true,
+        fields: [
+          { id: 'firstName', type: 'text', label: { en: 'First' } },
+          { id: 'lastName', type: 'text', label: { en: 'Last' } },
+        ],
+      },
+    ],
+  });
+
+  const splitName: RecordMigration = {
+    from: 1,
+    to: 2,
+    description: 'split name',
+    migrate: record => {
+      const [firstName = '', ...rest] = String(record['name'] ?? '').split(' ');
+      const { name, ...others } = record;
+      void name;
+      return { ...others, firstName, lastName: rest.join(' ') };
+    },
+  };
+
+  async function buildWith(
+    config: EntityFormConfig,
+    initialData: Record<string, unknown>,
+    migrations: RecordMigration[],
+  ): Promise<void> {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [DynamicFormComponent, ReactiveFormsModule],
+      providers: [
+        { provide: ValidatorRegistryService, useValue: { resolveAll: () => [], resolveFromConfig: () => [] } },
+        { provide: HookRegistryService, useValue: { run: jest.fn(), has: () => false } },
+        {
+          provide: RbacService,
+          useValue: { getPermissions: () => ({ canView: true, canEdit: true, canDelete: true }) },
+        },
+        { provide: RECORD_MIGRATIONS, useValue: migrations },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(DynamicFormComponent);
+    component = fixture.componentInstance;
+    component.config = config;
+    component.initialData = initialData;
+    component.ngOnInit();
+    component.ngOnChanges({ config: new SimpleChange(undefined, config, true) });
+    fixture.detectChanges();
+  }
+
+  it('upgrades a stale record before patching the form', async () => {
+    await buildWith(versionedConfig(2), { _configVersion: 1, name: 'Ada Lovelace' }, [splitName]);
+
+    expect(component.getControl('firstName')?.value).toBe('Ada');
+    expect(component.getControl('lastName')?.value).toBe('Lovelace');
+  });
+
+  it('leaves a current record untouched', async () => {
+    await buildWith(
+      versionedConfig(2),
+      { _configVersion: 2, firstName: 'Grace', lastName: 'Hopper' },
+      [splitName],
+    );
+
+    expect(component.getControl('firstName')?.value).toBe('Grace');
+    expect(component.getControl('lastName')?.value).toBe('Hopper');
+  });
+
+  it('does nothing when no migrations are registered', async () => {
+    await buildWith(versionedConfig(2), { _configVersion: 1, name: 'Ada Lovelace' }, []);
+
+    expect(component.getControl('firstName')?.value).toBeNull();
+  });
+
+  /** A missing step must surface, not be swallowed into a half-understood record. */
+  it('propagates a gap in the migration path', async () => {
+    await expect(
+      buildWith(versionedConfig(3), { _configVersion: 1, name: 'Ada Lovelace' }, [splitName]),
+    ).rejects.toThrow(/No migration from config version 2 to 3/);
   });
 });

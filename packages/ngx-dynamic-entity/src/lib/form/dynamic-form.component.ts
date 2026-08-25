@@ -27,6 +27,7 @@ import type {
 import {
   applyAutoPatch,
   applyPatchOnTrue,
+  migrateRecord,
   evaluateFieldVisibility,
   findTab,
   getTabData,
@@ -39,7 +40,7 @@ import {
   setValueByPath,
 } from '@dynamic-entity/core';
 import { DynamicFieldComponent } from './dynamic-field/dynamic-field.component';
-import { COMMON_MODULES_REGISTRY } from '../tokens/injection-tokens';
+import { COMMON_MODULES_REGISTRY, RECORD_MIGRATIONS } from '../tokens/injection-tokens';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
 import { HookRegistryService } from '../services/hook-registry.service';
 import { RbacService } from '../services/rbac.service';
@@ -149,6 +150,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   private readonly rulesEvaluation = inject(RulesEvaluationService);
   private readonly entityRefSelection = inject(EntityRefSelectionService);
   private readonly commonModulesRegistry = inject(COMMON_MODULES_REGISTRY, { optional: true });
+  private readonly migrations = inject(RECORD_MIGRATIONS, { optional: true }) ?? [];
 
   protected readonly Object = Object;
 
@@ -425,7 +427,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     this.form = this.fb.group(group);
 
     if (this.initialData) {
-      this.patchForm(this.initialData);
+      this.patchForm(this.upgradeRecord(this.initialData));
     }
 
     const initialFlattened = this.flattenFormValues();
@@ -506,6 +508,29 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     const group = this.fb.group(rowGroup);
     if (item && typeof item === 'object') group.patchValue(item as Record<string, unknown>);
     return group;
+  }
+
+  /**
+   * Bring a record up to the config's `version` before it reaches the form.
+   *
+   * Done here because this is the one place a record enters the renderer, so a consumer
+   * cannot forget it. Migration is a no-op unless the consumer registered steps *and* the
+   * record is behind — an unstamped record is deliberately left alone (see `migrateRecord`).
+   *
+   * A missing or broken step throws from core. That is not swallowed: rendering a
+   * half-understood record would write it back in a shape matching neither schema.
+   */
+  private upgradeRecord(data: Record<string, any>): Record<string, any> {
+    if (!this.migrations.length || !this.config) return data;
+
+    const result = migrateRecord(data, this.config, this.migrations);
+    if (result.applied.length && isDevMode()) {
+      console.info(
+        `[ngx-dynamic-entity] Migrated a "${this.config.entity}" record from config version ` +
+          `${result.from} to ${result.to} (steps: ${result.applied.join(', ')}).`,
+      );
+    }
+    return result.record;
   }
 
   private patchForm(data: Record<string, any>): void {

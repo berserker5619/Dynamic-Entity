@@ -170,13 +170,24 @@ if (useReadme) {
   const rendererMd = read('packages/ngx-dynamic-entity/README.md');
   const builderMd = read('packages/ngx-dynamic-entity-builder/README.md');
 
-  const rootTs = ts(rootMd);
-  write('readme-root-providers.ts', rootTs[0]);
-  write('readme-root-component.ts', rootTs[1]);
-
-  const rendererTs = ts(rendererMd);
-  write('readme-renderer-providers.ts', rendererTs[0]);
-  write('readme-renderer-fieldtypes.ts', rendererTs[1]);
+  // Every ```typescript block, not a hand-picked few — a snippet added later must be
+  // checked too, or the guard silently stops covering the thing it was added for.
+  const coreMd = read('packages/core/README.md');
+  const allTs = [
+    ['root', rootMd],
+    ['core', coreMd],
+    ['renderer', rendererMd],
+    ['builder', builderMd],
+  ];
+  for (const [label, md] of allTs) {
+    ts(md).forEach((snippet, i) => {
+      // A snippet with no import/export is a *script*, not a module, so its top-level
+      // declarations share one global scope and two examples both naming `record` collide.
+      // Appending an empty export makes each file a module without altering what it shows.
+      const isModule = /^\s*(import|export)\s/m.test(snippet);
+      write(`readme-${label}-${i}.ts`, isModule ? snippet : `${snippet}\nexport {};\n`);
+    });
+  }
 
   const host = (cls, selector, imports, importLine, template, members) =>
     [

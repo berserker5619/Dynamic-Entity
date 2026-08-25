@@ -17,6 +17,7 @@ Unlike the renderer, **the builder requires Angular Material and the CDK**, and 
 
 ```typescript
 // app.config.ts
+import { ApplicationConfig } from '@angular/core';
 import { provideAnimations } from '@angular/platform-browser/animations';
 
 export const appConfig: ApplicationConfig = {

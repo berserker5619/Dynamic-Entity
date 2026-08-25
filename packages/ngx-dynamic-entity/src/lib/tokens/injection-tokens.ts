@@ -5,6 +5,7 @@ import type {
   EntityReferenceLoader,
   FileUploadHandler,
   LookupListSource,
+  RecordMigration,
 } from '@dynamic-entity/core';
 import { InMemoryEntityRefCacheStore, type EntityRefCacheStore } from '../services/entity-ref-cache';
 
@@ -55,6 +56,23 @@ export const ENTITY_REF_REGISTRY = new InjectionToken<Map<string, EntityReferenc
  * })
  */
 export const LOOKUP_REGISTRY = new InjectionToken<Map<string, LookupListSource>>('LOOKUP_REGISTRY');
+
+/**
+ * Ordered steps that move a saved record forward when a config's `version` increases.
+ *
+ * Without these, `EntityFormConfig.version` and `VersionedRecord._configVersion` are
+ * declarations nothing acts on: a schema can be edited freely while records keep their old
+ * shape, and nothing reconciles the two. Registering migrations makes the version numbers
+ * mean something.
+ *
+ * @example
+ * provideNgxDynamicEntity({
+ *   migrations: [
+ *     { from: 1, to: 2, description: 'split name', migrate: r => ({ ...r, firstName: r['name'] }) },
+ *   ],
+ * })
+ */
+export const RECORD_MIGRATIONS = new InjectionToken<RecordMigration[]>('RECORD_MIGRATIONS');
 
 /** Registry: validator key → ValidatorFn */
 export const VALIDATOR_REGISTRY = new InjectionToken<Map<string, any>>('VALIDATOR_REGISTRY');

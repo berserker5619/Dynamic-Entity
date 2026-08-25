@@ -1,10 +1,11 @@
 import { EnvironmentProviders, makeEnvironmentProviders, Type } from '@angular/core';
-import type { EntityReferenceLoader, LookupListSource } from '@dynamic-entity/core';
+import type { EntityReferenceLoader, LookupListSource, RecordMigration } from '@dynamic-entity/core';
 import {
   ENTITY_REF_REGISTRY,
   FIELD_TYPE_REGISTRY,
   HOOK_REGISTRY,
   type HookFn,
+  RECORD_MIGRATIONS,
   LOOKUP_REGISTRY,
   MASKED_ROLES,
   VALIDATOR_REGISTRY,
@@ -30,6 +31,11 @@ export interface NgxDynamicEntityConfig {
   validators?: Record<string, any>;
   /** Hook functions keyed by hook name */
   hooks?: Record<string, HookFn>;
+  /**
+   * Ordered steps that upgrade a saved record when `EntityFormConfig.version` moves ahead
+   * of the record's `_configVersion`. Applied to `initialData` before the form is patched.
+   */
+  migrations?: RecordMigration[];
 }
 
 /**
@@ -50,4 +56,5 @@ export const provideNgxDynamicEntity = (config: NgxDynamicEntityConfig = {}): En
     { provide: LOOKUP_REGISTRY, useValue: new Map(Object.entries(config.lookups ?? {})) },
     { provide: VALIDATOR_REGISTRY, useValue: new Map(Object.entries(config.validators ?? {})) },
     { provide: HOOK_REGISTRY, useValue: new Map(Object.entries(config.hooks ?? {})) },
+    { provide: RECORD_MIGRATIONS, useValue: config.migrations ?? [] },
   ]);

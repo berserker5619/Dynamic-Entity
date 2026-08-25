@@ -16,9 +16,9 @@
 
 | Package | Version | NPM | Description |
 |---|---|---|---|
-| [`@dynamic-entity/core`](./packages/core) | `1.0.0` | [![npm](https://img.shields.io/npm/v/@dynamic-entity/core.svg)](https://www.npmjs.com/package/@dynamic-entity/core) | Framework-agnostic schema models, pure form logic, and the rules evaluator. No Angular, no RxJS. |
-| [`ngx-dynamic-entity`](./packages/ngx-dynamic-entity) | `1.0.0` | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity.svg)](https://www.npmjs.com/package/ngx-dynamic-entity) | Angular standalone form renderer and tabbed record editor. |
-| [`ngx-dynamic-entity-builder`](./packages/ngx-dynamic-entity-builder) | `1.0.0` | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg)](https://www.npmjs.com/package/ngx-dynamic-entity-builder) | Standalone visual builder for authoring `EntityFormConfig` schemas. |
+| [`@dynamic-entity/core`](./packages/core) | `1.1.0` | [![npm](https://img.shields.io/npm/v/@dynamic-entity/core.svg)](https://www.npmjs.com/package/@dynamic-entity/core) | Framework-agnostic schema models, pure form logic, and the rules evaluator. No Angular, no RxJS. |
+| [`ngx-dynamic-entity`](./packages/ngx-dynamic-entity) | `1.1.0` | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity.svg)](https://www.npmjs.com/package/ngx-dynamic-entity) | Angular standalone form renderer and tabbed record editor. |
+| [`ngx-dynamic-entity-builder`](./packages/ngx-dynamic-entity-builder) | `1.1.0` | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg)](https://www.npmjs.com/package/ngx-dynamic-entity-builder) | Standalone visual builder for authoring `EntityFormConfig` schemas. |
 | `demo-angular` | — | — | Showcase application with the Playwright E2E suite. Not published. |
 
 ---
@@ -124,16 +124,60 @@ export class RecordEditorComponent {
 By default a record is **nested by tab id**:
 
 ```typescript
-{ general: { firstName: 'Alice' }, billing: { vatNumber: 'GB123' } }
+const record = { general: { firstName: 'Alice' }, billing: { vatNumber: 'GB123' } };
 ```
 
 Set `flatData: true` on a tab to store that tab's fields at the record root instead:
 
 ```typescript
-{ firstName: 'Alice', lastName: 'Smith' }
+const record = { firstName: 'Alice', lastName: 'Smith' };
 ```
 
 The same shape applies in **both directions**: `initialData` is read with it, and `(formSubmit)` emits with it. Passing a flat record to a tab that is not marked `flatData` leaves those fields empty — the values are simply not found where the form looks for them.
+
+---
+
+## 🔄 Schema versioning
+
+`EntityFormConfig.version` and a record's `_configVersion` describe which shape a record was
+saved under. When you change a schema, raise `version` and register the steps that move old
+records forward:
+
+```typescript
+import { provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+import type { RecordMigration } from '@dynamic-entity/core';
+
+const migrations: RecordMigration[] = [
+  {
+    from: 1,
+    to: 2,
+    description: 'split name into firstName/lastName',
+    migrate: record => {
+      const [firstName = '', ...rest] = String(record['name'] ?? '').split(' ');
+      const { name, ...others } = record;
+      return { ...others, firstName, lastName: rest.join(' ') };
+    },
+  },
+];
+
+provideNgxDynamicEntity({ migrations });
+```
+
+Migrations run where a record enters the form, so nothing has to remember to call them. Steps
+chain strictly (`1 → 2 → 3`); a gap **throws** rather than applying a partial upgrade, because
+a half-migrated record matches neither schema.
+
+Two behaviours worth knowing:
+
+- **A record with no `_configVersion` is left alone.** Its version is genuinely unknown, and
+  guessing wrong in either direction corrupts data. Pass `assumeVersion` to `migrateRecord`
+  when you know what those records are.
+- **A record newer than the config is never migrated downward.** That means a rolled-back
+  deployment; downgrading would discard fields no step describes.
+
+`migrateRecord`, `needsMigration`, `stampRecord` and `validateMigrations` are exported from
+`@dynamic-entity/core` and are pure, so the same migration set runs on a server before
+persisting.
 
 ---
 

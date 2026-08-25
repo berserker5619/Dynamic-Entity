@@ -105,13 +105,13 @@ Multiple `provideFieldTypes` calls merge; on a key collision the later registrat
 A record is **nested by tab id** by default:
 
 ```typescript
-{ general: { firstName: 'Alice' }, billing: { vatNumber: 'GB123' } }
+const record = { general: { firstName: 'Alice' }, billing: { vatNumber: 'GB123' } };
 ```
 
 Set `flatData: true` on a tab to store that tab's fields at the record root:
 
 ```typescript
-{ firstName: 'Alice', lastName: 'Smith' }
+const record = { firstName: 'Alice', lastName: 'Smith' };
 ```
 
 This applies in both directions — `initialData` is read with it and `formSubmit` emits with it. **Passing a flat record to a tab that is not marked `flatData` leaves those fields empty**, with no error.

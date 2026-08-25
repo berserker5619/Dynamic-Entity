@@ -25,6 +25,7 @@ npm install @dynamic-entity/core
 - **Canonical field catalog** — `FIELD_TYPE_CATALOG` is the single source of truth for the 19 field type keys (`text`, `textarea`, `number`, `currency`, `email`, `password`, `date`, `datetime`, `monthYear`, `dropdown`, `radio`, `checkbox`, `boolean`, `multiSelect`, `entity-ref`, `group`, `array`, `image`, `file`), consumed by both the renderer and the builder.
 - **Entity reference contracts** — `EntityReferenceLoader`, option normalisation, and pure cascade filtering (`lookupFilter` / `lookupPath`).
 - **File contracts** — canonical `FileRef` and `FileUploadHandler`, shared by the image and file field types.
+- **Record migration** — `migrateRecord`, `needsMigration`, `stampRecord` and `validateMigrations` move a saved record forward as a config's `version` changes. Pure, so the same steps run in the browser and on a server.
 
 ---
 
@@ -64,7 +65,7 @@ console.log(result.infoBanners); // { annualBudget: 'Budget exceeds $5,000,000' 
 `evaluateFormRules` returns a `RuleEvaluationResult`:
 
 ```typescript
-{
+interface RuleEvaluationResult {
   hiddenFields: string[];                        // field ids hidden by a visibility rule
   hiddenTabs: string[];                          // tab ids hidden by a visibility rule
   validationErrors: Record<string, string>;      // target id → message
@@ -76,5 +77,11 @@ console.log(result.infoBanners); // { annualBudget: 'Budget exceeds $5,000,000' 
 Each map is keyed by the **target id** the rule points at, not by rule id. Pass a baseline record as the third argument to enable the `VALUE_CHANGED` operator:
 
 ```typescript
-const result = evaluateFormRules(rules, currentValues, originalValues);
+import { evaluateFormRules, type FormRule } from '@dynamic-entity/core';
+
+declare const rules: FormRule[];
+declare const currentValues: Record<string, unknown>;
+declare const originalValues: Record<string, unknown>;
+
+const changed = evaluateFormRules(rules, currentValues, originalValues);
 ```
