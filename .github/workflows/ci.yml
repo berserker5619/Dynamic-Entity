@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Turbo and ng-packagr both behave better with a non-interactive, colourless log.
+  CI: true
+  FORCE_COLOR: 0
+
+jobs:
+  verify:
+    name: Lint, build, test, coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Runs the control-character check, eslint, and each package's typecheck.
+      # eslint could not load a TypeScript file at all until @typescript-eslint/parser was
+      # added, so every rule in .eslintrc.js was dormant — this step is what keeps it honest.
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm run test
+
+      # Separate from `test` on purpose: the thresholds are a ratchet against regression and
+      # `npm run test` does not evaluate them, which is how they stayed red unnoticed.
+      - name: Coverage thresholds
+        run: npm run test:coverage
+
+  consumer:
+    name: Consumer install + AOT (Angular ${{ matrix.angular }})
+    runs-on: ubuntu-latest
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        angular: [17, 18, 19, 20, 21, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Packs the tarballs npm publish would produce, installs them next to a real Angular
+      # release, and compiles a consumer component with ngc under strictTemplates. The
+      # workspace build cannot catch packaging faults: inside the repo everything resolves
+      # through symlinks and tsconfig paths, so a broken manifest still appears to work.
+      - name: Verify a consumer can install and compile
+        run: node scripts/verify-consumer.mjs --angular ${{ matrix.angular }}
+
+  readme:
+    name: README snippets compile
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Every ```typescript and ```html block in the four READMEs is extracted and compiled.
+      # The published Quick Start once bound [initialValue] and [role], neither of which
+      # exists, so the headline example did not compile for anyone who copied it.
+      - name: Compile documented snippets
+        run: node scripts/verify-consumer.mjs --angular 20 --readme

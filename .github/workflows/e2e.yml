@@ -1,0 +1,72 @@
+name: E2E
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # The full suite is far too slow for a pull request (see below), so it runs nightly.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      full:
+        description: 'Run the complete suite instead of the fast subset'
+        type: boolean
+        default: false
+
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+
+jobs:
+  e2e:
+    name: Playwright
+    runs-on: ubuntu-latest
+    # A ceiling, not a target. The full suite has taken over three hours:
+    # playwright.config.ts sets workers: 1, and two form-builder specs drive hundreds of UI
+    # interactions each. The pull-request subset below finishes in about two minutes.
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: packages/demo-angular
+
+      # The fast subset on every PR. test-data-json-rendering is the one that matters most:
+      # it asserts every field type in the reference dataset exists in the catalog, fails on
+      # any [ngx-dynamic-entity] console warning, and requires tabs that declare fields to
+      # actually render controls. It previously watched only for uncaught exceptions and so
+      # passed green over three field types the renderer refused to draw.
+      - name: E2E (pull-request subset)
+        if: ${{ github.event_name != 'schedule' && github.event.inputs.full != 'true' }}
+        run: npx playwright test e2e/test-data-json-rendering.spec.ts e2e/demo.spec.ts
+        working-directory: packages/demo-angular
+
+      - name: E2E (full suite)
+        if: ${{ github.event_name == 'schedule' || github.event.inputs.full == 'true' }}
+        run: npx playwright test
+        working-directory: packages/demo-angular
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: |
+            packages/demo-angular/playwright-report/
+            packages/demo-angular/test-results/
+          retention-days: 7
