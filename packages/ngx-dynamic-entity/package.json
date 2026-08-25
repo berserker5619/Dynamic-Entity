@@ -41,12 +41,12 @@
   "sideEffects": false,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nizamudeen5619/Dynamic-Entity.git",
+    "url": "git+https://github.com/berserker5619/Dynamic-Entity.git",
     "directory": "packages/ngx-dynamic-entity"
   },
-  "homepage": "https://github.com/nizamudeen5619/Dynamic-Entity/tree/main/packages/ngx-dynamic-entity#readme",
+  "homepage": "https://github.com/berserker5619/Dynamic-Entity/tree/main/packages/ngx-dynamic-entity#readme",
   "bugs": {
-    "url": "https://github.com/nizamudeen5619/Dynamic-Entity/issues"
+    "url": "https://github.com/berserker5619/Dynamic-Entity/issues"
   },
   "author": "Nizamudeen"
 }
