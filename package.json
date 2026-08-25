@@ -7,13 +7,17 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "lint": "node scripts/check-control-chars.mjs && turbo run lint",
+    "lint": "node scripts/check-control-chars.mjs && eslint \"packages/*/src/**/*.ts\" \"scripts/**/*.mjs\" && turbo run lint",
     "test": "turbo run test",
     "dev": "turbo run dev",
     "test:coverage": "turbo run test:coverage",
-    "check:chars": "node scripts/check-control-chars.mjs"
+    "check:chars": "node scripts/check-control-chars.mjs",
+    "lint:fix": "eslint \"packages/*/src/**/*.ts\" \"scripts/**/*.mjs\" --fix",
+    "e2e": "npm run e2e --workspace=demo-angular"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.57.1",
     "mongodb-memory-server": "^11.1.0",
     "prettier": "^3.3.3",

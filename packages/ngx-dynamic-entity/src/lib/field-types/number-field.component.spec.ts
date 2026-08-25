@@ -1,7 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { NumberFieldComponent } from './number-field.component';
-import type { NestedFieldConfig } from '@dynamic-entity/core';
 
 describe('NumberFieldComponent', () => {
   let component: NumberFieldComponent;

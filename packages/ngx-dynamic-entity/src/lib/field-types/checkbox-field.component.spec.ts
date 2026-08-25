@@ -1,7 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { CheckboxFieldComponent } from './checkbox-field.component';
-import type { NestedFieldConfig } from '@dynamic-entity/core';
 
 describe('CheckboxFieldComponent', () => {
   let component: CheckboxFieldComponent;

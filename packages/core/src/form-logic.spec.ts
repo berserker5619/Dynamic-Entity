@@ -1,4 +1,4 @@
-import type { DropdownOption, EntityFormConfig, FormRule } from './form-model.types';
+import type { DropdownOption, EntityFormConfig } from './form-model.types';
 import {
   applyAutoPatch,
   applyPatchOnTrue,

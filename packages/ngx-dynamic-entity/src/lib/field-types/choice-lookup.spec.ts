@@ -242,8 +242,9 @@ describe('choice fields — named lookup lists', () => {
     const loader = jest.fn().mockResolvedValue(STATUS_LIST);
     configure({ employeeStatus: loader });
 
-    const first = mount(DropdownFieldComponent, { listName: 'employeeStatus' });
-    const second = mount(RadioFieldComponent, { type: 'radio', listName: 'employeeStatus' });
+    // Mounted for their side effect: both resolve the same named list.
+    mount(DropdownFieldComponent, { listName: 'employeeStatus' });
+    mount(RadioFieldComponent, { type: 'radio', listName: 'employeeStatus' });
     await settle();
 
     expect(loader).toHaveBeenCalledTimes(1);

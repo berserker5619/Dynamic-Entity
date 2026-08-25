@@ -10,7 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
-import { getOptionStoredValue, resolveLabel, resolveOptionLabel } from '@dynamic-entity/core';
+import { resolveLabel, resolveOptionLabel } from '@dynamic-entity/core';
 import { BuilderStore } from '../builder-store.service';
 import { getFieldTypeMeta, type FieldTypeMeta } from '../field-catalog';
 import { EntityReferenceConfigComponent } from './entity-reference-config.component';

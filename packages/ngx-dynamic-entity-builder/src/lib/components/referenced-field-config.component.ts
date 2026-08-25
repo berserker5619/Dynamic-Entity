@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -122,8 +122,14 @@ export class ReferencedFieldConfigComponent {
     }
   }
 
+  /**
+   * Both callers pass the id of the field they just edited. This used to ignore that
+   * argument and read `store.selectedField()` instead, so whenever the edited field was not
+   * the selected one it checked drift against the wrong field's source entity — or bailed
+   * out entirely if nothing was selected.
+   */
   private async checkDriftForField(fieldId: string): Promise<void> {
-    const f = this.store.selectedField();
+    const f = this.store.fields().find(field => field.id === fieldId);
     if (!f || !f.isReferenced || !f.referencedEntityKey || !f.referencedFieldId || !this.configSource) return;
     const sourceConfig = await this.configSource.getConfig(f.referencedEntityKey);
     if (sourceConfig) {

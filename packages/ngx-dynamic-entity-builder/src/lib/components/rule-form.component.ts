@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 
-import type { FormRule, RuleActionType, RuleOperator } from '@dynamic-entity/core';
+import type { FormRule, RuleOperator } from '@dynamic-entity/core';
 
 /**
  * RuleFormComponent — dialog/panel form for creating or editing a FormRule.

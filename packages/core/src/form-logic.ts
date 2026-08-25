@@ -143,6 +143,9 @@ export function normalizeConfigOptions(config: EntityFormConfig): EntityFormConf
 /** Check if two values (scalars or LocalizedText objects) match. */
 export function valuesMatch(val1: unknown, val2: unknown, lang = 'en'): boolean {
   if (val1 === val2) return true;
+  // At this point at least one side is null or undefined, and `==` is deliberate: a record
+  // holding `null` and one holding `undefined` are both "no value" and must compare equal.
+  // eslint-disable-next-line eqeqeq
   if (val1 == null || val2 == null) return val1 == val2;
   if (typeof val1 === 'object' || typeof val2 === 'object') {
     const l1 = resolveOptionLabel(val1, lang);

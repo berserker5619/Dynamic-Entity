@@ -4,6 +4,7 @@ import {
   ENTITY_REF_REGISTRY,
   FIELD_TYPE_REGISTRY,
   HOOK_REGISTRY,
+  type HookFn,
   LOOKUP_REGISTRY,
   MASKED_ROLES,
   VALIDATOR_REGISTRY,
@@ -28,7 +29,7 @@ export interface NgxDynamicEntityConfig {
   /** Custom validator functions keyed by validator name */
   validators?: Record<string, any>;
   /** Hook functions keyed by hook name */
-  hooks?: Record<string, Function>;
+  hooks?: Record<string, HookFn>;
 }
 
 /**

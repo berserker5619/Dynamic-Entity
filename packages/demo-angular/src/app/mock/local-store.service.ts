@@ -145,7 +145,10 @@ export class LocalStore {
   private write(key: string, value: unknown): void {
     try {
       localStorage.setItem(key, JSON.stringify(value));
-    } catch {}
+    } catch {
+      // Storage is unavailable or full (private browsing, quota). This is demo persistence:
+      // losing it is acceptable, breaking the interaction that triggered the write is not.
+    }
   }
 
   /**

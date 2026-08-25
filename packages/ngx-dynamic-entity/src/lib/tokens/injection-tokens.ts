@@ -59,8 +59,16 @@ export const LOOKUP_REGISTRY = new InjectionToken<Map<string, LookupListSource>>
 /** Registry: validator key → ValidatorFn */
 export const VALIDATOR_REGISTRY = new InjectionToken<Map<string, any>>('VALIDATOR_REGISTRY');
 
+/**
+ * A registered hook: receives the payload, returns it (or a replacement), sync or async.
+ *
+ * Spelled out rather than typed as `Function`, which accepts class declarations and any
+ * arity and gives a consumer no signature to write against.
+ */
+export type HookFn = (data: any, context?: unknown) => unknown | Promise<unknown>;
+
 /** Registry: hook key → async (data, context) => data */
-export const HOOK_REGISTRY = new InjectionToken<Map<string, Function>>('HOOK_REGISTRY');
+export const HOOK_REGISTRY = new InjectionToken<Map<string, HookFn>>('HOOK_REGISTRY');
 
 /**
  * Consumer-registered list of common module tabs (documents, audit, tasks, etc.).
