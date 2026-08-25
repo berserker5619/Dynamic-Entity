@@ -192,6 +192,43 @@ export class BuilderStore {
     return list;
   }
 
+  /**
+   * Every tab in the tree, flattened.
+   *
+   * The structural operations below used to iterate `draft.tabs` directly, which is only
+   * the top level. A field on a sub-tab could be selected and edited but never removed,
+   * duplicated, moved or reordered — the builder could author nested configs it was then
+   * unable to restructure, which is the worst possible state for an authoring tool.
+   */
+  private flattenTabs(tabs: NestedTabConfig[] = []): NestedTabConfig[] {
+    const list: NestedTabConfig[] = [];
+    for (const t of tabs) {
+      list.push(t);
+      if (t.children) list.push(...this.flattenTabs(t.children));
+    }
+    return list;
+  }
+
+  /**
+   * Every field id in the config, including `group`/`array` children.
+   *
+   * Id uniqueness is a whole-config invariant, not a per-tab one: rules, `showWhen`
+   * conditions and `autoPatch` mappings all address fields by bare id, so two fields
+   * sharing an id anywhere in the tree interfere with each other. Uniqueness checks must
+   * therefore see deeper than `fields()`, which stops at a tab's own fields.
+   */
+  private allFieldIds(tabs: NestedTabConfig[] = []): Set<string> {
+    const ids = new Set<string>();
+    const walkFields = (fields: NestedFieldConfig[] | undefined) => {
+      for (const f of fields ?? []) {
+        ids.add(f.id);
+        if (f.children?.length) walkFields(f.children);
+      }
+    };
+    for (const tab of this.flattenTabs(tabs)) walkFields(tab.fields);
+    return ids;
+  }
+
   private findFieldInTabs(tabs: NestedTabConfig[] = [], id: string): NestedFieldConfig | null {
     for (const t of tabs) {
       if (t.fields) {
@@ -211,13 +248,12 @@ export class BuilderStore {
   addField(type: RichFieldType, targetTabId?: string): string {
     const meta = getFieldTypeMeta(type);
     const prefix = meta?.idPrefix ?? 'field';
-    const allFields = this.fields();
-    const id = this.uniqueId(prefix, allFields);
+    const id = this.uniqueId(prefix, this.allFieldIds(this._config().tabs));
 
     this.mutate(draft => {
       const field = createFieldConfig(type, id, draft.defaultLanguage ?? 'en');
       const targetTab = targetTabId
-        ? draft.tabs.find(t => t.id === targetTabId)
+        ? this.flattenTabs(draft.tabs).find(t => t.id === targetTabId)
         : draft.tabs[0];
       if (targetTab) {
         targetTab.fields = targetTab.fields ?? [];
@@ -246,7 +282,7 @@ export class BuilderStore {
   renameField(oldId: string, newId: string): void {
     const trimmed = newId.trim();
     if (!trimmed || trimmed === oldId) return;
-    if (this.fields().some(f => f.id === trimmed)) return;
+    if (this.allFieldIds(this._config().tabs).has(trimmed)) return;
     if (!this.findFieldInTabs(this._config().tabs, oldId)) return;
 
     this.applyRename(oldId, trimmed);
@@ -328,7 +364,7 @@ export class BuilderStore {
 
   removeField(id: string): void {
     this.mutate(draft => {
-      for (const tab of draft.tabs) {
+      for (const tab of this.flattenTabs(draft.tabs)) {
         if (tab.fields) {
           tab.fields = tab.fields.filter(f => f.id !== id);
         }
@@ -346,10 +382,10 @@ export class BuilderStore {
     if (!source) return null;
     const meta = getFieldTypeMeta(source.type);
     const prefix = meta?.idPrefix ?? 'field';
-    const newId = this.uniqueId(prefix, this.fields());
+    const newId = this.uniqueId(prefix, this.allFieldIds(this._config().tabs));
 
     this.mutate(draft => {
-      for (const tab of draft.tabs) {
+      for (const tab of this.flattenTabs(draft.tabs)) {
         const index = (tab.fields ?? []).findIndex(f => f.id === id);
         if (index !== -1) {
           const copy = clone(source);
@@ -365,7 +401,7 @@ export class BuilderStore {
 
   moveField(id: string, direction: -1 | 1): void {
     this.mutate(draft => {
-      for (const tab of draft.tabs) {
+      for (const tab of this.flattenTabs(draft.tabs)) {
         const fields = tab.fields ?? [];
         const from = fields.findIndex(f => f.id === id);
         if (from !== -1) {
@@ -383,7 +419,7 @@ export class BuilderStore {
   reorderField(fromIndex: number, toIndex: number, tabId?: string): void {
     this.mutate(draft => {
       const targetTab = tabId
-        ? draft.tabs.find(t => t.id === tabId)
+        ? this.flattenTabs(draft.tabs).find(t => t.id === tabId)
         : draft.tabs[0];
       const fields = targetTab?.fields ?? [];
       if (
@@ -434,7 +470,7 @@ export class BuilderStore {
 
   /** `derived`, or `derived_2`, `derived_3`… if another field already holds it. */
   private availableId(derived: string, currentId: string): string {
-    const taken = new Set(this.fields().map(f => f.id).filter(fid => fid !== currentId));
+    const taken = new Set([...this.allFieldIds(this._config().tabs)].filter(fid => fid !== currentId));
     if (!taken.has(derived)) return derived;
 
     let n = 2;
@@ -791,7 +827,7 @@ export class BuilderStore {
   }
 
   addRule(rule: FormRule): string {
-    const id = rule.id?.trim() || this.uniqueId('rule', this._rules().map(r => ({ id: r.id ?? '' })));
+    const id = rule.id?.trim() || this.uniqueId('rule', new Set(this._rules().map(r => r.id ?? '')));
     this._rules.update(rules => [...rules, { ...clone(rule), id }]);
     return id;
   }
@@ -832,7 +868,7 @@ export class BuilderStore {
     // Must be unique across the whole tree, not just the top level: a tab id is the record
     // storage path, so a new top-level tab colliding with an existing sub-tab would make two
     // tabs write to the same key and break findTab/getTabPath.
-    const id = this.uniqueId('tab', this.allTabIds().map(tid => ({ id: tid })));
+    const id = this.uniqueId('tab', new Set(this.allTabIds()));
     this.mutate(draft => {
       const tabs = draft.tabs ?? (draft.tabs = []);
       const lang = draft.defaultLanguage ?? 'en';
@@ -855,7 +891,7 @@ export class BuilderStore {
   }
 
   addSubTab(parentId: string): string {
-    const id = this.uniqueId('tab', this.allTabIds().map(tid => ({ id: tid })));
+    const id = this.uniqueId('tab', new Set(this.allTabIds()));
     this.mutate(draft => {
       const parent = findTab(draft.tabs, parentId);
       if (parent) {
@@ -935,8 +971,7 @@ export class BuilderStore {
     this._isDirty.set(true);
   }
 
-  private uniqueId(prefix: string, existing: { id: string }[]): string {
-    const taken = new Set(existing.map(e => e.id));
+  private uniqueId(prefix: string, taken: Set<string>): string {
     let n = 1;
     let candidate = `${prefix}_${n}`;
     while (taken.has(candidate)) {
@@ -964,10 +999,7 @@ export class BuilderStore {
       problems.push({ level: 'warning', message: 'This entity has no fields yet.' });
     }
 
-    const seen = new Map<string, number>();
     for (const field of allFields) {
-      seen.set(field.id, (seen.get(field.id) ?? 0) + 1);
-
       if (!field.id || !ID_PATTERN.test(field.id)) {
         problems.push({
           level: 'error',
@@ -1006,7 +1038,21 @@ export class BuilderStore {
       }
     }
 
-    for (const [id, count] of seen) {
+    // Id uniqueness is a whole-config invariant, and it is counted over the entire field
+    // tree rather than `allFields`, which stops at a tab's own fields. Two ids colliding
+    // inside a group or array went unreported even though rules, showWhen conditions and
+    // autoPatch mappings all address fields by bare id and would resolve to whichever one
+    // the lookup happened to reach first.
+    const idCounts = new Map<string, number>();
+    const countIds = (fields: NestedFieldConfig[] | undefined) => {
+      for (const f of fields ?? []) {
+        idCounts.set(f.id, (idCounts.get(f.id) ?? 0) + 1);
+        if (f.children?.length) countIds(f.children);
+      }
+    };
+    for (const tab of this.flattenTabs(config.tabs)) countIds(tab.fields);
+
+    for (const [id, count] of idCounts) {
       if (count > 1) {
         problems.push({ level: 'error', message: `Duplicate field id "${id}" (${count}×).`, fieldId: id });
       }

@@ -974,3 +974,146 @@ describe('BuilderStore — email validator is independent of pattern', () => {
     expect(field().validators?.pattern).toBeUndefined();
   });
 });
+
+/**
+ * Structural edits iterated `draft.tabs` directly — the top level only. A field on a
+ * sub-tab could be selected and edited but never removed, duplicated, moved or reordered,
+ * so the builder could author nested configs it was then unable to restructure.
+ */
+describe('BuilderStore — structural edits reach sub-tabs', () => {
+  let store: BuilderStore;
+
+  beforeEach(() => {
+    store = new BuilderStore();
+    store.load({
+      entity: 'x',
+      version: 1,
+      tabs: [
+        {
+          id: 'main',
+          label: { en: 'Main' },
+          fields: [{ id: 'topLevel', type: 'text', label: { en: 'Top' } }],
+          children: [
+            {
+              id: 'sub',
+              label: { en: 'Sub' },
+              fields: [
+                { id: 'subA', type: 'text', label: { en: 'A' } },
+                { id: 'subB', type: 'text', label: { en: 'B' } },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  const subFields = (): string[] =>
+    (store.config().tabs![0].children![0].fields ?? []).map(f => f.id);
+
+  it('removes a field on a sub-tab', () => {
+    store.removeField('subA');
+    expect(subFields()).toEqual(['subB']);
+  });
+
+  it('duplicates a field on a sub-tab, next to the original', () => {
+    const newId = store.duplicateField('subA');
+
+    expect(newId).toBeTruthy();
+    expect(subFields()).toEqual(['subA', newId!, 'subB']);
+  });
+
+  it('moves a field within a sub-tab', () => {
+    store.moveField('subA', 1);
+    expect(subFields()).toEqual(['subB', 'subA']);
+  });
+
+  it('reorders fields within a named sub-tab', () => {
+    store.reorderField(0, 1, 'sub');
+    expect(subFields()).toEqual(['subB', 'subA']);
+  });
+
+  it('adds a field to a named sub-tab', () => {
+    const id = store.addField('text', 'sub');
+    expect(subFields()).toContain(id);
+  });
+
+  it('leaves the top-level tab alone while editing a sub-tab', () => {
+    store.removeField('subA');
+    expect((store.config().tabs![0].fields ?? []).map(f => f.id)).toEqual(['topLevel']);
+  });
+});
+
+/**
+ * Field ids address rules, showWhen conditions and autoPatch mappings, so uniqueness is a
+ * whole-config invariant. The checks used to read `fields()`, which stops at top-level tabs.
+ */
+describe('BuilderStore — field id uniqueness spans the whole tree', () => {
+  let store: BuilderStore;
+
+  beforeEach(() => {
+    store = new BuilderStore();
+    store.load({
+      entity: 'x',
+      version: 1,
+      tabs: [
+        {
+          id: 'main',
+          label: { en: 'Main' },
+          fields: [
+            {
+              id: 'group1',
+              type: 'group',
+              label: { en: 'Group' },
+              children: [{ id: 'text_1', type: 'text', label: { en: 'Nested' } }],
+            },
+          ],
+          children: [
+            {
+              id: 'sub',
+              label: { en: 'Sub' },
+              fields: [{ id: 'text_2', type: 'text', label: { en: 'Sub field' } }],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('does not mint an id already used on a sub-tab', () => {
+    const id = store.addField('text', 'main');
+    expect(['text_1', 'text_2']).not.toContain(id);
+  });
+
+  it('does not mint an id already used inside a group', () => {
+    const ids = [store.addField('text', 'main'), store.addField('text', 'main')];
+    expect(new Set(ids).size).toBe(2);
+    expect(ids).not.toContain('text_1');
+  });
+
+  it('reports a duplicate id that collides inside a group', () => {
+    store.updateField('text_2', { id: 'text_2' });
+    // Force a collision with the group child by renaming the sub-tab field to match.
+    store.load({
+      entity: 'x',
+      version: 1,
+      tabs: [
+        {
+          id: 'main',
+          label: { en: 'Main' },
+          fields: [
+            {
+              id: 'group1',
+              type: 'group',
+              label: { en: 'Group' },
+              children: [{ id: 'dup', type: 'text', label: { en: 'Nested' } }],
+            },
+            { id: 'dup', type: 'text', label: { en: 'Top' } },
+          ],
+        },
+      ],
+    });
+
+    expect(store.errors().some(p => /Duplicate field id "dup"/.test(p.message))).toBe(true);
+  });
+});
