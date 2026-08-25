@@ -1,0 +1,119 @@
+name: Release
+
+# Publishing is deliberately tag-driven rather than automatic on main: a version can never
+# be reissued once it is on npm, so it should take an explicit act.
+#
+# There was an earlier Publish workflow that ran `changeset publish` without a .changeset
+# directory ever existing, so it failed on every run and published nothing. 1.0.0 therefore
+# went out by hand, with no verification — which is how a `main` field pointing at
+# dist/dist and a wildcard runtime dependency on the renderer both reached the registry.
+# Everything below exists to make that impossible to repeat.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Verify and pack, but do not publish'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write # npm provenance
+
+env:
+  CI: true
+
+jobs:
+  release:
+    name: Verify and publish
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        run: npm ci
+
+      # The same gates CI runs. Publishing something that has not passed them is exactly the
+      # failure mode this workflow exists to prevent, so they run again here rather than
+      # trusting that a green run happened on some earlier commit.
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm run test
+
+      - name: Coverage thresholds
+        run: npm run test:coverage
+
+      # Proves the tarballs about to be published actually install and compile for a
+      # consumer. The workspace build cannot show this: inside the repo everything resolves
+      # through symlinks and tsconfig paths, so a broken manifest still looks fine.
+      - name: Consumer install + AOT (oldest and newest supported Angular)
+        run: |
+          node scripts/verify-consumer.mjs --angular 17
+          node scripts/verify-consumer.mjs --angular 22
+
+      - name: README snippets compile
+        run: node scripts/verify-consumer.mjs --angular 20 --readme
+
+      # A tag that disagrees with the manifests would publish a version nobody expects.
+      - name: Tag matches package versions
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          FAILED=0
+          for PKG in packages/core packages/ngx-dynamic-entity packages/ngx-dynamic-entity-builder; do
+            VERSION=$(node -p "require('./$PKG/package.json').version")
+            if [ "$VERSION" != "$TAG" ]; then
+              echo "::error::$PKG is $VERSION but the tag is $TAG"
+              FAILED=1
+            fi
+          done
+          [ "$FAILED" = "0" ] || exit 1
+          echo "All three packages are at $TAG"
+
+      # Dependency order matters: each package peer-depends on the one before it, so a
+      # consumer installing mid-publish would otherwise resolve a peer that is not there yet.
+      # core is published from its own root (files: ["dist"]); the Angular packages publish
+      # the ng-packagr output, which is where their generated manifests live.
+      #
+      # --access public is required for @dynamic-entity/core: a scoped package defaults to
+      # restricted, and publishing it private would look like success.
+      - name: Publish @dynamic-entity/core
+        if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
+        run: npm publish packages/core --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish ngx-dynamic-entity
+        if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
+        run: npm publish packages/ngx-dynamic-entity/dist --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish ngx-dynamic-entity-builder
+        if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
+        run: npm publish packages/ngx-dynamic-entity-builder/dist --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # On a dry run, show exactly what would have gone out.
+      - name: Pack only (dry run)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true' }}
+        run: |
+          npm pack packages/core --dry-run
+          npm pack packages/ngx-dynamic-entity/dist --dry-run
+          npm pack packages/ngx-dynamic-entity-builder/dist --dry-run
