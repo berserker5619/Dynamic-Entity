@@ -82,3 +82,66 @@ describe('MultiSelectFieldComponent', () => {
     expect(component.compareFn({ en: 'One' }, { en: 'Two' })).toBe(false);
   });
 });
+
+describe('MultiSelectFieldComponent — language and unresolved values', () => {
+  let fixture: ComponentFixture<MultiSelectFieldComponent>;
+  let component: MultiSelectFieldComponent;
+
+  beforeEach(async () => {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [MultiSelectFieldComponent, ReactiveFormsModule],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MultiSelectFieldComponent);
+    component = fixture.componentInstance;
+    component.field = {
+      id: 'tags',
+      type: 'multiSelect',
+      label: { en: 'Tags', de: 'Schlagworte' },
+      options: [{ en: 'One', de: 'Eins' }, { en: 'Two', de: 'Zwei' }],
+    } as never;
+    component.control = new FormControl([]);
+    fixture.detectChanges();
+  });
+
+  it('re-resolves option labels when the language changes', () => {
+    component.control.setValue([{ en: 'One', de: 'Eins' }]);
+    component.readonly = true;
+
+    component.language = 'en';
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toContain('One');
+
+    component.language = 'de';
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toContain('Eins');
+  });
+
+  it('defaults a blank language to en', () => {
+    component.language = '';
+    expect(component.language).toBe('en');
+  });
+
+  it('renders an em dash when nothing is selected', () => {
+    component.control.setValue([]);
+    component.readonly = true;
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent.trim()).toBe('—');
+  });
+
+  /**
+   * A stored value that matches no current option still has to render something: the option
+   * may have been renamed or removed after the record was saved.
+   */
+  it('falls back to the raw value when no option matches', () => {
+    component.control.setValue(['legacy-code', { en: 'Gone' }]);
+    component.readonly = true;
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.querySelector('.ngx-field__value').textContent;
+    expect(text).toContain('legacy-code');
+    expect(text).toContain('Gone');
+  });
+});

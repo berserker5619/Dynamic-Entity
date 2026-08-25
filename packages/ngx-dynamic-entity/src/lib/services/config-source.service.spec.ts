@@ -75,3 +75,88 @@ describe('ConfigSourceService', () => {
     expect(callCount).toBe(1);
   });
 });
+
+describe('ConfigSourceService — failure and cache invalidation', () => {
+  const cfg = (entity: string): EntityFormConfig => ({
+    entity,
+    version: 1,
+    tabs: [{ id: 'main', label: { en: 'Main' }, fields: [] }],
+  });
+
+  /**
+   * A loader that throws must not take the caller down with it — the builder asks for a
+   * source config on every keystroke in the referenced-field editor.
+   */
+  it('returns undefined and warns when the handler rejects', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [{ provide: CONFIG_SOURCE, useValue: () => Promise.reject(new Error('boom')) }],
+    });
+    const service = TestBed.inject(ConfigSourceService);
+
+    await expect(service.getConfig('users')).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('failed to load config for entity "users"'),
+      expect.any(Error),
+    );
+    warn.mockRestore();
+  });
+
+  it('does not cache a failed load, so a later attempt can succeed', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    let attempt = 0;
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: CONFIG_SOURCE,
+          useValue: () => (++attempt === 1 ? Promise.reject(new Error('boom')) : cfg('users')),
+        },
+      ],
+    });
+    const service = TestBed.inject(ConfigSourceService);
+
+    expect(await service.getConfig('users')).toBeUndefined();
+    expect((await service.getConfig('users'))?.entity).toBe('users');
+    warn.mockRestore();
+  });
+
+  it('clears one entity from the cache, leaving the rest', async () => {
+    const handler = jest.fn((key: string) => cfg(key));
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: CONFIG_SOURCE, useValue: handler }] });
+    const service = TestBed.inject(ConfigSourceService);
+
+    await service.getConfig('users');
+    await service.getConfig('orders');
+    expect(handler).toHaveBeenCalledTimes(2);
+
+    // Cached: no further calls.
+    await service.getConfig('users');
+    expect(handler).toHaveBeenCalledTimes(2);
+
+    service.clearCache('users');
+    await service.getConfig('users');
+    expect(handler).toHaveBeenCalledTimes(3);
+
+    await service.getConfig('orders'); // still cached
+    expect(handler).toHaveBeenCalledTimes(3);
+  });
+
+  it('clears every entity when called with no key', async () => {
+    const handler = jest.fn((key: string) => cfg(key));
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: CONFIG_SOURCE, useValue: handler }] });
+    const service = TestBed.inject(ConfigSourceService);
+
+    await service.getConfig('users');
+    await service.getConfig('orders');
+    expect(handler).toHaveBeenCalledTimes(2);
+
+    service.clearCache();
+    await service.getConfig('users');
+    await service.getConfig('orders');
+    expect(handler).toHaveBeenCalledTimes(4);
+  });
+});

@@ -162,3 +162,95 @@ describe('EntityRefFieldComponent', () => {
     expect(fixture.componentInstance.options()).toEqual([]);
   });
 });
+
+describe('EntityRefFieldComponent — masking, labels and absent parents', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  /**
+   * A masked field renders XXXXXXXXX, so loading its options would be a pointless request
+   * for data the user is not being shown.
+   */
+  it('does not load options when the field is masked', async () => {
+    const loader = jest.fn(() => Promise.resolve(COUNTRIES));
+    await TestBed.configureTestingModule({
+      imports: [EntityRefFieldComponent],
+      providers: [{ provide: ENTITY_REF_REGISTRY, useValue: new Map([['country', loader]]) }],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(EntityRefFieldComponent);
+    fixture.componentInstance.field = { id: 'country', type: 'entity-ref', label: { en: 'Country' } };
+    fixture.componentInstance.control = new FormControl('');
+    fixture.componentInstance.masked = true;
+    fixture.detectChanges();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(loader).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.options().length).toBe(0);
+  });
+
+  it('returns the raw value from getLabel when no option matches', async () => {
+    const fixture = await setup(
+      { id: 'country', type: 'entity-ref', label: { en: 'Country' } },
+      { country: () => Promise.resolve(COUNTRIES) },
+    );
+
+    expect(fixture.componentInstance.getLabel('de')).toBe('Germany');
+    expect(fixture.componentInstance.getLabel('zz')).toBe('zz');
+  });
+
+  it('renders an em dash from getLabel for an empty value', async () => {
+    const fixture = await setup(
+      { id: 'country', type: 'entity-ref', label: { en: 'Country' } },
+      { country: () => Promise.resolve(COUNTRIES) },
+    );
+
+    expect(fixture.componentInstance.getLabel(null)).toBe('—');
+  });
+
+  /**
+   * A config may name a parentField that is not in this form group — a partial form, or a
+   * schema edited after the fact. Watching must simply not happen, rather than throw.
+   */
+  it('tolerates a parentField that is not present in the form group', async () => {
+    const loader = jest.fn(() => Promise.resolve(CITIES));
+    await TestBed.configureTestingModule({
+      imports: [EntityRefFieldComponent],
+      providers: [{ provide: ENTITY_REF_REGISTRY, useValue: new Map([['city', loader]]) }],
+    }).compileComponents();
+
+    const control = new FormControl('');
+    new FormGroup({ city: control }); // no `country` sibling
+    const fixture = TestBed.createComponent(EntityRefFieldComponent);
+    fixture.componentInstance.field = {
+      id: 'city',
+      type: 'entity-ref',
+      label: { en: 'City' },
+      entityReference: { enabled: true, linkedEntityKey: 'city', parentField: 'country' },
+    };
+    fixture.componentInstance.control = control;
+
+    expect(() => fixture.detectChanges()).not.toThrow();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // A cascading child holds until its parent has a value, and an absent parent control
+    // simply never supplies one — so it waits rather than loading the unfiltered list.
+    expect(fixture.componentInstance.awaitingParent()).toBe(true);
+    expect(fixture.componentInstance.options()).toEqual([]);
+    expect(loader).not.toHaveBeenCalled();
+  });
+
+  it('emits the selected record on the selection bus', async () => {
+    const fixture = await setup(
+      { id: 'country', type: 'entity-ref', label: { en: 'Country' } },
+      { country: () => Promise.resolve(COUNTRIES) },
+    );
+    const bus = TestBed.inject(EntityRefSelectionService);
+    const seen: unknown[] = [];
+    bus.selection$.subscribe(e => seen.push(e));
+
+    fixture.componentInstance.control.setValue('fr');
+    fixture.componentInstance.onSelectionChange();
+
+    expect(seen).toEqual([{ fieldId: 'country', option: COUNTRIES[1] }]);
+  });
+});

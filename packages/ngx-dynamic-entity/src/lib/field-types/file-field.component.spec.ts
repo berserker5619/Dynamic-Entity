@@ -72,3 +72,46 @@ describe('FileFieldComponent', () => {
     expect(fixture.nativeElement.querySelector('.ngx-field__value--masked')).toBeTruthy();
   });
 });
+
+describe('FileFieldComponent — selection edge cases', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('ignores a cancelled chooser (no file)', async () => {
+    const handler = jest.fn();
+    const fixture = await setup(handler as unknown as FileUploadHandler);
+    const component = fixture.componentInstance;
+
+    await component.onFileSelect(undefined);
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(component.control.value).toBeNull();
+    expect(component.uploading()).toBe(false);
+    expect(component.uploadError()).toBeNull();
+  });
+
+  it('surfaces a message and clears the spinner when the upload fails', async () => {
+    const fixture = await setup(() => Promise.reject(new Error('network')));
+    const component = fixture.componentInstance;
+
+    await component.onFileSelect(new File(['x'], 'contract.pdf', { type: 'application/pdf' }));
+
+    expect(component.uploadError()).toBe('Upload failed. Please try again.');
+    expect(component.uploading()).toBe(false);
+    expect(component.control.value).toBeNull();
+  });
+
+  it('removes the current file and marks the control touched', async () => {
+    const fixture = await setup(() => ({ url: '/f/contract.pdf', name: 'contract.pdf' }));
+    const component = fixture.componentInstance;
+
+    await component.onFileSelect(new File(['x'], 'contract.pdf', { type: 'application/pdf' }));
+    expect(component.fileName()).toBe('contract.pdf');
+
+    component.remove();
+
+    expect(component.control.value).toBeNull();
+    expect(component.control.touched).toBe(true);
+    expect(component.fileUrl()).toBeNull();
+    expect(component.fileName()).toBeNull();
+  });
+});
