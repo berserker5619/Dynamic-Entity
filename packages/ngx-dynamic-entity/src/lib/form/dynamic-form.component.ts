@@ -106,7 +106,27 @@ import { EntityRefSelectionService } from '../services/entity-ref-selection.serv
 })
 export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   // ─── Inputs ───────────────────────────────────────────────────────────────
-  @Input() config!: EntityFormConfig;
+  /**
+   * The schema to render.
+   *
+   * An accessor pair rather than a plain field: `ngOnChanges` normalises the option shape,
+   * and that result is kept here instead of being written back over the input. Reassigning
+   * an `@Input` works, but it mutates what the parent handed us — and a parent using OnPush
+   * or signals would never observe the replacement anyway.
+   *
+   * Reads of `this.config` get the normalised copy once it exists, so every internal caller
+   * is unaffected.
+   */
+  @Input()
+  set config(value: EntityFormConfig) {
+    this.rawConfig = value;
+    this.normalizedConfig = undefined; // re-normalised in ngOnChanges
+  }
+  get config(): EntityFormConfig {
+    return this.normalizedConfig ?? this.rawConfig;
+  }
+  private rawConfig!: EntityFormConfig;
+  private normalizedConfig?: EntityFormConfig;
   @Input() rules?: FormRule[];
   @Input() initialData?: Record<string, any>;
   /** Session-original values for `VALUE_CHANGED` rules. Captured from the first build when omitted. */
@@ -343,12 +363,15 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     if (changes['config'] || changes['userRoles']) {
       this.permissionsCache = null;
     }
-    if (changes['config'] && this.config) {
+    if (changes['config'] && this.rawConfig) {
       // Configs arrive as plain JSON from storage or an API, where TypeScript cannot enforce
       // the option shape. Normalise here, at the library boundary, so everything downstream
       // can rely on an option being a LocalizedText. Returns the same object when it already
       // is, so a well-formed config costs nothing.
-      this.config = normalizeConfigOptions(this.config);
+      // Kept in a field of our own rather than written back to the @Input. Reassigning an
+      // input works, but it surprises a parent that holds the same object — and a parent
+      // using OnPush or signals would not see the replacement anyway.
+      this.normalizedConfig = normalizeConfigOptions(this.config);
     }
     if (changes['config'] || changes['initialData']) {
       this.buildForm();

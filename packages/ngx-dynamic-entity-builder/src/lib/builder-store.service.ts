@@ -454,10 +454,8 @@ export class BuilderStore {
    * anything.
    */
   setFieldLabel(id: string, language: string, value: string): void {
-    this.mutate(draft => {
-      const field = this.findFieldInTabs(draft.tabs, id);
-      if (field) field.label = { ...field.label, [language]: value };
-    });
+    // Bound to a keystroke event, so this uses the structural-sharing path.
+    this.mutateField(id, field => ({ ...field, label: { ...field.label, [language]: value } }));
 
     if (language !== (this._config().defaultLanguage ?? 'en')) return;
     if (this.manualIds.has(id)) return;
@@ -695,11 +693,12 @@ export class BuilderStore {
    * so this is the only way to edit one — there is no separate value to set.
    */
   setOptionLabel(fieldId: string, index: number, language: string, value: string): void {
-    this.mutate(draft => {
-      const field = this.findFieldInTabs(draft.tabs, fieldId);
-      const option = field?.options?.[index];
-      if (!option) return;
-      field.options![index] = { ...option, [language]: value };
+    // Also keystroke-bound.
+    this.mutateField(fieldId, field => {
+      const option = field.options?.[index];
+      if (!option) return field;
+      const options = field.options!.map((o, i) => (i === index ? { ...o, [language]: value } : o));
+      return { ...field, options };
     });
   }
 
@@ -968,6 +967,65 @@ export class BuilderStore {
     draft.tabs = draft.tabs ?? [];
     fn(draft);
     this._config.set(draft);
+    this._isDirty.set(true);
+  }
+
+  /**
+   * Replace one field, copying only the objects on the path to it.
+   *
+   * `mutate` deep-clones the entire config, which is right for a structural edit but wrong
+   * for the two setters bound to keystroke events: typing a label allocated a full copy of
+   * the config per character. Here every tab and field outside the target's chain is reused
+   * by reference, so the cost is proportional to nesting depth rather than config size —
+   * while the parts that did change are still fresh objects, so change detection and the
+   * signal both see a new identity.
+   *
+   * Returns without touching anything when the field is not found.
+   */
+  private mutateField(id: string, update: (field: NestedFieldConfig) => NestedFieldConfig): void {
+    let found = false;
+
+    const visitFields = (fields: NestedFieldConfig[] | undefined): NestedFieldConfig[] | undefined => {
+      if (!fields) return fields;
+      let changed = false;
+      const next = fields.map(field => {
+        if (field.id === id) {
+          found = true;
+          changed = true;
+          return update(field);
+        }
+        const children = visitFields(field.children);
+        if (children !== field.children) {
+          changed = true;
+          return { ...field, children };
+        }
+        return field;
+      });
+      return changed ? next : fields;
+    };
+
+    const visitTabs = (tabs: NestedTabConfig[] | undefined): NestedTabConfig[] | undefined => {
+      if (!tabs) return tabs;
+      let changed = false;
+      const next = tabs.map(tab => {
+        const fields = visitFields(tab.fields);
+        const children = visitTabs(tab.children);
+        if (fields !== tab.fields || children !== tab.children) {
+          changed = true;
+          return { ...tab, fields, children };
+        }
+        return tab;
+      });
+      return changed ? next : tabs;
+    };
+
+    const current = this._config();
+    const tabs = visitTabs(current.tabs);
+    // `found` implies current.tabs existed and was walked, so tabs is defined here — the
+    // fallback below is for the type checker, not a reachable state.
+    if (!found || tabs === current.tabs) return;
+
+    this._config.set({ ...current, tabs: tabs ?? [] });
     this._isDirty.set(true);
   }
 
