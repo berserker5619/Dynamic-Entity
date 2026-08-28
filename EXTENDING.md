@@ -147,9 +147,29 @@ const headlineField: NestedFieldConfig = {
 An unknown name is ignored rather than throwing, so a schema referencing a validator you have
 not registered yet still renders.
 
-> **Async validation is not supported.** There is no async validator registry, and the
-> `${entity}:beforeSave` hook cannot reject — its return value replaces the payload and the
-> save proceeds. Validate asynchronously in your own submit handler.
+### Async validators
+
+For checks that need a server — uniqueness, availability, a remote rule:
+
+```ts
+provideNgxDynamicEntity({
+  asyncValidators: {
+    uniqueEmail: (control: AbstractControl) =>
+      http.get<boolean>(`/api/email-taken?v=${control.value}`).pipe(
+        map(taken => (taken ? { taken: true } : null)),
+      ),
+  },
+});
+```
+
+```ts
+validators: { required: true, customAsync: ['uniqueEmail'] }
+```
+
+A separate key from `custom` because Angular treats them differently: async validators run
+only once the synchronous ones pass, and hold the control in `pending` while they do. The
+form cannot be submitted while anything is pending — `submitBlocked` and `isValidating` both
+reflect it — so there is no window in which a half-checked record can be saved.
 
 ---
 
@@ -248,6 +268,27 @@ provideNgxDynamicEntity({
 Prefer a loader for anything fetched: a bare Promise runs when the provider is built, so every
 list would load whether or not a form uses it. Values may be plain strings, `LocalizedText`, or
 the full `{ code, name, sortOrder }` shape.
+
+---
+
+## Aborting a save
+
+A `${entity}:beforeSave` hook can veto:
+
+```ts
+provideNgxDynamicEntity({
+  hooks: {
+    'clients:beforeSave': async record => {
+      const ok = await confirmService.ask('Save these changes?');
+      return ok ? record : false;   // false aborts; the record replaces the payload
+    },
+  },
+});
+```
+
+Returning `false` or throwing aborts the save: `formSubmit` does not fire, and
+`(saveRejected)` emits `{ reason, error? }` instead. Returning `undefined` means "unchanged";
+anything else becomes the submitted payload.
 
 ---
 

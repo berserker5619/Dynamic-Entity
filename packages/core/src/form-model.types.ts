@@ -86,6 +86,13 @@ export interface FieldValidators {
    * of this config, so naming one from a typed schema required an `as any` cast.
    */
   custom?: string[];
+  /**
+   * Names of async validators registered through
+   * `provideNgxDynamicEntity({ asyncValidators })` — uniqueness checks and anything else
+   * needing a server. Kept separate from `custom` because Angular runs async validators only
+   * after the synchronous ones pass, and marks the control `pending` meanwhile.
+   */
+  customAsync?: string[];
 }
 
 /** Per-field table-display metadata (a consumer's own table can read these; the library renders no table). */

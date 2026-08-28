@@ -88,6 +88,17 @@ export const VALIDATION_MESSAGES = new InjectionToken<Record<string, any>>('VALI
 export const VALIDATOR_REGISTRY = new InjectionToken<Map<string, any>>('VALIDATOR_REGISTRY');
 
 /**
+ * Registry: validator key → AsyncValidatorFn.
+ *
+ * Kept separate from VALIDATOR_REGISTRY because Angular applies the two differently: an async
+ * validator runs only once the synchronous ones pass, and puts the control into `pending`
+ * while it does. Name them from a schema with `validators: { customAsync: ['uniqueEmail'] }`.
+ */
+export const ASYNC_VALIDATOR_REGISTRY = new InjectionToken<Map<string, any>>(
+  'ASYNC_VALIDATOR_REGISTRY',
+);
+
+/**
  * A registered hook: receives the payload, returns it (or a replacement), sync or async.
  *
  * Spelled out rather than typed as `Function`, which accepts class declarations and any

@@ -1,13 +1,20 @@
 import { SimpleChange } from '@angular/core';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { FormArray, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormArray,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import type { EntityFormConfig, FormRule, RecordMigration } from '@dynamic-entity/core';
 import { DynamicFormComponent } from './dynamic-form.component';
 import { EntityRefSelectionService } from '../services/entity-ref-selection.service';
 import { HookRegistryService } from '../services/hook-registry.service';
 import { RbacService } from '../services/rbac.service';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
-import { RECORD_MIGRATIONS } from '../tokens/injection-tokens';
+import { ASYNC_VALIDATOR_REGISTRY, RECORD_MIGRATIONS } from '../tokens/injection-tokens';
 
 const mockConfig: EntityFormConfig = {
   entity: 'clients',
@@ -74,8 +81,14 @@ describe('DynamicFormComponent', () => {
       imports: [DynamicFormComponent, ReactiveFormsModule],
       providers: [
         {
+          // Mirrors the real service: a partial stub here fails at control construction,
+          // which surfaces as every spec in the file breaking at once.
           provide: ValidatorRegistryService,
-          useValue: { resolveAll: jest.fn().mockReturnValue([]), resolveFromConfig: jest.fn().mockReturnValue([]) },
+          useValue: {
+            resolveAll: jest.fn().mockReturnValue([]),
+            resolveFromConfig: jest.fn().mockReturnValue([]),
+            resolveAsyncFromConfig: jest.fn().mockReturnValue([]),
+          },
         },
         { provide: HookRegistryService, useValue: mockHookRegistry },
         {
@@ -459,7 +472,11 @@ describe('DynamicFormComponent — duplicate field ids across tabs', () => {
       providers: [
         {
           provide: ValidatorRegistryService,
-          useValue: { resolveAll: jest.fn().mockReturnValue([]), resolveFromConfig: jest.fn().mockReturnValue([]) },
+          useValue: {
+            resolveAll: jest.fn().mockReturnValue([]),
+            resolveFromConfig: jest.fn().mockReturnValue([]),
+            resolveAsyncFromConfig: jest.fn().mockReturnValue([]),
+          },
         },
         { provide: HookRegistryService, useValue: { run: jest.fn(), has: jest.fn().mockReturnValue(false) } },
         {
@@ -568,7 +585,11 @@ describe('DynamicFormComponent — debounce and preview', () => {
       providers: [
         {
           provide: ValidatorRegistryService,
-          useValue: { resolveAll: jest.fn().mockReturnValue([]), resolveFromConfig: jest.fn().mockReturnValue([]) },
+          useValue: {
+            resolveAll: jest.fn().mockReturnValue([]),
+            resolveFromConfig: jest.fn().mockReturnValue([]),
+            resolveAsyncFromConfig: jest.fn().mockReturnValue([]),
+          },
         },
         { provide: HookRegistryService, useValue: { run: jest.fn(), has: jest.fn().mockReturnValue(false) } },
         {
@@ -650,7 +671,7 @@ describe('DynamicFormComponent — debounce and preview', () => {
         providers: [
           {
             provide: ValidatorRegistryService,
-            useValue: { resolveAll: () => [], resolveFromConfig: () => [] },
+            useValue: { resolveAll: () => [], resolveFromConfig: () => [], resolveAsyncFromConfig: () => [] },
           },
           { provide: HookRegistryService, useValue: { run: jest.fn(), has: () => false } },
         ],
@@ -813,6 +834,7 @@ describe('DynamicFormComponent — debounce and preview', () => {
         useValue: {
           resolveAll: () => [],
           resolveFromConfig: (v?: { required?: boolean }) => (v?.required ? [Validators.required] : []),
+          resolveAsyncFromConfig: () => [],
         },
       });
 
@@ -1015,7 +1037,10 @@ describe('record migration', () => {
     await TestBed.configureTestingModule({
       imports: [DynamicFormComponent, ReactiveFormsModule],
       providers: [
-        { provide: ValidatorRegistryService, useValue: { resolveAll: () => [], resolveFromConfig: () => [] } },
+        {
+          provide: ValidatorRegistryService,
+          useValue: { resolveAll: () => [], resolveFromConfig: () => [], resolveAsyncFromConfig: () => [] },
+        },
         { provide: HookRegistryService, useValue: { run: jest.fn(), has: () => false } },
         {
           provide: RbacService,
@@ -1063,5 +1088,148 @@ describe('record migration', () => {
     await expect(
       buildWith(versionedConfig(3), { _configVersion: 1, name: 'Ada Lovelace' }, [splitName]),
     ).rejects.toThrow(/No migration from config version 2 to 3/);
+  });
+});
+
+/**
+ * Async validation did not exist: there was no async registry, and the beforeSave hook could
+ * not veto a save — its return value simply replaced the payload and the submit proceeded.
+ */
+describe('async validation and a rejectable beforeSave', () => {
+  let fixture: ComponentFixture<DynamicFormComponent>;
+  let component: DynamicFormComponent;
+
+  const cfg: EntityFormConfig = {
+    entity: 'clients',
+    version: 1,
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        flatData: true,
+        fields: [
+          {
+            id: 'email',
+            type: 'email',
+            label: { en: 'Email' },
+            validators: { customAsync: ['uniqueEmail'] },
+          },
+        ],
+      },
+    ],
+  };
+
+  /** Resolves an error for a taken address, after a tick, like a server would. */
+  const uniqueEmail = (control: AbstractControl): Promise<ValidationErrors | null> =>
+    new Promise(resolve =>
+      setTimeout(() => resolve(control.value === 'taken@example.com' ? { taken: true } : null), 0),
+    );
+
+  async function build(hooks: Record<string, unknown> = {}): Promise<void> {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [DynamicFormComponent, ReactiveFormsModule],
+      providers: [
+        { provide: ASYNC_VALIDATOR_REGISTRY, useValue: new Map([['uniqueEmail', uniqueEmail]]) },
+        {
+          provide: HookRegistryService,
+          useValue: {
+            has: (k: string) => k in hooks,
+            run: (k: string, d: unknown) => Promise.resolve((hooks as any)[k]?.(d)),
+          },
+        },
+        {
+          provide: RbacService,
+          useValue: { getPermissions: () => ({ canView: true, canEdit: true, canDelete: true }) },
+        },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(DynamicFormComponent);
+    component = fixture.componentInstance;
+    component.config = cfg;
+    component.ngOnInit();
+    component.ngOnChanges({ config: new SimpleChange(undefined, cfg, true) });
+    fixture.detectChanges();
+  }
+
+  const settle = () => new Promise(r => setTimeout(r, 5));
+
+  it('attaches a registered async validator and reports its error', async () => {
+    await build();
+    component.getControl('email')?.setValue('taken@example.com');
+    await settle();
+
+    expect(component.getControl('email')?.errors).toEqual({ taken: true });
+  });
+
+  it('passes a value the async validator accepts', async () => {
+    await build();
+    component.getControl('email')?.setValue('free@example.com');
+    await settle();
+
+    expect(component.getControl('email')?.errors).toBeNull();
+  });
+
+  /** `invalid` is false while a check is outstanding, so pending must block on its own. */
+  it('blocks submission while an async check is pending', async () => {
+    await build();
+    component.getControl('email')?.setValue('taken@example.com');
+
+    expect(component.isValidating).toBe(true);
+    expect(component.submitBlocked).toBe(true);
+
+    await settle();
+    expect(component.isValidating).toBe(false);
+  });
+
+  it('aborts the save when beforeSave returns false', async () => {
+    await build({ 'clients:beforeSave': () => false });
+    const submitted = jest.fn();
+    const rejected = jest.fn();
+    component.formSubmit.subscribe(submitted);
+    component.saveRejected.subscribe(rejected);
+    await settle(); // the async validator must settle, or submitBlocked refuses on pending
+
+    await component.submit();
+
+    expect(submitted).not.toHaveBeenCalled();
+    expect(rejected).toHaveBeenCalledWith({ reason: 'beforeSave returned false' });
+  });
+
+  it('aborts the save when beforeSave throws, and reports why', async () => {
+    await build({ 'clients:beforeSave': () => { throw new Error('server said no'); } });
+    const submitted = jest.fn();
+    const rejected = jest.fn();
+    component.formSubmit.subscribe(submitted);
+    component.saveRejected.subscribe(rejected);
+    await settle(); // the async validator must settle, or submitBlocked refuses on pending
+
+    await component.submit();
+
+    expect(submitted).not.toHaveBeenCalled();
+    expect(rejected.mock.calls[0][0].reason).toBe('server said no');
+  });
+
+  it('still lets beforeSave replace the payload', async () => {
+    await build({ 'clients:beforeSave': (d: Record<string, unknown>) => ({ ...d, stamped: true }) });
+    const submitted = jest.fn();
+    component.formSubmit.subscribe(submitted);
+    await settle(); // as above
+
+    await component.submit();
+
+    expect(submitted).toHaveBeenCalledWith(expect.objectContaining({ stamped: true }));
+  });
+
+  it('treats an undefined return as "unchanged"', async () => {
+    await build({ 'clients:beforeSave': () => undefined });
+    const submitted = jest.fn();
+    component.formSubmit.subscribe(submitted);
+    await settle(); // as above
+
+    await component.submit();
+
+    expect(submitted).toHaveBeenCalledTimes(1);
   });
 });

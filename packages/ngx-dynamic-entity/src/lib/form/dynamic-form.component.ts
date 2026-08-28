@@ -141,6 +141,11 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   @Output() formReset = new EventEmitter<void>();
   /** The visible tab changed. Lets a host track it without reaching into this component. */
   @Output() activeTabChange = new EventEmitter<string>();
+  /**
+   * Emitted when a `beforeSave` hook aborted the save — by returning false or throwing.
+   * `formSubmit` does not fire in that case.
+   */
+  @Output() saveRejected = new EventEmitter<{ reason: string; error?: unknown }>();
 
   // ─── Services ─────────────────────────────────────────────────────────────
   private readonly fb = inject(FormBuilder);
@@ -312,9 +317,20 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     return Object.keys(this.ruleValidationErrors).length > 0;
   }
 
+  /**
+   * True while an async validator is still running.
+   *
+   * Angular reports a control with an outstanding async check as `pending`, and `invalid` is
+   * false until it settles — so without this a form could be submitted in the gap before a
+   * uniqueness check came back.
+   */
+  get isValidating(): boolean {
+    return this.form.pending;
+  }
+
   /** Single source of truth for both the submit guard and the button's disabled state. */
   get submitBlocked(): boolean {
-    return this.form.invalid || this.hasRuleErrors;
+    return this.form.invalid || this.form.pending || this.hasRuleErrors;
   }
 
   ngOnInit(): void {
@@ -473,9 +489,11 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
       group[field.id] = this.fb.array([]);
     } else {
       const validators = this.validatorRegistry.resolveFromConfig(field.validators);
+      const asyncValidators = this.validatorRegistry.resolveAsyncFromConfig(field.validators);
       group[field.id] = this.fb.control(
         { value: field.defaultValue ?? null, disabled: field.disabled ?? false },
         validators,
+        asyncValidators,
       );
     }
   }
@@ -857,14 +875,27 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     const rawData = this.extractRecord();
     let processedData = rawData;
 
-    const hookKey = `${this.config?.entity}:beforeSave`;
-    if (this.hookRegistry.has(hookKey)) {
-      processedData = await this.hookRegistry.run(hookKey, processedData);
-    }
-
     this.isSaving.set(true);
     try {
+      // beforeSave can now abort the save: returning false, or throwing, stops it. Previously
+      // its return value simply replaced the payload and the submit proceeded regardless, so
+      // a hook that wanted to veto — a server-side check, a confirmation — had no way to.
+      const hookKey = `${this.config?.entity}:beforeSave`;
+      if (this.hookRegistry.has(hookKey)) {
+        const result = await this.hookRegistry.run(hookKey, processedData);
+        if (result === false) {
+          this.saveRejected.emit({ reason: 'beforeSave returned false' });
+          return;
+        }
+        // Anything else is the payload to submit; `undefined` means "unchanged".
+        if (result !== undefined && result !== true) processedData = result;
+      }
+
       this.formSubmit.emit(processedData);
+    } catch (err) {
+      // A hook that throws aborts the save and reports why, rather than the error escaping
+      // into an unhandled rejection with the form left looking as though it saved.
+      this.saveRejected.emit({ reason: err instanceof Error ? err.message : String(err), error: err });
     } finally {
       this.isSaving.set(false);
     }

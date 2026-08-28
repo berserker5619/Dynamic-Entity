@@ -29,6 +29,7 @@
 - **Reactive rules engine** — three action types (`visibility` to show/hide a field or tab, `validation` to attach an error or warning, `info` to raise a banner) driven by 18 condition operators including `EQUAL`, `CONTAINS`, `IN`, `DATE_BEFORE`, `HAS_ITEMS` and `VALUE_CHANGED`. Conditions within a rule are ANDed; rules apply in `priority` order.
 - **Role-based field visibility & masking** — per-entity `view`/`edit`/`delete` role lists, plus `maskData` to render a field as `XXXXXXXXX` for configured roles. **This is presentational only — see [Security](#-security).**
 - **Cross-entity referenced fields** — link a field to a source entity, snapshot what was copied, and detect drift when the source changes. Drift is surfaced in the builder.
+- **Sync and async validation** — built-in validators, your own by name, and async checks against a server. A form cannot be submitted while an async check is pending, and a `beforeSave` hook can abort the save outright.
 - **Named lookup lists** — sync or async master lists resolved by name, with localized labels, fallbacks, and an integrity report for values that no longer match any option.
 - **Visual builder** — click-to-add palette, drag-and-drop reordering, and a recursive tree editor for tabs, sub-tabs, groups, and arrays.
 - **100% standalone** — every component is `standalone: true`; the packages contain no `NgModule`. Signals are used for internal state; component inputs and outputs are decorator-based.

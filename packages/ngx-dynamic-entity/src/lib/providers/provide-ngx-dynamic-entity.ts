@@ -5,6 +5,7 @@ import {
   FIELD_TYPE_REGISTRY,
   HOOK_REGISTRY,
   type HookFn,
+  ASYNC_VALIDATOR_REGISTRY,
   RECORD_MIGRATIONS,
   VALIDATION_MESSAGES,
   LOOKUP_REGISTRY,
@@ -34,6 +35,16 @@ export interface NgxDynamicEntityConfig {
    * Unlisted keys keep their English default.
    */
   validationMessages?: Record<string, string | ((language: string, error: any) => string)>;
+  /**
+   * Async validator functions keyed by name, for checks that need a server — uniqueness,
+   * availability, a remote rule. Name them from a schema with
+   * `validators: { customAsync: ['uniqueEmail'] }`.
+   *
+   * Each is an Angular `AsyncValidatorFn`: it receives the control and returns a Promise or
+   * Observable of `ValidationErrors | null`. The control is `pending` while it runs, and the
+   * form cannot be submitted until every pending check settles.
+   */
+  asyncValidators?: Record<string, any>;
   /** Custom validator functions keyed by validator name */
   validators?: Record<string, any>;
   /** Hook functions keyed by hook name */
@@ -62,6 +73,10 @@ export const provideNgxDynamicEntity = (config: NgxDynamicEntityConfig = {}): En
     { provide: ENTITY_REF_REGISTRY, useValue: new Map(Object.entries(config.entityRefs ?? {})) },
     { provide: LOOKUP_REGISTRY, useValue: new Map(Object.entries(config.lookups ?? {})) },
     { provide: VALIDATOR_REGISTRY, useValue: new Map(Object.entries(config.validators ?? {})) },
+    {
+      provide: ASYNC_VALIDATOR_REGISTRY,
+      useValue: new Map(Object.entries(config.asyncValidators ?? {})),
+    },
     { provide: HOOK_REGISTRY, useValue: new Map(Object.entries(config.hooks ?? {})) },
     { provide: RECORD_MIGRATIONS, useValue: config.migrations ?? [] },
     { provide: VALIDATION_MESSAGES, useValue: config.validationMessages ?? {} },

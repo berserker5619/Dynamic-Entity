@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { ValidatorFn, Validators } from '@angular/forms';
+import { AsyncValidatorFn, ValidatorFn, Validators } from '@angular/forms';
 import type { FieldValidators } from '@dynamic-entity/core';
-import { VALIDATOR_REGISTRY } from '../tokens/injection-tokens';
+import { ASYNC_VALIDATOR_REGISTRY, VALIDATOR_REGISTRY } from '../tokens/injection-tokens';
 
 /**
  * ValidatorRegistryService — resolves validator configs / key strings to Angular ValidatorFns.
@@ -9,6 +9,7 @@ import { VALIDATOR_REGISTRY } from '../tokens/injection-tokens';
 @Injectable({ providedIn: 'root' })
 export class ValidatorRegistryService {
   private readonly consumerRegistry = inject(VALIDATOR_REGISTRY, { optional: true }) ?? new Map();
+  private readonly asyncRegistry = inject(ASYNC_VALIDATOR_REGISTRY, { optional: true }) ?? new Map();
 
   /**
    * Resolve a validator key string to a ValidatorFn.
@@ -62,5 +63,26 @@ export class ValidatorRegistryService {
     }
 
     return fnList;
+  }
+
+  /**
+   * Resolve the async validators a field names, in `validators.customAsync`.
+   *
+   * Async validators are deliberately a separate registry and a separate config key: Angular
+   * attaches them through `setAsyncValidators`, runs them only once the synchronous ones
+   * pass, and holds the control in `pending` until they settle. Mixing them into the
+   * synchronous list would silently never run them.
+   *
+   * An unknown name is skipped rather than throwing, matching the synchronous behaviour.
+   */
+  resolveAsyncFromConfig(config?: FieldValidators | string[]): AsyncValidatorFn[] {
+    if (!config || Array.isArray(config)) return [];
+
+    const out: AsyncValidatorFn[] = [];
+    for (const key of config.customAsync ?? []) {
+      const fn = this.asyncRegistry.get(key);
+      if (fn) out.push(fn);
+    }
+    return out;
   }
 }
