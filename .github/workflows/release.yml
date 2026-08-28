@@ -85,6 +85,12 @@ jobs:
           [ "$FAILED" = "0" ] || exit 1
           echo "All three packages are at $TAG"
 
+      # Paths are written as ./packages/... deliberately. `npm publish packages/core` reads
+      # a one-slash argument as GitHub shorthand for a repository and tries to fetch
+      # ssh://git@github.com/packages/core.git, which fails with exit 128; the leading ./
+      # forces it to be treated as a directory. The two-slash dist paths happen to escape
+      # this, which is what made it easy to miss.
+      #
       # Dependency order matters: each package peer-depends on the one before it, so a
       # consumer installing mid-publish would otherwise resolve a peer that is not there yet.
       # core is published from its own root (files: ["dist"]); the Angular packages publish
@@ -94,19 +100,19 @@ jobs:
       # restricted, and publishing it private would look like success.
       - name: Publish @dynamic-entity/core
         if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
-        run: npm publish packages/core --access public --provenance
+        run: npm publish ./packages/core --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish ngx-dynamic-entity
         if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
-        run: npm publish packages/ngx-dynamic-entity/dist --access public --provenance
+        run: npm publish ./packages/ngx-dynamic-entity/dist --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish ngx-dynamic-entity-builder
         if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
-        run: npm publish packages/ngx-dynamic-entity-builder/dist --access public --provenance
+        run: npm publish ./packages/ngx-dynamic-entity-builder/dist --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -114,6 +120,6 @@ jobs:
       - name: Pack only (dry run)
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true' }}
         run: |
-          npm pack packages/core --dry-run
-          npm pack packages/ngx-dynamic-entity/dist --dry-run
-          npm pack packages/ngx-dynamic-entity-builder/dist --dry-run
+          npm pack ./packages/core --dry-run
+          npm pack ./packages/ngx-dynamic-entity/dist --dry-run
+          npm pack ./packages/ngx-dynamic-entity-builder/dist --dry-run
