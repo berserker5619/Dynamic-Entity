@@ -7,6 +7,65 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.2.0] — 2026-08-28
+
+Work since 1.1.0: config can be checked before it is stored, a save can be
+vetoed, referenced-field drift is visible on the form, and the field components
+stopped re-rendering on every change-detection pass.
+
+### Added
+
+- **`validateConfig` and a JSON Schema.** A config is data, so TypeScript cannot
+  police it — this repository's own dataset shipped field types that do not exist
+  and nothing noticed. `validateConfig` reports every problem (unknown types,
+  duplicate ids, `showWhen`/`parentField` pointing nowhere, `colSpan` outside the
+  12-column grid). `entity-form-config.schema.json` ships as
+  `@dynamic-entity/core/schema` for editor completion.
+- **Async validators and an abortable `beforeSave`.** Name them with
+  `validators.customAsync` and `provideNgxDynamicEntity({ asyncValidators })`.
+  Pending checks block submit. The `${entity}:beforeSave` hook can now return
+  `false` or throw to stop the save; `(saveRejected)` reports why.
+- **Runtime drift.** `hasDrift` was written by the builder and ignored at
+  runtime. A referenced field whose source has changed now shows a `role="status"`
+  note naming that source.
+- **A stylesheet, a typed field contract, and overridable validation messages.**
+  `ngx-dynamic-entity/styles.css` is optional. Custom fields implement
+  `DynamicFieldComponentContract`. Messages resolve through
+  `ValidationMessagesService`, overridable per key via
+  `provideNgxDynamicEntity({ validationMessages })`.
+- **`insuranceClaims` in the demo dataset**, with Playwright coverage for the
+  happy path, hostile edges, and composed multi-feature flows.
+
+### Fixed
+
+- **`autoPatch` actually appears.** Entity-ref selection publishes after the
+  control updates, readonly text tracks the patched value, and hosted fields
+  share the form's selection bus so a concurrent form cannot leak a pick.
+- **The builder cache is dropped on save.** `ConfigSourceService.clearCache`
+  existed and was never called, so a referenced-field lookup after an edit still
+  saw the copy loaded before it.
+- **`@Input() config` is no longer mutated.** Normalisation is an accessor over a
+  copy. The builder's label setters copy only the path to the edited field
+  instead of cloning the whole config per keystroke.
+- **core no longer publishes its build toolchain.** A derived `dist` manifest
+  ships; scripts and `devDependencies` do not.
+- Icon-only builder actions have accessible names; builder rows are keyboard
+  operable; tab switches move focus into a `tabpanel`; three contrast failures
+  below WCAG AA are corrected.
+
+### Changed
+
+- Field components are **OnPush**. External mutations (`markAllAsTouched`,
+  `patchForm`, `autoPatch`, `patchOnTrue`) refresh the hosted component so an
+  OnPush field does not keep showing a stale value.
+
+### Documentation
+
+- CONTRIBUTING, SECURITY.md, issue and PR templates. `mongodb-memory-server`
+  removed from the root (unused, ~200MB).
+
+---
+
 ## [1.1.0] — 2026-08-28
 
 The headline of this release is that **1.0.0 could not be installed**. Its peer ranges
@@ -142,5 +201,6 @@ Every fenced code block in every README is now extracted and compiled in CI.
 
 Initial public release.
 
+[1.2.0]: https://github.com/berserker5619/Dynamic-Entity/releases/tag/v1.2.0
 [1.1.0]: https://github.com/berserker5619/Dynamic-Entity/releases/tag/v1.1.0
 [1.0.0]: https://github.com/berserker5619/Dynamic-Entity/releases/tag/v1.0.0
