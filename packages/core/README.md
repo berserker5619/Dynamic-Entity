@@ -25,6 +25,7 @@ npm install @dynamic-entity/core
 - **Canonical field catalog** — `FIELD_TYPE_CATALOG` is the single source of truth for the 19 field type keys (`text`, `textarea`, `number`, `currency`, `email`, `password`, `date`, `datetime`, `monthYear`, `dropdown`, `radio`, `checkbox`, `boolean`, `multiSelect`, `entity-ref`, `group`, `array`, `image`, `file`), consumed by both the renderer and the builder.
 - **Entity reference contracts** — `EntityReferenceLoader`, option normalisation, and pure cascade filtering (`lookupFilter` / `lookupPath`).
 - **File contracts** — canonical `FileRef` and `FileUploadHandler`, shared by the image and file field types.
+- **Config validation** — `validateConfig` checks structure, field types against the catalog, globally-unique ids, and references that would never resolve. A JSON Schema for editor completion ships alongside it at `@dynamic-entity/core/schema`.
 - **Record migration** — `migrateRecord`, `needsMigration`, `stampRecord` and `validateMigrations` move a saved record forward as a config's `version` changes. Pure, so the same steps run in the browser and on a server.
 
 ---

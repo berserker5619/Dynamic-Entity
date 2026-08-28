@@ -10,10 +10,12 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
-    }
+    },
+    "./schema": "./entity-form-config.schema.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "entity-form-config.schema.json"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",

@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/berserker5619/Dynamic-Entity/blob/main/packages/core/entity-form-config.schema.json",
+  "title": "EntityFormConfig",
+  "description": "A Dynamic Entity form schema. Add \"$schema\" to a config file for editor completion and validation. For checks this cannot express — duplicate ids across tabs, a showWhen naming a field that does not exist — use validateConfig() from @dynamic-entity/core.",
+  "type": "object",
+  "required": ["entity", "tabs"],
+  "additionalProperties": true,
+  "properties": {
+    "$schema": { "type": "string" },
+    "entity": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Entity key. Used for hook names (`${entity}:beforeSave`) and config lookups."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Config schema version. Raise it when a change needs saved records migrated; see RecordMigration."
+    },
+    "name": { "$ref": "#/$defs/localizedText" },
+    "defaultLanguage": { "type": "string" },
+    "isSystemDefined": { "type": "boolean" },
+    "maskData": {
+      "type": "boolean",
+      "description": "Mask every field for masked roles. Presentational only — enforce authorization on the server."
+    },
+    "permissions": { "$ref": "#/$defs/permissions" },
+    "tabs": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/tab" }
+    }
+  },
+  "$defs": {
+    "localizedText": {
+      "type": "object",
+      "description": "Language code to text, e.g. { \"en\": \"Name\", \"de\": \"Name\" }.",
+      "additionalProperties": { "type": "string" }
+    },
+    "permissions": {
+      "type": "object",
+      "description": "Role lists per action. Presentational only — the browser stops rendering, it does not stop data arriving.",
+      "additionalProperties": false,
+      "properties": {
+        "view": { "type": "array", "items": { "type": "string" } },
+        "edit": { "type": "array", "items": { "type": "string" } },
+        "delete": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "fieldType": {
+      "description": "Must match a type in FIELD_TYPE_CATALOG, or one registered with registerFieldType.",
+      "type": "string",
+      "enum": [
+        "text",
+        "textarea",
+        "number",
+        "currency",
+        "email",
+        "password",
+        "date",
+        "datetime",
+        "monthYear",
+        "dropdown",
+        "radio",
+        "checkbox",
+        "boolean",
+        "multiSelect",
+        "entity-ref",
+        "group",
+        "array",
+        "image",
+        "file"
+      ]
+    },
+    "validators": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": { "type": "boolean" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "minLength": { "type": "integer", "minimum": 0 },
+        "maxLength": { "type": "integer", "minimum": 0 },
+        "pattern": { "type": "string", "description": "Regular expression source." },
+        "email": {
+          "type": "boolean",
+          "description": "Built-in email check. Independent of `pattern`; a field may have both."
+        },
+        "custom": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names registered via provideNgxDynamicEntity({ validators })."
+        },
+        "customAsync": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names registered via provideNgxDynamicEntity({ asyncValidators })."
+        }
+      }
+    },
+    "entityReference": {
+      "type": "object",
+      "required": ["enabled"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "linkedEntityKey": { "type": "string", "description": "Key of a registered entity-ref loader." },
+        "displayFields": { "type": "array", "items": { "type": "string" } },
+        "filters": { "type": "object" },
+        "parentField": {
+          "type": "string",
+          "description": "Sibling field id whose value filters these options. Must exist, or the cascade never loads."
+        },
+        "lookupFilter": { "type": "string" },
+        "lookupPath": { "type": "string" }
+      }
+    },
+    "table": {
+      "type": "object",
+      "description": "Display metadata for a consumer's own table. The library ships no table.",
+      "additionalProperties": false,
+      "properties": {
+        "visible": { "type": "boolean" },
+        "sortable": { "type": "boolean" },
+        "filterable": { "type": "boolean" },
+        "globalSearch": { "type": "boolean" },
+        "isName": { "type": "boolean" },
+        "isStatus": { "type": "boolean" },
+        "arrayVisible": { "type": "boolean" },
+        "width": { "type": "string" }
+      }
+    },
+    "field": {
+      "type": "object",
+      "required": ["id", "type", "label"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z_][A-Za-z0-9_-]*$",
+          "description": "Unique across the WHOLE config, not just its tab — rules, showWhen and autoPatch address fields by bare id."
+        },
+        "type": { "$ref": "#/$defs/fieldType" },
+        "label": { "$ref": "#/$defs/localizedText" },
+        "placeholder": { "$ref": "#/$defs/localizedText" },
+        "visibility": { "type": "boolean" },
+        "systemDefault": { "type": "boolean" },
+        "readonly": { "type": "boolean" },
+        "disabled": { "type": "boolean" },
+        "maskData": { "type": "boolean" },
+        "criticalField": { "type": "boolean" },
+        "colSpan": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "refererField": { "type": "string", "description": "Dot-path override for data binding." },
+        "listName": {
+          "type": "string",
+          "description": "Named list key. Inline `options` win when both are present."
+        },
+        "defaultValue": {},
+        "validators": { "$ref": "#/$defs/validators" },
+        "options": { "type": "array", "items": { "$ref": "#/$defs/localizedText" } },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/field" },
+          "description": "Nested fields for `group`; row column definitions for `array`."
+        },
+        "table": { "$ref": "#/$defs/table" },
+        "entityReference": { "$ref": "#/$defs/entityReference" },
+        "showWhen": {
+          "type": "object",
+          "description": "Record-level conditional visibility. Keys are field ids that must exist."
+        },
+        "isProfileImage": { "type": "boolean" },
+        "isHeaderToggle": { "type": "boolean" },
+        "showOnMinimize": { "type": "boolean" },
+        "isReferenced": { "type": "boolean" },
+        "referencedEntityKey": { "type": "string" },
+        "referencedFieldId": { "type": "string" },
+        "hasDrift": { "type": "boolean" }
+      }
+    },
+    "tab": {
+      "type": "object",
+      "required": ["id", "label"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "$ref": "#/$defs/localizedText" },
+        "visibility": { "type": "boolean" },
+        "systemDefault": { "type": "boolean" },
+        "isPrimaryTab": { "type": "boolean" },
+        "flatData": {
+          "type": "boolean",
+          "description": "Store this tab's fields at the record root instead of under the tab id. Applies to reading initialData and to what formSubmit emits."
+        },
+        "maskData": { "type": "boolean" },
+        "moduleName": { "type": "string" },
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/tab" } }
+      }
+    }
+  }
+}

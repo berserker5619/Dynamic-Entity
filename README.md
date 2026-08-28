@@ -138,6 +138,39 @@ The same shape applies in **both directions**: `initialData` is read with it, an
 
 ---
 
+## ✅ Validating a config
+
+A config is data — authored in the builder, stored, fetched from an API — so TypeScript cannot
+police it. Check one before anything renders it:
+
+```typescript
+import { validateConfig, formatConfigProblems, type EntityFormConfig } from '@dynamic-entity/core';
+
+declare const config: EntityFormConfig;
+
+const problems = validateConfig(config);
+if (problems.some(p => p.level === 'error')) {
+  throw new Error(`Invalid config:
+${formatConfigProblems(problems)}`);
+}
+```
+
+It reports every problem rather than stopping at the first, and catches what a type cannot:
+a field type absent from the catalog, a field id duplicated across tabs (ids are global —
+rules and `showWhen` address fields by bare id), a `showWhen` naming a field that does not
+exist, and a cascade whose `parentField` is missing. `warning` means usable but suspicious;
+`error` means it will not render correctly.
+
+Pass `additionalFieldTypes` for any type you registered yourself.
+
+For editor completion, a JSON Schema ships too:
+
+```json
+{ "$schema": "./node_modules/@dynamic-entity/core/entity-form-config.schema.json", "entity": "clients", "tabs": [] }
+```
+
+---
+
 ## 🔄 Schema versioning
 
 `EntityFormConfig.version` and a record's `_configVersion` describe which shape a record was
