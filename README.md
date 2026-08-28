@@ -215,6 +215,13 @@ cd packages/demo-angular && npx playwright test
 
 ---
 
+## 📝 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md). The three packages share a version and are released
+together.
+
+---
+
 ## 📄 License
 
 [MIT](LICENSE) © Nizamudeen

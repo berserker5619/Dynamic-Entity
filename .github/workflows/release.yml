@@ -123,17 +123,40 @@ jobs:
       #
       # --access public is required for @dynamic-entity/core: a scoped package defaults to
       # restricted, and publishing it private would look like success.
+      # Each publish is skipped when that exact version is already on the registry, so
+      # re-running a release — or tagging a commit that was published by dispatch — is a
+      # no-op rather than a hard failure on "You cannot publish over the previously
+      # published versions". A genuine failure still fails: only the already-published case
+      # is tolerated.
       - name: Publish @dynamic-entity/core
         if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
-        run: npm publish ./packages/core --access public --provenance
+        run: |
+          VERSION=$(node -p "require('./packages/core/package.json').version")
+          if npm view "@dynamic-entity/core@$VERSION" version >/dev/null 2>&1; then
+            echo "@dynamic-entity/core@$VERSION is already published — skipping."
+          else
+            npm publish ./packages/core --access public --provenance
+          fi
 
       - name: Publish ngx-dynamic-entity
         if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
-        run: npm publish ./packages/ngx-dynamic-entity/dist --access public --provenance
+        run: |
+          VERSION=$(node -p "require('./packages/ngx-dynamic-entity/dist/package.json').version")
+          if npm view "ngx-dynamic-entity@$VERSION" version >/dev/null 2>&1; then
+            echo "ngx-dynamic-entity@$VERSION is already published — skipping."
+          else
+            npm publish ./packages/ngx-dynamic-entity/dist --access public --provenance
+          fi
 
       - name: Publish ngx-dynamic-entity-builder
         if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
-        run: npm publish ./packages/ngx-dynamic-entity-builder/dist --access public --provenance
+        run: |
+          VERSION=$(node -p "require('./packages/ngx-dynamic-entity-builder/dist/package.json').version")
+          if npm view "ngx-dynamic-entity-builder@$VERSION" version >/dev/null 2>&1; then
+            echo "ngx-dynamic-entity-builder@$VERSION is already published — skipping."
+          else
+            npm publish ./packages/ngx-dynamic-entity-builder/dist --access public --provenance
+          fi
 
       # On a dry run, show exactly what would have gone out.
       - name: Pack only (dry run)
