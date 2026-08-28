@@ -69,7 +69,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
               type="button"
               [disabled]="i === 0 || !canEditTab(tab)"
               (click)="store.moveTab(tab.id, -1)"
-              matTooltip="Move up"
+              matTooltip="Move up" aria-label="Move tab up"
             >
               <mat-icon>arrow_upward</mat-icon>
             </button>
@@ -78,7 +78,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
               type="button"
               [disabled]="i === count - 1 || !canEditTab(tab)"
               (click)="store.moveTab(tab.id, 1)"
-              matTooltip="Move down"
+              matTooltip="Move down" aria-label="Move tab down"
             >
               <mat-icon>arrow_downward</mat-icon>
             </button>
@@ -88,7 +88,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
               color="warn"
               [disabled]="!canEditTab(tab)"
               (click)="store.removeTab(tab.id)"
-              matTooltip="Remove tab"
+              matTooltip="Remove tab" aria-label="Remove tab"
             >
               <mat-icon>delete</mat-icon>
             </button>
@@ -170,7 +170,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
                     color="warn"
                     [disabled]="!canEditTab(sub)"
                     (click)="store.removeTab(sub.id)"
-                    matTooltip="Remove sub-tab"
+                    matTooltip="Remove sub-tab" aria-label="Remove sub-tab"
                   >
                     <mat-icon>delete</mat-icon>
                   </button>

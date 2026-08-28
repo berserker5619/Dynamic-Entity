@@ -25,8 +25,14 @@ import { getFieldTypeMeta } from '../field-catalog';
       data-testid="builder-field-row"
       [class.deb-field-row--active]="store.selectedFieldId() === field.id"
       (click)="store.selectField(field.id)"
+      (keydown.enter)="store.selectField(field.id)"
+      (keydown.space)="store.selectField(field.id); $event.preventDefault()"
+      role="button"
+      tabindex="0"
+      [attr.aria-pressed]="store.selectedFieldId() === field.id"
+      [attr.aria-label]="'Select field ' + fieldLabel(field)"
     >
-      <mat-icon class="deb-drag-handle" cdkDragHandle title="Drag to reorder">drag_indicator</mat-icon>
+      <mat-icon class="deb-drag-handle" cdkDragHandle aria-hidden="true" title="Drag to reorder (or use the move buttons)">drag_indicator</mat-icon>
       <mat-icon class="deb-field-type" [matTooltip]="fieldTypeLabel(field.type)">{{ fieldTypeIcon(field.type) }}</mat-icon>
       <div class="deb-field-meta">
         <div class="deb-row" style="gap:6px">
@@ -45,16 +51,19 @@ import { getFieldTypeMeta } from '../field-catalog';
 
       <button mat-icon-button type="button" [disabled]="index === 0"
         [attr.data-testid]="'row-up-' + field.id"
+        [attr.aria-label]="'Move ' + fieldLabel(field) + ' up'"
         (click)="store.moveField(field.id, -1); $event.stopPropagation()" matTooltip="Move up">
         <mat-icon>arrow_upward</mat-icon>
       </button>
       <button mat-icon-button type="button" [disabled]="index === totalCount - 1"
         [attr.data-testid]="'row-down-' + field.id"
+        [attr.aria-label]="'Move ' + fieldLabel(field) + ' down'"
         (click)="store.moveField(field.id, 1); $event.stopPropagation()" matTooltip="Move down">
         <mat-icon>arrow_downward</mat-icon>
       </button>
       <button mat-icon-button type="button"
         [attr.data-testid]="'row-duplicate-' + field.id"
+        [attr.aria-label]="'Duplicate ' + fieldLabel(field)"
         (click)="store.duplicateField(field.id); $event.stopPropagation()" matTooltip="Duplicate">
         <mat-icon>content_copy</mat-icon>
       </button>

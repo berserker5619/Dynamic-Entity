@@ -54,7 +54,7 @@ jobs:
       # passed green over three field types the renderer refused to draw.
       - name: E2E (pull-request subset)
         if: ${{ github.event_name != 'schedule' && github.event.inputs.full != 'true' }}
-        run: npx playwright test e2e/test-data-json-rendering.spec.ts e2e/demo.spec.ts
+        run: npx playwright test e2e/test-data-json-rendering.spec.ts e2e/demo.spec.ts e2e/accessibility.spec.ts
         working-directory: packages/demo-angular
 
       - name: E2E (full suite)

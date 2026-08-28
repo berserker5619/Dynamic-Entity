@@ -11,6 +11,8 @@ import {
   computed,
   inject,
   isDevMode,
+  ElementRef,
+  ViewChild,
   HostListener,
 } from '@angular/core';
 import { NgComponentOutlet } from '@angular/common';
@@ -188,6 +190,9 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   readonly sessionBaseline = signal<Record<string, any>>({});
   /** Critical fields the user has explicitly unlocked for editing. */
   readonly unlockedFields = signal<ReadonlySet<string>>(new Set<string>());
+
+  /** The active tab's field panel, focused after a tab switch. */
+  @ViewChild('formPanel') private formPanel?: ElementRef<HTMLElement>;
 
   // ─── Form ─────────────────────────────────────────────────────────────────
   form!: FormGroup;
@@ -387,8 +392,10 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   setActiveTab(tabId: string): void {
-    if (this.activeTab() !== tabId) this.activeTabChange.emit(tabId);
+    const changed = this.activeTab() !== tabId;
+    if (changed) this.activeTabChange.emit(tabId);
     this.activeTab.set(tabId);
+    if (changed) this.focusActivePanel();
     const parent = findTab(this.tabs, tabId);
     if (parent?.children?.length) {
       this.activeSubTab.set(parent.children[0].id);
@@ -398,7 +405,9 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   setActiveSubTab(subTabId: string): void {
+    const changed = this.activeSubTab() !== subTabId;
     this.activeSubTab.set(subTabId);
+    if (changed) this.focusActivePanel();
   }
 
   getFieldSpan(field: NestedFieldConfig): string {
@@ -883,6 +892,39 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     };
 
     return findInGroup(this.form);
+  }
+
+  /**
+   * Move focus into the newly shown panel.
+   *
+   * Activating a tab replaces everything below it while focus stays on the tab button, so a
+   * screen-reader or keyboard user is given no indication that the content changed and must
+   * tab back through the strip to reach it. Deferred a frame because the panel's contents
+   * are rendered by the change detection this call is part of.
+   */
+  private focusActivePanel(): void {
+    if (typeof requestAnimationFrame !== 'function') return;
+    requestAnimationFrame(() => this.formPanel?.nativeElement?.focus?.());
+  }
+
+  /** Accessible name for the field panel — it is the tabpanel for the active tab. */
+  get activeTabLabel(): string {
+    const tab = this.activeSubTabConfig ?? this.activeTabConfig;
+    return tab ? this.resolveTabLabel(tab) : '';
+  }
+
+  /**
+   * Why a referenced field is flagged.
+   *
+   * `hasDrift` was written by the builder and read by nothing at runtime, so a field whose
+   * source definition had changed since it was linked looked entirely normal to the person
+   * filling the form in.
+   */
+  driftHint(field: NestedFieldConfig): string {
+    const source = field.referencedEntityKey
+      ? `"${field.referencedEntityKey}"`
+      : 'its source entity';
+    return `This field is linked to ${source} and its definition there has changed since it was linked.`;
   }
 
   resolveTabLabel(tab: NestedTabConfig): string {

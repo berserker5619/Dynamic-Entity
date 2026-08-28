@@ -19,7 +19,8 @@
   <button mat-button type="button" (click)="copyJson()">
     <mat-icon>content_copy</mat-icon> Copy JSON
   </button>
-  <button mat-flat-button color="accent" type="button" [disabled]="!store.isValid()" (click)="doSave()">
+  <!-- primary, not accent: white on Material's default pink accent is 3.33:1, below AA. -->
+  <button mat-flat-button color="primary" type="button" [disabled]="!store.isValid()" (click)="doSave()">
     <mat-icon>save</mat-icon> Save
   </button>
 </mat-toolbar>

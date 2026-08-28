@@ -13,7 +13,8 @@
   font-family: var(--font-heading, sans-serif);
   font-size: 16px;
   font-weight: 700;
-  color: #0f172a;
+  /* On the indigo toolbar the previous #0f172a was 2.59:1; white is 6.87:1. */
+  color: #ffffff;
 }
 .deb-spacer {
   flex: 1 1 auto;

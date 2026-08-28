@@ -56,7 +56,7 @@ import { RuleFormComponent } from './rule-form.component';
             <button
               mat-icon-button
               type="button"
-              matTooltip="Move up"
+              matTooltip="Move up" aria-label="Move rule up"
               [attr.data-testid]="'rule-up-' + rule.id"
               (click)="store.moveRule(rule.id!, -1)"
             >
@@ -65,7 +65,7 @@ import { RuleFormComponent } from './rule-form.component';
             <button
               mat-icon-button
               type="button"
-              matTooltip="Move down"
+              matTooltip="Move down" aria-label="Move rule down"
               [attr.data-testid]="'rule-down-' + rule.id"
               (click)="store.moveRule(rule.id!, 1)"
             >

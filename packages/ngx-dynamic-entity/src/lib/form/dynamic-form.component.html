@@ -74,7 +74,18 @@
       </div>
     }
 
-    <!-- Module tab component OR Fields for active tab -->
+    <!--
+      One tabpanel per tab, wrapping both branches. Focus moves here on a tab switch, and a
+      module tab is still a tab — putting the panel semantics on only the fields branch left
+      a module tab with nowhere for focus to land.
+    -->
+    <div
+      role="tabpanel"
+      tabindex="-1"
+      #formPanel
+      class="ngx-form__tabpanel"
+      [attr.aria-label]="activeTabLabel"
+    >
     @if (activeTabModuleComponent) {
       <div class="ngx-form__module-panel" data-testid="module-panel">
         <ng-container *ngComponentOutlet="activeTabModuleComponent; inputs: (activeSubTabConfig || activeTabConfig)?.moduleInputs"></ng-container>
@@ -97,6 +108,19 @@
               [readonly]="isFieldReadonly(field)"
               [userRoles]="userRoles"
             />
+            @if (field.hasDrift) {
+              <!--
+                Drift was previously visible only in the builder, so a referenced field whose
+                source had changed looked completely normal to the person filling the form in.
+                role="status" rather than "alert": it is information, not an error.
+              -->
+              <span
+                class="ngx-field__drift"
+                role="status"
+                [attr.data-testid]="'field-' + field.id + '-drift'"
+                [title]="driftHint(field)"
+              >⚠ {{ driftHint(field) }}</span>
+            }
             @if (field.criticalField && !readonly) {
               <button
                 type="button"
@@ -120,6 +144,7 @@
         }
       </div>
     }
+    </div>
 
     <!-- Submit button — gated by RBAC and isSaving lock -->
     @if (!readonly && permissions.canEdit) {
