@@ -8,6 +8,16 @@ name: Release
 # went out by hand, with no verification — which is how a `main` field pointing at
 # dist/dist and a wildcard runtime dependency on the renderer both reached the registry.
 # Everything below exists to make that impossible to repeat.
+#
+# Authentication is npm trusted publishing (OIDC), not a token. A token-based publish failed
+# here with EOTP: the account requires 2FA for writes, and npm removed the automation tokens
+# that used to bypass it (November 2025 — granular tokens only). Trusted publishing issues a
+# short-lived credential scoped to this workflow, needs no NPM_TOKEN secret, and is not
+# subject to the 2FA prompt. It requires the id-token: write permission below, and npm
+# >= 11.5.1 on Node >= 22.14, which is why the publish steps re-pin Node.
+#
+# Each package must name this repository and workflow as a trusted publisher in its npm
+# settings before a publish will be accepted.
 
 on:
   push:
@@ -69,6 +79,21 @@ jobs:
       - name: README snippets compile
         run: node scripts/verify-consumer.mjs --angular 20 --readme
 
+      # Verification above runs on Node 20, which is what the Angular 17 build tooling
+      # supports. Trusted publishing needs npm >= 11.5.1 on Node >= 22.14, so the runtime is
+      # switched here rather than for the whole job — building on Node 24 is not something
+      # this repo's toolchain has been validated against.
+      - name: Node 24 for publishing
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Ensure npm supports trusted publishing
+        run: |
+          npm install -g npm@latest
+          echo "npm $(npm --version) on node $(node --version)"
+
       # A tag that disagrees with the manifests would publish a version nobody expects.
       - name: Tag matches package versions
         if: startsWith(github.ref, 'refs/tags/v')
@@ -101,20 +126,14 @@ jobs:
       - name: Publish @dynamic-entity/core
         if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
         run: npm publish ./packages/core --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish ngx-dynamic-entity
         if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
         run: npm publish ./packages/ngx-dynamic-entity/dist --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish ngx-dynamic-entity-builder
         if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
         run: npm publish ./packages/ngx-dynamic-entity-builder/dist --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # On a dry run, show exactly what would have gone out.
       - name: Pack only (dry run)
