@@ -52,6 +52,16 @@ describe('TextFieldComponent', () => {
     expect(val.textContent).toBe('Initial');
   });
 
+  it('updates the readonly display when the control is patched from outside', () => {
+    fixture.componentRef.setInput('readonly', true);
+    fixture.detectChanges();
+
+    component.control.patchValue('DE111111');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toBe('DE111111');
+  });
+
   /** Contextual messages are user-facing copy — pin each branch. */
   describe('errorMessage', () => {
     function withErrors(errors: Record<string, unknown> | null, touched = true): string {

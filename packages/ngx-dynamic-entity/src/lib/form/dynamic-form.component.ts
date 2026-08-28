@@ -761,6 +761,10 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
       const control = this.resolveTargetControl(autoPatch, targetId);
       control?.patchValue(value);
     }
+    // Readonly targets interpolate `control.value` under OnPush. `detectChanges` on the
+    // hosted component flushes that write immediately — `markForCheck` waits for a later
+    // tick that a Playwright selection never schedules.
+    this.fieldHosts?.forEach(host => host.refresh());
   }
 
   /**

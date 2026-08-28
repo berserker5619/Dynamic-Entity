@@ -1,6 +1,7 @@
 import {
   Component,
   ComponentRef,
+  Injector,
   Input,
   OnChanges, OnDestroy,
   SimpleChanges,
@@ -44,6 +45,12 @@ export class DynamicFieldComponent implements OnChanges, OnDestroy {
 
   private readonly fieldRegistry = inject(FieldRegistryService);
   private readonly rbacService = inject(RbacService);
+  /**
+   * Passed into `createComponent` so a hosted field sees this host's injector — including
+   * `DynamicFormComponent`'s scoped `EntityRefSelectionService`. Without it, a standalone
+   * field resolves the root bus and `autoPatch` never runs.
+   */
+  private readonly injector = inject(Injector);
 
   private componentRef: ComponentRef<unknown> | null = null;
 
@@ -71,10 +78,12 @@ export class DynamicFieldComponent implements OnChanges, OnDestroy {
     }
 
     this.fieldHost.clear();
-    this.componentRef = this.fieldHost.createComponent(ComponentClass);
+    this.componentRef = this.fieldHost.createComponent(ComponentClass, {
+      injector: this.injector,
+    });
     this.setInputs(this.componentRef, masked);
     this.watchControl();
-    this.componentRef.changeDetectorRef.markForCheck();
+    this.componentRef.changeDetectorRef.detectChanges();
   }
 
   /**
@@ -102,7 +111,7 @@ export class DynamicFieldComponent implements OnChanges, OnDestroy {
    * this, a blocked submit would mark the form touched and no error would appear.
    */
   refresh(): void {
-    this.componentRef?.changeDetectorRef.markForCheck();
+    this.componentRef?.changeDetectorRef.detectChanges();
   }
 
   /**
@@ -112,6 +121,10 @@ export class DynamicFieldComponent implements OnChanges, OnDestroy {
    * their own template. A control mutated externally is neither — and that is not an edge
    * case: patchForm, reset, autoPatch and patchOnTrue all do exactly that. Without this, a
    * field patched from a record would keep rendering its previous value.
+   *
+   * `detectChanges()` rather than `markForCheck()`: a selection that arrives from a native
+   * `change` event (or Playwright) may not be followed by another Angular tick, so a dirty
+   * flag would never be flushed. Running CD on the hosted component now is the copy showing up.
    *
    * Done here rather than in each of the eighteen field components: the host owns the
    * component reference, so one subscription covers every type including custom ones.

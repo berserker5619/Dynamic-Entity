@@ -4,7 +4,7 @@
     "version": 1,
     "name": {
       "en": "Complex Edge Case Test Suite",
-      "de": "Komplexer Härtetest-Datensatz"
+      "de": "Komplexer H\u00e4rtetest-Datensatz"
     },
     "isSystemDefined": true,
     "permissions": {
@@ -50,7 +50,7 @@
             "type": "text",
             "label": {
               "en": "Full Name",
-              "de": "Vollständiger Name"
+              "de": "Vollst\u00e4ndiger Name"
             },
             "visibility": true,
             "colSpan": 6,
@@ -866,6 +866,533 @@
             "colSpan": 12
           }
         ]
+      }
+    ]
+  },
+  {
+    "entity": "insuranceClaims",
+    "version": 2,
+    "name": {
+      "en": "Insurance Claims",
+      "de": "Versicherungsanspr\u00fcche"
+    },
+    "defaultLanguage": "en",
+    "permissions": {
+      "view": [
+        "admin",
+        "manager",
+        "viewer",
+        "IT_SUPPORT"
+      ],
+      "edit": [
+        "admin",
+        "manager"
+      ],
+      "delete": [
+        "admin"
+      ]
+    },
+    "tabs": [
+      {
+        "id": "claimant",
+        "label": {
+          "en": "Claimant",
+          "de": "Anspruchsteller"
+        },
+        "visibility": true,
+        "isPrimaryTab": true,
+        "flatData": true,
+        "fields": [
+          {
+            "id": "claimRef",
+            "type": "text",
+            "label": {
+              "en": "Claim Reference",
+              "de": "Schadennummer"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "criticalField": true,
+            "validators": {
+              "required": true,
+              "minLength": 4,
+              "maxLength": 24
+            },
+            "table": {
+              "visible": true,
+              "isName": true
+            }
+          },
+          {
+            "id": "claimantEmail",
+            "type": "email",
+            "label": {
+              "en": "Claimant Email"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "validators": {
+              "required": true,
+              "email": true
+            }
+          },
+          {
+            "id": "nationalId",
+            "type": "text",
+            "label": {
+              "en": "National Insurance No."
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "maskData": true,
+            "validators": {
+              "pattern": "^[A-Z]{2}[0-9]{6}[A-Z]$"
+            }
+          },
+          {
+            "id": "tier",
+            "type": "dropdown",
+            "label": {
+              "en": "Client Tier"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "listName": "clientTier"
+          },
+          {
+            "id": "isEmployee",
+            "type": "boolean",
+            "label": {
+              "en": "Staff Member?"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "defaultValue": false
+          },
+          {
+            "id": "staffId",
+            "type": "text",
+            "label": {
+              "en": "Staff Id"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "showWhen": {
+              "isEmployee": true
+            },
+            "validators": {
+              "required": true
+            }
+          },
+          {
+            "id": "copyRefToPolicy",
+            "type": "checkbox",
+            "label": {
+              "en": "Reuse reference as policy note"
+            },
+            "visibility": true,
+            "colSpan": 12,
+            "defaultValue": false,
+            "patchOnTrue": [
+              {
+                "from": "claimRef",
+                "to": "policyNote"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "policy",
+        "label": {
+          "en": "Policy",
+          "de": "Police"
+        },
+        "visibility": true,
+        "fields": [
+          {
+            "id": "insurer",
+            "type": "entity-ref",
+            "label": {
+              "en": "Insurer"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "entityReference": {
+              "enabled": true,
+              "linkedEntityKey": "companies",
+              "displayFields": [
+                "name"
+              ]
+            },
+            "autoPatch": {
+              "targetTab": "policy",
+              "mappings": [
+                {
+                  "source": "vat",
+                  "target": "insurerVat"
+                }
+              ]
+            }
+          },
+          {
+            "id": "insurerVat",
+            "type": "text",
+            "label": {
+              "en": "Insurer VAT"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "readonly": true
+          },
+          {
+            "id": "country",
+            "type": "entity-ref",
+            "label": {
+              "en": "Country"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "entityReference": {
+              "enabled": true,
+              "linkedEntityKey": "countries"
+            }
+          },
+          {
+            "id": "city",
+            "type": "entity-ref",
+            "label": {
+              "en": "City"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "entityReference": {
+              "enabled": true,
+              "linkedEntityKey": "cities",
+              "parentField": "country",
+              "lookupFilter": "country"
+            }
+          },
+          {
+            "id": "sumInsured",
+            "type": "currency",
+            "label": {
+              "en": "Sum Insured"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "validators": {
+              "required": true,
+              "min": 0,
+              "max": 10000000
+            }
+          },
+          {
+            "id": "excess",
+            "type": "number",
+            "label": {
+              "en": "Excess"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "validators": {
+              "min": 0
+            }
+          },
+          {
+            "id": "coverStart",
+            "type": "monthYear",
+            "label": {
+              "en": "Cover Start"
+            },
+            "visibility": true,
+            "colSpan": 4
+          },
+          {
+            "id": "policyNote",
+            "type": "textarea",
+            "label": {
+              "en": "Policy Note"
+            },
+            "visibility": true,
+            "colSpan": 12
+          },
+          {
+            "id": "syncedClientTier",
+            "type": "text",
+            "label": {
+              "en": "Synced Client Tier (Referenced)"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "isReferenced": true,
+            "referencedEntityKey": "clients",
+            "referencedFieldId": "name",
+            "hasDrift": true,
+            "referencedSnapshot": {
+              "label": {
+                "en": "Client Name"
+              },
+              "type": "text",
+              "validators": {
+                "required": true,
+                "minLength": 2
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "incident",
+        "label": {
+          "en": "Incident",
+          "de": "Vorfall"
+        },
+        "visibility": true,
+        "children": [
+          {
+            "id": "incidentDetails",
+            "label": {
+              "en": "Details"
+            },
+            "visibility": true,
+            "fields": [
+              {
+                "id": "incidentDate",
+                "type": "date",
+                "label": {
+                  "en": "Incident Date"
+                },
+                "visibility": true,
+                "colSpan": 4,
+                "validators": {
+                  "required": true
+                }
+              },
+              {
+                "id": "reportedAt",
+                "type": "datetime",
+                "label": {
+                  "en": "Reported At"
+                },
+                "visibility": true,
+                "colSpan": 4
+              },
+              {
+                "id": "severity",
+                "type": "radio",
+                "label": {
+                  "en": "Severity"
+                },
+                "visibility": true,
+                "colSpan": 4,
+                "options": [
+                  {
+                    "en": "Low"
+                  },
+                  {
+                    "en": "Medium"
+                  },
+                  {
+                    "en": "High"
+                  }
+                ]
+              },
+              {
+                "id": "damageTypes",
+                "type": "multiSelect",
+                "label": {
+                  "en": "Damage Types"
+                },
+                "visibility": true,
+                "colSpan": 6,
+                "options": [
+                  {
+                    "en": "Fire"
+                  },
+                  {
+                    "en": "Flood"
+                  },
+                  {
+                    "en": "Theft"
+                  },
+                  {
+                    "en": "Impact"
+                  }
+                ]
+              },
+              {
+                "id": "narrative",
+                "type": "textarea",
+                "label": {
+                  "en": "What happened"
+                },
+                "visibility": true,
+                "colSpan": 12,
+                "validators": {
+                  "maxLength": 2000
+                }
+              },
+              {
+                "id": "location",
+                "type": "group",
+                "label": {
+                  "en": "Location"
+                },
+                "visibility": true,
+                "colSpan": 12,
+                "children": [
+                  {
+                    "id": "street",
+                    "type": "text",
+                    "label": {
+                      "en": "Street"
+                    },
+                    "visibility": true,
+                    "colSpan": 6
+                  },
+                  {
+                    "id": "postcode",
+                    "type": "text",
+                    "label": {
+                      "en": "Postcode"
+                    },
+                    "visibility": true,
+                    "colSpan": 3
+                  },
+                  {
+                    "id": "locality",
+                    "type": "text",
+                    "label": {
+                      "en": "Town"
+                    },
+                    "visibility": true,
+                    "colSpan": 3
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "incidentAttachments",
+            "label": {
+              "en": "Attachments"
+            },
+            "visibility": true,
+            "fields": [
+              {
+                "id": "claimantPhoto",
+                "type": "image",
+                "label": {
+                  "en": "Claimant Photo"
+                },
+                "visibility": true,
+                "colSpan": 6,
+                "isProfileImage": true
+              },
+              {
+                "id": "lossReport",
+                "type": "file",
+                "label": {
+                  "en": "Loss Adjuster Report (PDF)"
+                },
+                "visibility": true,
+                "colSpan": 6
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "settlement",
+        "label": {
+          "en": "Settlement"
+        },
+        "visibility": true,
+        "fields": [
+          {
+            "id": "lineItems",
+            "type": "array",
+            "label": {
+              "en": "Settlement Line Items"
+            },
+            "visibility": true,
+            "colSpan": 12,
+            "children": [
+              {
+                "id": "itemDescription",
+                "type": "text",
+                "label": {
+                  "en": "Description"
+                },
+                "visibility": true,
+                "colSpan": 6,
+                "validators": {
+                  "required": true
+                },
+                "table": {
+                  "arrayVisible": true
+                }
+              },
+              {
+                "id": "itemAmount",
+                "type": "currency",
+                "label": {
+                  "en": "Amount"
+                },
+                "visibility": true,
+                "colSpan": 3,
+                "validators": {
+                  "required": true,
+                  "min": 0
+                },
+                "table": {
+                  "arrayVisible": true
+                }
+              },
+              {
+                "id": "itemApproved",
+                "type": "boolean",
+                "label": {
+                  "en": "Approved"
+                },
+                "visibility": true,
+                "colSpan": 3,
+                "defaultValue": false
+              }
+            ]
+          },
+          {
+            "id": "settlementTotal",
+            "type": "currency",
+            "label": {
+              "en": "Settlement Total"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "validators": {
+              "min": 0
+            }
+          },
+          {
+            "id": "auditorPin",
+            "type": "password",
+            "label": {
+              "en": "Auditor PIN"
+            },
+            "visibility": true,
+            "colSpan": 4,
+            "maskData": true
+          }
+        ]
+      },
+      {
+        "id": "claimDocuments",
+        "label": {
+          "en": "Documents"
+        },
+        "visibility": true,
+        "moduleName": "documents-view"
       }
     ]
   }

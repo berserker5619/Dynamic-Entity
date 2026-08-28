@@ -36,7 +36,6 @@ import { EntityRefSelectionService } from '../services/entity-ref-selection.serv
             [id]="'field-' + field.id"
             [formControl]="$any(control)"
             [attr.disabled]="field.disabled ? true : null"
-            (change)="onSelectionChange()"
           >
             <option value="">{{ placeholder || 'Select...' }}</option>
             @for (option of options(); track option.value) {
@@ -86,6 +85,9 @@ export class EntityRefFieldComponent implements OnInit {
     if (this.masked) return;
     void this.reload();
     this.watchParent();
+    this.control?.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(value => this.publishSelection(String(value ?? '')));
   }
 
   /** Reload options against the parent's current value. */
@@ -110,8 +112,21 @@ export class EntityRefFieldComponent implements OnInit {
     }
   }
 
-  onSelectionChange(): void {
-    const selected = this.options().find(o => String(o.value) === String(this.control.value));
+  /**
+   * Publish the selected option so autoPatch can copy from its record.
+   *
+   * Driven from `valueChanges` rather than the select's `change` event: that event is the
+   * same one the `formControl` directive listens to, so reading the control inside a
+   * template `(change)` handler can see the previous value. `valueChanges` fires after the
+   * model has updated — including Playwright `selectOption`, which updates the control
+   * through the value accessor.
+   */
+  onSelectionChange(value?: string): void {
+    this.publishSelection(value ?? String(this.control?.value ?? ''));
+  }
+
+  private publishSelection(current: string): void {
+    const selected = this.options().find(o => String(o.value) === current);
     this.selectionBus.emit(this.field.id, selected ?? null);
   }
 

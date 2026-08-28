@@ -116,7 +116,13 @@ export class AppComponent implements OnInit {
   }
 
   onRowClick(record: VersionedRecord) {
-    this.selectedRecord.set(record);
+    // List rows may be a masked copy (`XXXXXXXXX` in place of real values). The form must
+    // open the stored record — masking is a render concern, not a data one.
+    const id = record['_id'] as string | undefined;
+    const stored = id
+      ? (this.store.getAllRecords(this.selectedEntity()).find(r => r['_id'] === id) as VersionedRecord | undefined)
+      : undefined;
+    this.selectedRecord.set(stored ?? record);
     this.view.set('form');
   }
 
@@ -165,8 +171,43 @@ export class AppComponent implements OnInit {
     return String(value ?? '');
   }
 
+  /** The field a config marks as its display name, if any. */
+  private nameFieldId(): string | null {
+    const walk = (fields: any[] | undefined): string | null => {
+      for (const f of fields ?? []) {
+        if (f?.table?.isName) return f.id as string;
+        const nested = walk(f?.children);
+        if (nested) return nested;
+      }
+      return null;
+    };
+    const walkTabs = (tabs: any[] | undefined): string | null => {
+      for (const t of tabs ?? []) {
+        const found = walk(t?.fields) ?? walkTabs(t?.children);
+        if (found) return found;
+      }
+      return null;
+    };
+    return walkTabs((this.config() as any)?.tabs);
+  }
+
   getRecordLabel(rec: VersionedRecord): string {
     if (!rec) return 'Record';
+
+    // `table.isName` is how a config declares its display field. Honouring it first means a
+    // new entity labels its rows correctly without being added to the guesswork below.
+    const nameField = this.nameFieldId();
+    if (nameField) {
+      const direct = rec[nameField];
+      if (direct) return this.asText(direct);
+      for (const val of Object.values(rec)) {
+        if (val && typeof val === 'object' && !Array.isArray(val)) {
+          const nested = (val as Record<string, unknown>)[nameField];
+          if (nested) return this.asText(nested);
+        }
+      }
+    }
+
     if (rec['name'] && rec['company'] && rec['status']) {
       // A dropdown value is a language-keyed object — resolve it before interpolating,
       // or the row reads "[object Object]".

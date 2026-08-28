@@ -1,10 +1,12 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { FormControl } from '@angular/forms';
 import type { EntityFormConfig, NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_ROLES } from '../../tokens/injection-tokens';
 import { provideFieldTypes } from '../../providers/provide-field-types';
 import { FieldRegistryService } from '../../services/field-registry.service';
+import { EntityRefSelectionService } from '../../services/entity-ref-selection.service';
 import { DynamicFieldComponent } from './dynamic-field.component';
 
 @Component({ selector: 'mock-text', standalone: true, template: '' })
@@ -141,5 +143,69 @@ describe('DynamicFieldComponent', () => {
     component.control = undefined as unknown as FormControl;
     component.ngOnChanges({});
     expect(spy).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Hosted field components must see the same injector as `ngx-dynamic-field` — in particular
+ * a form-scoped `EntityRefSelectionService`. `createComponent` without an injector falls
+ * back to the environment injector, so autoPatch subscribed on the form never hears the
+ * field.
+ */
+@Component({ selector: 'mock-ref', standalone: true, template: '' })
+class MockRefFieldComponent {
+  @Input() field!: NestedFieldConfig;
+  @Input() control!: FormControl;
+  @Input() language!: string;
+  @Input() readonly!: boolean;
+  @Input() masked!: boolean;
+  readonly bus = inject(EntityRefSelectionService);
+}
+
+@Component({
+  standalone: true,
+  imports: [DynamicFieldComponent],
+  providers: [EntityRefSelectionService],
+  template: `
+    <ngx-dynamic-field
+      [field]="field"
+      [control]="control"
+      [config]="hostConfig"
+      currentTabId="main"
+    />
+  `,
+})
+class HostWithScopedBusComponent {
+  field: NestedFieldConfig = { id: 'company', type: 'entity-ref', label: { en: 'Company' } };
+  control = new FormControl('');
+  hostConfig: EntityFormConfig = {
+    entity: 'person',
+    tabs: [{ id: 'main', label: { en: 'Main' }, fields: [this.field] }],
+  };
+  readonly bus = inject(EntityRefSelectionService);
+}
+
+describe('DynamicFieldComponent — hosted injector', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('gives the hosted field the parent component\'s EntityRefSelectionService', async () => {
+    await TestBed.configureTestingModule({
+      imports: [HostWithScopedBusComponent],
+      providers: [
+        provideFieldTypes({ 'entity-ref': MockRefFieldComponent }),
+        EntityRefSelectionService,
+      ],
+    }).compileComponents();
+
+    const host = TestBed.createComponent(HostWithScopedBusComponent);
+    host.detectChanges();
+
+    const field = host.debugElement.query(By.directive(DynamicFieldComponent))
+      .componentInstance as DynamicFieldComponent;
+    const hosted = (field as unknown as { componentRef: { instance: MockRefFieldComponent } })
+      .componentRef.instance;
+
+    expect(hosted.bus).toBe(host.componentInstance.bus);
+    expect(hosted.bus).not.toBe(TestBed.inject(EntityRefSelectionService));
   });
 });

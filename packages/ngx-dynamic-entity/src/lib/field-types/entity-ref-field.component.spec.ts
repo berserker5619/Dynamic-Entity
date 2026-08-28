@@ -150,7 +150,6 @@ describe('EntityRefFieldComponent', () => {
     bus.selection$.subscribe(s => seen.push(s));
 
     fixture.componentInstance.control.setValue('de');
-    fixture.componentInstance.onSelectionChange();
 
     expect(seen).toEqual([
       { fieldId: 'country', option: expect.objectContaining({ value: 'de', label: 'Germany' }) },
@@ -249,8 +248,56 @@ describe('EntityRefFieldComponent — masking, labels and absent parents', () =>
     bus.selection$.subscribe(e => seen.push(e));
 
     fixture.componentInstance.control.setValue('fr');
-    fixture.componentInstance.onSelectionChange();
 
     expect(seen).toEqual([{ fieldId: 'country', option: COUNTRIES[1] }]);
+  });
+});
+
+/**
+ * Selection is published from `valueChanges`, which fires after the formControl directive
+ * has written the new value. Driving the DOM `change` event is how a real select (and
+ * Playwright) update the control — these specs cover that path, not a direct `setValue`.
+ */
+describe('EntityRefFieldComponent — selection published from a real change event', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('publishes the option matching the newly chosen value', async () => {
+    const fixture = await setup(
+      { id: 'country', type: 'entity-ref', label: { en: 'Country' } },
+      { country: () => Promise.resolve(COUNTRIES) },
+    );
+
+    const bus = TestBed.inject(EntityRefSelectionService);
+    const seen: any[] = [];
+    bus.selection$.subscribe(e => seen.push(e));
+
+    const select: HTMLSelectElement = fixture.nativeElement.querySelector('select');
+    select.value = 'fr';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0].fieldId).toBe('country');
+    expect(seen[0].option?.value).toBe('fr');
+    // The record is what autoPatch copies from, so an empty one is a silent no-op downstream.
+    expect(seen[0].option?.record).toBeDefined();
+  });
+
+  it('publishes null when the selection is cleared', async () => {
+    const fixture = await setup(
+      { id: 'country', type: 'entity-ref', label: { en: 'Country' } },
+      { country: () => Promise.resolve(COUNTRIES) },
+    );
+
+    const bus = TestBed.inject(EntityRefSelectionService);
+    const seen: any[] = [];
+    bus.selection$.subscribe(e => seen.push(e));
+
+    const select: HTMLSelectElement = fixture.nativeElement.querySelector('select');
+    select.value = '';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(seen[0].option).toBeNull();
   });
 });

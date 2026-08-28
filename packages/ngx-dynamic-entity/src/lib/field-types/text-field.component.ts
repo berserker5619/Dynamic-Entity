@@ -1,5 +1,6 @@
-import { Component, Input, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, OnDestroy, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { resolveLabel } from '@dynamic-entity/core';
 import { ValidationMessagesService } from '../services/validation-messages.service';
@@ -21,7 +22,7 @@ import { ValidationMessagesService } from '../services/validation-messages.servi
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
       } @else if (readonly) {
-        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ control.value ?? '—' }}</span>
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ displayValue() ?? '—' }}</span>
       } @else {
         <input
           [id]="field.id"
@@ -40,14 +41,33 @@ import { ValidationMessagesService } from '../services/validation-messages.servi
     </div>
   `,
 })
-export class TextFieldComponent {
+export class TextFieldComponent implements OnDestroy {
   private readonly messages = inject(ValidationMessagesService);
+  private displaySub?: Subscription;
 
   @Input() field!: NestedFieldConfig;
-  @Input() control!: AbstractControl;
+  @Input()
+  set control(value: AbstractControl) {
+    this._control = value;
+    this.displaySub?.unsubscribe();
+    this.displayValue.set(value?.value ?? null);
+    this.displaySub = value?.valueChanges.subscribe(v => this.displayValue.set(v));
+  }
+  get control(): AbstractControl {
+    return this._control;
+  }
+  private _control!: AbstractControl;
+
   @Input() language: string = 'en';
   @Input() readonly: boolean = false;
   @Input() masked: boolean = false;
+
+  /** Readonly markup reads this signal so an external patch (autoPatch) is visible under OnPush. */
+  readonly displayValue = signal<unknown>(null);
+
+  ngOnDestroy(): void {
+    this.displaySub?.unsubscribe();
+  }
 
   get label(): string {
     return resolveLabel(this.field?.label, this.language);
