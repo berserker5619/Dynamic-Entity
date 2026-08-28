@@ -1,4 +1,4 @@
-import { Component, Input, forwardRef } from '@angular/core';
+import { Component, Input, forwardRef, ChangeDetectionStrategy } from '@angular/core';
 import { AbstractControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig, EntityFormConfig } from '@dynamic-entity/core';
 import { resolveLabel } from '@dynamic-entity/core';
@@ -6,6 +6,7 @@ import { DynamicFieldComponent } from '../form/dynamic-field/dynamic-field.compo
 
 /** Renders a nested fieldset container for a group field's children. */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-group-field',
   standalone: true,
   imports: [ReactiveFormsModule, forwardRef(() => DynamicFieldComponent)],

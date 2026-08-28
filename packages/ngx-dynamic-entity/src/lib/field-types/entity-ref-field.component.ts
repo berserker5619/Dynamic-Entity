@@ -1,4 +1,4 @@
-import { Component, DestroyRef, Input, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, Input, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig, ReferenceOption } from '@dynamic-entity/core';
@@ -15,6 +15,7 @@ import { EntityRefSelectionService } from '../services/entity-ref-selection.serv
  * `EntityRefSelectionService` so the owning form can run `autoPatch`.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-entity-ref-field',
   standalone: true,
   imports: [ReactiveFormsModule],

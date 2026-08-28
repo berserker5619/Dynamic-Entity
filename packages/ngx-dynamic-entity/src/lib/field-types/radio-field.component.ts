@@ -1,4 +1,4 @@
-import { Component, Input, inject, signal } from '@angular/core';
+import { Component, Input, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
 import {
@@ -12,6 +12,7 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
 
 /** Radio field: a group of radio buttons built from field.options. */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-radio-field',
   standalone: true,
   imports: [ReactiveFormsModule],

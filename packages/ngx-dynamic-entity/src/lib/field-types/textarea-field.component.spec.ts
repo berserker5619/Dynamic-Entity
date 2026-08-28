@@ -13,8 +13,8 @@ describe('TextareaFieldComponent', () => {
 
     fixture = TestBed.createComponent(TextareaFieldComponent);
     component = fixture.componentInstance;
-    component.field = { label: { en: 'Notes' } } as any;
-    component.control = new FormControl('Some notes');
+    fixture.componentRef.setInput('field', { label: { en: 'Notes' } } as any);
+    fixture.componentRef.setInput('control', new FormControl('Some notes'));
     fixture.detectChanges();
   });
 

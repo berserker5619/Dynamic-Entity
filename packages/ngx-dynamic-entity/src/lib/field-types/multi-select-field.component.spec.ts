@@ -20,7 +20,7 @@ describe('MultiSelectFieldComponent', () => {
         { en: 'Two' }
       ]
     } as any;
-    component.control = new FormControl([{ en: 'One' }, { en: 'Two' }]);
+    fixture.componentRef.setInput('control', new FormControl([{ en: 'One' }, { en: 'Two' }]));
     fixture.detectChanges();
   });
 
@@ -30,7 +30,7 @@ describe('MultiSelectFieldComponent', () => {
   });
 
   it('should join labels in readonly mode', () => {
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
     const val = fixture.nativeElement.querySelector('.ngx-field__value');
     expect(val.textContent).toBe('One, Two');
@@ -41,7 +41,7 @@ describe('MultiSelectFieldComponent', () => {
   });
 
   it('masks the value, and renders no select, for masked roles', () => {
-    component.masked = true;
+    fixture.componentRef.setInput('masked', true);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.ngx-field__value--masked')).toBeTruthy();
@@ -49,7 +49,7 @@ describe('MultiSelectFieldComponent', () => {
   });
 
   it('disables the select when the field is disabled', () => {
-    component.field = { ...component.field, disabled: true };
+    fixture.componentRef.setInput('field', { ...component.field, disabled: true });
     fixture.detectChanges();
 
     expect((fixture.nativeElement.querySelector('select') as HTMLSelectElement).disabled).toBe(true);
@@ -101,31 +101,31 @@ describe('MultiSelectFieldComponent — language and unresolved values', () => {
       label: { en: 'Tags', de: 'Schlagworte' },
       options: [{ en: 'One', de: 'Eins' }, { en: 'Two', de: 'Zwei' }],
     } as never;
-    component.control = new FormControl([]);
+    fixture.componentRef.setInput('control', new FormControl([]));
     fixture.detectChanges();
   });
 
   it('re-resolves option labels when the language changes', () => {
     component.control.setValue([{ en: 'One', de: 'Eins' }]);
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
 
-    component.language = 'en';
+    fixture.componentRef.setInput('language', 'en');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toContain('One');
 
-    component.language = 'de';
+    fixture.componentRef.setInput('language', 'de');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toContain('Eins');
   });
 
   it('defaults a blank language to en', () => {
-    component.language = '';
+    fixture.componentRef.setInput('language', '');
     expect(component.language).toBe('en');
   });
 
   it('renders an em dash when nothing is selected', () => {
     component.control.setValue([]);
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent.trim()).toBe('—');
@@ -137,7 +137,7 @@ describe('MultiSelectFieldComponent — language and unresolved values', () => {
    */
   it('falls back to the raw value when no option matches', () => {
     component.control.setValue(['legacy-code', { en: 'Gone' }]);
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
 
     const text = fixture.nativeElement.querySelector('.ngx-field__value').textContent;

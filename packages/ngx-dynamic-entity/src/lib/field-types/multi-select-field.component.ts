@@ -1,4 +1,4 @@
-import { Component, Input, inject, signal } from '@angular/core';
+import { Component, Input, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
 import {
@@ -10,6 +10,7 @@ import {
 import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-registry.service';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-multi-select-field',
   standalone: true,
   imports: [ReactiveFormsModule],

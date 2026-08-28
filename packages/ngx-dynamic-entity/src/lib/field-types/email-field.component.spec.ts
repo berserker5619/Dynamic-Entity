@@ -20,8 +20,8 @@ describe('EmailFieldComponent', () => {
 
     fixture = TestBed.createComponent(EmailFieldComponent);
     component = fixture.componentInstance;
-    component.field = mockField;
-    component.control = new FormControl('a@b.com');
+    fixture.componentRef.setInput('field', mockField);
+    fixture.componentRef.setInput('control', new FormControl('a@b.com'));
     fixture.detectChanges();
   });
 
@@ -32,14 +32,14 @@ describe('EmailFieldComponent', () => {
   });
 
   it('renders a mailto link when readonly', () => {
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
     const link = fixture.nativeElement.querySelector('a.ngx-field__email-link');
     expect(link.getAttribute('href')).toBe('mailto:a@b.com');
   });
 
   it('shows the email-specific error once touched', () => {
-    component.control = new FormControl('nope', [Validators.email]);
+    fixture.componentRef.setInput('control', new FormControl('nope', [Validators.email]));
     component.control.markAsTouched();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ngx-field__error').textContent).toContain(
@@ -48,7 +48,7 @@ describe('EmailFieldComponent', () => {
   });
 
   it('masks the value for masked roles', () => {
-    component.masked = true;
+    fixture.componentRef.setInput('masked', true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ngx-field__value--masked')).toBeTruthy();
   });

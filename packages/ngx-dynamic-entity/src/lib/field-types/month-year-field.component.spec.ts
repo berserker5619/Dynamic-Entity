@@ -20,8 +20,8 @@ describe('MonthYearFieldComponent', () => {
 
     fixture = TestBed.createComponent(MonthYearFieldComponent);
     component = fixture.componentInstance;
-    component.field = mockField;
-    component.control = new FormControl('2024-03');
+    fixture.componentRef.setInput('field', mockField);
+    fixture.componentRef.setInput('control', new FormControl('2024-03'));
     fixture.detectChanges();
   });
 
@@ -47,14 +47,14 @@ describe('MonthYearFieldComponent', () => {
   });
 
   it('formats the value as a month name when readonly', () => {
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toContain('March 2024');
   });
 
   describe('parsing a stored value', () => {
     function withValue(value: unknown): MonthYearFieldComponent {
-      component.control = new FormControl(value);
+      fixture.componentRef.setInput('control', new FormControl(value));
       return component;
     }
 
@@ -72,14 +72,14 @@ describe('MonthYearFieldComponent', () => {
 
   describe('recomposition when only one part is set', () => {
     it('defaults the year to the current one when a month is picked first', () => {
-      component.control = new FormControl(null);
+      fixture.componentRef.setInput('control', new FormControl(null));
       component.onMonthChange('05');
 
       expect(component.control.value).toBe(`${new Date().getFullYear()}-05`);
     });
 
     it('defaults the month to January when a year is picked first', () => {
-      component.control = new FormControl(null);
+      fixture.componentRef.setInput('control', new FormControl(null));
       component.onYearChange('2030');
 
       expect(component.control.value).toBe('2030-01');
@@ -91,7 +91,7 @@ describe('MonthYearFieldComponent', () => {
     });
 
     it('marks the control touched on either change, so validation can show', () => {
-      component.control = new FormControl(null);
+      fixture.componentRef.setInput('control', new FormControl(null));
       expect(component.control.touched).toBe(false);
 
       component.onMonthChange('05');

@@ -1,4 +1,4 @@
-import { Component, Input, inject, forwardRef } from '@angular/core';
+import { Component, Input, inject, forwardRef, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig, EntityFormConfig } from '@dynamic-entity/core';
 import { resolveLabel } from '@dynamic-entity/core';
@@ -7,6 +7,7 @@ import { ValidatorRegistryService } from '../services/validator-registry.service
 
 /** Renders repeating rows for a FormArray, with Add Item and Remove. */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-array-field',
   standalone: true,
   imports: [ReactiveFormsModule, forwardRef(() => DynamicFieldComponent)],
@@ -130,6 +131,12 @@ import { ValidatorRegistryService } from '../services/validator-registry.service
   ],
 })
 export class ArrayFieldComponent {
+  /**
+   * addItem/removeItem are public and may be called from outside this component's template,
+   * which under OnPush would not re-render. The host also watches the control, but this
+   * keeps the component correct on its own.
+   */
+  private readonly cdr = inject(ChangeDetectorRef);
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() config!: EntityFormConfig;
@@ -161,9 +168,11 @@ export class ArrayFieldComponent {
     }
     const group = this.fb.group(controls);
     this.formArray.push(group);
+    this.cdr.markForCheck();
   }
 
   removeItem(index: number): void {
     this.formArray.removeAt(index);
+    this.cdr.markForCheck();
   }
 }

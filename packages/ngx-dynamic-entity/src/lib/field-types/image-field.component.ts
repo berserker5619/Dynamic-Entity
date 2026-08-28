@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject, Input, signal } from '@angular/core';
+import { Component, OnDestroy, inject, Input, signal, ChangeDetectionStrategy } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
 import type { FileRef, NestedFieldConfig } from '@dynamic-entity/core';
 import { resolveLabel } from '@dynamic-entity/core';
@@ -11,6 +11,7 @@ import { FileUploadService } from '../services/file-upload.service';
  * it is stored as `{ file }` and previewed from an object URL (revoked when replaced/destroyed).
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-image-field',
   standalone: true,
   imports: [],

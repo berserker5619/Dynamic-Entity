@@ -42,8 +42,8 @@ function mount<T extends { field: NestedFieldConfig; control: any; readonly: boo
   readonly = false,
 ): ComponentFixture<T> {
   const fixture = TestBed.createComponent(type);
-  fixture.componentInstance.control = new FormControl(value);
-  fixture.componentInstance.readonly = readonly;
+  fixture.componentRef.setInput('control', new FormControl(value));
+  fixture.componentRef.setInput('readonly', readonly);
   fixture.componentInstance.field = {
     id: 'status',
     type: 'dropdown',

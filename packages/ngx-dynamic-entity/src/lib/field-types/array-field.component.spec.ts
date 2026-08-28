@@ -24,7 +24,7 @@ describe('ArrayFieldComponent', () => {
 
     fixture = TestBed.createComponent(ArrayFieldComponent);
     component = fixture.componentInstance;
-    component.field = mockField;
+    fixture.componentRef.setInput('field', mockField);
     component.control = new FormArray([
       new FormGroup({
         name: new FormControl('Alice'),

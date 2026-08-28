@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { resolveLabel } from '@dynamic-entity/core';
@@ -16,6 +16,7 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
  * Value stored as ISO partial date string "YYYY-MM" for unambiguous storage.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-month-year-field',
   standalone: true,
   imports: [ReactiveFormsModule],

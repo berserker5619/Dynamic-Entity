@@ -24,8 +24,8 @@ describe('RadioFieldComponent', () => {
 
     fixture = TestBed.createComponent(RadioFieldComponent);
     component = fixture.componentInstance;
-    component.field = mockField;
-    component.control = new FormControl({ en: 'Large' });
+    fixture.componentRef.setInput('field', mockField);
+    fixture.componentRef.setInput('control', new FormControl({ en: 'Large' }));
     fixture.detectChanges();
   });
 
@@ -38,7 +38,7 @@ describe('RadioFieldComponent', () => {
   });
 
   it('resolves the selected option label when readonly', () => {
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toContain('Large');
   });
@@ -48,21 +48,21 @@ describe('RadioFieldComponent', () => {
   });
 
   it('masks the value for masked roles', () => {
-    component.masked = true;
+    fixture.componentRef.setInput('masked', true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ngx-field__value--masked')).toBeTruthy();
   });
 
   it('renders no radios while masked — a masked field must not be editable', () => {
-    component.masked = true;
+    fixture.componentRef.setInput('masked', true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('input[type="radio"]').length).toBe(0);
   });
 
   describe('read-only display fallbacks', () => {
     function readonlyText(value: unknown): string {
-      component.control = new FormControl(value);
-      component.readonly = true;
+      fixture.componentRef.setInput('control', new FormControl(value));
+      fixture.componentRef.setInput('readonly', true);
       fixture.detectChanges();
       return fixture.nativeElement.querySelector('.ngx-field__value').textContent.trim();
     }
@@ -86,7 +86,7 @@ describe('RadioFieldComponent', () => {
       ...mockField,
       options: [{ en: 'Small', de: 'Klein' }, { en: 'Large', de: 'Groß' }],
     };
-    component.language = 'de';
+    fixture.componentRef.setInput('language', 'de');
     fixture.detectChanges();
 
     const labels = Array.from(
@@ -96,12 +96,12 @@ describe('RadioFieldComponent', () => {
   });
 
   it('falls back to en when the language input is cleared', () => {
-    component.language = '';
+    fixture.componentRef.setInput('language', '');
     expect(component.language).toBe('en');
   });
 
   it('slugifies option text into radio ids so spaces never reach the id attribute', () => {
-    component.field = { ...mockField, options: [{ en: 'On Leave' }] };
+    fixture.componentRef.setInput('field', { ...mockField, options: [{ en: 'On Leave' }] });
     fixture.detectChanges();
 
     const input = fixture.nativeElement.querySelector('input[type="radio"]') as HTMLInputElement;
@@ -110,7 +110,7 @@ describe('RadioFieldComponent', () => {
   });
 
   it('disables every radio when the field is disabled', () => {
-    component.field = { ...mockField, disabled: true };
+    fixture.componentRef.setInput('field', { ...mockField, disabled: true });
     fixture.detectChanges();
 
     const inputs: HTMLInputElement[] = Array.from(

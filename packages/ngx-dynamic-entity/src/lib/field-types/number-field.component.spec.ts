@@ -13,8 +13,8 @@ describe('NumberFieldComponent', () => {
 
     fixture = TestBed.createComponent(NumberFieldComponent);
     component = fixture.componentInstance;
-    component.field = { id: 'age', type: 'number', label: { en: 'Age' } };
-    component.control = new FormControl(25);
+    fixture.componentRef.setInput('field', { id: 'age', type: 'number', label: { en: 'Age' } });
+    fixture.componentRef.setInput('control', new FormControl(25));
     fixture.detectChanges();
   });
 
@@ -25,13 +25,13 @@ describe('NumberFieldComponent', () => {
   });
 
   it('should handle masked state', () => {
-    component.masked = true;
+    fixture.componentRef.setInput('masked', true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ngx-field__value--masked')).toBeTruthy();
   });
 
   it('renders a static value when readonly', () => {
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('input')).toBeNull();
     expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toContain('25');
@@ -39,7 +39,7 @@ describe('NumberFieldComponent', () => {
 
   describe('errorMessage', () => {
     function withErrors(errors: Record<string, unknown> | null, touched = true): string {
-      component.control = new FormControl(0);
+      fixture.componentRef.setInput('control', new FormControl(0));
       component.control.setErrors(errors);
       if (touched) component.control.markAsTouched();
       return component.errorMessage;
@@ -51,7 +51,7 @@ describe('NumberFieldComponent', () => {
     });
 
     it('is empty when there is no control at all', () => {
-      component.control = undefined as unknown as FormControl;
+      fixture.componentRef.setInput('control', undefined as unknown as FormControl);
       expect(component.errorMessage).toBe('');
     });
 

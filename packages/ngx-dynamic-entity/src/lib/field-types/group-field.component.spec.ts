@@ -24,7 +24,7 @@ describe('GroupFieldComponent', () => {
 
     fixture = TestBed.createComponent(GroupFieldComponent);
     component = fixture.componentInstance;
-    component.field = mockField;
+    fixture.componentRef.setInput('field', mockField);
     component.control = new FormGroup({
       street: new FormControl('123 Main St'),
       city: new FormControl('Metropolis'),
@@ -39,7 +39,7 @@ describe('GroupFieldComponent', () => {
   });
 
   it('should render masked representation when masked is true', () => {
-    component.masked = true;
+    fixture.componentRef.setInput('masked', true);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.ngx-field__value--masked')?.textContent).toBe('XXXXXXXXX');

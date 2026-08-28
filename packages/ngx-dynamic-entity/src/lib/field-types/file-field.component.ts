@@ -1,4 +1,4 @@
-import { Component, inject, Input, signal } from '@angular/core';
+import { Component, inject, Input, signal, ChangeDetectionStrategy } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
 import type { FileRef, NestedFieldConfig } from '@dynamic-entity/core';
 import { fileRefName, resolveLabel } from '@dynamic-entity/core';
@@ -9,6 +9,7 @@ import { FileUploadService } from '../services/file-upload.service';
  * Shares the `FileRef` / `UPLOAD_HANDLER` contract with image-field via FileUploadService.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-file-field',
   standalone: true,
   imports: [],

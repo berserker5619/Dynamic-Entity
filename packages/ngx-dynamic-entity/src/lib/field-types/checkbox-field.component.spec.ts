@@ -13,8 +13,8 @@ describe('CheckboxFieldComponent', () => {
 
     fixture = TestBed.createComponent(CheckboxFieldComponent);
     component = fixture.componentInstance;
-    component.field = { id: 'active', type: 'checkbox', label: { en: 'Active' } };
-    component.control = new FormControl(true);
+    fixture.componentRef.setInput('field', { id: 'active', type: 'checkbox', label: { en: 'Active' } });
+    fixture.componentRef.setInput('control', new FormControl(true));
     fixture.detectChanges();
   });
 
@@ -25,12 +25,12 @@ describe('CheckboxFieldComponent', () => {
   });
 
   it('should render Yes/No in readonly mode', () => {
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
     const val = fixture.nativeElement.querySelector('.ngx-field__value');
     expect(val.textContent).toBe('Yes');
     
-    component.control.setValue(false);
+    fixture.componentRef.setInput('control', new FormControl(false));
     fixture.detectChanges();
     expect(val.textContent).toBe('No');
   });

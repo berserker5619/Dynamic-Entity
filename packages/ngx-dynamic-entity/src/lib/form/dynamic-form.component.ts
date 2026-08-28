@@ -13,6 +13,8 @@ import {
   isDevMode,
   ElementRef,
   ViewChild,
+  ViewChildren,
+  QueryList,
   HostListener,
 } from '@angular/core';
 import { NgComponentOutlet } from '@angular/common';
@@ -193,6 +195,9 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
 
   /** The active tab's field panel, focused after a tab switch. */
   @ViewChild('formPanel') private formPanel?: ElementRef<HTMLElement>;
+
+  /** The hosted field components, so an external control-state change can reach them. */
+  @ViewChildren(DynamicFieldComponent) private fieldHosts?: QueryList<DynamicFieldComponent>;
 
   // ─── Form ─────────────────────────────────────────────────────────────────
   form!: FormGroup;
@@ -558,6 +563,17 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     const group = this.fb.group(rowGroup);
     if (item && typeof item === 'object') group.patchValue(item as Record<string, unknown>);
     return group;
+  }
+
+  /**
+   * Mark every control touched, then re-check the field components.
+   *
+   * They are OnPush and `touched` is flipped from outside their own template, so the second
+   * half is what makes the error messages actually appear.
+   */
+  private markAllTouched(): void {
+    this.form.markAllAsTouched();
+    this.fieldHosts?.forEach(host => host.refresh());
   }
 
   /**
@@ -933,7 +949,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
 
   async submit(): Promise<void> {
     if (!this.canSubmit || this.submitBlocked) {
-      this.form.markAllAsTouched();
+      this.markAllTouched();
       return;
     }
 

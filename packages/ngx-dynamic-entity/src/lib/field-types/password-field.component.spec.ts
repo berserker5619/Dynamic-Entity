@@ -20,8 +20,8 @@ describe('PasswordFieldComponent', () => {
 
     fixture = TestBed.createComponent(PasswordFieldComponent);
     component = fixture.componentInstance;
-    component.field = mockField;
-    component.control = new FormControl('hunter2');
+    fixture.componentRef.setInput('field', mockField);
+    fixture.componentRef.setInput('control', new FormControl('hunter2'));
     fixture.detectChanges();
   });
 
@@ -37,7 +37,7 @@ describe('PasswordFieldComponent', () => {
   });
 
   it('never renders the raw value when readonly', () => {
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('••••••••');

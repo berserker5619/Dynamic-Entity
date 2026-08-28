@@ -44,8 +44,8 @@ async function setup(
   void group;
 
   const fixture = TestBed.createComponent(EntityRefFieldComponent);
-  fixture.componentInstance.field = field;
-  fixture.componentInstance.control = control;
+  fixture.componentRef.setInput('field', field);
+  fixture.componentRef.setInput('control', control);
   fixture.detectChanges();
   await flush(fixture);
   return fixture;
@@ -178,9 +178,9 @@ describe('EntityRefFieldComponent — masking, labels and absent parents', () =>
     }).compileComponents();
 
     const fixture = TestBed.createComponent(EntityRefFieldComponent);
-    fixture.componentInstance.field = { id: 'country', type: 'entity-ref', label: { en: 'Country' } };
-    fixture.componentInstance.control = new FormControl('');
-    fixture.componentInstance.masked = true;
+    fixture.componentRef.setInput('field', { id: 'country', type: 'entity-ref', label: { en: 'Country' } });
+    fixture.componentRef.setInput('control', new FormControl(''));
+    fixture.componentRef.setInput('masked', true);
     fixture.detectChanges();
     await new Promise(resolve => setTimeout(resolve, 0));
 
@@ -227,7 +227,7 @@ describe('EntityRefFieldComponent — masking, labels and absent parents', () =>
       label: { en: 'City' },
       entityReference: { enabled: true, linkedEntityKey: 'city', parentField: 'country' },
     };
-    fixture.componentInstance.control = control;
+    fixture.componentRef.setInput('control', control);
 
     expect(() => fixture.detectChanges()).not.toThrow();
     await new Promise(resolve => setTimeout(resolve, 0));

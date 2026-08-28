@@ -20,8 +20,8 @@ describe('CurrencyFieldComponent', () => {
 
     fixture = TestBed.createComponent(CurrencyFieldComponent);
     component = fixture.componentInstance;
-    component.field = mockField;
-    component.control = new FormControl(1250.5);
+    fixture.componentRef.setInput('field', mockField);
+    fixture.componentRef.setInput('control', new FormControl(1250.5));
     fixture.detectChanges();
   });
 
@@ -33,20 +33,20 @@ describe('CurrencyFieldComponent', () => {
   });
 
   it('masks the value for masked roles', () => {
-    component.masked = true;
+    fixture.componentRef.setInput('masked', true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ngx-field__value--masked').textContent).toBe('XXXXXXXXX');
   });
 
   it('renders a static value when readonly', () => {
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('input')).toBeNull();
     expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toContain('1250.5');
   });
 
   it('falls back to $ for an unknown locale', () => {
-    component.language = 'not-a-locale';
+    fixture.componentRef.setInput('language', 'not-a-locale');
     expect(component.symbol).toBeTruthy();
   });
 });
@@ -59,9 +59,9 @@ describe('CurrencyFieldComponent — currency symbol resolution', () => {
     }).compileComponents();
 
     const fixture = TestBed.createComponent(CurrencyFieldComponent);
-    fixture.componentInstance.field = { id: 'salary', type: 'currency', label: { en: 'Salary' } };
-    fixture.componentInstance.control = new FormControl(0);
-    fixture.componentInstance.language = language;
+    fixture.componentRef.setInput('field', { id: 'salary', type: 'currency', label: { en: 'Salary' } });
+    fixture.componentRef.setInput('control', new FormControl(0));
+    fixture.componentRef.setInput('language', language);
     fixture.detectChanges();
     return fixture.componentInstance;
   }

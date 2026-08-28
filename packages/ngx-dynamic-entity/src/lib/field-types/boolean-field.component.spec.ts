@@ -20,8 +20,8 @@ describe('BooleanFieldComponent', () => {
 
     fixture = TestBed.createComponent(BooleanFieldComponent);
     component = fixture.componentInstance;
-    component.field = mockField;
-    component.control = new FormControl(true);
+    fixture.componentRef.setInput('field', mockField);
+    fixture.componentRef.setInput('control', new FormControl(true));
     fixture.detectChanges();
   });
 
@@ -33,13 +33,13 @@ describe('BooleanFieldComponent', () => {
   });
 
   it('renders No when false', () => {
-    component.control.setValue(false);
+    fixture.componentRef.setInput('control', new FormControl(false));
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ngx-field__toggle-text').textContent).toContain('No');
   });
 
   it('renders Yes/No text when readonly', () => {
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('input')).toBeNull();
     expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toContain('Yes');

@@ -20,7 +20,7 @@ describe('DropdownFieldComponent', () => {
         { en: 'Blue' }
       ]
     } as any;
-    component.control = new FormControl({ en: 'Red' });
+    fixture.componentRef.setInput('control', new FormControl({ en: 'Red' }));
     fixture.detectChanges();
   });
 
@@ -32,7 +32,7 @@ describe('DropdownFieldComponent', () => {
   });
 
   it('should show correct label in readonly mode', () => {
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
     const val = fixture.nativeElement.querySelector('.ngx-field__value');
     expect(val.textContent).toBe('Red');
@@ -49,7 +49,7 @@ describe('DropdownFieldComponent', () => {
 
   describe('errorMessage', () => {
     function withErrors(errors: Record<string, unknown> | null, touched = true): string {
-      component.control = new FormControl('');
+      fixture.componentRef.setInput('control', new FormControl(''));
       component.control.setErrors(errors);
       if (touched) component.control.markAsTouched();
       return component.errorMessage;

@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { resolveLabel } from '@dynamic-entity/core';
@@ -9,6 +9,7 @@ import { resolveLabel } from '@dynamic-entity/core';
  * toggle switch with Yes/No labels for clearer binary state communication.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-boolean-field',
   standalone: true,
   imports: [ReactiveFormsModule],

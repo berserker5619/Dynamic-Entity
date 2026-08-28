@@ -20,8 +20,8 @@ describe('TextFieldComponent', () => {
 
     fixture = TestBed.createComponent(TextFieldComponent);
     component = fixture.componentInstance;
-    component.field = mockField;
-    component.control = new FormControl('Initial');
+    fixture.componentRef.setInput('field', mockField);
+    fixture.componentRef.setInput('control', new FormControl('Initial'));
     fixture.detectChanges();
   });
 
@@ -37,7 +37,7 @@ describe('TextFieldComponent', () => {
   });
 
   it('should render masked value when masked is true', () => {
-    component.masked = true;
+    fixture.componentRef.setInput('masked', true);
     fixture.detectChanges();
     const masked = fixture.nativeElement.querySelector('.ngx-field__value--masked');
     expect(masked).toBeTruthy();
@@ -45,7 +45,7 @@ describe('TextFieldComponent', () => {
   });
 
   it('should render static value when readonly is true', () => {
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
     const val = fixture.nativeElement.querySelector('.ngx-field__value');
     expect(val).toBeTruthy();
@@ -55,7 +55,7 @@ describe('TextFieldComponent', () => {
   /** Contextual messages are user-facing copy — pin each branch. */
   describe('errorMessage', () => {
     function withErrors(errors: Record<string, unknown> | null, touched = true): string {
-      component.control = new FormControl('');
+      fixture.componentRef.setInput('control', new FormControl(''));
       component.control.setErrors(errors);
       if (touched) component.control.markAsTouched();
       return component.errorMessage;
@@ -70,7 +70,7 @@ describe('TextFieldComponent', () => {
     });
 
     it('is empty when there is no control at all', () => {
-      component.control = undefined as unknown as FormControl;
+      fixture.componentRef.setInput('control', undefined as unknown as FormControl);
       expect(component.errorMessage).toBe('');
     });
 

@@ -22,8 +22,8 @@ async function setup(handler?: FileUploadHandler): Promise<ComponentFixture<Imag
   }).compileComponents();
 
   const fixture = TestBed.createComponent(ImageFieldComponent);
-  fixture.componentInstance.field = mockField;
-  fixture.componentInstance.control = new FormControl(null);
+  fixture.componentRef.setInput('field', mockField);
+  fixture.componentRef.setInput('control', new FormControl(null));
   fixture.detectChanges();
   return fixture;
 }

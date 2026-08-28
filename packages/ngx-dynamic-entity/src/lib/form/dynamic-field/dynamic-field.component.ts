@@ -2,7 +2,7 @@ import {
   Component,
   ComponentRef,
   Input,
-  OnChanges,
+  OnChanges, OnDestroy,
   SimpleChanges,
   ViewChild,
   ViewContainerRef,
@@ -10,6 +10,7 @@ import {
   isDevMode,
 } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import type { NestedFieldConfig, EntityFormConfig, NestedTabConfig } from '@dynamic-entity/core';
 import { findTab } from '@dynamic-entity/core';
 import { FieldRegistryService } from '../../services/field-registry.service';
@@ -29,7 +30,7 @@ import { RbacService } from '../../services/rbac.service';
   standalone: true,
   template: `<ng-container #fieldHost></ng-container>`,
 })
-export class DynamicFieldComponent implements OnChanges {
+export class DynamicFieldComponent implements OnChanges, OnDestroy {
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() config!: EntityFormConfig;
@@ -72,6 +73,7 @@ export class DynamicFieldComponent implements OnChanges {
     this.fieldHost.clear();
     this.componentRef = this.fieldHost.createComponent(ComponentClass);
     this.setInputs(this.componentRef, masked);
+    this.watchControl();
     this.componentRef.changeDetectorRef.markForCheck();
   }
 
@@ -90,6 +92,42 @@ export class DynamicFieldComponent implements OnChanges {
   }
 
   private static readonly warnedTypes = new Set<string>();
+
+  /**
+   * Re-check the hosted field component.
+   *
+   * The field components are OnPush, so they re-render on an input change, an event from
+   * their own template, or a signal they read. `form.markAllAsTouched()` is none of those —
+   * it flips `touched` from outside, and every field's error message depends on it. Without
+   * this, a blocked submit would mark the form touched and no error would appear.
+   */
+  refresh(): void {
+    this.componentRef?.changeDetectorRef.markForCheck();
+  }
+
+  /**
+   * Re-check the hosted component whenever its control changes from outside.
+   *
+   * The field components are OnPush, so they re-render on an input change or an event from
+   * their own template. A control mutated externally is neither — and that is not an edge
+   * case: patchForm, reset, autoPatch and patchOnTrue all do exactly that. Without this, a
+   * field patched from a record would keep rendering its previous value.
+   *
+   * Done here rather than in each of the eighteen field components: the host owns the
+   * component reference, so one subscription covers every type including custom ones.
+   */
+  private watchControl(): void {
+    this.controlSub?.unsubscribe();
+    if (!this.control) return;
+
+    this.controlSub = this.control.valueChanges.subscribe(() => this.refresh());
+  }
+
+  private controlSub?: Subscription;
+
+  ngOnDestroy(): void {
+    this.controlSub?.unsubscribe();
+  }
 
   /**
    * Pass all 5 contract inputs via ComponentRef.setInput() — uniform for all types.

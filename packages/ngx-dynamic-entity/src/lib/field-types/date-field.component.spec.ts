@@ -13,8 +13,8 @@ describe('DateFieldComponent', () => {
 
     fixture = TestBed.createComponent(DateFieldComponent);
     component = fixture.componentInstance;
-    component.field = { label: { en: 'DOB' } } as any;
-    component.control = new FormControl('2020-01-01');
+    fixture.componentRef.setInput('field', { label: { en: 'DOB' } } as any);
+    fixture.componentRef.setInput('control', new FormControl('2020-01-01'));
     fixture.detectChanges();
   });
 
@@ -24,7 +24,7 @@ describe('DateFieldComponent', () => {
   });
 
   it('should format date in readonly mode', () => {
-    component.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
     const val = fixture.nativeElement.querySelector('.ngx-field__value');
     expect(val.textContent).toContain('2020');

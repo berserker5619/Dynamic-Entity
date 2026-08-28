@@ -17,8 +17,8 @@ async function setup(handler?: FileUploadHandler): Promise<ComponentFixture<File
   }).compileComponents();
 
   const fixture = TestBed.createComponent(FileFieldComponent);
-  fixture.componentInstance.field = mockField;
-  fixture.componentInstance.control = new FormControl(null);
+  fixture.componentRef.setInput('field', mockField);
+  fixture.componentRef.setInput('control', new FormControl(null));
   fixture.detectChanges();
   return fixture;
 }
@@ -58,7 +58,7 @@ describe('FileFieldComponent', () => {
   it('renders a download link when readonly', async () => {
     const fixture = await setup();
     fixture.componentInstance.control.setValue({ url: 'https://cdn/a.pdf' });
-    fixture.componentInstance.readonly = true;
+    fixture.componentRef.setInput('readonly', true);
     fixture.detectChanges();
 
     const link = fixture.nativeElement.querySelector('a.ngx-field__file-link');
@@ -67,7 +67,7 @@ describe('FileFieldComponent', () => {
 
   it('masks the value for masked roles', async () => {
     const fixture = await setup();
-    fixture.componentInstance.masked = true;
+    fixture.componentRef.setInput('masked', true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ngx-field__value--masked')).toBeTruthy();
   });
