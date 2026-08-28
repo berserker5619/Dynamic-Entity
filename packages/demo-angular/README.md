@@ -1,27 +1,38 @@
-# DemoAngular
+# demo-angular
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 17.3.17.
+The showcase application and the home of the Playwright E2E suite. **Not published** — it
+exists to exercise the packages and to be something you can click through.
 
-## Development server
+```bash
+npm run dev --workspace=demo-angular   # http://localhost:4200
+```
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+## What it demonstrates
 
-## Code scaffolding
+- Every field type, rendered from the configs in `../../test_data.json`
+- The role switcher, showing masking and `permissions.view` in action
+- The visual builder with live preview
+- Records persisted to `localStorage` via a mock store, so there is no backend to run
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+## Its stylesheet is a reference
 
-## Build
+`src/styles.css` is a fuller treatment than the optional base stylesheet the renderer ships
+(`ngx-dynamic-entity/styles.css`). If you want to see how far the BEM hooks can be taken,
+read it.
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+## E2E
 
-## Running unit tests
+```bash
+npm run e2e                             # from the repo root
+npx playwright test e2e/demo.spec.ts    # one spec, from here
+```
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+`test-data-json-rendering.spec.ts` is the one worth knowing about: it asserts that every field
+type in `test_data.json` exists in the catalog, fails on any `[ngx-dynamic-entity]` console
+warning, and requires a tab declaring fields to actually render controls. It previously watched
+only for uncaught exceptions and so passed green over three field types the renderer refused
+to draw.
 
-## Running end-to-end tests
-
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
-
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+The full suite is slow — `playwright.config.ts` sets `workers: 1` and two builder specs drive
+hundreds of interactions each — so CI runs a fast subset per pull request and the whole thing
+nightly.

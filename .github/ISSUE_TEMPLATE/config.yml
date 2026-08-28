@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/berserker5619/Dynamic-Entity/security/advisories/new
+    about: Report privately, not as a public issue. See SECURITY.md.
+  - name: How do I extend this?
+    url: https://github.com/berserker5619/Dynamic-Entity/blob/main/EXTENDING.md
+    about: Custom field types, validators, i18n messages, uploads, cascades, testing.

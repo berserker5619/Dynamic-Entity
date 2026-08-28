@@ -1,0 +1,31 @@
+name: Feature request
+description: Suggest a capability
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Known gaps, already tracked — no need to file these:
+        async validation, `OnPush` change detection, a published JSON Schema for
+        `EntityFormConfig`, a wizard/stepper mode, and PDF export.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do, and where does the library get in the way?
+    validations: { required: true }
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+      description: >
+        If it could be a registration (a provider, a custom field type, a validator) rather
+        than a built-in, say so — that is usually the faster path. See EXTENDING.md.
+    validations: { required: true }
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead

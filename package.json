@@ -19,7 +19,6 @@
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.57.1",
-    "mongodb-memory-server": "^11.1.0",
     "prettier": "^3.3.3",
     "rxjs": "^7.8.2",
     "turbo": "latest"

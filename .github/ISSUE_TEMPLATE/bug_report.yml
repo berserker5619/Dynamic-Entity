@@ -1,0 +1,62 @@
+name: Bug report
+description: Something does not behave as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, two things that are expected behaviour rather than bugs:
+
+        - **Masked and permission-hidden values are still in the browser.** Permissions and
+          masking are presentational; authorize on the server. See SECURITY.md.
+        - **A flat record against a nested tab populates nothing.** A record is nested by tab
+          id unless the tab sets `flatData: true`. The renderer warns about this in dev mode.
+
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: "1.1.0"
+    validations: { required: true }
+
+  - type: input
+    id: angular
+    attributes:
+      label: Angular version
+      placeholder: "20.3.0"
+    validations: { required: true }
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Which package
+      multiple: true
+      options:
+        - "@dynamic-entity/core"
+        - ngx-dynamic-entity
+        - ngx-dynamic-entity-builder
+    validations: { required: true }
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+    validations: { required: true }
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: >
+        The smallest EntityFormConfig that shows it, plus the providers you registered.
+        Field types are not registered automatically — if no fields render at all, check that
+        `provideBuiltInFieldTypes()` or `provideFieldTypes({ … })` is present.
+      render: typescript
+    validations: { required: true }
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: Include any `[ngx-dynamic-entity]` warnings — they usually name the cause.
+      render: shell
