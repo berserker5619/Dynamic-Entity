@@ -3,7 +3,6 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { CheckboxFieldComponent } from './checkbox-field.component';
 
 describe('CheckboxFieldComponent', () => {
-  let component: CheckboxFieldComponent;
   let fixture: ComponentFixture<CheckboxFieldComponent>;
 
   beforeEach(async () => {
@@ -12,7 +11,6 @@ describe('CheckboxFieldComponent', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(CheckboxFieldComponent);
-    component = fixture.componentInstance;
     fixture.componentRef.setInput('field', { id: 'active', type: 'checkbox', label: { en: 'Active' } });
     fixture.componentRef.setInput('control', new FormControl(true));
     fixture.detectChanges();

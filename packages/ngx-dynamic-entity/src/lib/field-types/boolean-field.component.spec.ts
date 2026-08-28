@@ -4,7 +4,6 @@ import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { BooleanFieldComponent } from './boolean-field.component';
 
 describe('BooleanFieldComponent', () => {
-  let component: BooleanFieldComponent;
   let fixture: ComponentFixture<BooleanFieldComponent>;
 
   const mockField: NestedFieldConfig = {
@@ -19,7 +18,6 @@ describe('BooleanFieldComponent', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(BooleanFieldComponent);
-    component = fixture.componentInstance;
     fixture.componentRef.setInput('field', mockField);
     fixture.componentRef.setInput('control', new FormControl(true));
     fixture.detectChanges();
