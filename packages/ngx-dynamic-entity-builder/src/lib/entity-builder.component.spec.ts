@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SimpleChange } from '@angular/core';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import type { EntityFormConfig } from '@dynamic-entity/core';
+import { ConfigSourceService } from 'ngx-dynamic-entity';
 import { EntityBuilderComponent } from './entity-builder.component';
 import { BuilderStore } from './builder-store.service';
 
@@ -250,5 +251,59 @@ describe('EntityBuilderComponent', () => {
       component['setRoles']('view', ['admin']);
       expect(component['rolesFor']('view')).toEqual(['admin']);
     });
+  });
+});
+
+/**
+ * ConfigSourceService caches a config per entity and exposed clearCache from the start, but
+ * nothing ever called it — so an edited config kept serving its old copy for the lifetime of
+ * the page, most visibly to a referenced field resolving against the stale schema.
+ */
+describe('EntityBuilderComponent — config cache invalidation on save', () => {
+  let clearCache: jest.Mock;
+
+  async function setup(withConfigSource: boolean): Promise<EntityBuilderComponent> {
+    clearCache = jest.fn();
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [EntityBuilderComponent],
+      providers: [
+        provideNoopAnimations(),
+        ...(withConfigSource
+          ? [{ provide: ConfigSourceService, useValue: { clearCache, getConfig: jest.fn() } }]
+          : []),
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(EntityBuilderComponent);
+    const component = fixture.componentInstance;
+    component.config = {
+      entity: 'clients',
+      version: 1,
+      tabs: [{ id: 'main', label: { en: 'Main' }, fields: [] }],
+    };
+    component.ngOnChanges({ config: new SimpleChange(undefined, component.config, true) });
+    fixture.detectChanges();
+    return component;
+  }
+
+  it('drops the cached config for the saved entity', async () => {
+    const component = await setup(true);
+    const saved: string[] = [];
+    component.save.subscribe(c => saved.push(c.entity));
+
+    (component as unknown as { doSave(): void }).doSave();
+
+    expect(clearCache).toHaveBeenCalledWith('clients');
+    expect(saved).toEqual(['clients']);
+  });
+
+  it('still saves when no CONFIG_SOURCE is registered', async () => {
+    const component = await setup(false);
+    const saved: string[] = [];
+    component.save.subscribe(c => saved.push(c.entity));
+
+    expect(() => (component as unknown as { doSave(): void }).doSave()).not.toThrow();
+    expect(saved).toEqual(['clients']);
   });
 });

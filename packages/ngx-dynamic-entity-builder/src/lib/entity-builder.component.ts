@@ -28,6 +28,7 @@ import {
   type EntityPermissions,
   resolveLabel,
 } from '@dynamic-entity/core';
+import { ConfigSourceService } from 'ngx-dynamic-entity';
 import { BuilderStore } from './builder-store.service';
 import { FieldInspectorComponent } from './components/field-inspector.component';
 import { FieldPaletteComponent } from './components/field-palette.component';
@@ -72,6 +73,11 @@ const EMPTY_ROLES: readonly string[] = Object.freeze([]);
 })
 export class EntityBuilderComponent implements OnChanges {
   protected readonly store = inject(BuilderStore);
+  /**
+   * Optional: only apps that registered a CONFIG_SOURCE have one. Used to drop the cached
+   * copy of a config the moment it is edited — see `doSave`.
+   */
+  private readonly configSource = inject(ConfigSourceService, { optional: true });
 
   /** Existing config to edit. When omitted, the builder starts blank. */
   @Input() config?: EntityFormConfig;
@@ -135,7 +141,15 @@ export class EntityBuilderComponent implements OnChanges {
   // ─── Toolbar actions ──────────────────────────────────────────────────────
 
   protected doSave(): void {
-    this.save.emit(this.store.exportConfig());
+    const config = this.store.exportConfig();
+
+    // Saving is the moment this entity's config changes, so anything holding a cached copy is
+    // now stale — most visibly a referenced field elsewhere resolving against the old schema.
+    // ConfigSourceService caches per entity and exposed clearCache from the start, but nothing
+    // ever called it, so a cache entry lived for the lifetime of the page.
+    this.configSource?.clearCache(config.entity);
+
+    this.save.emit(config);
   }
 
   protected get json(): string {
