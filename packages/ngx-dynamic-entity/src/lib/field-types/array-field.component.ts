@@ -5,7 +5,7 @@ import { resolveLabel } from '@dynamic-entity/core';
 import { DynamicFieldComponent } from '../form/dynamic-field/dynamic-field.component';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
 
-/** ADR-008: ArrayFieldComponent — renders repeating rows for FormArray with + Add Item and Remove */
+/** Renders repeating rows for a FormArray, with Add Item and Remove. */
 @Component({
   selector: 'ngx-array-field',
   standalone: true,

@@ -9,7 +9,7 @@ import type {
 } from '@dynamic-entity/core';
 import { InMemoryEntityRefCacheStore, type EntityRefCacheStore } from '../services/entity-ref-cache';
 
-/** Roles that see XXXXXXXXX for masked fields (ADR-003) */
+/** Roles that see XXXXXXXXX for masked fields. Presentational only — enforce authz server-side. */
 export const MASKED_ROLES = new InjectionToken<string[]>('MASKED_ROLES');
 
 /**
@@ -74,6 +74,16 @@ export const LOOKUP_REGISTRY = new InjectionToken<Map<string, LookupListSource>>
  */
 export const RECORD_MIGRATIONS = new InjectionToken<RecordMigration[]>('RECORD_MIGRATIONS');
 
+/**
+ * Overrides for the messages shown under an invalid field, keyed by Angular error key
+ * (`required`, `minlength`, `pattern`, …) plus a few field-specific keys.
+ *
+ * The built-in messages are English literals. Registering here is what makes a non-English
+ * form possible without re-implementing every field component; unlisted keys keep their
+ * default, so overriding one does not mean supplying them all.
+ */
+export const VALIDATION_MESSAGES = new InjectionToken<Record<string, any>>('VALIDATION_MESSAGES');
+
 /** Registry: validator key → ValidatorFn */
 export const VALIDATOR_REGISTRY = new InjectionToken<Map<string, any>>('VALIDATOR_REGISTRY');
 
@@ -131,10 +141,6 @@ export const ENTITY_REF_CACHE_STORE = new InjectionToken<EntityRefCacheStore>(
   { providedIn: 'root', factory: () => new InMemoryEntityRefCacheStore() },
 );
 
-/**
- * Consumer-provided predicate function to check whether user roles can edit system default tabs or fields.
- * Defaults to allowing edits if not provided.
- */
 /**
  * Consumer-provided predicate function to check whether user roles can edit system default tabs or fields.
  * Defaults to allowing edits if not provided.

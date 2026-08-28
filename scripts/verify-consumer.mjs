@@ -173,11 +173,13 @@ if (useReadme) {
   // Every ```typescript block, not a hand-picked few — a snippet added later must be
   // checked too, or the guard silently stops covering the thing it was added for.
   const coreMd = read('packages/core/README.md');
+  const extendingMd = read('EXTENDING.md');
   const allTs = [
     ['root', rootMd],
     ['core', coreMd],
     ['renderer', rendererMd],
     ['builder', builderMd],
+    ['extending', extendingMd],
   ];
   for (const [label, md] of allTs) {
     ts(md).forEach((snippet, i) => {

@@ -1,0 +1,568 @@
+/**
+ * ngx-dynamic-entity — optional base stylesheet.
+ *
+ * The package ships no styles by default: the components emit stable BEM-style hooks and
+ * nothing else, so they drop into any design system without fighting it. That is the right
+ * default for a library, but it meant a consumer's first render was unstyled browser HTML
+ * with no starting point.
+ *
+ * This file is that starting point. Import it and the forms are legible; override the custom
+ * properties below and they match your product. It is deliberately plain — no shadows, no
+ * brand colour, no opinion about type — because it exists to be built on, not shipped as-is.
+ *
+ *   // angular.json → styles, or a global stylesheet
+ *   @import 'ngx-dynamic-entity/styles.css';
+ *
+ * Everything is driven by the custom properties in the :root block, which are scoped under
+ * .ngx-form / .ngx-record-editor so importing this cannot affect the rest of your app.
+ * Colours use `color-mix` sparingly and always with a plain fallback declared first.
+ */
+
+.ngx-form,
+.ngx-record-editor {
+  /* Palette */
+  --ngx-color-text: #16202a;
+  --ngx-color-muted: #65788a;
+  --ngx-color-border: #cfd8e0;
+  --ngx-color-surface: #ffffff;
+  --ngx-color-surface-alt: #f5f8fa;
+  --ngx-color-accent: #0b5d8a;
+  --ngx-color-error: #9e2a2b;
+  --ngx-color-warning: #8a5a12;
+  --ngx-color-success: #1c6b52;
+  --ngx-color-disabled-bg: #eef1f4;
+
+  /* Metrics */
+  --ngx-radius: 4px;
+  --ngx-gap: 16px;
+  --ngx-field-gap: 6px;
+  --ngx-control-height: 38px;
+  --ngx-control-padding: 8px 10px;
+
+  /* Type */
+  --ngx-font: inherit;
+  --ngx-font-size: 14px;
+  --ngx-label-size: 13px;
+  --ngx-hint-size: 12px;
+
+  color: var(--ngx-color-text);
+  font-family: var(--ngx-font);
+  font-size: var(--ngx-font-size);
+}
+
+/* ─── Layout ──────────────────────────────────────────────────────────────── */
+
+.ngx-form__panel {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--ngx-gap);
+  align-items: start;
+}
+
+/* colSpan is applied inline by the renderer; this is the fallback for fields without one. */
+.ngx-form__field-slot {
+  grid-column: span 12;
+  min-width: 0; /* lets long values shrink instead of forcing the grid wider */
+  position: relative;
+}
+
+.ngx-form__module-panel {
+  padding: var(--ngx-gap) 0;
+}
+
+/* ─── Tabs ────────────────────────────────────────────────────────────────── */
+
+.ngx-form__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid var(--ngx-color-border);
+  margin-bottom: var(--ngx-gap);
+}
+
+.ngx-form__tab {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 8px 12px;
+  font: inherit;
+  color: var(--ngx-color-muted);
+  cursor: pointer;
+}
+
+.ngx-form__tab:hover {
+  color: var(--ngx-color-text);
+}
+
+.ngx-form__tab--active {
+  color: var(--ngx-color-accent);
+  border-bottom-color: var(--ngx-color-accent);
+}
+
+.ngx-form__tabs--sub {
+  border-bottom: 0;
+}
+
+.ngx-form__tab--sub {
+  font-size: var(--ngx-hint-size);
+  padding: 4px 10px;
+}
+
+/* ─── Fields ──────────────────────────────────────────────────────────────── */
+
+.ngx-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ngx-field-gap);
+}
+
+.ngx-field__label {
+  font-size: var(--ngx-label-size);
+  color: var(--ngx-color-muted);
+}
+
+.ngx-field__req {
+  color: var(--ngx-color-error);
+  margin-left: 2px;
+}
+
+.ngx-field__input,
+.ngx-field__file-input {
+  width: 100%;
+  min-height: var(--ngx-control-height);
+  padding: var(--ngx-control-padding);
+  font: inherit;
+  color: inherit;
+  background: var(--ngx-color-surface);
+  border: 1px solid var(--ngx-color-border);
+  border-radius: var(--ngx-radius);
+  box-sizing: border-box;
+}
+
+textarea.ngx-field__input {
+  min-height: calc(var(--ngx-control-height) * 2);
+  resize: vertical;
+}
+
+.ngx-field__input:focus-visible {
+  outline: 2px solid var(--ngx-color-accent);
+  outline-offset: 1px;
+  border-color: var(--ngx-color-accent);
+}
+
+.ngx-field__input:disabled,
+.ngx-field__input[disabled] {
+  background: var(--ngx-color-disabled-bg);
+  color: var(--ngx-color-muted);
+  cursor: not-allowed;
+}
+
+.ngx-field--invalid .ngx-field__input {
+  border-color: var(--ngx-color-error);
+}
+
+.ngx-field__error {
+  font-size: var(--ngx-hint-size);
+  color: var(--ngx-color-error);
+}
+
+.ngx-field__hint {
+  font-size: var(--ngx-hint-size);
+  color: var(--ngx-color-muted);
+}
+
+/* Read-only and masked renderings are text, not controls. */
+.ngx-field__value {
+  min-height: var(--ngx-control-height);
+  display: flex;
+  align-items: center;
+  padding: var(--ngx-control-padding);
+  background: var(--ngx-color-surface-alt);
+  border: 1px solid transparent;
+  border-radius: var(--ngx-radius);
+  word-break: break-word;
+}
+
+.ngx-field__value--masked {
+  color: var(--ngx-color-muted);
+  letter-spacing: 0.12em;
+}
+
+/* ─── Composite controls ──────────────────────────────────────────────────── */
+
+.ngx-field__currency-wrap,
+.ngx-field__password-wrap,
+.ngx-field__month-year-wrap,
+.ngx-field__file-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ngx-field__currency-symbol {
+  color: var(--ngx-color-muted);
+}
+
+.ngx-field__eye-btn,
+.ngx-field__upload-btn,
+.ngx-field__remove-btn,
+.ngx-field__array-add-btn,
+.ngx-field__array-remove-btn,
+.ngx-form__lock {
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
+  background: var(--ngx-color-surface);
+  color: inherit;
+  border: 1px solid var(--ngx-color-border);
+  border-radius: var(--ngx-radius);
+  padding: 6px 10px;
+}
+
+.ngx-field__eye-btn:focus-visible,
+.ngx-field__upload-btn:focus-visible,
+.ngx-field__remove-btn:focus-visible,
+.ngx-field__array-add-btn:focus-visible,
+.ngx-field__array-remove-btn:focus-visible,
+.ngx-form__lock:focus-visible,
+.ngx-form__tab:focus-visible,
+.ngx-form__submit:focus-visible,
+.ngx-form__reset:focus-visible {
+  outline: 2px solid var(--ngx-color-accent);
+  outline-offset: 2px;
+}
+
+.ngx-form__lock {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+/* Radio */
+.ngx-field__radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ngx-field__radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ngx-field__radio-label {
+  cursor: pointer;
+}
+
+/* Boolean switch */
+.ngx-field__toggle-wrap,
+.ngx-field__toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.ngx-field__toggle-track {
+  position: relative;
+  width: 38px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--ngx-color-border);
+  transition: background 0.15s ease;
+  flex: none;
+}
+
+.ngx-field__toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ngx-color-surface);
+  transition: transform 0.15s ease;
+}
+
+.ngx-field__toggle-input:checked + .ngx-field__toggle-track {
+  background: var(--ngx-color-accent);
+}
+
+.ngx-field__toggle-input:checked + .ngx-field__toggle-track .ngx-field__toggle-thumb {
+  transform: translateX(18px);
+}
+
+.ngx-field__toggle-input:focus-visible + .ngx-field__toggle-track {
+  outline: 2px solid var(--ngx-color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ngx-field__toggle-track,
+  .ngx-field__toggle-thumb {
+    transition: none;
+  }
+}
+
+/* Group and array containers */
+.ngx-field__fieldset {
+  border: 1px solid var(--ngx-color-border);
+  border-radius: var(--ngx-radius);
+  padding: 12px;
+  margin: 0;
+  min-width: 0;
+}
+
+.ngx-field__legend {
+  padding: 0 6px;
+  font-size: var(--ngx-label-size);
+  color: var(--ngx-color-muted);
+}
+
+.ngx-field__group-children,
+.ngx-field__array-item-fields {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--ngx-gap);
+}
+
+.ngx-field__array-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ngx-field__array-item {
+  border: 1px solid var(--ngx-color-border);
+  border-radius: var(--ngx-radius);
+  padding: 10px;
+}
+
+.ngx-field__array-header,
+.ngx-field__array-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ngx-field__array-item-title {
+  font-size: var(--ngx-label-size);
+  color: var(--ngx-color-muted);
+}
+
+.ngx-field__array-empty,
+.ngx-field__image-placeholder,
+.ngx-record-editor__row-empty {
+  color: var(--ngx-color-muted);
+  font-size: var(--ngx-hint-size);
+}
+
+/* Image and file */
+.ngx-field__image-wrap,
+.ngx-field__image-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ngx-field__image-preview {
+  max-width: 140px;
+  max-height: 140px;
+  border-radius: var(--ngx-radius);
+  border: 1px solid var(--ngx-color-border);
+}
+
+.ngx-field__file-link,
+.ngx-field__email-link {
+  color: var(--ngx-color-accent);
+}
+
+.ngx-field__file-name,
+.ngx-field__file-selected {
+  font-size: var(--ngx-hint-size);
+  color: var(--ngx-color-muted);
+  word-break: break-all;
+}
+
+/* ─── Banners and actions ─────────────────────────────────────────────────── */
+
+.ngx-form__error-banner,
+.ngx-form__warning-banner,
+.ngx-form__info-banner,
+.ngx-form__denied,
+.ngx-record-editor__banner {
+  padding: 10px 12px;
+  border-radius: var(--ngx-radius);
+  border: 1px solid var(--ngx-color-border);
+  background: var(--ngx-color-surface-alt);
+  margin-bottom: 10px;
+}
+
+.ngx-form__error-banner,
+.ngx-record-editor__banner--error {
+  color: var(--ngx-color-error);
+  border-color: currentColor;
+}
+
+.ngx-form__warning-banner,
+.ngx-record-editor__banner--warning {
+  color: var(--ngx-color-warning);
+  border-color: currentColor;
+}
+
+.ngx-form__info-banner,
+.ngx-record-editor__banner--info {
+  color: var(--ngx-color-accent);
+  border-color: currentColor;
+}
+
+.ngx-form__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: var(--ngx-gap);
+}
+
+.ngx-form__submit,
+.ngx-form__reset {
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
+  min-height: var(--ngx-control-height);
+  padding: 0 18px;
+  border-radius: var(--ngx-radius);
+  border: 1px solid var(--ngx-color-border);
+  background: var(--ngx-color-surface);
+  color: inherit;
+}
+
+.ngx-form__submit {
+  background: var(--ngx-color-accent);
+  border-color: var(--ngx-color-accent);
+  color: #fff;
+}
+
+.ngx-form__submit:disabled,
+.ngx-form__reset:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ─── Record editor ───────────────────────────────────────────────────────── */
+
+.ngx-record-editor__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: var(--ngx-gap);
+}
+
+.ngx-record-editor__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ngx-color-surface-alt);
+  border: 1px solid var(--ngx-color-border);
+  flex: none;
+}
+
+.ngx-record-editor__title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.ngx-record-editor__subtitle,
+.ngx-record-editor__section-hint,
+.ngx-record-editor__summary-label {
+  color: var(--ngx-color-muted);
+  font-size: var(--ngx-hint-size);
+}
+
+.ngx-record-editor__summary-panel,
+.ngx-record-editor__drawer {
+  border: 1px solid var(--ngx-color-border);
+  border-radius: var(--ngx-radius);
+  padding: 12px;
+  background: var(--ngx-color-surface-alt);
+  margin-bottom: var(--ngx-gap);
+}
+
+.ngx-record-editor__summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.ngx-record-editor__section-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.ngx-record-editor__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ngx-record-editor__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--ngx-color-border);
+  border-radius: var(--ngx-radius);
+}
+
+.ngx-record-editor__row-text {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.ngx-record-editor__banner-dismiss,
+.ngx-record-editor__row-btn,
+.ngx-record-editor__header-toggle {
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
+  background: none;
+  border: 1px solid var(--ngx-color-border);
+  border-radius: var(--ngx-radius);
+  padding: 4px 8px;
+  color: inherit;
+}
+
+.ngx-record-editor__banner-dismiss:focus-visible,
+.ngx-record-editor__row-btn:focus-visible,
+.ngx-record-editor__header-toggle:focus-visible {
+  outline: 2px solid var(--ngx-color-accent);
+  outline-offset: 2px;
+}
+
+/* ─── Narrow screens ──────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  /* colSpan is set inline per field; below this width a 12-column grid is unreadable. */
+  .ngx-form__panel,
+  .ngx-field__group-children,
+  .ngx-field__array-item-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ngx-form__field-slot {
+    grid-column: 1 / -1 !important;
+  }
+}

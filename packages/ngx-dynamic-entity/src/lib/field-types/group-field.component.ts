@@ -4,7 +4,7 @@ import type { NestedFieldConfig, EntityFormConfig } from '@dynamic-entity/core';
 import { resolveLabel } from '@dynamic-entity/core';
 import { DynamicFieldComponent } from '../form/dynamic-field/dynamic-field.component';
 
-/** ADR-008: GroupFieldComponent — renders nested fieldset container for group.children */
+/** Renders a nested fieldset container for a group field's children. */
 @Component({
   selector: 'ngx-group-field',
   standalone: true,

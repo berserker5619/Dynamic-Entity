@@ -18,11 +18,17 @@ export * from './lib/services/lookup-registry.service';
 export * from './lib/services/rbac.service';
 export * from './lib/services/rules-evaluation.service';
 export * from './lib/services/config-source.service';
+export * from './lib/services/validation-messages.service';
 
 // Components — the library ships form UI only; rendering a data table is the consumer's choice.
 export * from './lib/form/dynamic-form.component';
 export * from './lib/form/dynamic-record-form.component';
 export * from './lib/form/dynamic-field/dynamic-field.component';
+
+// The contract a field component must satisfy to be registered with provideFieldTypes.
+// Previously this existed only as a code comment and an ADR that is gitignored, so a
+// consumer had no interface to implement against.
+export * from './lib/field-types/field-component.contract';
 
 // Field type components — every one, individually importable.
 //

@@ -1,7 +1,8 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { resolveLabel } from '@dynamic-entity/core';
+import { ValidationMessagesService } from '../services/validation-messages.service';
 
 @Component({
   selector: 'ngx-text-field',
@@ -39,6 +40,8 @@ import { resolveLabel } from '@dynamic-entity/core';
   `,
 })
 export class TextFieldComponent {
+  private readonly messages = inject(ValidationMessagesService);
+
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() language: string = 'en';
@@ -55,12 +58,10 @@ export class TextFieldComponent {
 
   get errorMessage(): string {
     if (!this.control || !this.control.errors || !this.control.touched) return '';
-    const errs = this.control.errors;
-    if (errs['required']) return 'This field is required.';
-    if (errs['email']) return 'Please enter a valid email address.';
-    if (errs['minlength']) return `Minimum ${errs['minlength'].requiredLength} characters required.`;
-    if (errs['maxlength']) return `Maximum ${errs['maxlength'].requiredLength} characters allowed.`;
-    if (errs['pattern']) return 'Invalid format.';
-    return 'Invalid value.';
+    return this.messages.resolve(
+      this.control.errors,
+      this.language,
+      ['required', 'email', 'minlength', 'maxlength', 'pattern'],
+    );
   }
 }

@@ -17,7 +17,8 @@ import { RbacService } from '../../services/rbac.service';
 
 /**
  * DynamicFieldComponent — mounts the correct field component for a given NestedFieldConfig.
- * Uses ViewContainerRef.createComponent() and passes inputs via setInput() (ADR-008).
+ * Uses ViewContainerRef.createComponent() and passes inputs via setInput(); see
+ * DynamicFieldComponentContract for the five inputs every field component receives.
  * Never add field-type-specific logic here — this component must remain generic.
  *
  * The 5 inputs (field, control, language, readonly, masked) are passed to every mounted
@@ -91,7 +92,8 @@ export class DynamicFieldComponent implements OnChanges {
   private static readonly warnedTypes = new Set<string>();
 
   /**
-   * Pass all 5 contract inputs via ComponentRef.setInput() — uniform for all types (ADR-008).
+   * Pass all 5 contract inputs via ComponentRef.setInput() — uniform for all types.
+   * The public shape is DynamicFieldComponentContract.
    * Must use setInput(), not property assignment: the field components declare inputs with
    * definite assignment and no initializer, and the lib compiles with
    * useDefineForClassFields:false, so `'field' in instance` is false until first set.

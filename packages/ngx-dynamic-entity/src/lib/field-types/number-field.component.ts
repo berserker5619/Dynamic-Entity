@@ -1,7 +1,8 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { resolveLabel } from '@dynamic-entity/core';
+import { ValidationMessagesService } from '../services/validation-messages.service';
 
 @Component({
   selector: 'ngx-number-field',
@@ -42,6 +43,8 @@ import { resolveLabel } from '@dynamic-entity/core';
   `,
 })
 export class NumberFieldComponent {
+  private readonly messages = inject(ValidationMessagesService);
+
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() language: string = 'en';
@@ -58,10 +61,11 @@ export class NumberFieldComponent {
 
   get errorMessage(): string {
     if (!this.control || !this.control.errors || !this.control.touched) return '';
-    const errs = this.control.errors;
-    if (errs['required']) return 'This field is required.';
-    if (errs['min']) return `Value must be at least ${errs['min'].min}.`;
-    if (errs['max']) return `Value must not exceed ${errs['max'].max}.`;
-    return 'Invalid number.';
+    return this.messages.resolve(
+      this.control.errors,
+      this.language,
+      ['required', 'min', 'max'],
+      'invalidNumber',
+    );
   }
 }

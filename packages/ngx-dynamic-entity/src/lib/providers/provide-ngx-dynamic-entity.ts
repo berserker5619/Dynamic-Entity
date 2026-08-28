@@ -6,6 +6,7 @@ import {
   HOOK_REGISTRY,
   type HookFn,
   RECORD_MIGRATIONS,
+  VALIDATION_MESSAGES,
   LOOKUP_REGISTRY,
   MASKED_ROLES,
   VALIDATOR_REGISTRY,
@@ -17,7 +18,7 @@ export interface NgxDynamicEntityConfig {
   /** Custom field type components keyed by type string */
   fieldTypes?: Record<string, Type<any>>;
   /**
-   * Entity-ref option loaders keyed by entity key (ADR-006).
+   * Entity-ref option loaders keyed by entity key.
    * Each receives `{ parentValue, filters, lang }` and may return an array, Promise, or Observable.
    */
   entityRefs?: Record<string, EntityReferenceLoader>;
@@ -27,6 +28,12 @@ export interface NgxDynamicEntityConfig {
    * a loader for anything fetched, so an unused list is never loaded.
    */
   lookups?: Record<string, LookupListSource>;
+  /**
+   * Override the messages shown under invalid fields, keyed by Angular error key. A value is
+   * a string, or a function receiving `(language, error)` when it needs the error's detail.
+   * Unlisted keys keep their English default.
+   */
+  validationMessages?: Record<string, string | ((language: string, error: any) => string)>;
   /** Custom validator functions keyed by validator name */
   validators?: Record<string, any>;
   /** Hook functions keyed by hook name */
@@ -57,4 +64,5 @@ export const provideNgxDynamicEntity = (config: NgxDynamicEntityConfig = {}): En
     { provide: VALIDATOR_REGISTRY, useValue: new Map(Object.entries(config.validators ?? {})) },
     { provide: HOOK_REGISTRY, useValue: new Map(Object.entries(config.hooks ?? {})) },
     { provide: RECORD_MIGRATIONS, useValue: config.migrations ?? [] },
+    { provide: VALIDATION_MESSAGES, useValue: config.validationMessages ?? {} },
   ]);

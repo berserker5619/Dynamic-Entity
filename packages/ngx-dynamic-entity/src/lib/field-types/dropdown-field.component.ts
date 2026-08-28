@@ -8,6 +8,7 @@ import {
   valuesMatch,
 } from '@dynamic-entity/core';
 import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-registry.service';
+import { ValidationMessagesService } from '../services/validation-messages.service';
 
 @Component({
   selector: 'ngx-dropdown-field',
@@ -57,6 +58,7 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
 })
 export class DropdownFieldComponent {
   private readonly lookups = inject(LookupRegistryService);
+  private readonly messages = inject(ValidationMessagesService);
 
   private _field!: NestedFieldConfig;
   private _language = 'en';
@@ -124,8 +126,13 @@ export class DropdownFieldComponent {
 
   get errorMessage(): string {
     if (!this.control || !this.control.errors || !this.control.touched) return '';
-    const errs = this.control.errors;
-    if (errs['required']) return 'Please select an option.';
-    return 'Invalid selection.';
+    // `requiredSelection` rather than `required`: "Please select an option" reads better on a
+    // dropdown than "This field is required", and both stay independently overridable.
+    return this.messages.resolve(
+      this.control.errors,
+      this.language,
+      [['required', 'requiredSelection']],
+      'invalidSelection',
+    );
   }
 }

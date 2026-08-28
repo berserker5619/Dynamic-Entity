@@ -13,7 +13,7 @@ import { EntityReferenceService } from './entity-reference.service';
 /**
  * CascadeDataService — loads entity-reference options and applies parent→child cascades.
  *
- * Loaders come from the registry only (ADR-006). This service owns the three things a
+ * Loaders come from the registry only. This service owns the three things a
  * field component should not: resolving the loader, coercing whatever it returned
  * (array | Promise | Observable) into a Promise, and filtering by the parent's value.
  */

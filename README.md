@@ -215,6 +215,13 @@ cd packages/demo-angular && npx playwright test
 
 ---
 
+## 🧩 Extending
+
+Custom field types, validators, validation messages and i18n, upload handlers, entity-ref
+loaders, lookup lists, and the programmatic form API: see [EXTENDING.md](EXTENDING.md).
+
+---
+
 ## 📝 Changelog
 
 See [CHANGELOG.md](CHANGELOG.md). The three packages share a version and are released

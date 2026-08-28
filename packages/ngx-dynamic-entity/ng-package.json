@@ -3,6 +3,10 @@
   "lib": {
     "entryFile": "src/public-api.ts"
   },
-  "assets": [],
-  "allowedNonPeerDependencies": ["@dynamic-entity/core"]
+  "assets": [
+    "styles.css"
+  ],
+  "allowedNonPeerDependencies": [
+    "@dynamic-entity/core"
+  ]
 }

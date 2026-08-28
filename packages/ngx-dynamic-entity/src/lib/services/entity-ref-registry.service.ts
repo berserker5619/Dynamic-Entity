@@ -4,7 +4,7 @@ import { ENTITY_REF_REGISTRY } from '../tokens/injection-tokens';
 
 /**
  * EntityRefRegistryService — resolves entity-ref option loader functions.
- * ADR-006: Entity-ref options come ONLY from this registry.
+ * Entity-ref options come ONLY from this registry.
  * Never pass loaders via @Input() on field components.
  *
  * Consumers register loaders via provideNgxDynamicEntity({ entityRefs: { clients: () => [...] } }).

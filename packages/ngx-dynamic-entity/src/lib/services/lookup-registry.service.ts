@@ -249,7 +249,7 @@ const hostLastConfig = new WeakMap<ChoiceOptionHost, { field?: NestedFieldConfig
  * Point a choice component's `options` signal at the right source (parity plan §6.3).
  *
  * Called from the `field` / `language` input setters of `dropdown`, `radio` and `multiSelect` —
- * the wiring is theirs, the decision is the service's, which is what keeps the ADR-008
+ * the wiring is theirs, the decision is the service's, which is what keeps the field
  * five-input contract intact: options are never pushed in as a sixth input.
  *
  * Setters rather than `ngOnChanges` on purpose. `ngOnChanges` only fires for inputs Angular
