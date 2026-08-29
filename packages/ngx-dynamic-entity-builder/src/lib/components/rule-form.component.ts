@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -13,6 +13,7 @@ import type { FormRule, RuleOperator } from '@dynamic-entity/core';
  * RuleFormComponent — dialog/panel form for creating or editing a FormRule.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-rule-form',
   standalone: true,
   imports: [

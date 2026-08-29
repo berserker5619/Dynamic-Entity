@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -27,6 +27,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
  * TabManagerComponent — add / rename / reorder / remove tabs & sub-tabs with systemDefault protection.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-tab-manager',
   standalone: true,
   imports: [

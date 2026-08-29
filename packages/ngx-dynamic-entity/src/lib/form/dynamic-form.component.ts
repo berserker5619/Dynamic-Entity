@@ -1,4 +1,6 @@
 import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   Input,
   Output,
@@ -58,6 +60,7 @@ import { EntityRefSelectionService } from '../services/entity-ref-selection.serv
  * keyboard shortcuts (Ctrl+S, Esc), and RBAC-gated submission.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-dynamic-form',
   standalone: true,
   imports: [ReactiveFormsModule, DynamicFieldComponent, NgComponentOutlet],
@@ -172,6 +175,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   @Output() saveRejected = new EventEmitter<{ reason: string; error?: unknown }>();
 
   // ─── Services ─────────────────────────────────────────────────────────────
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly fb = inject(FormBuilder);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly hookRegistry = inject(HookRegistryService);
@@ -203,6 +207,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   form!: FormGroup;
 
   private valueSub?: Subscription;
+  private statusSub?: Subscription;
   private selectionSub?: Subscription;
   /** Previous values, for detecting `patchOnTrue` false→true transitions. */
   private previousValues: Record<string, any> = {};
@@ -393,6 +398,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     this.valueSub?.unsubscribe();
+    this.statusSub?.unsubscribe();
     this.selectionSub?.unsubscribe();
   }
 
@@ -505,6 +511,13 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     const changes$ = this.changeDebounceMs > 0
       ? this.form.valueChanges.pipe(debounceTime(this.changeDebounceMs))
       : this.form.valueChanges;
+    // Validity is not value: an async validator settling flips `pending` and then `invalid`
+    // with no value change and no template event, so under OnPush the Save button would
+    // never re-enable. submitBlocked reads form.pending and form.invalid, so this is what
+    // keeps it honest.
+    this.statusSub?.unsubscribe();
+    this.statusSub = this.form.statusChanges.subscribe(() => this.cdr.markForCheck());
+
     this.valueSub = changes$.subscribe(() => {
       const flattened = this.flattenFormValues();
       this.formValues.set(flattened);

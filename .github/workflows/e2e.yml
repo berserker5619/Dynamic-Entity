@@ -1,18 +1,25 @@
 name: E2E
 
+# The whole suite runs on every pull request.
+#
+# It used to run a hand-picked subset per PR with the full set left to a nightly job, on the
+# stated grounds that the suite "takes over three hours". That figure was wrong — carried
+# over from a misread review note. The first nightly run measured it:
+#
+#   Running 72 tests using 1 worker
+#   71 passed (3.6m)
+#
+# Three and a half minutes does not justify splitting the signal, so there is one command and
+# every pull request gets the whole thing. The nightly stays: it catches flakiness that a
+# single run per change cannot, and drift in anything the browser depends on.
+
 on:
   pull_request:
   push:
     branches: [main]
   schedule:
-    # The full suite is far too slow for a pull request (see below), so it runs nightly.
     - cron: '0 3 * * *'
   workflow_dispatch:
-    inputs:
-      full:
-        description: 'Run the complete suite instead of the fast subset'
-        type: boolean
-        default: false
 
 concurrency:
   group: e2e-${{ github.workflow }}-${{ github.ref }}
@@ -25,10 +32,9 @@ jobs:
   e2e:
     name: Playwright
     runs-on: ubuntu-latest
-    # A ceiling, not a target. The full suite has taken over three hours:
-    # playwright.config.ts sets workers: 1, and two form-builder specs drive hundreds of UI
-    # interactions each. The pull-request subset below finishes in about two minutes.
-    timeout-minutes: 330
+    # Generous against a ~4 minute suite, so a genuine hang is still cut off rather than
+    # occupying a runner.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -47,18 +53,12 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: packages/demo-angular
 
-      # The fast subset on every PR. test-data-json-rendering is the one that matters most:
-      # it asserts every field type in the reference dataset exists in the catalog, fails on
-      # any [ngx-dynamic-entity] console warning, and requires tabs that declare fields to
-      # actually render controls. It previously watched only for uncaught exceptions and so
-      # passed green over three field types the renderer refused to draw.
-      - name: E2E (pull-request subset)
-        if: ${{ github.event_name != 'schedule' && github.event.inputs.full != 'true' }}
-        run: npx playwright test e2e/test-data-json-rendering.spec.ts e2e/demo.spec.ts e2e/accessibility.spec.ts
-        working-directory: packages/demo-angular
-
-      - name: E2E (full suite)
-        if: ${{ github.event_name == 'schedule' || github.event.inputs.full == 'true' }}
+      # test-data-json-rendering is the one worth knowing about: it asserts every field type
+      # in the reference dataset exists in the catalog, fails on any [ngx-dynamic-entity]
+      # console warning, and requires tabs that declare fields to actually render controls. It
+      # previously watched only for uncaught exceptions and so passed green over three field
+      # types the renderer refused to draw.
+      - name: E2E
         run: npx playwright test
         working-directory: packages/demo-angular
 

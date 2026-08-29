@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -9,6 +9,7 @@ import { FIELD_TYPE_CATALOG, type FieldTypeMeta } from '../field-catalog';
  * FieldPaletteComponent — the list of buildable field types (Angular Material).
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-field-palette',
   standalone: true,
   imports: [MatButtonModule, MatIconModule, MatTooltipModule],

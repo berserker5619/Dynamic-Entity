@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { MatCardModule } from '@angular/material/card';
@@ -7,6 +7,7 @@ import { BuilderStore } from '../builder-store.service';
 import { EntityBuilderTreeNodeComponent } from './entity-builder-tree-node.component';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-entity-builder-canvas',
   standalone: true,
   imports: [

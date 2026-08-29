@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,6 +9,7 @@ import { BuilderStore } from '../builder-store.service';
 import { getFieldTypeMeta } from '../field-catalog';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-entity-builder-tree-node',
   standalone: true,
   imports: [

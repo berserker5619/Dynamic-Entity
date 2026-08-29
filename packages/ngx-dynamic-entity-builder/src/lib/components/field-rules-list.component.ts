@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -13,6 +13,7 @@ import { RuleFormComponent } from './rule-form.component';
  * enable/disable, edit, delete. `RuleFormComponent` authors one rule; this owns the set.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-field-rules-list',
   standalone: true,
   imports: [MatButtonModule, MatIconModule, MatSlideToggleModule, MatTooltipModule, RuleFormComponent],

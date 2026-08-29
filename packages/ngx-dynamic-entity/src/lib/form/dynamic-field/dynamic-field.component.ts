@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   ComponentRef,
   Injector,
@@ -27,6 +28,7 @@ import { RbacService } from '../../services/rbac.service';
  * component uniformly — no special-casing per type.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-dynamic-field',
   standalone: true,
   template: `<ng-container #fieldHost></ng-container>`,

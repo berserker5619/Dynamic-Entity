@@ -1,15 +1,4 @@
-import {
-  Component,
-  Input,
-  Output,
-  EventEmitter,
-  OnChanges,
-  SimpleChanges,
-  signal,
-  computed,
-  inject,
-  ViewChild,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, signal, computed, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
@@ -30,6 +19,7 @@ const FIELD_NOT_FOUND = Symbol('field-not-found');
  * interactive quick-jump links, and baseline modification tracking.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-dynamic-record-form',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, DynamicFormComponent, DynamicFieldComponent],
