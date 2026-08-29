@@ -290,7 +290,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     if (active?.moduleName) return [];
     const rawFields = active ? (active.fields || []) : ((this.config?.tabs || []).flatMap(t => t.fields || []));
     const currentValues = this.formValues();
-    const hiddenFields = new Set(this.ruleResult().hiddenFields);
+    const hiddenFields = new Set<string>(this.ruleResult().hiddenFields);
 
     return rawFields.filter(
       field => evaluateFieldVisibility(field, currentValues) && !this.namesField(hiddenFields, field),
@@ -931,7 +931,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   private syncHiddenFieldState(values: Record<string, any>): void {
     if (this.preview) return; // preview freezes the whole form on purpose
 
-    const hiddenByRule = new Set(this.ruleResult().hiddenFields);
+    const hiddenByRule = new Set<string>(this.ruleResult().hiddenFields);
 
     for (const field of this.tabFields()) {
       const ctrl = this.getControl(field.id);
