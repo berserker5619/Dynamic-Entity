@@ -39,9 +39,33 @@ updates:
           - minor
           - patch
     ignore:
-      # Majors that are not Angular still need a deliberate act: TypeScript 6/7 drops
-      # `baseUrl`, and @typescript-eslint 8 does not install against eslint-plugin 7.
-      # Angular itself now tracks the 21 toolchain and can take majors in its group.
+      # No majors in the toolchain. Each of these breaks something that a group cannot
+      # repair on its own.
+      #
+      # Angular was briefly exempted here, on the reasoning that the group would keep its
+      # packages together. The first run disproved it: instead of one Angular 22 PR it
+      # produced four, three of which did not install at all — @angular/compiler@22 against
+      # compiler-cli@21, platform-browser@22 against forms@21, material@22 against cdk@21.
+      # Angular's packages move in lockstep, and a partial bump has no resolution, so the
+      # major has to be one deliberate commit across the whole stack the way 21 was
+      # (c3b9480) rather than something Dependabot proposes piecemeal.
+      #
+      # ng-packagr and jest-preset-angular track the Angular major and belong with it.
+      # TypeScript 6/7 drops `baseUrl`; @typescript-eslint 8 does not install against
+      # eslint-plugin 7.
+      #
+      # Minors and patches still flow through the groups above, which is where the security
+      # fixes are. Security alerts are never suppressed by an ignore rule.
+      - dependency-name: '@angular/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@angular-devkit/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'ng-packagr'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'jest-preset-angular'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'zone.js'
+        update-types: ['version-update:semver-major']
       - dependency-name: 'typescript'
         update-types: ['version-update:semver-major']
       - dependency-name: '@typescript-eslint/*'
