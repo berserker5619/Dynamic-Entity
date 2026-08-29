@@ -4,9 +4,10 @@
 
 | Version | Supported |
 |---|---|
+| 1.3.x | Yes |
 | 1.2.x | Yes |
 | 1.1.x | Yes |
-| 1.0.x | No — upgrade to 1.2.0 |
+| 1.0.x | No — upgrade to 1.3.0 |
 | < 1.0 | No |
 
 1.0.0 cannot be installed on any Angular newer than 17 and shipped a dependency fault that

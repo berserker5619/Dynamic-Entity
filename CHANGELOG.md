@@ -7,6 +7,59 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.3.0] — 2026-08-29
+
+Work since 1.2.0: `datetime` stopped discarding the time it advertised, `time`
+joined the vocabulary, the quick-jump links started working for the fields they
+could never reach, and two accessibility specs that had been skipping themselves
+started running.
+
+### Added
+
+- **A `time` field type.** A bare time of day, with no date and no zone.
+  `TimeFieldComponent` renders `<input type="time">` and stores `HH:mm` — the value
+  the input already reads and writes, so the control binds straight through. This is
+  deliberately not `datetime`: a 09:00 opening time is not a moment in time, and
+  storing it as UTC would move it whenever the offset changed. Twenty field types
+  now, one component each.
+
+### Fixed
+
+- **`datetime` rendered a date-only input, so editing truncated the time.** The
+  type was in `RichFieldType`, in the published JSON Schema, accepted by
+  `validateConfig`, and offered by the builder palette as "Date & Time — Date and
+  time picker" — and it resolved to `DateFieldComponent`, whose input is
+  `type="date"`. Saving a record whose `datetime` field held a time silently
+  dropped it. The two display paths disagreed as well: `formatDisplayValue` showed
+  the time, the field's own readonly branch did not. `DateTimeFieldComponent`
+  renders `datetime-local`, stores ISO 8601 UTC, and displays with
+  `toLocaleString()`. It reads a legacy date-only value as **local** midnight,
+  because `new Date('2020-01-01')` is UTC midnight and renders as the previous day
+  west of Greenwich — and every value written by the old input has that shape.
+- **Quick-jump links did nothing for any field in a sub-tab, and never moved
+  focus.** `jumpToField` searched top-level `fields` only, so a sub-tab field was
+  never found; its target was a plain `div`, so `el.focus()` was a no-op; and it
+  waited on a 50 ms `setTimeout` that touched an unguarded `document` and was never
+  cancelled on destroy. It now walks sub-tabs and selects them, schedules with
+  `afterNextRender`, and the field slot carries `tabindex="-1"`. There is no longer
+  any raw `document` or `window` access in either library.
+
+### Changed
+
+- **Field slots carry `tabindex="-1"`** so a programmatic jump can focus them.
+- **The builder's per-file coverage floor rose from 76/50/50/79 to 85/75/85/85**,
+  matching the other two packages; global rose to 95/82/97/97. Reaching it meant
+  first specs for the canvas and tree-node components, edge coverage for the
+  inspector and rules editor, and deleting a dead
+  `onDrop`/`fieldTypeLabel`/`fieldTypeIcon`/`fieldLabel` block that the canvas
+  extraction had left on `EntityBuilderComponent`.
+- **Two accessibility specs stopped skipping themselves.** Both guarded on what the
+  fixture happened to contain: the tab-focus spec loaded an entity with exactly one
+  tab, so it had never run, and the builder spec needed two rows from a builder that
+  opens empty. The suite is 72 passed, 0 skipped.
+
+---
+
 ## [1.2.0] — 2026-08-28
 
 Work since 1.1.0: config can be checked before it is stored, a save can be
