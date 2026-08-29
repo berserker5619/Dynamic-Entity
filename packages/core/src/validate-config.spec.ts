@@ -1,4 +1,4 @@
-import type { EntityFormConfig } from './form-model.types';
+import type { EntityFormConfig, FormRule } from './form-model.types';
 import { FIELD_TYPE_CATALOG } from './field-catalog';
 import { formatConfigProblems, isConfigValid, validateConfig } from './validate-config';
 
@@ -206,6 +206,105 @@ describe('validateConfig', () => {
     expect(errors(dup).some(p => p.message.includes('Ambiguous reference to "country"'))).toBe(true);
   });
 
+  /**
+   * The path is the form the builder authors and the docs recommend, so the validator has to
+   * resolve it — it used to report the bracketed key as an unknown field.
+   */
+  it('accepts a showWhen keyed by a path, and names the one field it means', () => {
+    const fine: EntityFormConfig = {
+      ...ok,
+      tabs: [
+        { id: 'personal', label: {}, fields: [{ id: 'address', type: 'text', label: {} }] },
+        {
+          id: 'work',
+          label: {},
+          fields: [
+            { id: 'address', type: 'text', label: {} },
+            { id: 'note', type: 'text', label: {}, showWhen: { '[work.address]': 'x' } },
+          ],
+        },
+      ],
+    };
+    expect(errors(fine)).toEqual([]);
+  });
+
+  it('rejects a path that no field occupies', () => {
+    const bad: EntityFormConfig = {
+      ...ok,
+      tabs: [
+        {
+          id: 'work',
+          label: {},
+          fields: [{ id: 'note', type: 'text', label: {}, showWhen: { '[work.nothing]': 'x' } }],
+        },
+      ],
+    };
+    expect(errors(bad).some(p => p.message.includes('No field at path "work.nothing"'))).toBe(true);
+  });
+
+  it('accepts a cascade parent named by path', () => {
+    const fine: EntityFormConfig = {
+      ...ok,
+      tabs: [
+        { id: 'personal', label: {}, fields: [{ id: 'country', type: 'dropdown', label: {} }] },
+        {
+          id: 'work',
+          label: {},
+          fields: [
+            { id: 'country', type: 'dropdown', label: {} },
+            {
+              id: 'city',
+              type: 'entity-ref',
+              label: {},
+              entityReference: { enabled: true, linkedEntityKey: 'cities', parentField: '[work.country]' },
+            },
+          ],
+        },
+      ],
+    };
+    expect(errors(fine)).toEqual([]);
+  });
+
+  // The message should say what to do, not just that it is wrong.
+  it('tells an ambiguous bare reference which path to use instead', () => {
+    const dup: EntityFormConfig = {
+      ...ok,
+      tabs: [
+        { id: 'personal', label: {}, fields: [{ id: 'address', type: 'text', label: {} }] },
+        {
+          id: 'work',
+          label: {},
+          fields: [
+            { id: 'address', type: 'text', label: {} },
+            { id: 'note', type: 'text', label: {}, showWhen: { address: 'x' } },
+          ],
+        },
+      ],
+    };
+    expect(errors(dup).some(p => p.message.includes('[personal.address]'))).toBe(true);
+  });
+
+  it('rejects a patchOnTrue mapping that names a missing field', () => {
+    const bad: EntityFormConfig = {
+      ...ok,
+      tabs: [
+        {
+          id: 'a',
+          label: {},
+          fields: [
+            {
+              id: 'same',
+              type: 'boolean',
+              label: {},
+              patchOnTrue: [{ from: 'name', to: 'missing' }],
+            },
+          ],
+        },
+      ],
+    };
+    expect(errors(bad).some(p => p.message.includes('Nothing will be copied to.'))).toBe(true);
+  });
+
   it('still allows a showWhen naming an id that exists in only one scope', () => {
     const fine: EntityFormConfig = {
       ...ok,
@@ -312,6 +411,80 @@ describe('validateConfig', () => {
     const text = formatConfigProblems(validateConfig({ entity: '', tabs: [] } as EntityFormConfig));
     expect(text).toContain('[error]');
     expect(text).toContain('entity');
+  });
+
+  it('accepts the people entity in the reference dataset', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const data = require('../../../test_data.json') as EntityFormConfig[];
+    const people = data.find(c => c.entity === 'people');
+    expect(people).toBeDefined();
+    expect(errors(people)).toEqual([]);
+  });
+
+  const aRule = (over: Partial<FormRule> = {}): FormRule => ({
+    formConfigId: 'clients',
+    fieldId: 'name',
+    conditions: [{ operator: 'EQUAL', compareType: 'value', value: 'x' }],
+    action: { type: 'visibility', value: false },
+    targets: [{ id: 'name', type: 'field' }],
+    enabled: true,
+    priority: 1,
+    ...over,
+  });
+
+  it('does not check rules unless they are passed', () => {
+    expect(errors({ ...ok })).toEqual([]);
+    expect(
+      validateConfig(ok, { rules: [aRule({ fieldId: 'nope' })] }).some(p =>
+        p.message.includes('never trigger'),
+      ),
+    ).toBe(true);
+  });
+
+  it('accepts a rule that names a field by path', () => {
+    const two: EntityFormConfig = {
+      ...ok,
+      tabs: [
+        { id: 'personal', label: {}, fields: [{ id: 'address', type: 'text', label: {} }] },
+        { id: 'work', label: {}, fields: [{ id: 'address', type: 'text', label: {} }] },
+      ],
+    };
+    expect(
+      validateConfig(two, {
+        rules: [aRule({ fieldId: '[work.address]', targets: [{ id: '[personal.address]', type: 'field' }] })],
+      }).filter(p => p.level === 'error'),
+    ).toEqual([]);
+  });
+
+  it('rejects a rule whose trigger is an id defined in two scopes', () => {
+    const two: EntityFormConfig = {
+      ...ok,
+      tabs: [
+        { id: 'personal', label: {}, fields: [{ id: 'address', type: 'text', label: {} }] },
+        { id: 'work', label: {}, fields: [{ id: 'address', type: 'text', label: {} }] },
+      ],
+    };
+    const problems = validateConfig(two, { rules: [aRule({ fieldId: 'address' })] });
+    expect(problems.some(p => p.path === 'rules[0].fieldId')).toBe(true);
+    expect(problems.some(p => p.message.includes('[personal.address]'))).toBe(true);
+  });
+
+  it('rejects a rule that names an unknown tab', () => {
+    const problems = validateConfig(ok, {
+      rules: [aRule({ targets: [{ id: 'missing', type: 'tab' }] })],
+    });
+    expect(problems.some(p => p.message.includes('unknown tab "missing"'))).toBe(true);
+  });
+
+  it('rejects a compareToField that does not exist', () => {
+    const problems = validateConfig(ok, {
+      rules: [
+        aRule({
+          conditions: [{ operator: 'EQUAL', compareType: 'field', compareToField: 'nope' }],
+        }),
+      ],
+    });
+    expect(problems.some(p => p.message.includes('never match'))).toBe(true);
   });
 });
 

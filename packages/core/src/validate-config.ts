@@ -11,8 +11,8 @@
  */
 
 import { FIELD_TYPE_CATALOG } from './field-catalog';
-import { ROOT_SCOPE, ambiguousFieldIds, collectFieldScopes } from './field-scopes';
-import type { EntityFormConfig, NestedFieldConfig, NestedTabConfig } from './form-model.types';
+import { ROOT_SCOPE, ambiguousFieldIds, collectFieldScopes, parseFieldRef, refOf } from './field-scopes';
+import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from './form-model.types';
 
 export interface ConfigProblem {
   /** `error` means it will not render correctly; `warning` means it is suspicious but usable. */
@@ -29,6 +29,12 @@ export interface ValidateConfigOptions {
    * custom type would be reported as invalid.
    */
   additionalFieldTypes?: readonly string[];
+  /**
+   * Rules live beside the config, not in it (`[rules]` on the renderer). Pass them here so
+   * `fieldId`, `compareToField` and field `targets` get the same reference check as `showWhen`.
+   * Omit them and those references are not checked — the renderer still warns in dev.
+   */
+  rules?: readonly FormRule[];
 }
 
 const ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
@@ -37,8 +43,9 @@ const ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
  * Validate a config's structure, ids and field types.
  *
  * Returns every problem found rather than throwing at the first, so an author fixing a config
- * sees the whole list. An empty array means the config is structurally sound — it does not
- * mean the rules or references it declares will resolve at runtime.
+ * sees the whole list. An empty array means the config is structurally sound. Pass `rules` to
+ * also check a rule's trigger, `compareToField` and field targets against the same path/id
+ * rule as `showWhen`.
  */
 export function validateConfig(
   config: EntityFormConfig | null | undefined,
@@ -76,9 +83,10 @@ export function validateConfig(
    * `{ personal: { address }, work: { address } }` — which is what the runtime has always
    * done. Only this validator insisted otherwise.
    *
-   * What genuinely cannot be duplicated is an id the *flat wiring* addresses. Rules,
-   * `showWhen` and cascades name a field by bare id with no scope, so if such a name is
-   * ambiguous the reference has no answer. That is checked separately below.
+   * What genuinely cannot be duplicated is an id a *bare* reference addresses. `showWhen`,
+   * cascades, `patchOnTrue` and rules may still name a field by id with no scope, so if that
+   * name is ambiguous the reference has no answer. A bracketed path names exactly one field
+   * and is the form the builder authors. Both are checked separately below.
    */
   const fieldIds = new Map<string, string>();
   const tabIds = new Map<string, string>();
@@ -192,50 +200,60 @@ export function validateConfig(
 
   // A field referencing a sibling that does not exist never becomes visible, and a cascade
   // pointing at a missing parent never loads — both silent at runtime.
-  const allIds = new Set(collectFieldScopes(config).map(e => e.field?.id).filter(Boolean) as string[]);
+  const entries = collectFieldScopes(config);
+  const allIds = new Set(entries.map(e => e.field?.id).filter(Boolean) as string[]);
+  const allPaths = new Set(
+    entries.filter(e => e.field?.id).map(e => refOf(e.field, e.scope)),
+  );
 
   /**
-   * An id that exists in more than one scope cannot be named by the flat wiring.
+   * Resolves one reference — a `showWhen` key or a cascade parent.
    *
-   * `showWhen`, cascade parents and rules carry a bare id and no scope, so when two scopes
-   * both define that id there is no answer to which one is meant — and the runtime picks by
-   * search order, silently. Duplicating an id is fine right up until something points at it,
-   * which is the line this draws.
+   * A bracketed path names exactly one field and is the form the builder authors. A bare name
+   * is a field id, which is how every config written before paths existed addresses a field;
+   * it resolves only while one scope defines it.
    */
-  const ambiguous = (id: string): string[] | null => scopesById.get(id) ?? null;
+  const referenceProblem = (reference: string): string | null => {
+    const parsed = parseFieldRef(reference);
+    if (parsed.kind === 'ref') {
+      return allPaths.has(parsed.value)
+        ? null
+        : `No field at path "${parsed.value}".`;
+    }
+    if (!allIds.has(parsed.value)) return `References unknown field "${parsed.value}".`;
+    const scopes = scopesById.get(parsed.value);
+    return scopes
+      ? `Ambiguous reference to "${parsed.value}": defined in ${scopes.join(' and ')}. Name it by path instead, as [${scopes[0]}.${parsed.value}].`
+      : null;
+  };
+
+  /**
+   * An id that exists in more than one scope cannot be named by a bare id.
+   *
+   * A bracketed path (`[work.address]`) names exactly one field. A bare id does not, so when
+   * two scopes both define that id there is no answer to which one is meant — and the runtime
+   * would pick by search order, silently. Duplicating an id is fine right up until something
+   * points at it by name, which is the line this draws.
+   */
+  const flagRef = (reference: string | undefined, path: string, suffix: string) => {
+    if (!reference) return;
+    const problem = referenceProblem(reference);
+    if (problem) add('error', path, `${problem} ${suffix}`);
+  };
 
   const checkRefs = (field: NestedFieldConfig, path: string) => {
     for (const key of Object.keys(field.showWhen ?? {})) {
-      if (!allIds.has(key)) {
-        add('error', `${path}.showWhen`, `References unknown field "${key}"; this field will never show.`);
-      } else {
-        const scopes = ambiguous(key);
-        if (scopes) {
-          add(
-            'error',
-            `${path}.showWhen`,
-            `Ambiguous reference to "${key}": defined in ${scopes.join(' and ')}. showWhen names a field by bare id, so give one of them a distinct id.`,
-          );
-        }
-      }
+      flagRef(key, `${path}.showWhen`, 'This field will never show.');
     }
-    const parent = field.entityReference?.parentField;
-    if (parent && !allIds.has(parent)) {
-      add(
-        'error',
-        `${path}.entityReference.parentField`,
-        `References unknown field "${parent}"; the cascade will never load.`,
-      );
-    } else if (parent) {
-      const scopes = ambiguous(parent);
-      if (scopes) {
-        add(
-          'error',
-          `${path}.entityReference.parentField`,
-          `Ambiguous reference to "${parent}": defined in ${scopes.join(' and ')}. A cascade parent is named by bare id, so give one of them a distinct id.`,
-        );
-      }
-    }
+    flagRef(
+      field.entityReference?.parentField,
+      `${path}.entityReference.parentField`,
+      'The cascade will never load.',
+    );
+    field.patchOnTrue?.forEach((mapping, i) => {
+      flagRef(mapping.from, `${path}.patchOnTrue[${i}].from`, 'Nothing will be copied from.');
+      flagRef(mapping.to, `${path}.patchOnTrue[${i}].to`, 'Nothing will be copied to.');
+    });
     field.children?.forEach((c, i) => checkRefs(c, `${path}.children[${i}]`));
   };
   const walkTabsForRefs = (tabs: NestedTabConfig[] | undefined, base: string) => {
@@ -245,6 +263,32 @@ export function validateConfig(
     });
   };
   walkTabsForRefs(config.tabs, 'tabs');
+
+  options.rules?.forEach((rule, i) => {
+    if (!rule || typeof rule !== 'object') {
+      add('error', `rules[${i}]`, 'Rule is missing or not an object.');
+      return;
+    }
+    const base = `rules[${i}]`;
+    flagRef(rule.fieldId, `${base}.fieldId`, 'The rule will never trigger.');
+    rule.conditions?.forEach((condition, j) => {
+      flagRef(
+        condition?.compareToField,
+        `${base}.conditions[${j}].compareToField`,
+        'The comparison will never match.',
+      );
+    });
+    rule.targets?.forEach((target, j) => {
+      if (!target?.id) return;
+      if (target.type === 'tab') {
+        if (!tabIds.has(target.id)) {
+          add('error', `${base}.targets[${j}].id`, `References unknown tab "${target.id}".`);
+        }
+        return;
+      }
+      flagRef(target.id, `${base}.targets[${j}].id`, 'The action will never apply.');
+    });
+  });
 
   return problems;
 }

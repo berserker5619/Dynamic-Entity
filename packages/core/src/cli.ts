@@ -7,6 +7,7 @@
  * on `dist/` existing.
  */
 
+import type { FormRule } from './form-model.types';
 import { formatConfigProblems, isConfigValid, validateConfig } from './validate-config';
 
 export interface ValidateCliIo {
@@ -24,6 +25,7 @@ Exit 2 when the command, the file, or the JSON is unusable.
 
 Options:
   --additional-field-types <a,b>  Types registered with provideFieldTypes
+  --rules <file.json>             FormRule[] to check against the config
   --fail-on-warnings              Treat warnings as errors
   -h, --help                      Show this message
 `;
@@ -50,7 +52,14 @@ export function runValidateCli(argv: readonly string[], io: ValidateCliIo): numb
 
   let file: string | undefined;
   let additionalFieldTypes: string[] | undefined;
+  let rulesFile: string | undefined;
   let failOnWarnings = false;
+
+  const takeValue = (flag: string, i: number): string | undefined => {
+    const next = argv[i + 1];
+    if (!next || next.startsWith('-')) return undefined;
+    return next;
+  };
 
   for (let i = 1; i < argv.length; i++) {
     const arg = argv[i];
@@ -59,8 +68,8 @@ export function runValidateCli(argv: readonly string[], io: ValidateCliIo): numb
       continue;
     }
     if (arg === '--additional-field-types') {
-      const value = argv[++i];
-      if (!value || value.startsWith('-')) {
+      const value = takeValue(arg, i);
+      if (!value) {
         io.stderr('--additional-field-types needs a comma-separated list.');
         return 2;
       }
@@ -68,6 +77,7 @@ export function runValidateCli(argv: readonly string[], io: ValidateCliIo): numb
         .split(',')
         .map(s => s.trim())
         .filter(Boolean);
+      i += 1;
       continue;
     }
     if (arg.startsWith('--additional-field-types=')) {
@@ -76,6 +86,24 @@ export function runValidateCli(argv: readonly string[], io: ValidateCliIo): numb
         .split(',')
         .map(s => s.trim())
         .filter(Boolean);
+      continue;
+    }
+    if (arg === '--rules') {
+      const value = takeValue(arg, i);
+      if (!value) {
+        io.stderr('--rules needs a JSON file path.');
+        return 2;
+      }
+      rulesFile = value;
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith('--rules=')) {
+      rulesFile = arg.slice('--rules='.length);
+      if (!rulesFile) {
+        io.stderr('--rules needs a JSON file path.');
+        return 2;
+      }
       continue;
     }
     if (arg.startsWith('-')) {
@@ -114,14 +142,38 @@ export function runValidateCli(argv: readonly string[], io: ValidateCliIo): numb
     return 2;
   }
 
-  const problems = validateConfig(parsed as Parameters<typeof validateConfig>[0], {
-    additionalFieldTypes,
-  });
+  let rules: FormRule[] | undefined;
+  if (rulesFile) {
+    let rulesRaw: string;
+    try {
+      rulesRaw = io.readFile(rulesFile);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      io.stderr(`Could not read ${rulesFile}: ${reason}`);
+      return 2;
+    }
+    let rulesParsed: unknown;
+    try {
+      rulesParsed = JSON.parse(rulesRaw);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      io.stderr(`${rulesFile} is not valid JSON: ${reason}`);
+      return 2;
+    }
+    if (!Array.isArray(rulesParsed)) {
+      io.stderr(`${rulesFile} must be a JSON array of FormRule objects.`);
+      return 2;
+    }
+    rules = rulesParsed as FormRule[];
+  }
+
+  const options = { additionalFieldTypes, rules };
+  const problems = validateConfig(parsed as Parameters<typeof validateConfig>[0], options);
 
   if (problems.length) io.stdout(formatConfigProblems(problems));
 
   const failed =
-    !isConfigValid(parsed as Parameters<typeof validateConfig>[0], { additionalFieldTypes }) ||
+    !isConfigValid(parsed as Parameters<typeof validateConfig>[0], options) ||
     (failOnWarnings && problems.some(p => p.level === 'warning'));
 
   return failed ? 1 : 0;

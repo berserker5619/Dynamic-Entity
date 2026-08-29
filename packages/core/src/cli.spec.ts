@@ -39,6 +39,7 @@ describe('runValidateCli', () => {
     const { impl, stdout } = io();
     expect(runValidateCli(['--help'], impl)).toBe(0);
     expect(stdout.join('\n')).toContain('--fail-on-warnings');
+    expect(stdout.join('\n')).toContain('--rules');
   });
 
   it('rejects an unknown command', () => {
@@ -147,6 +148,49 @@ describe('runValidateCli', () => {
     expect(
       runValidateCli(['validate', '--additional-field-types=signature', 'c.json'], impl),
     ).toBe(0);
+  });
+
+  it('checks rules when --rules is given', () => {
+    const two: EntityFormConfig = {
+      ...ok,
+      tabs: [
+        { id: 'personal', label: {}, fields: [{ id: 'address', type: 'text', label: {} }] },
+        { id: 'work', label: {}, fields: [{ id: 'address', type: 'text', label: {} }] },
+      ],
+    };
+    const rules = [
+      {
+        formConfigId: 'clients',
+        fieldId: 'address',
+        conditions: [],
+        action: { type: 'visibility', value: false },
+        targets: [{ id: 'address', type: 'field' }],
+        enabled: true,
+        priority: 1,
+      },
+    ];
+    const { impl, stdout } = io({
+      'c.json': JSON.stringify(two),
+      'r.json': JSON.stringify(rules),
+    });
+    expect(runValidateCli(['validate', 'c.json'], impl)).toBe(0);
+    expect(runValidateCli(['validate', '--rules', 'r.json', 'c.json'], impl)).toBe(1);
+    expect(stdout.join('\n')).toContain('rules[0].fieldId');
+  });
+
+  it('exits 2 when --rules is not an array', () => {
+    const { impl, stderr } = io({
+      'c.json': JSON.stringify(ok),
+      'r.json': JSON.stringify({ fieldId: 'name' }),
+    });
+    expect(runValidateCli(['validate', '--rules=r.json', 'c.json'], impl)).toBe(2);
+    expect(stderr.join('\n')).toContain('JSON array');
+  });
+
+  it('exits 2 when --rules has no value', () => {
+    const { impl, stderr } = io();
+    expect(runValidateCli(['validate', '--rules'], impl)).toBe(2);
+    expect(stderr.join('\n')).toContain('--rules needs a JSON file path');
   });
 
   it('exits 2 when --additional-field-types has no value', () => {

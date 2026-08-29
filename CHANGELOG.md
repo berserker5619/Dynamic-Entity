@@ -7,6 +7,26 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`validateConfig` understands field paths, and can check rules.** A `showWhen` keyed
+  `[work.address]`, or a cascade parent written the same way, used to be reported as an
+  unknown field — the form the builder authors after 1.4.0. Those paths now resolve to the
+  one field they name. Pass `rules` (or `--rules rules.json` on `dynamic-entity validate`)
+  to apply the same check to a rule's trigger, `compareToField` and field targets; without
+  that option, rules remain an `@Input` the config file cannot see and the renderer still
+  warns in development.
+
+### Changed
+
+- **The `people` entity in the reference dataset** has an `address` on Personal Details
+  and another on Work Details, with `deskNumber` shown only when `[work.address]` is
+  `HQ` — a config the validator used to refuse, now the fixture the path tests hold.
+
+---
+
 ## [1.4.0] — 2026-08-29
 
 Work since 1.3.0: a field is now addressed by its path rather than its id, so two

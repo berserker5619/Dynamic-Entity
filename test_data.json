@@ -4,7 +4,7 @@
     "version": 1,
     "name": {
       "en": "Complex Edge Case Test Suite",
-      "de": "Komplexer H\u00e4rtetest-Datensatz"
+      "de": "Komplexer Härtetest-Datensatz"
     },
     "isSystemDefined": true,
     "permissions": {
@@ -50,7 +50,7 @@
             "type": "text",
             "label": {
               "en": "Full Name",
-              "de": "Vollst\u00e4ndiger Name"
+              "de": "Vollständiger Name"
             },
             "visibility": true,
             "colSpan": 6,
@@ -874,7 +874,7 @@
     "version": 2,
     "name": {
       "en": "Insurance Claims",
-      "de": "Versicherungsanspr\u00fcche"
+      "de": "Versicherungsansprüche"
     },
     "defaultLanguage": "en",
     "permissions": {
@@ -1403,6 +1403,97 @@
         },
         "visibility": true,
         "moduleName": "documents-view"
+      }
+    ]
+  },
+  {
+    "entity": "people",
+    "version": 1,
+    "name": {
+      "en": "People",
+      "de": "Personen"
+    },
+    "defaultLanguage": "en",
+    "permissions": {
+      "canView": [
+        "admin",
+        "manager",
+        "viewer"
+      ],
+      "canEdit": [
+        "admin",
+        "manager"
+      ],
+      "canCreate": [
+        "admin",
+        "manager"
+      ],
+      "canDelete": [
+        "admin"
+      ]
+    },
+    "tabs": [
+      {
+        "id": "personal",
+        "label": {
+          "en": "Personal Details",
+          "de": "Persönliche Daten"
+        },
+        "visibility": true,
+        "fields": [
+          {
+            "id": "fullName",
+            "type": "text",
+            "label": {
+              "en": "Full Name"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "validators": {
+              "required": true
+            }
+          },
+          {
+            "id": "address",
+            "type": "text",
+            "label": {
+              "en": "Address"
+            },
+            "visibility": true,
+            "colSpan": 6
+          }
+        ]
+      },
+      {
+        "id": "work",
+        "label": {
+          "en": "Work Details",
+          "de": "Arbeitsdaten"
+        },
+        "visibility": true,
+        "fields": [
+          {
+            "id": "address",
+            "type": "text",
+            "label": {
+              "en": "Address"
+            },
+            "visibility": true,
+            "colSpan": 6
+          },
+          {
+            "id": "deskNumber",
+            "type": "text",
+            "label": {
+              "en": "Desk Number"
+            },
+            "visibility": true,
+            "colSpan": 6,
+            "showWhen": {
+              "[work.address]": "HQ"
+            }
+          }
+        ]
       }
     ]
   }

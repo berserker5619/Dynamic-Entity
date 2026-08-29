@@ -5,9 +5,9 @@ import { provideBuiltInFieldTypes } from '../providers/provide-field-types';
 import { DynamicFormComponent } from './dynamic-form.component';
 
 /**
- * `validateConfig` catches an ambiguous `showWhen` or cascade parent because both live in the
- * config. Rules do not — they arrive as a separate `@Input`, so the form component is the only
- * place that sees the config and the rules together.
+ * `validateConfig({ rules })` catches an ambiguous `showWhen`, cascade parent, or rule
+ * because both the config and the rules are in hand. The form still warns in development
+ * for consumers that never call the validator.
  */
 const TWO_ADDRESSES: EntityFormConfig = {
   entity: 'people',
@@ -65,7 +65,7 @@ describe('a rule that names an ambiguous field id', () => {
 
     const message = warn.mock.calls.map(c => String(c[0])).find(m => m.includes('address'));
     expect(message).toContain('defined in personal and work');
-    expect(message).toContain('whichever one the form finds first');
+    expect(message).toContain('[personal.address]');
   });
 
   it('warns for an ambiguous id named only by a condition', () => {
@@ -90,6 +90,12 @@ describe('a rule that names an ambiguous field id', () => {
 
   it('says nothing when there are no rules at all', () => {
     build(TWO_ADDRESSES);
+
+    expect(warn.mock.calls.some(c => String(c[0]).includes('references field'))).toBe(false);
+  });
+
+  it('says nothing when the rule names the field by path', () => {
+    build(TWO_ADDRESSES, [rule({ fieldId: '[work.address]', targets: [{ id: 'note', type: 'field' }] })]);
 
     expect(warn.mock.calls.some(c => String(c[0]).includes('references field'))).toBe(false);
   });

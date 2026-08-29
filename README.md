@@ -157,16 +157,19 @@ ${formatConfigProblems(problems)}`);
 
 It reports every problem rather than stopping at the first, and catches what a type cannot:
 a field type absent from the catalog, two fields sharing an id **in the same scope**, a
-`showWhen` naming a field that does not exist, and a cascade whose `parentField` is missing.
+`showWhen` naming a field that does not exist, a cascade whose `parentField` is missing,
+and — when you pass them — a rule whose trigger, comparison field or field target cannot
+resolve. Bracketed paths (`[work.address]`) name one field; a bare id is still accepted
+while only one scope defines it.
 
 Field ids are unique per scope, not globally — a record nests by tab, so `address` on
 Personal Details and `address` on Work Details are two different fields and store as
 `{ personal: { address }, work: { address } }`. A scope is whatever the record nests under:
 each tab, each `group` field, and the parent's level for a `flatData` tab. What you cannot
-duplicate is an id something *points at*: `showWhen` and cascade `parentField` name a field
-by bare id with no scope, so an id defined in two scopes is reported as ambiguous the moment
-a reference uses it. `warning` means usable but suspicious;
-`error` means it will not render correctly.
+duplicate is an id something *points at* by bare name: `showWhen`, cascade `parentField`
+and (when supplied) rules name a field by id with no scope, so an id defined in two scopes
+is reported as ambiguous the moment a reference uses it. Name it by path instead. `warning`
+means usable but suspicious; `error` means it will not render correctly.
 
 Pass `additionalFieldTypes` for any type you registered yourself.
 
@@ -176,7 +179,8 @@ The same check is a command, so a consumer CI job can fail a bad config before i
 npx dynamic-entity validate ./form-config.json
 ```
 
-`--additional-field-types signature,rating` matches `additionalFieldTypes`. `--fail-on-warnings`
+`--additional-field-types signature,rating` matches `additionalFieldTypes`. `--rules rules.json`
+passes a `FormRule[]` so CI can gate rule references the same way. `--fail-on-warnings`
 treats a warning as a failure. Exit `0` means no errors, `1` means the config is unusable,
 `2` means the file or the JSON itself is.
 

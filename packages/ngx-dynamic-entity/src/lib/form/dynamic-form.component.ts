@@ -752,9 +752,8 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
    * `flattenFormValues` keys by bare id, so one of the two silently wins and the rule reads
    * whichever landed there.
    *
-   * `validateConfig` catches this for `showWhen` and cascade parents, which live in the
-   * config. Rules do not: they arrive as a separate `@Input`, so the config alone cannot be
-   * checked for them and this is the only place both are in hand.
+   * `validateConfig({ rules })` catches this statically. The check here remains because
+   * consumers that never call the validator still get a signal in development.
    */
   private warnAmbiguousRuleReferences(): void {
     if (!isDevMode() || !this.rules?.length || !this.config) return;
@@ -773,14 +772,17 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
       }
     }
 
-    for (const id of referenced) {
+    for (const raw of referenced) {
+      const parsed = parseFieldRef(raw);
+      if (parsed.kind === 'ref') continue;
+      const id = parsed.value;
       const scopes = ambiguous.get(id);
       if (!scopes || DynamicFormComponent.warnedAmbiguousIds.has(id)) continue;
       DynamicFormComponent.warnedAmbiguousIds.add(id);
       console.warn(
         `[ngx-dynamic-entity] A rule references field "${id}", which is defined in ${scopes.join(' and ')}. ` +
-          `Rules address a field by bare id, so the rule will read whichever one the form finds first. ` +
-          `Give one of them a distinct id.`,
+          `A bare id cannot say which one is meant, so the rule will read whichever the form finds first. ` +
+          `Name it by path instead, as [${scopes[0]}.${id}].`,
       );
     }
   }
