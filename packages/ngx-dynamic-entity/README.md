@@ -124,6 +124,16 @@ This applies in both directions — `initialData` is read with it and `formSubmi
 
 ---
 
+## Server-side rendering
+
+This package is intended to work under Angular SSR. There is no raw `document` or `window`
+access; `jumpToField` schedules with `afterNextRender`, which does not run on the server.
+CI calls `renderApplication` on the published tarball.
+
+The visual builder is a separate package and is not an SSR target.
+
+---
+
 ## 🎨 Styling
 
 This package ships no CSS. Field components emit `ngx-field`, `ngx-field__label`, `ngx-field__input`, and `ngx-field__error` for you to style. See `packages/demo-angular/src/styles.css` in the repository for a working reference.

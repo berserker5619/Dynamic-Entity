@@ -79,6 +79,9 @@ jobs:
       - name: README snippets compile
         run: node scripts/verify-consumer.mjs --angular 20 --readme
 
+      - name: SSR renderApplication
+        run: node scripts/verify-consumer.mjs --angular 20 --ssr
+
       # Verification above runs on Node 20, which is what the Angular 17 build tooling
       # supports. Trusted publishing needs npm >= 11.5.1 on Node >= 22.14, so the runtime is
       # switched here rather than for the whole job — building on Node 24 is not something

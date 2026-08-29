@@ -13,6 +13,9 @@
     },
     "./schema": "./entity-form-config.schema.json"
   },
+  "bin": {
+    "dynamic-entity": "dist/cli.mjs"
+  },
   "files": [
     "dist",
     "entity-form-config.schema.json"

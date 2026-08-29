@@ -52,7 +52,7 @@ module.exports = {
     },
     {
       // Command-line scripts: printing to the console is their job.
-      files: ['scripts/**'],
+      files: ['scripts/**', 'packages/core/cli.mjs'],
       rules: { 'no-console': 'off' },
     },
   ],

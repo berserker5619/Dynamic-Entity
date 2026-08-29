@@ -43,6 +43,9 @@ const published = {
   main: 'index.js',
   module: 'index.mjs',
   types: 'index.d.ts',
+  bin: {
+    'dynamic-entity': 'cli.mjs',
+  },
   exports: {
     '.': {
       types: './index.d.ts',
@@ -58,12 +61,18 @@ fs.writeFileSync(path.join(DIST, 'package.json'), JSON.stringify(published, null
 
 // The README and the JSON Schema are part of what ships, so they are copied in rather than
 // referenced out of the package root.
-for (const file of ['README.md', 'entity-form-config.schema.json']) {
+for (const file of ['README.md', 'entity-form-config.schema.json', 'cli.mjs']) {
   const from = path.join(HERE, file);
   if (fs.existsSync(from)) fs.copyFileSync(from, path.join(DIST, file));
 }
 
-const missing = ['index.js', 'index.mjs', 'index.d.ts', 'entity-form-config.schema.json'].filter(
+const missing = [
+  'index.js',
+  'index.mjs',
+  'index.d.ts',
+  'entity-form-config.schema.json',
+  'cli.mjs',
+].filter(
   f => !fs.existsSync(path.join(DIST, f)),
 );
 if (missing.length) {

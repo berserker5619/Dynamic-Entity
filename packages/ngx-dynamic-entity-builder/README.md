@@ -73,3 +73,4 @@ export const appConfig: ApplicationConfig = {
 
 - **Field ids must be unique across the entire schema**, not just within a tab. Rules, `showWhen` conditions, and `autoPatch` mappings all address fields by bare id, so two fields sharing an id in different tabs will interfere with one another.
 - **Structural edits apply to top-level tabs only.** Removing, duplicating, moving, and reordering a field works for fields on a top-level tab; a field inside a sub-tab can be selected and edited but not yet restructured.
+- **Not an SSR target.** The builder is a Material visual editor with drag-and-drop. Host it in a browser-only route. The form renderer (`ngx-dynamic-entity`) is the SSR surface.

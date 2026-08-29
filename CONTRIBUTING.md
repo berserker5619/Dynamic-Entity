@@ -26,6 +26,7 @@ Everything CI enforces, you can run locally:
 | `npm run e2e` | Playwright, against the demo app |
 | `node scripts/verify-consumer.mjs --angular 20` | Packs the tarballs, installs them into a throwaway Angular project, and AOT-compiles a consumer |
 | `node scripts/verify-consumer.mjs --angular 20 --readme` | Compiles every documented code block |
+| `node scripts/verify-consumer.mjs --angular 20 --ssr` | Packs the tarballs and `renderApplication`s a form on `@angular/platform-server` |
 
 The last one is worth knowing about. The workspace build cannot catch packaging faults —
 inside the repo everything resolves through symlinks and tsconfig paths, so a broken manifest

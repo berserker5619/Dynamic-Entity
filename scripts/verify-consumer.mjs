@@ -16,10 +16,13 @@
  * Usage:
  *   node scripts/verify-consumer.mjs --angular 20
  *   node scripts/verify-consumer.mjs --angular 22 --readme
+ *   node scripts/verify-consumer.mjs --angular 20 --ssr
  *
  *   --angular <major>  Angular major to install (required).
  *   --readme           Compile the snippets from the README files instead of the built-in
  *                      consumer component, so the documented Quick Start is proven to work.
+ *   --ssr              After AOT, `renderApplication` a form on `@angular/platform-server`.
+ *                      Proves the renderer produces markup under SSR, not merely compiles.
  *   --keep             Leave the temporary project on disk for inspection.
  */
 import { execFileSync } from 'node:child_process';
@@ -39,10 +42,16 @@ function arg(name) {
 
 const angularMajor = arg('angular');
 const useReadme = !!arg('readme');
+const ssr = !!arg('ssr');
 const keep = !!arg('keep');
 
 if (!angularMajor || angularMajor === true) {
   console.error('error: --angular <major> is required, e.g. --angular 20');
+  process.exit(2);
+}
+
+if (useReadme && ssr) {
+  console.error('error: --ssr cannot be combined with --readme');
   process.exit(2);
 }
 
@@ -97,6 +106,28 @@ const proj = path.join(work, 'consumer');
 fs.mkdirSync(proj);
 
 const ng = `^${angularMajor}.0.0`;
+const major = Number(angularMajor);
+// Angular 19+ peers zone.js 0.15; 17–18 stay on 0.14. Only the SSR path needs it at runtime.
+const zone = major >= 19 ? '^0.15.0' : '~0.14.10';
+const dependencies = {
+  '@angular/animations': ng,
+  '@angular/cdk': ng,
+  '@angular/common': ng,
+  '@angular/compiler': ng,
+  '@angular/core': ng,
+  '@angular/forms': ng,
+  '@angular/material': ng,
+  '@angular/platform-browser': ng,
+  rxjs: '^7.8.0',
+  '@dynamic-entity/core': tgz('dynamic-entity-core'),
+  'ngx-dynamic-entity': tgz('ngx-dynamic-entity-1'),
+  'ngx-dynamic-entity-builder': tgz('ngx-dynamic-entity-builder'),
+};
+if (ssr) {
+  dependencies['@angular/platform-server'] = ng;
+  dependencies['zone.js'] = zone;
+}
+
 fs.writeFileSync(
   path.join(proj, 'package.json'),
   JSON.stringify(
@@ -104,20 +135,9 @@ fs.writeFileSync(
       name: `consumer-ng${angularMajor}`,
       private: true,
       version: '1.0.0',
-      dependencies: {
-        '@angular/animations': ng,
-        '@angular/cdk': ng,
-        '@angular/common': ng,
-        '@angular/compiler': ng,
-        '@angular/core': ng,
-        '@angular/forms': ng,
-        '@angular/material': ng,
-        '@angular/platform-browser': ng,
-        rxjs: '^7.8.0',
-        '@dynamic-entity/core': tgz('dynamic-entity-core'),
-        'ngx-dynamic-entity': tgz('ngx-dynamic-entity-1'),
-        'ngx-dynamic-entity-builder': tgz('ngx-dynamic-entity-builder'),
-      },
+      // ESM so the compiled `renderApplication` entry can use top-level await.
+      ...(ssr ? { type: 'module' } : {}),
+      dependencies,
       devDependencies: { '@angular/compiler-cli': ng },
     },
     null,
@@ -148,6 +168,29 @@ const nested = fs.existsSync(path.join(proj, 'node_modules/ngx-dynamic-entity-bu
 if (nested) {
   console.error('\nFAIL: ngx-dynamic-entity-builder installed nested dependencies of its own.');
   console.error('      Its peers must stay peers — a second copy of the renderer breaks DI.');
+  process.exit(1);
+}
+
+step('Running the published `dynamic-entity validate` bin');
+fs.writeFileSync(
+  path.join(proj, 'ok-config.json'),
+  JSON.stringify({
+    entity: 'clients',
+    version: 1,
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        fields: [{ id: 'name', type: 'text', label: { en: 'Name' } }],
+      },
+    ],
+  }),
+);
+try {
+  run('npx', ['dynamic-entity', 'validate', 'ok-config.json'], { cwd: proj, stdio: 'inherit' });
+} catch {
+  console.error('\nFAIL: the published `dynamic-entity` bin did not validate a sound config.');
+  console.error(`      Project kept at ${proj}`);
   process.exit(1);
 }
 
@@ -240,6 +283,77 @@ if (useReadme) {
       ].join('\n'),
     ),
   );
+} else if (ssr) {
+  step('Writing an SSR bootstrap (renderer only — the builder is not an SSR target)');
+  // `@angular/compiler` is loaded first so platform-server can JIT-compile the
+  // partially-compiled Angular packages (ng-packagr output) when we execute
+  // under Node rather than through the linker. Angular 20's `renderApplication`
+  // passes a BootstrapContext into the factory — omitting it is NG0401.
+  write(
+    'ssr-app.ts',
+    `import '@angular/compiler';
+import 'zone.js';
+import { Component } from '@angular/core';
+import { bootstrapApplication } from '@angular/platform-browser';
+import { provideServerRendering, renderApplication } from '@angular/platform-server';
+import {
+  DynamicFormComponent,
+  provideNgxDynamicEntity,
+  provideBuiltInFieldTypes,
+} from 'ngx-dynamic-entity';
+import type { EntityFormConfig } from '@dynamic-entity/core';
+
+@Component({
+  selector: 'ssr-root',
+  standalone: true,
+  imports: [DynamicFormComponent],
+  template: \`
+    <ngx-dynamic-form [config]="config" [initialData]="record" [userRoles]="roles" />
+  \`,
+})
+export class SsrRootComponent {
+  config: EntityFormConfig = {
+    entity: 'client',
+    version: 1,
+    name: { en: 'Client' },
+    tabs: [
+      {
+        id: 'general',
+        label: { en: 'General' },
+        visibility: true,
+        flatData: true,
+        fields: [
+          { id: 'firstName', type: 'text', label: { en: 'First Name' }, visibility: true },
+        ],
+      },
+    ],
+  };
+  record: Record<string, unknown> = { firstName: 'Alice' };
+  roles: string[] = ['editor'];
+}
+
+const html = await renderApplication(
+  context =>
+    bootstrapApplication(
+      SsrRootComponent,
+      {
+        providers: [provideServerRendering(), provideNgxDynamicEntity({}), provideBuiltInFieldTypes()],
+      },
+      context,
+    ),
+  {
+    document: '<!DOCTYPE html><html><body><ssr-root></ssr-root></body></html>',
+    url: '/',
+  },
+);
+
+if (!html.includes('First Name') || !html.includes('Alice')) {
+  throw new Error('SSR HTML missing expected field markup\\n' + html.slice(0, 4000));
+}
+
+console.log('PASS: renderApplication produced markup containing the text field.');
+`,
+  );
 } else {
   step('Writing a consumer component');
   write(
@@ -316,8 +430,19 @@ try {
 
 console.log(
   `\nPASS: Angular ${resolved} installs the packed tarballs and compiles ` +
-    `${useReadme ? 'every README snippet' : 'a consumer component'} under strictTemplates.`,
+    `${useReadme ? 'every README snippet' : ssr ? 'an SSR bootstrap' : 'a consumer component'} under strictTemplates.`,
 );
+
+if (ssr) {
+  step('Rendering the form with renderApplication');
+  try {
+    run('node', ['out/ssr-app.js'], { cwd: proj, stdio: 'inherit' });
+  } catch {
+    console.error(`\nFAIL: renderApplication threw or produced markup without the field.`);
+    console.error(`      Project kept at ${proj}`);
+    process.exit(1);
+  }
+}
 
 if (!keep) fs.rmSync(work, { recursive: true, force: true });
 else console.log(`Kept: ${work}`);

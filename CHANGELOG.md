@@ -7,6 +7,23 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`dynamic-entity validate`.** `validateConfig` was an API you had to wrap yourself.
+  The core package now ships a bin that reads a JSON file, prints every problem, and
+  exits 1 when any of them is an error — so a consumer can gate configs in CI with
+  `npx dynamic-entity validate ./form-config.json`. `--additional-field-types` and
+  `--fail-on-warnings` cover the two options the function already had. This is not a
+  new check; it is the existing one on a command line.
+- **A stated SSR position, and a job that exercises it.** The renderer is intended to
+  work under Angular SSR; the builder is a Material visual editor and is not an SSR
+  target. CI packs the published tarballs and calls `renderApplication` on Angular 20,
+  so the claim is a passing job rather than the absence of `document` access.
+
+---
+
 ## [1.3.0] — 2026-08-29
 
 Work since 1.2.0: `datetime` stopped discarding the time it advertised, `time`

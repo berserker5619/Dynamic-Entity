@@ -93,3 +93,24 @@ jobs:
       # exists, so the headline example did not compile for anyone who copied it.
       - name: Compile documented snippets
         run: node scripts/verify-consumer.mjs --angular 20 --readme
+
+  ssr:
+    name: SSR renderApplication
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Compiling is not enough: a library can AOT-compile and still throw the moment
+      # platform-server walks the template. This packs the real tarballs and calls
+      # renderApplication so a server render is a fact, not a claim.
+      - name: Render a form on platform-server
+        run: node scripts/verify-consumer.mjs --angular 20 --ssr

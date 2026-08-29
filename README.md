@@ -163,6 +163,16 @@ exist, and a cascade whose `parentField` is missing. `warning` means usable but 
 
 Pass `additionalFieldTypes` for any type you registered yourself.
 
+The same check is a command, so a consumer CI job can fail a bad config before it is stored:
+
+```bash
+npx dynamic-entity validate ./form-config.json
+```
+
+`--additional-field-types signature,rating` matches `additionalFieldTypes`. `--fail-on-warnings`
+treats a warning as a failure. Exit `0` means no errors, `1` means the config is unusable,
+`2` means the file or the JSON itself is.
+
 For editor completion, a JSON Schema ships too:
 
 ```json
@@ -233,6 +243,18 @@ The renderer ships **no stylesheet**. Field components emit stable BEM-style hoo
 `packages/demo-angular/src/styles.css` is a working reference implementation.
 
 > The **builder** does depend on Angular Material and requires `provideAnimations()`.
+
+---
+
+## 🖥 Server-side rendering
+
+The renderer is intended to work under Angular SSR. Templates use Angular APIs
+(`afterNextRender`, `ElementRef`, `@HostListener`) rather than the global `document` or
+`window`, so a server render does not throw. CI runs `renderApplication` against the
+published tarballs on Angular 20.
+
+The builder is a Material visual editor with drag-and-drop. It is not an SSR target; host
+it in a browser-only route.
 
 ---
 

@@ -25,7 +25,7 @@ npm install @dynamic-entity/core
 - **Canonical field catalog** — `FIELD_TYPE_CATALOG` is the single source of truth for the 20 field type keys (`text`, `textarea`, `number`, `currency`, `email`, `password`, `date`, `datetime`, `time`, `monthYear`, `dropdown`, `radio`, `checkbox`, `boolean`, `multiSelect`, `entity-ref`, `group`, `array`, `image`, `file`), consumed by both the renderer and the builder.
 - **Entity reference contracts** — `EntityReferenceLoader`, option normalisation, and pure cascade filtering (`lookupFilter` / `lookupPath`).
 - **File contracts** — canonical `FileRef` and `FileUploadHandler`, shared by the image and file field types.
-- **Config validation** — `validateConfig` checks structure, field types against the catalog, globally-unique ids, and references that would never resolve. A JSON Schema for editor completion ships alongside it at `@dynamic-entity/core/schema`.
+- **Config validation** — `validateConfig` checks structure, field types against the catalog, globally-unique ids, and references that would never resolve. A JSON Schema for editor completion ships alongside it at `@dynamic-entity/core/schema`. The same check is the `dynamic-entity validate` command, for gating configs in CI.
 - **Record migration** — `migrateRecord`, `needsMigration`, `stampRecord` and `validateMigrations` move a saved record forward as a config's `version` changes. Pure, so the same steps run in the browser and on a server.
 
 ---
@@ -86,3 +86,19 @@ declare const originalValues: Record<string, unknown>;
 
 const changed = evaluateFormRules(rules, currentValues, originalValues);
 ```
+
+---
+
+## Validating a config
+
+`validateConfig` is the API. The package also ships a `dynamic-entity` bin so the same
+check can run in CI without writing a script:
+
+```bash
+npx dynamic-entity validate ./form-config.json
+```
+
+`--additional-field-types signature,rating` is the command-line form of
+`additionalFieldTypes`. `--fail-on-warnings` treats a warning as a failure. Exit `0` means
+no errors, `1` means the config is unusable, `2` means the file or the JSON itself is.
+
