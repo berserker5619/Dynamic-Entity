@@ -14,7 +14,7 @@
     "sourceMap": true,
     "declaration": false,
     "experimentalDecorators": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "importHelpers": true,
     "target": "ES2022",
     "module": "ES2022",
@@ -26,9 +26,8 @@
     "baseUrl": "./",
     "paths": {
       "@dynamic-entity/core": ["../core/src/index.ts"],
-      "@dynamic-entity/ngx-dynamic-entity": ["../ngx-dynamic-entity/src/public-api.ts"],
-      "ngx-dynamic-entity": ["../ngx-dynamic-entity/src/public-api.ts"],
-      "ngx-dynamic-entity-builder": ["../ngx-dynamic-entity-builder/src/public-api.ts"],
+      "ngx-dynamic-entity": ["../ngx-dynamic-entity/dist"],
+      "ngx-dynamic-entity-builder": ["../ngx-dynamic-entity-builder/dist"],
       "rxjs": ["../../node_modules/rxjs"],
       "rxjs/*": ["../../node_modules/rxjs/*"]
     }

@@ -39,20 +39,14 @@ updates:
           - minor
           - patch
     ignore:
-      # No major bumps, for anything, until the Angular 17 migration happens.
-      #
-      # This started as an Angular-only ignore, and the first Dependabot run showed why that
-      # was too narrow: it opened three PRs that could not possibly pass. TypeScript 7.0.2
-      # fails with `TS5102: Option 'baseUrl' has been removed`; @typescript-eslint/parser 8
-      # fails to install at all against eslint-plugin 7 (ERESOLVE). Neither is a defect —
-      # this toolchain is pinned by Angular 17, which wants TypeScript ~5.2, and every major
-      # in it moves when Angular does. Until then a major bump is noise that costs a CI run
-      # to reject.
-      #
-      # Minors and patches still flow through the groups above, which is where the security
-      # fixes actually are. Security alerts are separate from this and are never suppressed
-      # by an ignore rule.
-      - dependency-name: '*'
+      # Majors that are not Angular still need a deliberate act: TypeScript 6/7 drops
+      # `baseUrl`, and @typescript-eslint 8 does not install against eslint-plugin 7.
+      # Angular itself now tracks the 21 toolchain and can take majors in its group.
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@typescript-eslint/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'eslint'
         update-types: ['version-update:semver-major']
 
   # The CI runner already warns that actions/checkout@v4 and actions/setup-node@v4 are

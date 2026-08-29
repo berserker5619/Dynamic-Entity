@@ -19,8 +19,8 @@
     "baseUrl": ".",
     "paths": {
       "@dynamic-entity/core": ["../core/src/index.ts"],
-      "ngx-dynamic-entity": ["../ngx-dynamic-entity/dist/index.d.ts", "../ngx-dynamic-entity/src/public-api.ts"],
-      "@dynamic-entity/ngx-dynamic-entity": ["../ngx-dynamic-entity/dist/index.d.ts", "../ngx-dynamic-entity/src/public-api.ts"],
+      "ngx-dynamic-entity": ["../ngx-dynamic-entity/src/public-api.ts"],
+      "@dynamic-entity/ngx-dynamic-entity": ["../ngx-dynamic-entity/src/public-api.ts"],
       "rxjs": ["../../node_modules/rxjs"],
       "rxjs/*": ["../../node_modules/rxjs/*"]
     }
