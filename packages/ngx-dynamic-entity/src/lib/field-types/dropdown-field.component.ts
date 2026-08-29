@@ -88,9 +88,9 @@ export class DropdownFieldComponent {
   /** Inline `options`, or the field's named list resolved through the registry (§6.3). */
   readonly options = signal<DropdownOption[]>([]);
 
-  readonly compareFn = (o1: any, o2: any): boolean => valuesMatch(o1, o2, this.language);
+  readonly compareFn = (o1: unknown, o2: unknown): boolean => valuesMatch(o1, o2, this.language);
 
-  isObjectVal(option: any): boolean {
+  isObjectVal(option: DropdownOption): boolean {
     const val = getOptionStoredValue(option);
     return typeof val === 'object' && val !== null;
   }
@@ -103,11 +103,11 @@ export class DropdownFieldComponent {
     return resolveLabel(this.field?.placeholder, this.language);
   }
 
-  getOptStoredVal(option: any): any {
+  getOptStoredVal(option: DropdownOption): unknown {
     return getOptionStoredValue(option);
   }
 
-  getOptLabel(option: any): string {
+  getOptLabel(option: DropdownOption): string {
     return resolveOptionLabel(option, this.language);
   }
 
@@ -116,13 +116,13 @@ export class DropdownFieldComponent {
    * back to the stored text — which under the §2 contract *is* the display value, so it is
    * never wrong, only unlocalised.
    */
-  getLabel(value: any): string {
+  getLabel(value: unknown): string {
     if (value == null || value === '') return '—';
     const option = this.options().find(o => valuesMatch(getOptionStoredValue(o), value, this.language));
     if (option) return this.getOptLabel(option);
     const cached = this.lookups.labelFor(this.field?.listName, value, this.language);
     if (cached) return cached;
-    return typeof value === 'object' ? resolveLabel(value, this.language) : (value ?? '—');
+    return typeof value === 'object' ? resolveLabel(value as Record<string, string>, this.language) : String(value ?? '—');
   }
 
   get errorMessage(): string {

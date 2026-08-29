@@ -83,7 +83,7 @@ export class RadioFieldComponent {
     return resolveLabel(this.field?.label, this.language);
   }
 
-  getOptStoredVal(option: any): any {
+  getOptStoredVal(option: DropdownOption): unknown {
     return getOptionStoredValue(option);
   }
 
@@ -92,16 +92,16 @@ export class RadioFieldComponent {
    * Slugified because the option text is the value now — "On Leave" must not put a space
    * into an id attribute.
    */
-  getRadioId(option: any): string {
+  getRadioId(option: DropdownOption): string {
     const text = String(this.getOptVal(option) ?? 'opt');
     return `${this.field.id}-${text.trim().replace(/\s+/g, '_').toLowerCase()}`;
   }
 
-  getOptVal(option: any): any {
+  getOptVal(option: DropdownOption): string | number | boolean {
     return resolveOptionValue(option, this.language);
   }
 
-  getOptLabel(option: any): string {
+  getOptLabel(option: DropdownOption): string {
     return resolveOptionLabel(option, this.language);
   }
 
@@ -115,6 +115,6 @@ export class RadioFieldComponent {
     if (selected) return this.getOptLabel(selected);
     const cached = this.lookups.labelFor(this.field?.listName, value, this.language);
     if (cached) return cached;
-    return typeof value === 'object' ? resolveLabel(value, this.language) : (value ?? '—');
+    return typeof value === 'object' ? resolveLabel(value as Record<string, string>, this.language) : String(value ?? '—');
   }
 }

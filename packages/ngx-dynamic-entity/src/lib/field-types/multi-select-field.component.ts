@@ -77,9 +77,9 @@ export class MultiSelectFieldComponent {
   /** Inline `options`, or the field's named list resolved through the registry (§6.3). */
   readonly options = signal<DropdownOption[]>([]);
 
-  readonly compareFn = (o1: any, o2: any): boolean => valuesMatch(o1, o2, this.language);
+  readonly compareFn = (o1: unknown, o2: unknown): boolean => valuesMatch(o1, o2, this.language);
 
-  isObjectVal(option: any): boolean {
+  isObjectVal(option: DropdownOption): boolean {
     const val = getOptionStoredValue(option);
     return typeof val === 'object' && val !== null;
   }
@@ -88,16 +88,16 @@ export class MultiSelectFieldComponent {
     return resolveLabel(this.field?.label, this.language);
   }
 
-  getOptStoredVal(option: any): any {
+  getOptStoredVal(option: DropdownOption): unknown {
     return getOptionStoredValue(option);
   }
 
-  getOptLabel(option: any): string {
+  getOptLabel(option: DropdownOption): string {
     return resolveOptionLabel(option, this.language);
   }
 
   /** Read-only display — synchronous, per §6.2. See `DropdownFieldComponent.getLabel`. */
-  getLabels(values: any[]): string {
+  getLabels(values: unknown): string {
     if (!Array.isArray(values) || !values.length) return '—';
     return values
       .map(v => {
@@ -105,7 +105,7 @@ export class MultiSelectFieldComponent {
         if (opt) return this.getOptLabel(opt);
         const cached = this.lookups.labelFor(this.field?.listName, v, this.language);
         if (cached) return cached;
-        return typeof v === 'object' ? resolveLabel(v, this.language) : String(v);
+        return typeof v === 'object' && v !== null ? resolveLabel(v as Record<string, string>, this.language) : String(v);
       })
       .join(', ');
   }

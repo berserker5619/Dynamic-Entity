@@ -95,7 +95,7 @@ jobs:
         run: node scripts/verify-consumer.mjs --angular 20 --readme
 
   ssr:
-    name: SSR renderApplication
+    name: SSR renderApplication (zoneless)
     runs-on: ubuntu-latest
     needs: verify
     steps:
@@ -112,5 +112,5 @@ jobs:
       # Compiling is not enough: a library can AOT-compile and still throw the moment
       # platform-server walks the template. This packs the real tarballs and calls
       # renderApplication so a server render is a fact, not a claim.
-      - name: Render a form on platform-server
-        run: node scripts/verify-consumer.mjs --angular 20 --ssr
+      - name: Render a form on platform-server (zoneless)
+        run: node scripts/verify-consumer.mjs --angular 20 --ssr --zoneless

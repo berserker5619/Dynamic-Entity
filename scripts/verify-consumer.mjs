@@ -17,12 +17,15 @@
  *   node scripts/verify-consumer.mjs --angular 20
  *   node scripts/verify-consumer.mjs --angular 22 --readme
  *   node scripts/verify-consumer.mjs --angular 20 --ssr
+ *   node scripts/verify-consumer.mjs --angular 20 --ssr --zoneless
  *
  *   --angular <major>  Angular major to install (required).
  *   --readme           Compile the snippets from the README files instead of the built-in
  *                      consumer component, so the documented Quick Start is proven to work.
  *   --ssr              After AOT, `renderApplication` a form on `@angular/platform-server`.
  *                      Proves the renderer produces markup under SSR, not merely compiles.
+ *   --zoneless         Angular 20+: `provideZonelessChangeDetection()`, and no `zone.js`.
+ *                      Combine with `--ssr` to prove the renderer under zoneless SSR.
  *   --keep             Leave the temporary project on disk for inspection.
  */
 import { execFileSync } from 'node:child_process';
@@ -43,6 +46,7 @@ function arg(name) {
 const angularMajor = arg('angular');
 const useReadme = !!arg('readme');
 const ssr = !!arg('ssr');
+const zoneless = !!arg('zoneless');
 const keep = !!arg('keep');
 
 if (!angularMajor || angularMajor === true) {
@@ -50,8 +54,13 @@ if (!angularMajor || angularMajor === true) {
   process.exit(2);
 }
 
-if (useReadme && ssr) {
-  console.error('error: --ssr cannot be combined with --readme');
+if (useReadme && (ssr || zoneless)) {
+  console.error('error: --readme cannot be combined with --ssr or --zoneless');
+  process.exit(2);
+}
+
+if (zoneless && Number(angularMajor) < 20) {
+  console.error('error: --zoneless requires Angular 20+ (provideZonelessChangeDetection)');
   process.exit(2);
 }
 
@@ -125,7 +134,7 @@ const dependencies = {
 };
 if (ssr) {
   dependencies['@angular/platform-server'] = ng;
-  dependencies['zone.js'] = zone;
+  if (!zoneless) dependencies['zone.js'] = zone;
 }
 
 fs.writeFileSync(
@@ -284,16 +293,26 @@ if (useReadme) {
     ),
   );
 } else if (ssr) {
-  step('Writing an SSR bootstrap (renderer only — the builder is not an SSR target)');
+  step(
+    zoneless
+      ? 'Writing an SSR bootstrap (zoneless — no zone.js)'
+      : 'Writing an SSR bootstrap (renderer only — the builder is not an SSR target)',
+  );
   // `@angular/compiler` is loaded first so platform-server can JIT-compile the
   // partially-compiled Angular packages (ng-packagr output) when we execute
   // under Node rather than through the linker. Angular 20's `renderApplication`
   // passes a BootstrapContext into the factory — omitting it is NG0401.
+  const coreImport = zoneless
+    ? "import { Component, provideZonelessChangeDetection } from '@angular/core';"
+    : "import { Component } from '@angular/core';";
+  const zoneImport = zoneless ? '' : "import 'zone.js';\n";
+  const ssrProviders = zoneless
+    ? '[provideZonelessChangeDetection(), provideServerRendering(), provideNgxDynamicEntity({}), provideBuiltInFieldTypes()]'
+    : '[provideServerRendering(), provideNgxDynamicEntity({}), provideBuiltInFieldTypes()]';
   write(
     'ssr-app.ts',
     `import '@angular/compiler';
-import 'zone.js';
-import { Component } from '@angular/core';
+${zoneImport}${coreImport}
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideServerRendering, renderApplication } from '@angular/platform-server';
 import {
@@ -337,7 +356,7 @@ const html = await renderApplication(
     bootstrapApplication(
       SsrRootComponent,
       {
-        providers: [provideServerRendering(), provideNgxDynamicEntity({}), provideBuiltInFieldTypes()],
+        providers: ${ssrProviders},
       },
       context,
     ),
@@ -351,15 +370,20 @@ if (!html.includes('First Name') || !html.includes('Alice')) {
   throw new Error('SSR HTML missing expected field markup\\n' + html.slice(0, 4000));
 }
 
-console.log('PASS: renderApplication produced markup containing the text field.');
+console.log('PASS: renderApplication produced markup containing the text field${zoneless ? ' (zoneless)' : ''}.');
 `,
   );
 } else {
   step('Writing a consumer component');
+  const zonelessImport = zoneless
+    ? "import { Component, provideZonelessChangeDetection } from '@angular/core';\n"
+    : "import { Component } from '@angular/core';\n";
+  const providerList = zoneless
+    ? '[provideZonelessChangeDetection(), provideNgxDynamicEntity({}), provideBuiltInFieldTypes()]'
+    : '[provideNgxDynamicEntity({}), provideBuiltInFieldTypes()]';
   write(
     'consumer.ts',
-    `import { Component } from '@angular/core';
-import {
+    `${zonelessImport}import {
   DynamicFormComponent,
   provideNgxDynamicEntity,
   provideBuiltInFieldTypes,
@@ -367,7 +391,7 @@ import {
 import { EntityBuilderComponent } from 'ngx-dynamic-entity-builder';
 import type { EntityFormConfig } from '@dynamic-entity/core';
 
-export const providers = [provideNgxDynamicEntity({}), provideBuiltInFieldTypes()];
+export const providers = ${providerList};
 
 @Component({
   selector: 'consumer-root',

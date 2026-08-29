@@ -21,6 +21,19 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   work under Angular SSR; the builder is a Material visual editor and is not an SSR
   target. CI packs the published tarballs and calls `renderApplication` on Angular 20,
   so the claim is a passing job rather than the absence of `document` access.
+- **Zoneless SSR.** The renderer does not use `NgZone`. CI now
+  `renderApplication`s the same form under `provideZonelessChangeDetection()`
+  with no `zone.js` on the machine. The demo still loads zone because it is an
+  Angular 17 Material app; that is the demo, not the library.
+
+### Changed
+
+- **Choice-field `any` is gone.** `dropdown` / `radio` / `multiSelect` already
+  store a `DropdownOption` (`LocalizedText`) — the displayed text is the value —
+  so a generic on the field config would have described a contract the library
+  does not have. `getOptionStoredValue` and `resolveOptionValue` return `unknown`
+  and `string | number | boolean` rather than `any`, and the three field
+  components follow.
 
 ---
 

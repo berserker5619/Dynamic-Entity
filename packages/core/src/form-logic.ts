@@ -34,7 +34,7 @@ export function resolveLabel(text: LocalizedText | undefined | null, lang = 'en'
  * wrapper at this depth would let un-normalised input produce scalar values alongside
  * object values in the same form — the ambiguity the single shape exists to remove.
  */
-export function getOptionStoredValue(option: unknown): any {
+export function getOptionStoredValue(option: unknown): unknown {
   if (option == null) return null;
   if (typeof option === 'string' || typeof option === 'number' || typeof option === 'boolean') {
     return option;
@@ -216,13 +216,13 @@ export function canonicalizeValue(value: unknown): string {
 }
 
 /** Resolve option value for dropdown/radio/multiSelect options as a display string. */
-export function resolveOptionValue(option: unknown, lang = 'en'): any {
+export function resolveOptionValue(option: unknown, lang = 'en'): string | number | boolean {
   const stored = getOptionStoredValue(option);
   if (stored == null) return '';
   if (typeof stored === 'object') {
     return resolveLabel(stored as LocalizedText, lang);
   }
-  return stored;
+  return stored as string | number | boolean;
 }
 
 /** Resolve option display label for dropdown/radio/multiSelect options. Handles {value, label}, LocalizedText, or primitives. */
@@ -232,9 +232,9 @@ export function resolveOptionLabel(option: unknown, lang = 'en'): string {
     return String(option);
   }
   if (typeof option === 'object') {
-    const opt = option as Record<string, any>;
+    const opt = option as Record<string, unknown>;
     if ('label' in opt && opt['label'] !== undefined) {
-      return resolveLabel(opt['label'], lang);
+      return resolveLabel(opt['label'] as LocalizedText, lang);
     }
     return resolveLabel(opt as LocalizedText, lang);
   }

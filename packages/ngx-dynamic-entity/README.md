@@ -130,6 +130,10 @@ This package is intended to work under Angular SSR. There is no raw `document` o
 access; `jumpToField` schedules with `afterNextRender`, which does not run on the server.
 CI calls `renderApplication` on the published tarball.
 
+This package does not use `NgZone`. It is intended to work under
+`provideZonelessChangeDetection()` on Angular 20+. CI `renderApplication`s a form that
+way, with no `zone.js` installed.
+
 The visual builder is a separate package and is not an SSR target.
 
 ---

@@ -79,8 +79,8 @@ jobs:
       - name: README snippets compile
         run: node scripts/verify-consumer.mjs --angular 20 --readme
 
-      - name: SSR renderApplication
-        run: node scripts/verify-consumer.mjs --angular 20 --ssr
+      - name: SSR renderApplication (zoneless)
+        run: node scripts/verify-consumer.mjs --angular 20 --ssr --zoneless
 
       # Verification above runs on Node 20, which is what the Angular 17 build tooling
       # supports. Trusted publishing needs npm >= 11.5.1 on Node >= 22.14, so the runtime is

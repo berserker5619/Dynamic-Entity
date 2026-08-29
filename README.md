@@ -256,6 +256,11 @@ published tarballs on Angular 20.
 The builder is a Material visual editor with drag-and-drop. It is not an SSR target; host
 it in a browser-only route.
 
+The renderer does not use `NgZone`. It is intended to work under
+`provideZonelessChangeDetection()` (Angular 20+). The demo app still loads `zone.js`
+because it is an Angular 17 application with Material. CI `renderApplication`s a form
+zonelessly on Angular 20.
+
 ---
 
 ## 🧪 Testing

@@ -15,7 +15,9 @@ export type LocalizedText = Record<string, string>;
 
 /**
  * A dropdown / radio / multiSelect option is a language-keyed object, and nothing else.
- * The displayed text **is** the stored value — there is no separate value/label wrapper.
+ * The displayed text **is** the stored value — there is no separate value/label wrapper,
+ * and no generic on the field for an open-typed `value`. A generic would describe a
+ * contract this library does not have.
  *
  *   { en: 'Active', de: 'Aktiv' }
  *
