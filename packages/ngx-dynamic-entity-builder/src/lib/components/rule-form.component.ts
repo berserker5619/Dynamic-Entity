@@ -8,15 +8,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 
 import type { FormRule, RuleOperator } from '@dynamic-entity/core';
-import { collectFieldScopes, refOf, resolveLabel, toRefToken } from '@dynamic-entity/core';
 import { BuilderStore } from '../builder-store.service';
+import { fieldPathOptions, withExistingOptions, type FieldPathOption } from '../field-path-options';
 
-/** One choosable field: the reference stored, the label shown, and the path behind it. */
-interface RuleFieldOption {
-  value: string;
-  label: string;
-  path: string;
-}
 
 /**
  * RuleFormComponent — dialog/panel form for creating or editing a FormRule.
@@ -208,57 +202,21 @@ export class RuleFormComponent {
     'VALUE_CHANGED',
   ];
 
-  /**
-   * Every field in the config, offered by path.
-   *
-   * Both pickers used to be free text — the trigger was typed by hand and the targets could
-   * not be edited at all, so a rule only ever acted on the field it triggered from. Typing an
-   * id is also the one way left to write an ambiguous reference: ids are unique per scope, so
-   * `address` names nothing in particular once two tabs have one. Choosing from this list
-   * always yields a path.
-   */
-  protected readonly fieldOptions = computed<RuleFieldOption[]>(() => {
-    const language = this.store.activeLanguage();
-    // `collectFieldScopes` rather than `fieldGroups`: it reaches fields nested inside a
-    // `group` too, and it carries each field's scope, so `refOf` always has a path to fall
-    // back to and this component needs no fallback of its own.
-    return collectFieldScopes(this.store.config()).map(entry => {
-      const path = refOf(entry.field, entry.scope);
-      return {
-        value: toRefToken(path),
-        label: resolveLabel(entry.field.label, language) || entry.field.id,
-        path,
-      };
-    });
-  });
-
-  /**
-   * The options plus whatever the rule already names.
-   *
-   * A rule written before paths existed holds a bare id, and one written against a field that
-   * has since been deleted holds a path nothing answers to. Neither appears in the list, and a
-   * `mat-select` silently drops a value it has no option for — so opening such a rule and
-   * saving it would quietly erase the reference. They are kept, and shown as they are.
-   */
-  private withExisting(options: RuleFieldOption[], current: readonly string[]): RuleFieldOption[] {
-    const known = new Set(options.map(o => o.value));
-    const extra = current
-      .filter(value => value && !known.has(value))
-      .map(value => ({ value, label: value, path: 'not in this config' }));
-    return [...options, ...extra];
-  }
+  protected readonly fieldOptions = computed<FieldPathOption[]>(() =>
+    fieldPathOptions(this.store.config(), this.store.activeLanguage()),
+  );
 
   /**
    * Methods, not `computed`. Both read `rule`, which is a plain `@Input` object mutated in
    * place rather than a signal — a computed would cache the first evaluation and never see a
    * different rule being edited.
    */
-  protected triggerOptions(): RuleFieldOption[] {
-    return this.withExisting(this.fieldOptions(), [this.rule.fieldId]);
+  protected triggerOptions(): FieldPathOption[] {
+    return withExistingOptions(this.fieldOptions(), [this.rule.fieldId]);
   }
 
-  protected targetOptions(): RuleFieldOption[] {
-    return this.withExisting(this.fieldOptions(), this.targetValues());
+  protected targetOptions(): FieldPathOption[] {
+    return withExistingOptions(this.fieldOptions(), this.targetValues());
   }
 
   /** Field targets only — a rule may also target a tab, which this picker does not manage. */

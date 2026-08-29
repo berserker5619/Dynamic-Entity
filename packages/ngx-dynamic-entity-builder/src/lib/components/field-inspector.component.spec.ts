@@ -130,6 +130,34 @@ describe('FieldInspectorComponent', () => {
       fixture.detectChanges();
     });
 
+    /**
+     * The key used to seed as the literal string `field`, which is not an id at all — so a new
+     * condition referenced nothing and hid the field until someone noticed and edited it.
+     */
+    it('seeds a new condition with a real field rather than a placeholder', () => {
+      store.addField('number');
+      store.selectField(store.fields()[0].id);
+      fixture.detectChanges();
+
+      addCondition();
+
+      const keys = Object.keys(store.selectedField()?.showWhen ?? {});
+      expect(keys).toHaveLength(1);
+      expect(keys[0]).toMatch(/^\[main\..+\]$/);
+      expect(keys[0]).not.toBe('field');
+    });
+
+    it('offers the watched field as a picker of paths', () => {
+      store.addField('number');
+      fixture.detectChanges();
+
+      const options = (fixture.componentInstance as unknown as {
+        optionsWith(...c: (string | undefined)[]): { value: string; path: string }[];
+      }).optionsWith(undefined);
+
+      expect(options.map(o => o.value)).toEqual(store.fields().map(f => `[main.${f.id}]`));
+    });
+
     it('shows a hint when the field is unconditional', () => {
       expect(host.textContent).toContain('Always visible');
     });
@@ -146,16 +174,20 @@ describe('FieldInspectorComponent', () => {
       expect(Object.keys(store.selectedField()?.showWhen ?? {})).toEqual(['field', 'field_2']);
     });
 
-    it('renames the key while preserving order and value', async () => {
-      addCondition();
-      addCondition();
-      await fixture.whenStable();
+    // The watched field is a picker now, so a rename arrives as a selection rather than
+    // typing. The guards behind it are unchanged.
+    const rename = (oldKey: string, newKey: string): void => {
+      (fixture.componentInstance as unknown as {
+        renameShowWhen(f: unknown, oldKey: string, newKey: string): void;
+      }).renameShowWhen(store.selectedField()!, oldKey, newKey);
       fixture.detectChanges();
+    };
 
-      const [keyInput] = conditionRows()[0];
-      keyInput.value = 'isEmployee';
-      keyInput.dispatchEvent(new Event('input'));
-      fixture.detectChanges();
+    it('renames the key while preserving order and value', () => {
+      addCondition();
+      addCondition();
+
+      rename('field', 'isEmployee');
 
       expect(Object.keys(store.selectedField()?.showWhen ?? {})).toEqual(['isEmployee', 'field_2']);
     });
@@ -164,20 +196,15 @@ describe('FieldInspectorComponent', () => {
       addCondition();
       addCondition();
 
-      const [keyInput] = conditionRows()[0];
-      keyInput.value = 'field_2';
-      keyInput.dispatchEvent(new Event('input'));
-      fixture.detectChanges();
+      rename('field', 'field_2');
 
       expect(Object.keys(store.selectedField()?.showWhen ?? {})).toEqual(['field', 'field_2']);
     });
 
     it('ignores an empty rename', () => {
       addCondition();
-      const [keyInput] = conditionRows()[0];
-      keyInput.value = '   ';
-      keyInput.dispatchEvent(new Event('input'));
-      fixture.detectChanges();
+
+      rename('field', '   ');
 
       expect(Object.keys(store.selectedField()?.showWhen ?? {})).toEqual(['field']);
     });
@@ -196,7 +223,7 @@ describe('FieldInspectorComponent', () => {
       ['', ''],
     ])('parses the typed value %p as %p', (typed, expected) => {
       addCondition();
-      const [, valueInput] = conditionRows()[0];
+      const [valueInput] = conditionRows()[0];
       valueInput.value = typed as string;
       valueInput.dispatchEvent(new Event('input'));
       fixture.detectChanges();
@@ -210,7 +237,7 @@ describe('FieldInspectorComponent', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      const [, valueInput] = conditionRows()[0];
+      const [valueInput] = conditionRows()[0];
       expect(valueInput.value).toBe('false');
     });
 

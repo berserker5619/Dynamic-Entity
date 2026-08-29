@@ -34,6 +34,7 @@ import {
   ambiguousFieldIds,
   collectFieldScopes,
   fieldRefFor,
+  parseFieldRef,
   refOf,
   toRefToken,
   applyAutoPatch,
@@ -986,6 +987,13 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
 
   getControl(fieldId: string, currentTabId?: string): AbstractControl | null {
     if (!this.form) return null;
+
+    // A bracketed path names exactly one control, and the form nests by tab exactly as the
+    // path does — so `form.get('work.address')` walks straight to it. Anything that names a
+    // field can therefore use a path: `showWhen` keys, `patchOnTrue` mappings and `autoPatch`
+    // targets, not only rules.
+    const parsed = parseFieldRef(fieldId);
+    if (parsed.kind === 'ref') return this.form.get(parsed.value);
 
     if (currentTabId) {
       const tabGrp = this.getTabGroup(currentTabId);

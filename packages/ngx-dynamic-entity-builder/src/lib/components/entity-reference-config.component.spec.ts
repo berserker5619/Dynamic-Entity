@@ -140,8 +140,11 @@ describe('EntityReferenceConfigComponent', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
+      // Source stays free text — it is a path into the *linked* record, which this config
+      // knows nothing about. The target is one of our fields, so it is a picker now.
       const inputs = Array.from(host.querySelectorAll('.deb-option-row input')) as HTMLInputElement[];
-      expect(inputs.map(i => i.value)).toEqual(['vat', 'taxId']);
+      expect(inputs.map(i => i.value)).toEqual(['vat']);
+      expect(store.selectedField()?.autoPatch?.mappings[0].target).toBe('taxId');
 
       store.removeAutoPatchMapping(fieldId(), 0);
       fixture.detectChanges();
@@ -181,5 +184,56 @@ describe('EntityReferenceConfigComponent', () => {
     }).parentCandidates();
 
     expect(candidates.map(f => f.id)).toContain('nestedParent');
+  });
+});
+
+/**
+ * The cascade parent was already a picker, but its values were bare ids — which name a field
+ * only until a second scope reuses the id. It offers paths now.
+ */
+describe('ReferencedFieldConfigComponent — cascade parent options', () => {
+  let fixture: ComponentFixture<EntityReferenceConfigComponent>;
+  let store: BuilderStore;
+
+  beforeEach(async () => {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [EntityReferenceConfigComponent],
+      providers: [BuilderStore, provideNoopAnimations()],
+    }).compileComponents();
+
+    store = TestBed.inject(BuilderStore);
+    store.load({
+      entity: 'people',
+      version: 1,
+      tabs: [
+        { id: 'personal', label: {}, fields: [{ id: 'country', type: 'dropdown', label: { en: 'Country' } }] },
+        {
+          id: 'work',
+          label: {},
+          fields: [
+            { id: 'country', type: 'dropdown', label: { en: 'Country' } },
+            { id: 'city', type: 'entity-ref', label: { en: 'City' } },
+          ],
+        },
+      ],
+    });
+    store.selectField('city');
+
+    fixture = TestBed.createComponent(EntityReferenceConfigComponent);
+    fixture.detectChanges();
+  });
+
+  const parentOptions = () =>
+    (fixture.componentInstance as unknown as {
+      parentOptions(): { value: string; path: string }[];
+    }).parentOptions();
+
+  it('offers each candidate by path, so two countries stay distinguishable', () => {
+    expect(parentOptions().map(o => o.value)).toEqual(['[personal.country]', '[work.country]']);
+  });
+
+  it('does not offer the field as its own cascade parent', () => {
+    expect(parentOptions().map(o => o.value)).not.toContain('[work.city]');
   });
 });

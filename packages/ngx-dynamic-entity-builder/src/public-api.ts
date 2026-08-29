@@ -16,6 +16,7 @@ export * from './lib/builder-store.service';
 
 // Catalog + helpers
 export * from './lib/field-catalog';
+export * from './lib/field-path-options';
 
 // Re-export the core types a consumer of the builder needs
 export type {

@@ -10,7 +10,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
-import { resolveLabel, resolveOptionLabel } from '@dynamic-entity/core';
+import { resolveLabel, resolveOptionLabel, toRefToken } from '@dynamic-entity/core';
+import { fieldPathOptions, withExistingOptions, type FieldPathOption } from '../field-path-options';
 import { BuilderStore } from '../builder-store.service';
 import { getFieldTypeMeta, type FieldTypeMeta } from '../field-catalog';
 import { EntityReferenceConfigComponent } from './entity-reference-config.component';
@@ -122,6 +123,20 @@ export class FieldInspectorComponent {
     return resolveOptionLabel(option, this.lang());
   }
 
+  /**
+   * Fields offered wherever this inspector names one — the `showWhen` key and both ends of a
+   * `patchOnTrue` mapping. All three were free text, which is the one way left to write a
+   * reference that names two fields at once.
+   */
+  protected readonly fieldOptions = computed<FieldPathOption[]>(() =>
+    fieldPathOptions(this.store.config(), this.store.activeLanguage()),
+  );
+
+  /** Options plus whatever is already selected, so an unknown reference is never dropped. */
+  protected optionsWith(...current: (string | undefined)[]): FieldPathOption[] {
+    return withExistingOptions(this.fieldOptions(), current);
+  }
+
   // ─── showWhen editing ───────────────────────────────────────────────────────
 
   protected showWhenEntries(field: NestedFieldConfig): { key: string; display: string }[] {
@@ -131,9 +146,21 @@ export class FieldInspectorComponent {
     }));
   }
 
+  /**
+   * Seeds a new condition with the first field not already watched.
+   *
+   * It used to seed the literal string `field`, which is not a field id at all — so a new
+   * condition started out referencing nothing and silently hid the field until it was edited.
+   */
   protected addShowWhen(field: NestedFieldConfig): void {
     const next = { ...(field.showWhen ?? {}) };
-    let key = 'field';
+    const self = toRefToken(field.refererField ?? field.id);
+    const candidate = this.fieldOptions().find(o => o.value !== self && !(o.value in next));
+
+    // Falls back to the old placeholder only when there is genuinely nothing else to watch —
+    // a config with one field. Otherwise a new condition starts on a real field instead of
+    // the literal string `field`, which is not an id at all and hid the field until edited.
+    let key = candidate?.value ?? 'field';
     let n = 1;
     while (key in next) key = `field_${++n}`;
     next[key] = true;

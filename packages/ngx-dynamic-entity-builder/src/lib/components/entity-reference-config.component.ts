@@ -9,7 +9,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
-import { resolveLabel } from '@dynamic-entity/core';
+import { resolveLabel, toRefToken } from '@dynamic-entity/core';
+import { fieldPathOptions, withExistingOptions, type FieldPathOption } from '../field-path-options';
 import { BuilderStore } from '../builder-store.service';
 
 /**
@@ -88,8 +89,10 @@ import { BuilderStore } from '../builder-store.service';
             (ngModelChange)="patchRef(f, { parentField: $event || undefined })"
           >
             <mat-option value="">None — load all options</mat-option>
-            @for (candidate of parentCandidates(); track candidate.id) {
-              <mat-option [value]="candidate.id">{{ fieldLabel(candidate) }} ({{ candidate.id }})</mat-option>
+            @for (option of parentOptions(); track option.value) {
+              <mat-option [value]="option.value">
+                {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
+              </mat-option>
             }
           </mat-select>
           <mat-hint>This field's options reload whenever the parent changes.</mat-hint>
@@ -160,11 +163,17 @@ import { BuilderStore } from '../builder-store.service';
               </mat-form-field>
               <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Target field</mat-label>
-                <input
-                  matInput
+                <mat-select
+                  data-testid="auto-patch-target"
                   [ngModel]="mapping.target"
                   (ngModelChange)="store.updateAutoPatchMapping(f.id, $index, { target: $event })"
-                />
+                >
+                  @for (option of optionsWith(mapping.target); track option.value) {
+                    <mat-option [value]="option.value">
+                      {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
+                    </mat-option>
+                  }
+                </mat-select>
               </mat-form-field>
               <button
                 mat-icon-button
@@ -227,6 +236,29 @@ export class EntityReferenceConfigComponent {
     const current = this.field();
     return this.store.fields().filter(f => f.id !== current?.id);
   });
+
+  private readonly fieldOptions = computed<FieldPathOption[]>(() =>
+    fieldPathOptions(this.store.config(), this.store.activeLanguage()),
+  );
+
+  /**
+   * Cascade parents, offered by path.
+   *
+   * The picker existed but its values were bare ids, which name a field only while no second
+   * scope reuses the id — so the one control that was already a list could still produce an
+   * ambiguous reference.
+   */
+  protected parentOptions(): FieldPathOption[] {
+    const self = this.field();
+    const selfValue = self ? toRefToken(self.refererField ?? self.id) : null;
+    const options = this.fieldOptions().filter(o => o.value !== selfValue);
+    return withExistingOptions(options, [this.field() ? this.ref(this.field()!).parentField : undefined]);
+  }
+
+  /** Options plus whatever is already selected, so an unknown reference is never dropped. */
+  protected optionsWith(...current: (string | undefined)[]): FieldPathOption[] {
+    return withExistingOptions(this.fieldOptions(), current);
+  }
 
   private readonly filtersParseError = signal<string | null>(null);
   protected readonly filtersError = this.filtersParseError.asReadonly();

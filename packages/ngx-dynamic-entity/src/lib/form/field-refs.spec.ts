@@ -113,6 +113,45 @@ describe('addressing a field by its path', () => {
     expect(c.fieldsForActiveTab.map(f => f.id)).toContain('address');
   });
 
+  /**
+   * `showWhen` keys, `patchOnTrue` mappings and `autoPatch` targets all name a field and all
+   * resolve through `getControl`, so a path has to work there too — not only in rules.
+   */
+  it('resolves a control from a path, and keeps resolving a bare id', () => {
+    const c = build(undefined, {
+      personal: { address: 'Home St 1' },
+      work: { address: 'Office Rd 2' },
+    });
+
+    expect(c.getControl('[personal.address]')?.value).toBe('Home St 1');
+    expect(c.getControl('[work.address]')?.value).toBe('Office Rd 2');
+    expect(c.getControl('workNote')).not.toBeNull();
+  });
+
+  it('returns null for a path nothing occupies', () => {
+    const c = build();
+    expect(c.getControl('[work.nothingHere]')).toBeNull();
+  });
+
+  it('hides a field whose showWhen names the watched field by path', () => {
+    const config = CONFIG();
+    config.tabs[1].fields[1].showWhen = { '[personal.address]': 'secret' };
+
+    const fixture = TestBed.createComponent(DynamicFormComponent);
+    const c = fixture.componentInstance;
+    c.config = config;
+    c.initialData = { personal: { address: 'not secret' }, work: { address: 'x' } };
+    c.ngOnChanges({ config: new SimpleChange(undefined, config, true) });
+    fixture.detectChanges();
+
+    c.setActiveTab('work');
+    expect(c.fieldsForActiveTab.map(f => f.id)).not.toContain('workNote');
+
+    c.getControl('[personal.address]')!.setValue('secret');
+    fixture.detectChanges();
+    expect(c.fieldsForActiveTab.map(f => f.id)).toContain('workNote');
+  });
+
   it('still honours a rule written with a bare field id', () => {
     const c = build([hideRule('personalNote', 'personalNote')], {
       personal: { personalNote: 'hide me' },

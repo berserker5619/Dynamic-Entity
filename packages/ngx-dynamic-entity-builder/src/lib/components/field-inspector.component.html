@@ -196,8 +196,15 @@
     @for (entry of showWhenEntries(f); track entry.key) {
       <div class="deb-option-row" data-testid="option-row">
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>Field id</mat-label>
-          <input matInput [ngModel]="entry.key" (ngModelChange)="renameShowWhen(f, entry.key, $event)" />
+          <mat-label>Watched field</mat-label>
+          <mat-select data-testid="show-when-field"
+            [ngModel]="entry.key" (ngModelChange)="renameShowWhen(f, entry.key, $event)">
+            @for (option of optionsWith(entry.key); track option.value) {
+              <mat-option [value]="option.value">
+                {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
+              </mat-option>
+            }
+          </mat-select>
         </mat-form-field>
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>Equals</mat-label>
@@ -227,13 +234,27 @@
         <div class="deb-option-row" data-testid="option-row">
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>From field</mat-label>
-            <input matInput [ngModel]="mapping.from"
-              (ngModelChange)="store.updatePatchOnTrueMapping(f.id, $index, { from: $event })" />
+            <mat-select data-testid="patch-on-true-from"
+              [ngModel]="mapping.from"
+              (ngModelChange)="store.updatePatchOnTrueMapping(f.id, $index, { from: $event })">
+              @for (option of optionsWith(mapping.from); track option.value) {
+                <mat-option [value]="option.value">
+                  {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
+                </mat-option>
+              }
+            </mat-select>
           </mat-form-field>
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>To field</mat-label>
-            <input matInput [ngModel]="mapping.to"
-              (ngModelChange)="store.updatePatchOnTrueMapping(f.id, $index, { to: $event })" />
+            <mat-select data-testid="patch-on-true-to"
+              [ngModel]="mapping.to"
+              (ngModelChange)="store.updatePatchOnTrueMapping(f.id, $index, { to: $event })">
+              @for (option of optionsWith(mapping.to); track option.value) {
+                <mat-option [value]="option.value">
+                  {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
+                </mat-option>
+              }
+            </mat-select>
           </mat-form-field>
           <button mat-icon-button type="button" color="warn" matTooltip="Remove mapping"
             (click)="store.removePatchOnTrueMapping(f.id, $index)">
