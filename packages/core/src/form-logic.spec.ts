@@ -104,6 +104,27 @@ describe('formatDisplayValue', () => {
       expect(formatDisplayValue('date', undefined, 'not-a-date')).toBe('—');
       expect(formatDisplayValue('datetime', undefined, 'not-a-date')).toBe('—');
     });
+
+    // A bare time is stored as `HH:mm` and never reaches `new Date(raw)`, which cannot
+    // parse it — so these go through their own branch.
+    it('formats a bare time as a locale time of day', () => {
+      expect(formatDisplayValue('time', undefined, '14:30')).toBe(
+        new Date(2000, 0, 1, 14, 30).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      );
+    });
+
+    it('accepts a time carrying seconds, and ignores them', () => {
+      expect(formatDisplayValue('time', undefined, '14:30:59')).toBe(
+        formatDisplayValue('time', undefined, '14:30'),
+      );
+    });
+
+    it('rejects a malformed or out-of-range time', () => {
+      expect(formatDisplayValue('time', undefined, 'half past nine')).toBe('—');
+      expect(formatDisplayValue('time', undefined, '9:00')).toBe('—');
+      expect(formatDisplayValue('time', undefined, '24:00')).toBe('—');
+      expect(formatDisplayValue('time', undefined, '12:60')).toBe('—');
+    });
   });
 
   describe('choice values', () => {

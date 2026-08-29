@@ -35,13 +35,16 @@ describe('validateConfig', () => {
     expect(problems.map(p => p.path)).toEqual(expect.arrayContaining(['entity', 'tabs']));
   });
 
-  /** The defect that shipped in the reference dataset for months. */
+  /**
+   * The defect that shipped in the reference dataset for months. The example used to be
+   * `time`, which is a real type now — so this asserts against one that is not.
+   */
   it('rejects a field type that is not in the catalog', () => {
-    const bad = { ...ok, tabs: [{ ...ok.tabs![0], fields: [{ id: 'x', type: 'time', label: {} }] }] };
+    const bad = { ...ok, tabs: [{ ...ok.tabs![0], fields: [{ id: 'x', type: 'signature', label: {} }] }] };
     const problems = errors(bad);
 
     expect(problems).toHaveLength(1);
-    expect(problems[0].message).toContain('Unknown field type "time"');
+    expect(problems[0].message).toContain('Unknown field type "signature"');
     expect(problems[0].path).toBe('tabs[0].fields[0].type');
   });
 

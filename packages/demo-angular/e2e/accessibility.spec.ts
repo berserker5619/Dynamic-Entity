@@ -38,11 +38,14 @@ test.describe('Accessibility', () => {
    */
   test('switching tabs moves focus into the new panel', async ({ page }) => {
     await gotoDemo(page);
-    await safeSelect(page.locator('#entitySelect'), 'clients');
+    // `insuranceClaims` has five tabs. This used to load `clients`, which has exactly one,
+    // and then skip itself — so the guarantee below was never once checked. A precondition
+    // the fixture is supposed to satisfy belongs in an expect, not a skip.
+    await safeSelect(page.locator('#entitySelect'), 'insuranceClaims');
     await safeClick(page.getByRole('button', { name: /Add/i }));
 
     const tabs = page.getByRole('tab');
-    if ((await tabs.count()) < 2) test.skip(true, 'needs a config with more than one tab');
+    expect(await tabs.count()).toBeGreaterThan(1);
 
     await tabs.nth(1).click();
 
@@ -60,8 +63,14 @@ test.describe('Accessibility', () => {
     await gotoDemo(page);
     await safeClick(page.getByRole('button', { name: /Form Builder/i }));
 
+    // The builder opens empty, so this used to skip itself on every run — the same silent
+    // pass as the tab test above. A spec that needs two rows should create two rows rather
+    // than hope the fixture has them.
+    await safeClick(page.getByTestId('palette-text'));
+    await safeClick(page.getByTestId('palette-number'));
+
     const rows = page.locator('[data-testid="builder-field-row"]');
-    if ((await rows.count()) < 2) test.skip(true, 'needs at least two fields');
+    await expect(rows).toHaveCount(2);
 
     // The row itself is operable, not just clickable.
     const first = rows.first();

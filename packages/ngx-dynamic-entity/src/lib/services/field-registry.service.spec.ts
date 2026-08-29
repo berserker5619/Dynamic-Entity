@@ -23,6 +23,7 @@ const ALL_BUILTIN_FIELD_TYPES = [
   'boolean',
   'date',
   'datetime',
+  'time',
   'monthYear',
   'dropdown',
   'radio',

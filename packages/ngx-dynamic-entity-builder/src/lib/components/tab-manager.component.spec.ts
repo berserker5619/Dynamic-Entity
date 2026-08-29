@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { TabManagerComponent } from './tab-manager.component';
 import { SYSTEM_DEFAULT_CAN_EDIT } from 'ngx-dynamic-entity';
+import { SYSTEM_DEFAULT_CAN_EDIT as REEXPORTED_TOKEN } from './tab-manager.component';
 import { BuilderStore } from '../builder-store.service';
 
 describe('TabManagerComponent', () => {
@@ -51,6 +52,32 @@ describe('TabManagerComponent', () => {
     fixture.detectChanges();
 
     expect(store.tabs().length).toBe(0);
+  });
+
+  // This file re-exports the token so existing imports from the builder package keep
+  // working. It once declared its own InjectionToken of the same name, and since token
+  // identity is by reference, a consumer providing the documented one was providing a token
+  // nothing injected. Asserting they are the same object is what stops that regressing.
+  it('re-exports the renderer’s token, not a look-alike', () => {
+    expect(REEXPORTED_TOKEN).toBe(SYSTEM_DEFAULT_CAN_EDIT);
+  });
+
+  // With no SYSTEM_DEFAULT_CAN_EDIT provided there is no policy to consult, so a
+  // system-default tab stays editable rather than being locked by default.
+  it('leaves a system-default tab editable when no predicate is registered', () => {
+    addButton().click();
+    fixture.detectChanges();
+    const tabId = store.tabs()[0].id;
+    store.updateTab(tabId, { systemDefault: true });
+    fixture.detectChanges();
+
+    expect(host.textContent).toContain('(System)');
+    const api = fixture.componentInstance as unknown as {
+      canEditTab(t: { systemDefault?: boolean }): boolean;
+      tabLabel(t: { label?: unknown }): string;
+    };
+    expect(api.canEditTab(store.tabs()[0])).toBe(true);
+    expect(api.tabLabel({ label: { en: 'Primary' } })).toBe('Primary');
   });
 });
 

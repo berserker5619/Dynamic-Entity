@@ -64,20 +64,6 @@ describe('EntityBuilderComponent', () => {
     expect(store.fields().length).toBe(0);
   });
 
-  it('reorders fields on drop', () => {
-    const a = store.addField('text');
-    const b = store.addField('number');
-    expect(store.fields().map(f => f.id)).toEqual([a, b]);
-
-    (component as unknown as { onDrop(e: unknown): void }).onDrop({
-      previousIndex: 0,
-      currentIndex: 1,
-    });
-    fixture.detectChanges();
-
-    expect(store.fields().map(f => f.id)).toEqual([b, a]);
-  });
-
   it('gates the Save button on validity and emits a clean config on save', () => {
     const saved: EntityFormConfig[] = [];
     component.save.subscribe(c => saved.push(c));
@@ -252,6 +238,62 @@ describe('EntityBuilderComponent', () => {
       expect(component['rolesFor']('view')).toEqual(['admin']);
     });
   });
+
+  describe('inputs and the JSON panel', () => {
+    const api = () => fixture.componentInstance as unknown as {
+      copyJson(): void;
+      json: string;
+    };
+
+    // The active language is whatever the loaded config declared. If the host then narrows
+    // `languages` to a set that excludes it, the builder would otherwise keep editing labels
+    // in a language the host no longer offers.
+    it('moves to the first offered language when the active one is withdrawn', () => {
+      store.setActiveLanguage('fr');
+      component.languages = ['en', 'de'];
+      component.ngOnChanges({
+        languages: new SimpleChange(undefined, component.languages, true),
+      });
+
+      expect(store.activeLanguage()).toBe('en');
+    });
+
+    it('keeps the active language when it is still offered', () => {
+      store.setActiveLanguage('de');
+      component.languages = ['en', 'de'];
+      component.ngOnChanges({
+        languages: new SimpleChange(undefined, component.languages, true),
+      });
+
+      expect(store.activeLanguage()).toBe('de');
+    });
+
+    it('copies the exported config to the clipboard', async () => {
+      const writeText = jest.fn().mockResolvedValue(undefined);
+      Object.defineProperty(globalThis.navigator, 'clipboard', {
+        value: { writeText },
+        configurable: true,
+      });
+      store.setEntityName('clients');
+      store.addField('text');
+
+      api().copyJson();
+
+      expect(writeText).toHaveBeenCalledWith(api().json);
+      expect(JSON.parse(api().json).entity).toBe('clients');
+    });
+
+    // jsdom has no clipboard, and neither does a non-secure browser context. The guard is
+    // what keeps that from throwing out of a click handler.
+    it('does nothing when the clipboard is unavailable', () => {
+      Object.defineProperty(globalThis.navigator, 'clipboard', {
+        value: undefined,
+        configurable: true,
+      });
+
+      expect(() => api().copyJson()).not.toThrow();
+    });
+  });
 });
 
 /**
@@ -306,4 +348,5 @@ describe('EntityBuilderComponent — config cache invalidation on save', () => {
     expect(() => (component as unknown as { doSave(): void }).doSave()).not.toThrow();
     expect(saved).toEqual(['clients']);
   });
+
 });

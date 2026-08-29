@@ -19,6 +19,7 @@ describe('field-catalog', () => {
       'boolean',
       'date',
       'datetime',
+      'time',
       'monthYear',
       'dropdown',
       'radio',

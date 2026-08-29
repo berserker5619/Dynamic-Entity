@@ -25,7 +25,7 @@ No Angular Material required. This package has no dependency on Material or the 
 - **`DynamicRecordFormComponent`** — record editor with summary drawer (`showOnMinimize`), profile header, and per-section saving.
 - **Reactive rules** — real-time condition evaluation driving field/tab visibility, validation errors and warnings, and info banners.
 - **Entity references & cascades** — consumer-registered loaders, parent→child dropdown filtering, and `autoPatch` record copying.
-- **19 field types** — each a standalone component, registered explicitly so unused types are never bundled.
+- **20 field types** — each a standalone component, registered explicitly so unused types are never bundled.
 
 ---
 

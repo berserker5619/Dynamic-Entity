@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, signal, computed, inject, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, signal, computed, inject, afterNextRender, ElementRef, Injector, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
@@ -245,6 +245,8 @@ export class DynamicRecordFormComponent implements OnChanges {
   @ViewChild(DynamicFormComponent) dynamicFormComp?: DynamicFormComponent;
 
   private readonly rulesEvaluation = inject(RulesEvaluationService);
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+  private readonly injector = inject(Injector);
 
   readonly currentData = signal<Record<string, any>>({});
   readonly originalBaseline = signal<Record<string, any>>({});
@@ -672,21 +674,60 @@ export class DynamicRecordFormComponent implements OnChanges {
     return formatDisplayValue(field.type, field.options, this.fieldValue(field.id), this.language);
   }
 
-  jumpToField(fieldId: string): void {
-    // Find parent tab for field
+  /**
+   * Finds which tab — and, where the field lives one level down, which sub-tab — owns a
+   * field. The walk used to check top-level `fields` only, so every field in a sub-tab was
+   * simply not found and the jump did nothing at all.
+   */
+  private locateField(fieldId: string): { tabId: string; subTabId?: string } | null {
     for (const tab of this.config?.tabs || []) {
-      const hasField = (tab.fields || []).some(f => f.id === fieldId);
-      if (hasField) {
-        this.dynamicFormComp?.setActiveTab(tab.id);
-        setTimeout(() => {
-          const el = document.getElementById(`field-container-${fieldId}`);
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            el.focus();
-          }
-        }, 50);
-        break;
+      if ((tab.fields || []).some(f => f.id === fieldId)) return { tabId: tab.id };
+      for (const child of tab.children || []) {
+        if ((child.fields || []).some(f => f.id === fieldId)) {
+          return { tabId: tab.id, subTabId: child.id };
+        }
       }
     }
+    return null;
+  }
+
+  /**
+   * Switches to the tab holding `fieldId`, then scrolls it into view and moves focus to it.
+   *
+   * The wait for the new tab to render used to be a 50 ms `setTimeout`, which was wrong three
+   * ways: `document` is undefined on a server render, 50 ms is a guess that a large tab can
+   * outrun, and nothing cancelled the timer if the component went away first.
+   * `afterNextRender` fixes all three — it never runs on the server, it runs when the panel
+   * has actually rendered rather than when a guess expires, and it is tied to the injector so
+   * destroying the component cancels it. The query is scoped to this component's own element,
+   * so the library no longer reaches for the global `document` at all.
+   */
+  jumpToField(fieldId: string): void {
+    const location = this.locateField(fieldId);
+    if (!location) return;
+
+    this.dynamicFormComp?.setActiveTab(location.tabId);
+    // `setActiveTab` resets to a tab's first child, so the sub-tab has to be selected after
+    // it, not before. Without this the walk found sub-tab fields and then rendered the wrong
+    // panel, so the element the callback below looks for never existed.
+    if (location.subTabId) this.dynamicFormComp?.setActiveSubTab(location.subTabId);
+
+    afterNextRender(
+      () => {
+        // The field id comes from config, so it never goes into a selector string: no
+        // escaping to get wrong, and no need for `CSS.escape`, which jsdom and older
+        // browsers do not provide and whose absence throws silently inside a render hook.
+        const wanted = `field-container-${fieldId}`;
+        const el = Array.from(
+          this.host.nativeElement.querySelectorAll<HTMLElement>('[id^="field-container-"]'),
+        ).find(slot => slot.id === wanted);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // The slot carries tabindex="-1" so this actually moves focus. Without it the jump
+        // scrolled the field into view and left focus behind on the link.
+        el.focus();
+      },
+      { injector: this.injector },
+    );
   }
 }

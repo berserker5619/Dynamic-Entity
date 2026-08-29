@@ -60,6 +60,7 @@
         "password",
         "date",
         "datetime",
+        "time",
         "monthYear",
         "dropdown",
         "radio",

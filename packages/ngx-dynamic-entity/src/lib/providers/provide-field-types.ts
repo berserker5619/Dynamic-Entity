@@ -10,6 +10,8 @@ import { PasswordFieldComponent } from '../field-types/password-field.component'
 import { CheckboxFieldComponent } from '../field-types/checkbox-field.component';
 import { BooleanFieldComponent } from '../field-types/boolean-field.component';
 import { DateFieldComponent } from '../field-types/date-field.component';
+import { DateTimeFieldComponent } from '../field-types/date-time-field.component';
+import { TimeFieldComponent } from '../field-types/time-field.component';
 import { MonthYearFieldComponent } from '../field-types/month-year-field.component';
 import { DropdownFieldComponent } from '../field-types/dropdown-field.component';
 import { RadioFieldComponent } from '../field-types/radio-field.component';
@@ -50,7 +52,8 @@ export function builtInFieldTypes(): Record<string, Type<any>> {
     checkbox: CheckboxFieldComponent,
     boolean: BooleanFieldComponent,
     date: DateFieldComponent,
-    datetime: DateFieldComponent,
+    datetime: DateTimeFieldComponent,
+    time: TimeFieldComponent,
     monthYear: MonthYearFieldComponent,
     dropdown: DropdownFieldComponent,
     radio: RadioFieldComponent,

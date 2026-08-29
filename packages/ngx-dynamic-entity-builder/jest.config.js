@@ -15,13 +15,23 @@ module.exports = {
   // so the numbers described an aspiration and protected nothing — nothing could regress
   // past a gate that was already shut.
   //
-  // They now reflect what this package actually achieves (92.7 / 74.7 / 94.3 / 94.2 after
-  // deleting two dead stores and covering the referenced-field and connection editors), so
-  // the ratchet is real for the first time. Raise them as coverage improves; the per-file
-  // floors are deliberately the weakest link, not an average.
+  // They now reflect what this package actually achieves, so the ratchet is real. Raise
+  // them as coverage improves; the per-file floors are deliberately the weakest link, not
+  // an average.
+  //
+  // The per-file floor used to sit at 76 / 50 / 50 / 79, which let a single file ship with
+  // half its branches and half its functions untested — and the builder is where the subtler
+  // defects have historically lived. It now matches the other two packages exactly
+  // (85 / 75 / 85 / 85). Getting there meant specs for the canvas and tree-node components,
+  // which had none at all, edge coverage for the inspector and rules editor, and deleting a
+  // dead onDrop/fieldTypeLabel/fieldTypeIcon/fieldLabel block that the canvas extraction had
+  // left behind on EntityBuilderComponent.
+  //
+  // Actuals at the time of writing: 95.9 / 83.0 / 97.9 / 97.1 global, and the weakest file
+  // (builder-store.service.ts) at 93.9 / 78.5 / 97.0 / 95.6.
   coverageThreshold: {
-    global: { statements: 92, branches: 74, functions: 94, lines: 94 },
-    './src/**/*.ts': { statements: 76, branches: 50, functions: 50, lines: 79 },
+    global: { statements: 95, branches: 82, functions: 97, lines: 97 },
+    './src/**/*.ts': { statements: 85, branches: 75, functions: 85, lines: 85 },
   },
   // Ignore the built output so haste doesn't see two package.json manifests.
   modulePathIgnorePatterns: ['<rootDir>/dist/'],

@@ -268,6 +268,19 @@ export function formatDisplayValue(
       return Number.isNaN(d.getTime()) ? EMPTY : d.toLocaleString();
     }
 
+    // A bare time has no date and no zone, so it is stored as `HH:mm` and never goes
+    // through `new Date(raw)` — which cannot parse it at all. The arbitrary date below
+    // exists only to reach the locale time formatter.
+    case 'time': {
+      const match = /^(\d{2}):(\d{2})(?::\d{2})?$/.exec(String(raw));
+      if (!match) return EMPTY;
+      const hours = Number(match[1]);
+      const minutes = Number(match[2]);
+      if (hours > 23 || minutes > 59) return EMPTY;
+      return new Date(2000, 0, 1, hours, minutes)
+        .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
     case 'dropdown':
     case 'radio': {
       const opt = (options ?? []).find(o => valuesMatch(getOptionStoredValue(o), raw, lang));

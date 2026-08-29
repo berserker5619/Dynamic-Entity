@@ -34,7 +34,7 @@ export * from './lib/field-types/field-component.contract';
 //
 // The tree-shaking seam is `provideFieldTypes({ image: ImageFieldComponent })`: register
 // only what you use and the rest never enters the bundle. That only works for components a
-// consumer can name, and ten of these were unreachable — so wanting eleven of the eighteen
+// consumer can name, and ten of these were unreachable — so wanting eleven of the twenty
 // meant calling provideBuiltInFieldTypes() and bundling all of them, which is exactly what
 // the seam exists to avoid.
 export * from './lib/field-types/text-field.component';
@@ -46,6 +46,8 @@ export * from './lib/field-types/password-field.component';
 export * from './lib/field-types/checkbox-field.component';
 export * from './lib/field-types/boolean-field.component';
 export * from './lib/field-types/date-field.component';
+export * from './lib/field-types/date-time-field.component';
+export * from './lib/field-types/time-field.component';
 export * from './lib/field-types/month-year-field.component';
 export * from './lib/field-types/dropdown-field.component';
 export * from './lib/field-types/radio-field.component';

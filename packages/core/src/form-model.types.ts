@@ -51,6 +51,7 @@ export type RichFieldType =
   | 'password'
   | 'date'
   | 'datetime'
+  | 'time'
   | 'monthYear'
   | 'dropdown'
   | 'radio'

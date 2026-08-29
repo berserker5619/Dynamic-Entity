@@ -73,7 +73,10 @@ async function fillKitchenSink(page: Page, ref: string): Promise<void> {
 
   await safeClick(tab(page, 'Incident'));
   await fieldPart(page, 'incidentDate', 'input').fill('2026-02-11');
-  await fieldPart(page, 'reportedAt', 'input').fill('2026-02-12');
+  await fieldPart(page, 'incidentTime', 'input').fill('14:05');
+  // `reportedAt` is a `datetime` and now renders a datetime-local input, so the value
+  // carries a time. Filling a date-only string here is what the control rejects.
+  await fieldPart(page, 'reportedAt', 'input').fill('2026-02-12T09:15');
   await fieldById(page, 'severity').getByLabel('High').check();
   await fieldPart(page, 'damageTypes', 'input').selectOption([{ label: 'Fire' }, { label: 'Flood' }]);
   await fieldPart(page, 'narrative', 'input').fill('Water ingress through the roof after the fire.');
@@ -146,7 +149,12 @@ async function assertKitchenSink(page: Page, ref: string): Promise<void> {
 
   await safeClick(tab(page, 'Incident'));
   await expect(fieldPart(page, 'incidentDate', 'input')).toHaveValue('2026-02-11');
-  await expect(fieldPart(page, 'reportedAt', 'input')).toHaveValue('2026-02-12');
+  // A bare `time` is stored as the `HH:mm` the input itself uses — no date, no zone, and so
+  // nothing to convert on the way back.
+  await expect(fieldPart(page, 'incidentTime', 'input')).toHaveValue('14:05');
+  // The time has to survive the round trip, not just the date — it is stored as ISO 8601
+  // UTC and read back into the viewer's local zone.
+  await expect(fieldPart(page, 'reportedAt', 'input')).toHaveValue('2026-02-12T09:15');
   // Radio options store LocalizedText objects; native radios compare by identity, so a
   // JSON-revived `{ en: 'High' }` does not stay checked. The control still holds the
   // value — re-selecting would be a false pass. MultiSelect uses compareWith instead.

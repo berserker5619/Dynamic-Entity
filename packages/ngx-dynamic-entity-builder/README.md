@@ -35,7 +35,7 @@ export const appConfig: ApplicationConfig = {
 - **Rules manager** — create, reorder, edit, and toggle reactive rules (`RuleFormComponent`, `FieldRulesListComponent`).
 - **Tab & tree manager** — organize primary tabs, sub-tabs, nested groups, and array field lists. Nesting is recursive; no depth limit is enforced.
 - **Live preview slot** — a projected content slot, so the builder renders a preview without depending on the renderer package.
-- **All 19 field types** from the `@dynamic-entity/core` catalog.
+- **All 20 field types** from the `@dynamic-entity/core` catalog.
 
 ---
 

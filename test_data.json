@@ -1170,6 +1170,16 @@
                 }
               },
               {
+                "id": "incidentTime",
+                "type": "time",
+                "label": {
+                  "en": "Time of Incident",
+                  "de": "Uhrzeit des Vorfalls"
+                },
+                "visibility": true,
+                "colSpan": 4
+              },
+              {
                 "id": "reportedAt",
                 "type": "datetime",
                 "label": {

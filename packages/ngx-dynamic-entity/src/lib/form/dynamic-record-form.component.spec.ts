@@ -240,6 +240,48 @@ describe('DynamicRecordFormComponent', () => {
 
       expect(setActiveTab).not.toHaveBeenCalled();
     });
+
+    // The old implementation looked the element up on a 50 ms timer and these tests only
+    // asserted the tab switch, so the lookup could never have failed a test — and the slot
+    // was not focusable, making the focus call a silent no-op. `archived` lives on the
+    // inactive `meta` tab, so its slot does not exist until the jump has rendered: that is
+    // exactly the wait the timer was guessing at.
+    it('scrolls the field into view and focuses it once the tab has rendered', () => {
+      build();
+      const scrollIntoView = jest.fn();
+      // jsdom implements no layout, so scrollIntoView is absent rather than inert.
+      HTMLElement.prototype.scrollIntoView = scrollIntoView;
+      expect(fixture.nativeElement.querySelector('#field-container-deep')).toBeNull();
+
+      component.jumpToField('deep');
+      // detectChanges renders the newly-activated sub-tab and then flushes the
+      // afterNextRender hook, in that order — which is the whole point of the hook.
+      fixture.detectChanges();
+
+      const slot = fixture.nativeElement.querySelector('#field-container-deep') as HTMLElement;
+      expect(slot).not.toBeNull();
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
+      expect(document.activeElement).toBe(slot);
+    });
+
+    // `deep` lives in the `nested` sub-tab of `meta`. The walk checked top-level fields
+    // only, so it never found the field and the jump was a no-op.
+    it('selects the sub-tab for a field that lives in one', () => {
+      build();
+      HTMLElement.prototype.scrollIntoView = jest.fn();
+
+      component.jumpToField('deep');
+      fixture.detectChanges();
+
+      expect(component.dynamicFormComp!.activeTab()).toBe('meta');
+      expect(component.dynamicFormComp!.activeSubTab()).toBe('nested');
+    });
+
+    it('gives every field slot a tabindex so it can take focus', () => {
+      build();
+      const slot = fixture.nativeElement.querySelector('#field-container-name') as HTMLElement;
+      expect(slot.getAttribute('tabindex')).toBe('-1');
+    });
   });
 });
 

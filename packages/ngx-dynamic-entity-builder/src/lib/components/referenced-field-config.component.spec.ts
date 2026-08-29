@@ -150,4 +150,58 @@ describe('ReferencedFieldConfigComponent', () => {
 
     expect(getConfig).not.toHaveBeenCalled();
   });
+
+  // The source walk recurses into group children. A reference pointing at a field nested
+  // inside a group is the case that distinguishes it from a flat scan of tabs[].fields.
+  describe('finding the field in the source config', () => {
+    const NESTED_SOURCE: EntityFormConfig = {
+      entity: 'individuals',
+      version: 1,
+      tabs: [
+        { id: 'empty', label: { en: 'Empty' }, fields: [] },
+        {
+          id: 'main',
+          label: { en: 'Main' },
+          fields: [
+            { id: 'firstName', type: 'text', label: { en: 'First Name' } },
+            {
+              id: 'address',
+              type: 'group',
+              label: { en: 'Address' },
+              children: [
+                { id: 'street', type: 'text', label: { en: 'Street' } },
+                {
+                  id: 'geo',
+                  type: 'group',
+                  label: { en: 'Geo' },
+                  children: [
+                    { id: 'postcode', type: 'text', label: { en: 'Postcode' }, validators: { required: true } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    async function linkTo(fieldId: string): Promise<void> {
+      getConfig.mockResolvedValue(NESTED_SOURCE);
+      const field = addSelectedField();
+      api().toggleReferenced(field, true);
+      api().updateEntityKey(store.fields()[0], 'individuals');
+      api().updateFieldId(store.fields()[0], fieldId);
+      await api().syncWithSource(store.fields()[0]);
+    }
+
+    it('syncs from a field nested two groups deep', async () => {
+      await linkTo('postcode');
+      expect(store.fields()[0].validators?.required).toBe(true);
+    });
+
+    it('leaves the field alone when the source has no such id', async () => {
+      await linkTo('nothingNamedThis');
+      expect(store.fields()[0].validators?.required).toBeFalsy();
+    });
+  });
 });

@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -17,7 +16,6 @@ import {
   type CommonModuleEntry,
   type EntityFormConfig,
   type EntityPermissions,
-  resolveLabel,
 } from '@dynamic-entity/core';
 import { ConfigSourceService } from 'ngx-dynamic-entity';
 import { BuilderStore } from './builder-store.service';
@@ -25,7 +23,6 @@ import { FieldInspectorComponent } from './components/field-inspector.component'
 import { FieldPaletteComponent } from './components/field-palette.component';
 import { TabManagerComponent } from './components/tab-manager.component';
 import { EntityBuilderCanvasComponent } from './components/entity-builder-canvas.component';
-import { getFieldTypeMeta } from './field-catalog';
 
 /** RBAC actions surfaced in the settings panel. */
 const RBAC_ACTIONS: (keyof EntityPermissions)[] = ['view', 'edit', 'delete'];
@@ -43,7 +40,6 @@ const EMPTY_ROLES: readonly string[] = Object.freeze([]);
   providers: [BuilderStore],
   imports: [
     FormsModule,
-    DragDropModule,
     MatButtonModule,
     MatCardModule,
     MatCheckboxModule,
@@ -109,25 +105,6 @@ export class EntityBuilderComponent implements OnChanges {
     if (changes['userRoles']) {
       this.store.setUserRoles(this.userRoles);
     }
-  }
-
-  // ─── Field canvas ─────────────────────────────────────────────────────────
-
-  protected onDrop(event: CdkDragDrop<unknown>): void {
-    this.store.reorderField(event.previousIndex, event.currentIndex);
-  }
-
-  protected fieldTypeLabel(type: string): string {
-    return getFieldTypeMeta(type)?.label ?? type;
-  }
-
-  protected fieldTypeIcon(type: string): string {
-    return getFieldTypeMeta(type)?.icon ?? 'help_outline';
-  }
-
-  protected fieldLabel(field: { id: string; label?: any }): string {
-    const lang = this.store.activeLanguage();
-    return resolveLabel(field.label, lang) || field.id;
   }
 
   // ─── Toolbar actions ──────────────────────────────────────────────────────
