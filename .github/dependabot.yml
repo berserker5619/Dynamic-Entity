@@ -1,0 +1,58 @@
+# Dependabot was off entirely until now, and there was no update config — so nothing
+# watched the dependency surface at all, while SECURITY.md published a disclosure process.
+#
+# Context for whoever tunes this: all three published packages declare no `dependencies`,
+# only peers and devDeps, so nothing Dependabot finds here ships to a consumer. Everything
+# below is build-toolchain hygiene. That is a reason to keep the noise low, not a reason to
+# skip it — the point is that a fault in something that *does* ship would now be seen.
+
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    # One entry covers the workspace: npm workspaces share the root lockfile, so Dependabot
+    # resolves every package from here. Separate entries per package would collide on it.
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    versioning-strategy: increase-if-necessary
+    groups:
+      # Angular ships its packages in lockstep and they must move together — a partial bump
+      # does not install. One PR per release, not fifteen.
+      angular:
+        patterns:
+          - '@angular/*'
+          - '@angular-devkit/*'
+          - '@nguniversal/*'
+          - ng-packagr
+          - zone.js
+      # Everything else, batched by risk. Minor and patch are the ones worth taking on sight.
+      dev-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # The Angular major is a deliberate, breaking toolchain migration tracked as its own
+      # piece of work — not something to be prompted about weekly. Minor and patch still flow
+      # through the group above.
+      - dependency-name: '@angular/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@angular-devkit/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: ng-packagr
+        update-types: ['version-update:semver-major']
+
+  # The CI runner already warns that actions/checkout@v4 and actions/setup-node@v4 are
+  # pinned to a deprecated Node. Nothing was watching for that either.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns:
+          - '*'
