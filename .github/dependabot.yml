@@ -28,20 +28,31 @@ updates:
           - '@nguniversal/*'
           - ng-packagr
           - zone.js
+      # @typescript-eslint ships parser and plugin as a matched pair — bumping one alone is
+      # an ERESOLVE, which is exactly how the first run failed.
+      typescript-eslint:
+        patterns:
+          - '@typescript-eslint/*'
       # Everything else, batched by risk. Minor and patch are the ones worth taking on sight.
       dev-minor-and-patch:
         update-types:
           - minor
           - patch
     ignore:
-      # The Angular major is a deliberate, breaking toolchain migration tracked as its own
-      # piece of work — not something to be prompted about weekly. Minor and patch still flow
-      # through the group above.
-      - dependency-name: '@angular/*'
-        update-types: ['version-update:semver-major']
-      - dependency-name: '@angular-devkit/*'
-        update-types: ['version-update:semver-major']
-      - dependency-name: ng-packagr
+      # No major bumps, for anything, until the Angular 17 migration happens.
+      #
+      # This started as an Angular-only ignore, and the first Dependabot run showed why that
+      # was too narrow: it opened three PRs that could not possibly pass. TypeScript 7.0.2
+      # fails with `TS5102: Option 'baseUrl' has been removed`; @typescript-eslint/parser 8
+      # fails to install at all against eslint-plugin 7 (ERESOLVE). Neither is a defect —
+      # this toolchain is pinned by Angular 17, which wants TypeScript ~5.2, and every major
+      # in it moves when Angular does. Until then a major bump is noise that costs a CI run
+      # to reject.
+      #
+      # Minors and patches still flow through the groups above, which is where the security
+      # fixes actually are. Security alerts are separate from this and are never suppressed
+      # by an ignore rule.
+      - dependency-name: '*'
         update-types: ['version-update:semver-major']
 
   # The CI runner already warns that actions/checkout@v4 and actions/setup-node@v4 are
