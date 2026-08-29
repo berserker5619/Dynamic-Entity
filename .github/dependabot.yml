@@ -50,27 +50,16 @@ updates:
       # major has to be one deliberate commit across the whole stack the way 21 was
       # (c3b9480) rather than something Dependabot proposes piecemeal.
       #
-      # ng-packagr and jest-preset-angular track the Angular major and belong with it.
-      # TypeScript 6/7 drops `baseUrl`; @typescript-eslint 8 does not install against
-      # eslint-plugin 7.
+      # The rule is `*` rather than a list of names, and that is the second lesson from the
+      # same run. An enumerated list was tried first — Angular, ng-packagr,
+      # jest-preset-angular, zone.js, typescript, eslint — and jasmine-core 7 appeared within
+      # two minutes of pushing it, also red, because it was not on the list. Anything pinned
+      # to this toolchain breaks when it moves alone, and there is no way to name them all in
+      # advance.
       #
       # Minors and patches still flow through the groups above, which is where the security
       # fixes are. Security alerts are never suppressed by an ignore rule.
-      - dependency-name: '@angular/*'
-        update-types: ['version-update:semver-major']
-      - dependency-name: '@angular-devkit/*'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'ng-packagr'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'jest-preset-angular'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'zone.js'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'typescript'
-        update-types: ['version-update:semver-major']
-      - dependency-name: '@typescript-eslint/*'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'eslint'
+      - dependency-name: '*'
         update-types: ['version-update:semver-major']
 
   # The CI runner already warns that actions/checkout@v4 and actions/setup-node@v4 are
