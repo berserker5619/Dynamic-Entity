@@ -12,6 +12,7 @@ import type {
   RichFieldType,
 } from '@dynamic-entity/core';
 import { findTab, labelToId, normalizeConfigOptions, computeFieldDrift, createFieldSnapshot } from '@dynamic-entity/core';
+import { assignFieldRefs, collectFieldScopes, fieldRefFor, parseFieldRef, toRefToken } from '@dynamic-entity/core';
 import {
   createFieldConfig,
   getFieldTypeMeta,
@@ -60,6 +61,15 @@ export class BuilderStore {
    * field's label. Builder-session state, deliberately not part of the exported config.
    */
   private readonly manualIds = new Set<string>();
+  /**
+   * Fields whose `refererField` the config declared, rather than the builder stamping it.
+   *
+   * A declared path is a deliberate binding override and must survive a structural edit. A
+   * stamped one is just the field's address, so it has to be rewritten when the field moves.
+   * Without the distinction, restamping would destroy the override and not restamping would
+   * leave a moved field pointing at where it used to be.
+   */
+  private readonly authoredRefs = new Set<string>();
 
   private readonly _isDirty = signal<boolean>(false);
 
@@ -125,6 +135,13 @@ export class BuilderStore {
   // ─── Initialisation ─────────────────────────────────────────────────────────
 
   load(config: EntityFormConfig): void {
+    // Remember the paths the config declared before filling in the rest, so a deliberate
+    // binding override is never mistaken for one of ours and rewritten.
+    this.authoredRefs.clear();
+    for (const entry of collectFieldScopes(config)) {
+      if (entry.field?.id && entry.field.refererField) this.authoredRefs.add(entry.field.id);
+    }
+    assignFieldRefs(config);
     // Check if any fields carry both inline options and listName before normalizing options
     const fieldsWithBoth = this.getAllFields(config.tabs ?? []).filter(
       f => Array.isArray(f.options) && f.options.length > 0 && typeof f.listName === 'string' && f.listName.trim() !== '',
@@ -446,6 +463,41 @@ export class BuilderStore {
         }
       }
     });
+  }
+
+  /**
+   * Moves a field to another tab, keeping its id.
+   *
+   * The builder could add, remove, duplicate and reorder a field but never relocate one, so
+   * a field authored on the wrong tab had to be deleted and rebuilt — losing its validators,
+   * options and any rule that pointed at it.
+   *
+   * The field's `refererField` changes, because it is an address and the field now has a new one.
+   * `mutate` restamps it and repoints the rules that named it, so a move does not silently
+   * strand them.
+   */
+  moveFieldToTab(id: string, targetTabId: string): boolean {
+    const target = this.flattenTabs(this._config().tabs).find(t => t.id === targetTabId);
+    if (!target) return false;
+
+    let moved = false;
+    this.mutate(draft => {
+      const targetTab = this.flattenTabs(draft.tabs).find(t => t.id === targetTabId);
+      if (!targetTab) return;
+
+      for (const tab of this.flattenTabs(draft.tabs)) {
+        const index = (tab.fields ?? []).findIndex(f => f.id === id);
+        if (index === -1) continue;
+        if (tab.id === targetTabId) return; // already there; nothing to do
+
+        const [field] = tab.fields!.splice(index, 1);
+        targetTab.fields = targetTab.fields ?? [];
+        targetTab.fields.push(field);
+        moved = true;
+        return;
+      }
+    });
+    return moved;
   }
 
   /** Safe reorder for drag & drop within active tab or flat list */
@@ -995,12 +1047,92 @@ export class BuilderStore {
 
   // ─── Internals ──────────────────────────────────────────────────────────────
 
+  /**
+   * The single choke point for a structural edit, and therefore the one place refs are kept
+   * true.
+   *
+   * `refererField` is a field's address, so it changes whenever the structure around it does —
+   * moving a field to another tab, or into a group, gives it a new one. Rules address fields
+   * by ref, so a move that only restamped the field would leave every rule pointing at an
+   * address nothing occupies. Both happen here, together, or the config is inconsistent
+   * between them.
+   */
   private mutate(fn: (draft: EntityFormConfig) => void): void {
+    const before = this.refsById(this._config());
     const draft = clone(this._config());
     draft.tabs = draft.tabs ?? [];
     fn(draft);
+    this.restampFieldPaths(draft);
+    this.repointRulesForMovedFields(before, this.refsById(draft));
     this._config.set(draft);
     this._isDirty.set(true);
+  }
+
+  /**
+   * Rewrites the address of every field the builder owns, leaving declared overrides alone.
+   *
+   * `assignFieldRefs` only fills in a missing path, which is right when a config arrives and
+   * wrong after a move: the field already has a path, and it is now the wrong one.
+   */
+  private restampFieldPaths(config: EntityFormConfig): void {
+    for (const entry of collectFieldScopes(config)) {
+      const field = entry.field;
+      if (!field?.id || this.authoredRefs.has(field.id)) continue;
+      field.refererField = fieldRefFor(entry.scope, field.id);
+    }
+  }
+
+  /** Field id → the refs it currently has. A duplicated id has more than one. */
+  private refsById(config: EntityFormConfig): Map<string, string[]> {
+    const map = new Map<string, string[]>();
+    for (const entry of collectFieldScopes(config)) {
+      if (!entry.field?.id) continue;
+      const refs = map.get(entry.field.id) ?? [];
+      refs.push(fieldRefFor(entry.scope, entry.field.id));
+      map.set(entry.field.id, refs);
+    }
+    return map;
+  }
+
+  /**
+   * Rewrites rules that pointed at a ref a move has just changed.
+   *
+   * A field is matched by its id: if exactly one ref for that id disappeared and exactly one
+   * appeared, that is the move and the rules follow it. Anything less clear-cut — two fields
+   * sharing an id where one moved — is left alone rather than guessed at, because rewriting
+   * the wrong rule is worse than leaving one to be repointed by hand.
+   */
+  private repointRulesForMovedFields(
+    before: Map<string, string[]>,
+    after: Map<string, string[]>,
+  ): void {
+    const moves = new Map<string, string>();
+    for (const [id, oldRefs] of before) {
+      const newRefs = after.get(id) ?? [];
+      const gone = oldRefs.filter(r => !newRefs.includes(r));
+      const added = newRefs.filter(r => !oldRefs.includes(r));
+      if (gone.length === 1 && added.length === 1) moves.set(gone[0], added[0]);
+    }
+    if (moves.size === 0) return;
+
+    const repoint = (reference: string | undefined): string | undefined => {
+      if (!reference) return reference;
+      const parsed = parseFieldRef(reference);
+      if (parsed.kind !== 'ref') return reference;
+      const moved = moves.get(parsed.value);
+      return moved ? toRefToken(moved) : reference;
+    };
+
+    this._rules.update(rules =>
+      rules.map(rule => ({
+        ...rule,
+        fieldId: repoint(rule.fieldId) ?? rule.fieldId,
+        conditions: rule.conditions.map(c =>
+          c.compareToField ? { ...c, compareToField: repoint(c.compareToField) } : c,
+        ),
+        targets: rule.targets.map(t => ({ ...t, id: repoint(t.id) ?? t.id })),
+      })),
+    );
   }
 
   /**

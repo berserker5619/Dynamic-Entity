@@ -31,6 +31,11 @@ import type {
   NestedTabConfig,
 } from '@dynamic-entity/core';
 import {
+  ambiguousFieldIds,
+  collectFieldScopes,
+  fieldRefFor,
+  refOf,
+  toRefToken,
   applyAutoPatch,
   applyPatchOnTrue,
   migrateRecord,
@@ -285,10 +290,10 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     if (active?.moduleName) return [];
     const rawFields = active ? (active.fields || []) : ((this.config?.tabs || []).flatMap(t => t.fields || []));
     const currentValues = this.formValues();
-    const hiddenFields = this.ruleResult().hiddenFields;
+    const hiddenFields = new Set(this.ruleResult().hiddenFields);
 
     return rawFields.filter(
-      field => evaluateFieldVisibility(field, currentValues) && !hiddenFields.includes(field.id),
+      field => evaluateFieldVisibility(field, currentValues) && !this.namesField(hiddenFields, field),
     );
   }
 
@@ -484,6 +489,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
 
     buildTabControls(this.config.tabs || [], group);
     this.form = this.fb.group(group);
+    this.warnAmbiguousRuleReferences();
 
     if (this.initialData) {
       this.patchForm(this.upgradeRecord(this.initialData));
@@ -737,11 +743,89 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     return record;
   }
 
+  /**
+   * Warns when a rule names a field id that two scopes define.
+   *
+   * Field ids are unique per scope, so `address` may exist on both Personal Details and Work
+   * Details — but a rule carries a bare id and no scope, so it cannot say which one it means.
+   * `flattenFormValues` keys by bare id, so one of the two silently wins and the rule reads
+   * whichever landed there.
+   *
+   * `validateConfig` catches this for `showWhen` and cascade parents, which live in the
+   * config. Rules do not: they arrive as a separate `@Input`, so the config alone cannot be
+   * checked for them and this is the only place both are in hand.
+   */
+  private warnAmbiguousRuleReferences(): void {
+    if (!isDevMode() || !this.rules?.length || !this.config) return;
+
+    const ambiguous = ambiguousFieldIds(this.config);
+    if (ambiguous.size === 0) return;
+
+    const referenced = new Set<string>();
+    for (const rule of this.rules) {
+      if (rule.fieldId) referenced.add(rule.fieldId);
+      for (const condition of rule.conditions ?? []) {
+        if (condition.compareToField) referenced.add(condition.compareToField);
+      }
+      for (const target of rule.targets ?? []) {
+        if (target.type === 'field' && target.id) referenced.add(target.id);
+      }
+    }
+
+    for (const id of referenced) {
+      const scopes = ambiguous.get(id);
+      if (!scopes || DynamicFormComponent.warnedAmbiguousIds.has(id)) continue;
+      DynamicFormComponent.warnedAmbiguousIds.add(id);
+      console.warn(
+        `[ngx-dynamic-entity] A rule references field "${id}", which is defined in ${scopes.join(' and ')}. ` +
+          `Rules address a field by bare id, so the rule will read whichever one the form finds first. ` +
+          `Give one of them a distinct id.`,
+      );
+    }
+  }
+
+  private static readonly warnedAmbiguousIds = new Set<string>();
+
+  /**
+   * The value map rules and `showWhen` are evaluated against.
+   *
+   * Every field appears under two keys: its bare id, and its `refererField` path wrapped in brackets.
+   * The bare id is what every config written so far uses and is kept exactly as it was — but
+   * ids are unique per scope, so when two scopes define one the last field walked wins and
+   * the rule reads whichever that is. `[personal.address]` names one field and cannot be
+   * ambiguous, which is why a rule that has to distinguish them uses the ref.
+   *
+   * Both live in one flat map on purpose: `evaluateFormRules` takes a `Record<string,
+   * unknown>` and needs no knowledge of refs at all — the extra keys simply resolve.
+   */
+  /**
+   * Whether a rule result names this field.
+   *
+   * A rule target is either a bare field id — how every config so far addresses a field — or
+   * a bracketed path, which is the only way to name one of two fields that share an id.
+   * Both have to match, or a rule written either way would fail to hide what it targeted.
+   */
+  private namesField(names: ReadonlySet<string>, field: NestedFieldConfig): boolean {
+    if (names.has(field.id)) return true;
+    const ref = field.refererField ?? this.pathFor(field);
+    return ref ? names.has(toRefToken(ref)) : false;
+  }
+
+  /** The field's declared path, or the one its position implies when it carries none. */
+  private pathFor(field: NestedFieldConfig): string | null {
+    const entry = collectFieldScopes(this.config).find(e => e.field === field);
+    return entry ? fieldRefFor(entry.scope, field.id) : null;
+  }
+
   private flattenFormValues(): Record<string, any> {
     const out: Record<string, any> = {};
-    for (const field of this.allFields()) {
-      const ctrl = this.getControl(field.id);
-      if (ctrl) out[field.id] = ctrl.value;
+    for (const entry of collectFieldScopes(this.config)) {
+      const field = entry.field;
+      if (!field?.id) continue;
+      const ctrl = this.getControl(field.id, entry.scope.split('.').pop());
+      if (!ctrl) continue;
+      out[field.id] = ctrl.value;
+      out[toRefToken(refOf(field, entry.scope))] = ctrl.value;
     }
     return out;
   }
@@ -853,7 +937,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
       const ctrl = this.getControl(field.id);
       if (!ctrl) continue;
 
-      const hidden = hiddenByRule.has(field.id) || !evaluateFieldVisibility(field, values);
+      const hidden = this.namesField(hiddenByRule, field) || !evaluateFieldVisibility(field, values);
 
       if (hidden) {
         if (ctrl.enabled) ctrl.disable({ emitEvent: false });

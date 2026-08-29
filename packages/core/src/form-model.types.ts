@@ -180,7 +180,23 @@ export interface NestedFieldConfig {
   criticalField?: boolean;
   /** 1–12 CSS grid span. */
   colSpan?: number;
-  /** Dot-path override for data binding ("tabId.fieldId"). */
+  /**
+   * The field's address: the scopes its value nests under, then its id — `work.address`, or
+   * `primaryDetails.companyId`.
+   *
+   * This is both where the value binds in the record and which field a reference means, and
+   * those are the same thing: a field *is* its position in the record. Ids are unique per
+   * scope, so a bare id is not an identity — `address` can exist on Personal Details and on
+   * Work Details — but the path names exactly one field.
+   *
+   * Maintained rather than derived at the point of use. `assignFieldRefs` fills it in where
+   * it is absent, the builder restamps after every structural edit, and a move rewrites both
+   * the path and every rule that pointed at it. An explicitly authored value is never
+   * overwritten, so it stays usable as a deliberate binding override.
+   *
+   * A rule addresses a field by wrapping it in brackets, `[work.address]`; a bare name is a
+   * legacy field id, so configs and rules written before paths existed keep working.
+   */
   refererField?: string;
   /**
    * Named list key for dropdown/multiSelect options, instead of inline `options`.

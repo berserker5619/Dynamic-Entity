@@ -1,6 +1,7 @@
 export * from './form-model.types';
 export * from './versioning.types';
 export * from './migration';
+export * from './field-scopes';
 export * from './validate-config';
 export * from './cli';
 export * from './form-logic';

@@ -11,6 +11,7 @@
  */
 
 import { FIELD_TYPE_CATALOG } from './field-catalog';
+import { ROOT_SCOPE, ambiguousFieldIds, collectFieldScopes } from './field-scopes';
 import type { EntityFormConfig, NestedFieldConfig, NestedTabConfig } from './form-model.types';
 
 export interface ConfigProblem {
@@ -80,10 +81,11 @@ export function validateConfig(
    * ambiguous the reference has no answer. That is checked separately below.
    */
   const fieldIds = new Map<string, string>();
-  const idScopes = new Map<string, string[]>();
   const tabIds = new Map<string, string>();
 
-  const scopeKey = (scope: readonly string[]): string => scope.join('.') || '(root)';
+  // The scope rule lives in field-scopes.ts so the renderer can apply exactly the same one.
+  const scopesById = ambiguousFieldIds(config);
+  const scopeKey = (scope: readonly string[]): string => scope.join('.') || ROOT_SCOPE;
 
   const visitField = (field: NestedFieldConfig, path: string, scope: readonly string[]) => {
     if (!field || typeof field !== 'object') {
@@ -112,9 +114,6 @@ export function validateConfig(
       } else {
         fieldIds.set(key, path);
       }
-      const scopes = idScopes.get(field.id) ?? [];
-      scopes.push(scopeKey(scope));
-      idScopes.set(field.id, scopes);
     }
 
     if (!field.type) {
@@ -193,7 +192,7 @@ export function validateConfig(
 
   // A field referencing a sibling that does not exist never becomes visible, and a cascade
   // pointing at a missing parent never loads — both silent at runtime.
-  const allIds = new Set(idScopes.keys());
+  const allIds = new Set(collectFieldScopes(config).map(e => e.field?.id).filter(Boolean) as string[]);
 
   /**
    * An id that exists in more than one scope cannot be named by the flat wiring.
@@ -203,10 +202,7 @@ export function validateConfig(
    * search order, silently. Duplicating an id is fine right up until something points at it,
    * which is the line this draws.
    */
-  const ambiguous = (id: string): string[] | null => {
-    const scopes = idScopes.get(id);
-    return scopes && scopes.length > 1 ? scopes : null;
-  };
+  const ambiguous = (id: string): string[] | null => scopesById.get(id) ?? null;
 
   const checkRefs = (field: NestedFieldConfig, path: string) => {
     for (const key of Object.keys(field.showWhen ?? {})) {
