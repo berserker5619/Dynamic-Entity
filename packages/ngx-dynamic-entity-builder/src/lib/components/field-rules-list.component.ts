@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import type { FormRule } from '@dynamic-entity/core';
+import { toRefToken } from '@dynamic-entity/core';
 import { BuilderStore } from '../builder-store.service';
 import { deepClone } from '../clone';
 import { RuleFormComponent } from './rule-form.component';
@@ -151,12 +152,17 @@ export class FieldRulesListComponent {
   protected startCreate(): void {
     const fieldId = this.store.selectedFieldId();
     if (!fieldId) return;
+    // Author the field's path, not its id. Ids are unique per scope, so `address` may exist
+    // on two tabs and a bare id cannot say which one the rule is about; `[work.address]` can.
+    // A rule written by hand may still use a bare id, and both resolve at runtime.
+    const ref = this.store.selectedField()?.refererField;
+    const name = ref ? toRefToken(ref) : fieldId;
     this.editing.set({
       formConfigId: this.store.config().entity || 'form-1',
-      fieldId,
+      fieldId: name,
       conditions: [{ operator: 'EQUAL', compareType: 'value', value: '' }],
       action: { type: 'visibility', value: false },
-      targets: [{ id: fieldId, type: 'field' }],
+      targets: [{ id: name, type: 'field' }],
       enabled: true,
       priority: this.store.rules().length + 1,
     });

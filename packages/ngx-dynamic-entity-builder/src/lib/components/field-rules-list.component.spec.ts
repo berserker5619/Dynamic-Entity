@@ -164,7 +164,32 @@ describe('FieldRulesListComponent', () => {
       api().startCreate();
 
       expect(api().editing()?.formConfigId).toBe('form-1');
-      expect(api().editing()?.fieldId).toBe(id);
+      // Authored as a path, not a bare id: ids are unique per scope, so only the path can
+      // say which of two same-named fields the rule is about.
+      expect(api().editing()?.fieldId).toBe(`[main.${id}]`);
+    });
+
+    it('authors a new rule against the field path, on both the trigger and the target', () => {
+      const id = store.addField('text');
+      store.selectField(id);
+
+      api().startCreate();
+
+      expect(api().editing()?.fieldId).toBe(`[main.${id}]`);
+      expect(api().editing()?.targets[0].id).toBe(`[main.${id}]`);
+    });
+
+    // A rule written before paths existed names the field by id, and must still appear
+    // against it — otherwise editing an older config looks like it lost its rules.
+    it('lists rules that name the field either way', () => {
+      const id = store.addField('text');
+      store.selectField(id);
+      const byPath = store.addRule(rule(id, { fieldId: `[main.${id}]`, targets: [{ id: `[main.${id}]`, type: 'field' }] }));
+      const byId = store.addRule(rule(id, { fieldId: id, targets: [{ id, type: 'field' }] }));
+
+      expect(store.rulesForSelectedField().map(r => r.id)).toEqual(
+        expect.arrayContaining([byPath, byId]),
+      );
     });
 
     it('opens an existing rule as a detached copy', () => {

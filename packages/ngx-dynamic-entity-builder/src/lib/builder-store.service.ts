@@ -900,10 +900,23 @@ export class BuilderStore {
   // ─── Rules ──────────────────────────────────────────────────────────────────
 
   /** Rules for the field currently selected in the inspector. */
+  /**
+   * Rules attached to the selected field, whichever way they name it.
+   *
+   * New rules are authored with the field's path — `[work.address]` — because a bare id
+   * cannot distinguish two fields that share one. Rules written before paths existed name it
+   * by id, and those must keep showing up here or editing an older config would look like it
+   * had lost its rules.
+   */
   readonly rulesForSelectedField = computed<FormRule[]>(() => {
     const id = this._selectedFieldId();
     if (!id) return [];
-    return this._rules().filter(r => r.fieldId === id || r.targets.some(t => t.id === id));
+    const names = new Set<string>([id]);
+    const ref = this.selectedField()?.refererField;
+    if (ref) names.add(toRefToken(ref));
+    return this._rules().filter(
+      r => names.has(r.fieldId) || r.targets.some(t => names.has(t.id)),
+    );
   });
 
   loadRules(rules: FormRule[]): void {
