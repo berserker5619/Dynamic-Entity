@@ -65,13 +65,27 @@ export function validateConfig(
     ...(options.additionalFieldTypes ?? []),
   ]);
 
-  // Field ids must be unique across the entire config, not per tab: rules, showWhen keys and
-  // autoPatch mappings all address a field by bare id, so two fields sharing one silently
-  // interfere with each other.
+  /**
+   * Field ids are unique **within a scope**, not across the whole config.
+   *
+   * A scope is the object a field is stored under, which is exactly the group the renderer
+   * builds a control in: a tab makes one, a `flatData` tab merges into its parent's, and a
+   * `group` field makes one for its children. So `address` on Personal Details and `address`
+   * on Work Details are two different fields, stored and rendered as
+   * `{ personal: { address }, work: { address } }` — which is what the runtime has always
+   * done. Only this validator insisted otherwise.
+   *
+   * What genuinely cannot be duplicated is an id the *flat wiring* addresses. Rules,
+   * `showWhen` and cascades name a field by bare id with no scope, so if such a name is
+   * ambiguous the reference has no answer. That is checked separately below.
+   */
   const fieldIds = new Map<string, string>();
+  const idScopes = new Map<string, string[]>();
   const tabIds = new Map<string, string>();
 
-  const visitField = (field: NestedFieldConfig, path: string) => {
+  const scopeKey = (scope: readonly string[]): string => scope.join('.') || '(root)';
+
+  const visitField = (field: NestedFieldConfig, path: string, scope: readonly string[]) => {
     if (!field || typeof field !== 'object') {
       add('error', path, 'Field is missing or not an object.');
       return;
@@ -87,16 +101,20 @@ export function validateConfig(
           `"${field.id}" is not a plain identifier; it is used as an object key in saved records.`,
         );
       }
-      const seenAt = fieldIds.get(field.id);
+      const key = `${scopeKey(scope)}::${field.id}`;
+      const seenAt = fieldIds.get(key);
       if (seenAt) {
         add(
           'error',
           `${path}.id`,
-          `Duplicate field id "${field.id}" (also at ${seenAt}). Ids must be unique across the whole config — rules and showWhen address fields by bare id.`,
+          `Duplicate field id "${field.id}" (also at ${seenAt}). Two fields in ${scopeKey(scope)} would share one control and one record key.`,
         );
       } else {
-        fieldIds.set(field.id, path);
+        fieldIds.set(key, path);
       }
+      const scopes = idScopes.get(field.id) ?? [];
+      scopes.push(scopeKey(scope));
+      idScopes.set(field.id, scopes);
     }
 
     if (!field.type) {
@@ -133,10 +151,13 @@ export function validateConfig(
       add('error', `${path}.colSpan`, 'colSpan must be between 1 and 12.');
     }
 
-    field.children?.forEach((child, i) => visitField(child, `${path}.children[${i}]`));
+    // A `group` field stores its children under itself, so they get their own scope. An
+    // `array` field's rows do too. Either way the children are not siblings of the field.
+    const childScope = isContainer ? [...scope, field.id] : scope;
+    field.children?.forEach((child, i) => visitField(child, `${path}.children[${i}]`, childScope));
   };
 
-  const visitTab = (tab: NestedTabConfig, path: string) => {
+  const visitTab = (tab: NestedTabConfig, path: string, scope: readonly string[]) => {
     if (!tab || typeof tab !== 'object') {
       add('error', path, 'Tab is missing or not an object.');
       return;
@@ -157,23 +178,49 @@ export function validateConfig(
       add('warning', path, 'Tab has no fields, no sub-tabs and no module; it renders empty.');
     }
 
-    tab.fields?.forEach((f, i) => visitField(f, `${path}.fields[${i}]`));
-    tab.children?.forEach((t, i) => visitTab(t, `${path}.children[${i}]`));
+    // `flatData` puts the tab's fields at the parent's level instead of under the tab id,
+    // so such a tab shares its parent's scope rather than opening one.
+    const tabScope = tab.flatData || !tab.id ? scope : [...scope, tab.id];
+    tab.fields?.forEach((f, i) => visitField(f, `${path}.fields[${i}]`, tabScope));
+    tab.children?.forEach((t, i) => visitTab(t, `${path}.children[${i}]`, tabScope));
   };
 
   if (!Array.isArray(config.tabs) || config.tabs.length === 0) {
     add('error', 'tabs', 'At least one tab is required.');
   } else {
-    config.tabs.forEach((tab, i) => visitTab(tab, `tabs[${i}]`));
+    config.tabs.forEach((tab, i) => visitTab(tab, `tabs[${i}]`, []));
   }
 
   // A field referencing a sibling that does not exist never becomes visible, and a cascade
   // pointing at a missing parent never loads — both silent at runtime.
-  const allIds = new Set(fieldIds.keys());
+  const allIds = new Set(idScopes.keys());
+
+  /**
+   * An id that exists in more than one scope cannot be named by the flat wiring.
+   *
+   * `showWhen`, cascade parents and rules carry a bare id and no scope, so when two scopes
+   * both define that id there is no answer to which one is meant — and the runtime picks by
+   * search order, silently. Duplicating an id is fine right up until something points at it,
+   * which is the line this draws.
+   */
+  const ambiguous = (id: string): string[] | null => {
+    const scopes = idScopes.get(id);
+    return scopes && scopes.length > 1 ? scopes : null;
+  };
+
   const checkRefs = (field: NestedFieldConfig, path: string) => {
     for (const key of Object.keys(field.showWhen ?? {})) {
       if (!allIds.has(key)) {
         add('error', `${path}.showWhen`, `References unknown field "${key}"; this field will never show.`);
+      } else {
+        const scopes = ambiguous(key);
+        if (scopes) {
+          add(
+            'error',
+            `${path}.showWhen`,
+            `Ambiguous reference to "${key}": defined in ${scopes.join(' and ')}. showWhen names a field by bare id, so give one of them a distinct id.`,
+          );
+        }
       }
     }
     const parent = field.entityReference?.parentField;
@@ -183,6 +230,15 @@ export function validateConfig(
         `${path}.entityReference.parentField`,
         `References unknown field "${parent}"; the cascade will never load.`,
       );
+    } else if (parent) {
+      const scopes = ambiguous(parent);
+      if (scopes) {
+        add(
+          'error',
+          `${path}.entityReference.parentField`,
+          `Ambiguous reference to "${parent}": defined in ${scopes.join(' and ')}. A cascade parent is named by bare id, so give one of them a distinct id.`,
+        );
+      }
     }
     field.children?.forEach((c, i) => checkRefs(c, `${path}.children[${i}]`));
   };

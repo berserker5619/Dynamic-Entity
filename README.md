@@ -156,9 +156,16 @@ ${formatConfigProblems(problems)}`);
 ```
 
 It reports every problem rather than stopping at the first, and catches what a type cannot:
-a field type absent from the catalog, a field id duplicated across tabs (ids are global —
-rules and `showWhen` address fields by bare id), a `showWhen` naming a field that does not
-exist, and a cascade whose `parentField` is missing. `warning` means usable but suspicious;
+a field type absent from the catalog, two fields sharing an id **in the same scope**, a
+`showWhen` naming a field that does not exist, and a cascade whose `parentField` is missing.
+
+Field ids are unique per scope, not globally — a record nests by tab, so `address` on
+Personal Details and `address` on Work Details are two different fields and store as
+`{ personal: { address }, work: { address } }`. A scope is whatever the record nests under:
+each tab, each `group` field, and the parent's level for a `flatData` tab. What you cannot
+duplicate is an id something *points at*: `showWhen` and cascade `parentField` name a field
+by bare id with no scope, so an id defined in two scopes is reported as ambiguous the moment
+a reference uses it. `warning` means usable but suspicious;
 `error` means it will not render correctly.
 
 Pass `additionalFieldTypes` for any type you registered yourself.

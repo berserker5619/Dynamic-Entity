@@ -58,23 +58,47 @@ describe('validateConfig', () => {
     expect(validateConfig(custom, { additionalFieldTypes: ['signature'] })).toEqual([]);
   });
 
-  /** Ids are global because rules and showWhen address a field by bare id. */
-  it('rejects a duplicate field id across different tabs', () => {
+  /**
+   * Ids are unique per scope, not globally. A record nests by tab, so `address` on Personal
+   * Details and `address` on Work Details are two different keys and always were — the
+   * runtime stored, rendered and submitted them separately while this validator refused the
+   * config outright.
+   */
+  it('allows the same field id on two different tabs', () => {
     const dup: EntityFormConfig = {
       ...ok,
       tabs: [
-        { id: 'a', label: {}, fields: [{ id: 'notes', type: 'text', label: {} }] },
-        { id: 'b', label: {}, fields: [{ id: 'notes', type: 'text', label: {} }] },
+        { id: 'personal', label: {}, fields: [{ id: 'address', type: 'text', label: {} }] },
+        { id: 'work', label: {}, fields: [{ id: 'address', type: 'text', label: {} }] },
+      ],
+    };
+    expect(errors(dup)).toEqual([]);
+  });
+
+  it('rejects the same field id twice on one tab', () => {
+    const dup: EntityFormConfig = {
+      ...ok,
+      tabs: [
+        {
+          id: 'a',
+          label: {},
+          fields: [
+            { id: 'notes', type: 'text', label: {} },
+            { id: 'notes', type: 'text', label: {} },
+          ],
+        },
       ],
     };
     const problems = errors(dup);
 
     expect(problems).toHaveLength(1);
     expect(problems[0].message).toContain('Duplicate field id "notes"');
-    expect(problems[0].message).toContain('tabs[0].fields[0]');
+    expect(problems[0].message).toContain('would share one control and one record key');
   });
 
-  it('finds a duplicate nested inside a group', () => {
+  // A group stores its children under itself, so `a.name` and `a.addr.name` are distinct
+  // keys — the same reason two tabs may each have an `address`.
+  it('allows a field id inside a group to match one outside it', () => {
     const dup: EntityFormConfig = {
       ...ok,
       tabs: [
@@ -93,7 +117,112 @@ describe('validateConfig', () => {
         },
       ],
     };
-    expect(errors(dup).some(p => p.message.includes('Duplicate field id "name"'))).toBe(true);
+    expect(errors(dup)).toEqual([]);
+  });
+
+  it('rejects a duplicate within one group', () => {
+    const dup: EntityFormConfig = {
+      ...ok,
+      tabs: [
+        {
+          id: 'a',
+          label: {},
+          fields: [
+            {
+              id: 'addr',
+              type: 'group',
+              label: {},
+              children: [
+                { id: 'line1', type: 'text', label: {} },
+                { id: 'line1', type: 'text', label: {} },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(errors(dup).some(p => p.message.includes('Duplicate field id "line1"'))).toBe(true);
+  });
+
+  // A `flatData` tab stores its fields at the parent's level, so it shares that scope
+  // rather than opening one — and a collision there is a real collision.
+  it('rejects a collision between a flatData tab and its parent level', () => {
+    const dup: EntityFormConfig = {
+      ...ok,
+      tabs: [
+        { id: 'a', label: {}, flatData: true, fields: [{ id: 'notes', type: 'text', label: {} }] },
+        { id: 'b', label: {}, flatData: true, fields: [{ id: 'notes', type: 'text', label: {} }] },
+      ],
+    };
+    expect(errors(dup).some(p => p.message.includes('Duplicate field id "notes"'))).toBe(true);
+  });
+
+  /**
+   * Duplicating an id is fine right up until something points at it. `showWhen` and cascade
+   * parents carry a bare id and no scope, so an ambiguous name has no answer and the runtime
+   * would resolve it by search order, silently.
+   */
+  it('rejects a showWhen that names an id defined in two scopes', () => {
+    const dup: EntityFormConfig = {
+      ...ok,
+      tabs: [
+        { id: 'personal', label: {}, fields: [{ id: 'address', type: 'text', label: {} }] },
+        {
+          id: 'work',
+          label: {},
+          fields: [
+            { id: 'address', type: 'text', label: {} },
+            { id: 'note', type: 'text', label: {}, showWhen: { address: 'x' } },
+          ],
+        },
+      ],
+    };
+    const problems = errors(dup);
+
+    expect(problems.some(p => p.message.includes('Ambiguous reference to "address"'))).toBe(true);
+    expect(problems.some(p => p.message.includes('personal and work'))).toBe(true);
+  });
+
+  it('rejects a cascade parent that names an id defined in two scopes', () => {
+    const dup: EntityFormConfig = {
+      ...ok,
+      tabs: [
+        { id: 'personal', label: {}, fields: [{ id: 'country', type: 'dropdown', label: {} }] },
+        {
+          id: 'work',
+          label: {},
+          fields: [
+            { id: 'country', type: 'dropdown', label: {} },
+            {
+              id: 'city',
+              type: 'entity-ref',
+              label: {},
+              entityReference: { enabled: true, linkedEntityKey: 'cities', parentField: 'country' },
+            },
+          ],
+        },
+      ],
+    };
+    expect(errors(dup).some(p => p.message.includes('Ambiguous reference to "country"'))).toBe(true);
+  });
+
+  it('still allows a showWhen naming an id that exists in only one scope', () => {
+    const fine: EntityFormConfig = {
+      ...ok,
+      tabs: [
+        { id: 'personal', label: {}, fields: [{ id: 'address', type: 'text', label: {} }] },
+        {
+          id: 'work',
+          label: {},
+          fields: [
+            { id: 'address', type: 'text', label: {} },
+            { id: 'status', type: 'text', label: {} },
+            { id: 'note', type: 'text', label: {}, showWhen: { status: 'x' } },
+          ],
+        },
+      ],
+    };
+    expect(errors(fine)).toEqual([]);
   });
 
   it('rejects duplicate tab ids', () => {
