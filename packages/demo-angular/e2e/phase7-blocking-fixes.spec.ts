@@ -5,6 +5,7 @@ import {
   gotoDemo,
   safeClick,
   safeSelect,
+  selectMatOption,
 } from './test-helpers';
 
 /**
@@ -35,16 +36,14 @@ test.describe('Dynamic Entity E2E - Phase 7.0 Fixes & Edge Cases', () => {
     const inspector = page.locator('ngx-field-inspector');
     
     // Switch to named list
-    await safeClick(page.getByTestId('data-source'));
-    await safeClick(page.getByRole('option', { name: 'A named list' }));
+    await selectMatOption(page, 'data-source', 'A named list');
     await expect(page.getByTestId('list-name')).toBeVisible();
 
     await page.getByTestId('list-name').fill('clientTier');
     await expect(page.getByTestId('list-name')).toHaveValue('clientTier');
 
     // Switch back to manual options: listName input must disappear
-    await safeClick(page.getByTestId('data-source'));
-    await safeClick(page.getByRole('option', { name: 'Authored here' }));
+    await selectMatOption(page, 'data-source', 'Authored here');
 
     await expect(page.getByTestId('list-name')).toHaveCount(0);
     await expect(inspector.getByRole('button', { name: 'Option' })).toBeVisible();

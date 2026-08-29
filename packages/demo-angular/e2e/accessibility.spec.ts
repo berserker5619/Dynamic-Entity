@@ -9,8 +9,27 @@ import { gotoDemo, safeClick, safeSelect } from './test-helpers';
  * changed.
  */
 test.describe('Accessibility', () => {
-  const scan = (page: import('@playwright/test').Page) =>
-    new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+  /**
+   * Scans once the page has stopped moving.
+   *
+   * axe computes colour contrast from resolved styles, so an element caught mid-transition
+   * is measured at whatever opacity it happened to be passing through — which reads as a
+   * contrast failure against its own final appearance. Material animates its components in,
+   * and under the load of the full suite those animations were still running when the scan
+   * started: this spec passed 32/32 in isolation and failed intermittently only in full
+   * runs, always on colour-contrast.
+   *
+   * `document.getAnimations()` covers CSS transitions and the Web Animations API that
+   * @angular/animations drives, so waiting for all of them to stop settles both.
+   */
+  const scan = async (page: import('@playwright/test').Page) => {
+    await page.waitForFunction(
+      () => document.getAnimations().every(animation => animation.playState !== 'running'),
+      undefined,
+      { timeout: 5000 },
+    );
+    return new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+  };
 
   test('the record form has no detectable violations', async ({ page }) => {
     await gotoDemo(page);

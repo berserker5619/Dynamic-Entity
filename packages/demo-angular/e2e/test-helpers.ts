@@ -115,3 +115,21 @@ export async function safeSelect(locator: Locator, value: string): Promise<void>
   }
   await locator.selectOption({ label: match });
 }
+
+/**
+ * Picks an option from an Angular Material `mat-select`.
+ *
+ * Material opens the option list in a CDK overlay with a full-screen backdrop, and closing it
+ * is animated — the backdrop outlives the click that dismissed it. A second interaction
+ * started before it detaches lands on the backdrop instead of the trigger, so the select
+ * never reopens and the next option is simply never in the DOM. That surfaced as an
+ * "element(s) not found" on roughly one run in twenty, always on the *second* select of a
+ * test, never the first.
+ *
+ * Waiting for the backdrop to detach is what makes the sequence deterministic.
+ */
+export async function selectMatOption(page: Page, triggerTestId: string, optionName: string): Promise<void> {
+  await safeClick(page.getByTestId(triggerTestId));
+  await safeClick(page.getByRole('option', { name: optionName }));
+  await expect(page.locator('.cdk-overlay-backdrop')).toHaveCount(0);
+}

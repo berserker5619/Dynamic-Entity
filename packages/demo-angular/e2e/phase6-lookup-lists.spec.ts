@@ -6,6 +6,7 @@ import {
   recordButton,
   safeClick,
   safeSelect,
+  selectMatOption,
 } from './test-helpers';
 
 /**
@@ -61,8 +62,7 @@ test.describe('Dynamic Entity E2E - Phase 6 Named Lookup Lists', () => {
     await expect(inspector.getByText('No options yet', { exact: false })).toBeVisible();
     await expect(page.getByTestId('list-name')).toHaveCount(0);
 
-    await safeClick(page.getByTestId('data-source'));
-    await safeClick(page.getByRole('option', { name: 'A named list' }));
+    await selectMatOption(page, 'data-source', 'A named list');
 
     await expect(page.getByTestId('list-name')).toBeVisible();
     await expect(inspector.getByText('No options yet', { exact: false })).toHaveCount(0);
