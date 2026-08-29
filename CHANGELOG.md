@@ -7,7 +7,11 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Unreleased]
+## [1.4.0] — 2026-08-29
+
+Work since 1.3.0: a field is now addressed by its path rather than its id, so two
+tabs may each have an `address`; the builder can relocate a field and show the ones
+nested in sub-tabs; and rules are chosen from a list instead of typed.
 
 ### Added
 
@@ -25,6 +29,22 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `renderApplication`s the same form under `provideZonelessChangeDetection()`
   with no `zone.js` on the machine. The demo still loads zone because it is an
   Angular 17 Material app; that is the demo, not the library.
+- **A field is addressed by its path.** `refererField` now carries the scopes a
+  field's value nests under, then its id — `work.address`. A rule or condition names
+  a field by bracketing it, `[work.address]`, and the builder authors that form for
+  every new rule. A bare id still resolves, so every config and rule written before
+  this keeps working; the runtime emits both keys and `evaluateFormRules` needed no
+  change at all. The path is maintained rather than derived: the builder restamps it
+  after each structural edit and repoints the rules that named what moved. A
+  `refererField` the config declares is never rewritten — it has always been a
+  binding override, and taking one over as an identity would silently rebind data.
+- **`moveFieldToTab`.** The builder could add, remove, duplicate and reorder a field
+  but never relocate one, so a field authored on the wrong tab had to be deleted and
+  rebuilt — losing its validators, options and every rule aimed at it.
+- **Rule fields are chosen, not typed.** The rule form had a free-text trigger id and
+  no targets UI at all, so a rule could only ever act on the field it triggered from.
+  Both are now pickers over the config's fields, each option carrying its path, which
+  closes the last route to authoring an ambiguous reference.
 
 ### Changed
 
@@ -34,6 +54,31 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   does not have. `getOptionStoredValue` and `resolveOptionValue` return `unknown`
   and `string | number | boolean` rather than `any`, and the three field
   components follow.
+- **Field ids are unique per scope, not across the config.** A record nests by tab,
+  the form builds a `FormGroup` per tab, and `getControl` already resolved a field in
+  its own tab first — so Personal Details and Work Details could each hold an
+  `address` all along, stored and submitted separately. Only `validateConfig` refused
+  such a config. It now enforces uniqueness within a scope, computed exactly as
+  `buildForm` computes it: a tab opens one, a `flatData` tab shares its parent's, a
+  `group` field opens one for its children. Two fields sharing an id inside one scope
+  is still an error. What cannot be duplicated is an id something *points at* by bare
+  name: `showWhen` and cascade parents are reported as ambiguous, and the renderer
+  warns in dev when a rule does the same, since rules arrive as an `@Input` the
+  validator cannot see.
+- **The workspace toolchain moved to Angular 21.** The published peer range was
+  already 17–22; only the repo's own build and test stack was still on 17.
+
+### Fixed
+
+- **Fields on a sub-tab were invisible in the builder.** The canvas read a view that
+  stopped at top-level tabs — nine of the demo's twenty-eight `insuranceClaims`
+  fields never appeared, and could not be selected or restructured. The same view
+  also fed the entity-reference picker, which could not offer a nested field as a
+  cascade parent, and the drift check, which looked a nested field up, found nothing
+  and returned without checking. Showing them exposed a second defect: drag-and-drop
+  reorders by index and the canvas passed that index with no tab, so it reordered
+  `tabs[0]` regardless of what was dragged. The canvas now renders one drop list per
+  tab.
 
 ---
 
