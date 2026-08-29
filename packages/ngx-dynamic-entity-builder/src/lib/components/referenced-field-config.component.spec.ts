@@ -204,4 +204,41 @@ describe('ReferencedFieldConfigComponent', () => {
       expect(store.fields()[0].validators?.required).toBeFalsy();
     });
   });
+
+  /**
+   * `checkDriftForField` looks the edited field up in `store.fields()`. That view used to
+   * stop at top-level tabs, so editing a referenced field on a sub-tab found nothing and
+   * returned without ever asking the source config — drift on a nested field was silently
+   * never checked.
+   */
+  it('checks drift for a referenced field that lives on a sub-tab', async () => {
+    store.load({
+      entity: 'clients',
+      version: 1,
+      tabs: [
+        {
+          id: 'top',
+          label: { en: 'Top' },
+          children: [
+            {
+              id: 'details',
+              label: { en: 'Details' },
+              fields: [{ id: 'nestedRef', type: 'text', label: { en: 'Nested Ref' } }],
+            },
+          ],
+        },
+      ],
+    });
+    store.selectField('nestedRef');
+    fixture.detectChanges();
+
+    const field = store.fields().find(f => f.id === 'nestedRef') as unknown as Record<string, unknown>;
+    api().toggleReferenced(field, true);
+    api().updateEntityKey(store.fields().find(f => f.id === 'nestedRef')!, 'individuals');
+    getConfig.mockClear();
+    api().updateFieldId(store.fields().find(f => f.id === 'nestedRef')!, 'firstName');
+    await Promise.resolve();
+
+    expect(getConfig).toHaveBeenCalledWith('individuals');
+  });
 });

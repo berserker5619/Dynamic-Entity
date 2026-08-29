@@ -27,6 +27,13 @@ export interface BuilderProblem {
   fieldId?: string;
 }
 
+/** One tab's own fields, for a canvas that has to reorder within the right tab. */
+export interface BuilderFieldGroup {
+  tabId: string;
+  label: NestedTabConfig['label'];
+  fields: NestedFieldConfig[];
+}
+
 const clone = deepClone;
 
 const ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -73,9 +80,35 @@ export class BuilderStore {
 
   readonly tabs = computed<NestedTabConfig[]>(() => this._config().tabs ?? []);
 
-  readonly fields = computed<NestedFieldConfig[]>(() => {
-    return (this._config().tabs ?? []).flatMap(t => t.fields ?? []);
-  });
+  /**
+   * Every field the config declares, sub-tabs included.
+   *
+   * This used to stop at top-level tabs, which quietly broke three things at once: nine of
+   * `insuranceClaims`'s twenty-eight fields never appeared on the canvas, the entity-reference
+   * picker could not offer a nested field as a source, and the drift check looked a nested
+   * field up here, got nothing, and returned without checking. The store's structural
+   * operations already walked the whole tree — only this view did not.
+   *
+   * It deliberately does not descend into a field's own `children`: `group` and `array`
+   * children are rendered by the row that owns them, not as rows of their own.
+   */
+  readonly fields = computed<NestedFieldConfig[]>(() =>
+    this.getAllFields(this._config().tabs ?? []),
+  );
+
+  /**
+   * The same fields, kept in their owning tab.
+   *
+   * Drag-and-drop reorders by index, so the canvas needs to know which tab an index belongs
+   * to — `reorderField` has always taken a `tabId` for exactly this, and the canvas simply
+   * never passed one. Without the grouping a drag on any config with more than one tab
+   * reordered `tabs[0]` regardless of what was actually dragged.
+   */
+  readonly fieldGroups = computed<BuilderFieldGroup[]>(() =>
+    this.flattenTabs(this._config().tabs ?? [])
+      .filter(tab => (tab.fields ?? []).length > 0)
+      .map(tab => ({ tabId: tab.id, label: tab.label, fields: tab.fields ?? [] })),
+  );
 
   readonly selectedField = computed<NestedFieldConfig | null>(() => {
     const id = this._selectedFieldId();

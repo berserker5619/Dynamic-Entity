@@ -148,4 +148,38 @@ describe('EntityReferenceConfigComponent', () => {
       expect(store.selectedField()?.autoPatch).toBeUndefined();
     });
   });
+
+  /**
+   * `parentCandidates` reads `store.fields()`, which used to stop at top-level tabs — so a
+   * field on a sub-tab could never be offered as the parent of a cascade, with no indication
+   * that it had been left out.
+   */
+  it('offers a field from a sub-tab as a cascade parent', () => {
+    store.load({
+      entity: 'claims',
+      version: 1,
+      tabs: [
+        { id: 'top', label: { en: 'Top' }, fields: [{ id: 'child', type: 'dropdown', label: { en: 'Child' } }] },
+        {
+          id: 'incident',
+          label: { en: 'Incident' },
+          children: [
+            {
+              id: 'details',
+              label: { en: 'Details' },
+              fields: [{ id: 'nestedParent', type: 'dropdown', label: { en: 'Nested Parent' } }],
+            },
+          ],
+        },
+      ],
+    });
+    store.selectField('child');
+    fixture.detectChanges();
+
+    const candidates = (fixture.componentInstance as unknown as {
+      parentCandidates(): { id: string }[];
+    }).parentCandidates();
+
+    expect(candidates.map(f => f.id)).toContain('nestedParent');
+  });
 });

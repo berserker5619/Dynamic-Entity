@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { BuilderStore } from '../builder-store.service';
+import { resolveLabel } from '@dynamic-entity/core';
+import { BuilderStore, type BuilderFieldGroup } from '../builder-store.service';
 import { EntityBuilderTreeNodeComponent } from './entity-builder-tree-node.component';
 
 @Component({
@@ -30,15 +31,32 @@ import { EntityBuilderTreeNodeComponent } from './entity-builder-tree-node.compo
           </div>
         }
 
-        <div cdkDropList class="deb-field-list" data-testid="builder-field-list" (cdkDropListDropped)="onDrop($event)">
-          @for (f of store.fields(); track f.id; let i = $index, count = $count) {
-            <ngx-entity-builder-tree-node
-              [field]="f"
-              [index]="i"
-              [totalCount]="count"
-            />
+        @for (group of store.fieldGroups(); track group.tabId) {
+          <!--
+            One drop list per tab. A single list spanning every tab would hand reorderField
+            an index into the combined view, which is not the index of anything in the tab
+            that actually owns the field.
+          -->
+          @if (showTabHeadings()) {
+            <h4 class="deb-canvas__group" [attr.data-testid]="'builder-group-' + group.tabId">
+              {{ groupLabel(group) }}
+            </h4>
           }
-        </div>
+          <div
+            cdkDropList
+            class="deb-field-list"
+            [attr.data-testid]="'builder-field-list-' + group.tabId"
+            (cdkDropListDropped)="onDrop(group.tabId, $event)"
+          >
+            @for (f of group.fields; track f.id; let i = $index, count = $count) {
+              <ngx-entity-builder-tree-node
+                [field]="f"
+                [index]="i"
+                [totalCount]="count"
+              />
+            }
+          </div>
+        }
       </mat-card-content>
     </mat-card>
   `,
@@ -46,7 +64,19 @@ import { EntityBuilderTreeNodeComponent } from './entity-builder-tree-node.compo
 export class EntityBuilderCanvasComponent {
   protected readonly store = inject(BuilderStore);
 
-  protected onDrop(event: CdkDragDrop<unknown>): void {
-    this.store.reorderField(event.previousIndex, event.currentIndex);
+  /**
+   * Headings only earn their space once the fields are actually split across tabs. A
+   * single-tab config — the common case, and every existing spec — renders exactly as before.
+   */
+  protected showTabHeadings(): boolean {
+    return this.store.fieldGroups().length > 1;
+  }
+
+  protected groupLabel(group: BuilderFieldGroup): string {
+    return resolveLabel(group.label, this.store.activeLanguage()) || group.tabId;
+  }
+
+  protected onDrop(tabId: string, event: CdkDragDrop<unknown>): void {
+    this.store.reorderField(event.previousIndex, event.currentIndex, tabId);
   }
 }
