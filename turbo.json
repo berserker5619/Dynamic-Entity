@@ -5,7 +5,13 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    // The demo's tsconfig resolves the two libraries through their dist/, so its
+    // `tsc --noEmit` cannot run until they are built. CI runs Lint before Build, which on a
+    // clean checkout meant seven TS2307s and a red main. `test` and `test:coverage` already
+    // declared this dependency; `lint` was the odd one out, and it only looked fine while
+    // the paths still pointed at src/.
     "lint": {
+      "dependsOn": ["^build"],
       "outputs": []
     },
     "test": {

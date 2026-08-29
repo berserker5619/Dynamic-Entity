@@ -43,9 +43,14 @@ test.describe('Accessibility', () => {
     // the fixture is supposed to satisfy belongs in an expect, not a skip.
     await safeSelect(page.locator('#entitySelect'), 'insuranceClaims');
     await safeClick(page.getByRole('button', { name: /Add/i }));
+    await expect(page.locator('[data-testid="form-panel"]')).toBeVisible();
 
+    // `expect(await tabs.count())` reads the DOM once and does not retry, so it raced the
+    // form's first render — it happened to win on Angular 17 and lost on 21, reporting zero
+    // tabs. Asserting the second tab is visible waits for it and says what this test needs:
+    // a tab to switch away to.
     const tabs = page.getByRole('tab');
-    expect(await tabs.count()).toBeGreaterThan(1);
+    await expect(tabs.nth(1)).toBeVisible();
 
     await tabs.nth(1).click();
 
