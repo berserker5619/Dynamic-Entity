@@ -14,12 +14,14 @@
 
 ## 📦 Published Packages
 
-| Package | Version | NPM | Description |
-|---|---|---|---|
-| [`@dynamic-entity/core`](./packages/core) | `1.1.0` | [![npm](https://img.shields.io/npm/v/@dynamic-entity/core.svg)](https://www.npmjs.com/package/@dynamic-entity/core) | Framework-agnostic schema models, pure form logic, and the rules evaluator. No Angular, no RxJS. |
-| [`ngx-dynamic-entity`](./packages/ngx-dynamic-entity) | `1.1.0` | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity.svg)](https://www.npmjs.com/package/ngx-dynamic-entity) | Angular standalone form renderer and tabbed record editor. |
-| [`ngx-dynamic-entity-builder`](./packages/ngx-dynamic-entity-builder) | `1.1.0` | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg)](https://www.npmjs.com/package/ngx-dynamic-entity-builder) | Standalone visual builder for authoring `EntityFormConfig` schemas. |
-| `demo-angular` | — | — | Showcase application with the Playwright E2E suite. Not published. |
+| Package | Version | Description |
+|---|---|---|
+| [`@dynamic-entity/core`](./packages/core) | [![npm](https://img.shields.io/npm/v/@dynamic-entity/core.svg)](https://www.npmjs.com/package/@dynamic-entity/core) | Framework-agnostic schema models, pure form logic, and the rules evaluator. No Angular, no RxJS. |
+| [`ngx-dynamic-entity`](./packages/ngx-dynamic-entity) | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity.svg)](https://www.npmjs.com/package/ngx-dynamic-entity) | Angular standalone form renderer and tabbed record editor. |
+| [`ngx-dynamic-entity-builder`](./packages/ngx-dynamic-entity-builder) | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg)](https://www.npmjs.com/package/ngx-dynamic-entity-builder) | Standalone visual builder for authoring `EntityFormConfig` schemas. |
+| `demo-angular` | — | Showcase application with the Playwright E2E suite. Not published. |
+
+All three share a version and are released together.
 
 ---
 
@@ -269,7 +271,7 @@ it in a browser-only route.
 
 The renderer does not use `NgZone`. It is intended to work under
 `provideZonelessChangeDetection()` (Angular 20+). The demo app still loads `zone.js`
-because it is an Angular 17 application with Material. CI `renderApplication`s a form
+because it is an Angular Material application. CI `renderApplication`s a form
 zonelessly on Angular 20.
 
 ---
