@@ -80,7 +80,7 @@ test.describe('Dynamic Entity E2E - Rendering test_data.json Configurations', ()
       const entitySelect = page.locator('#entitySelect');
       await safeSelect(entitySelect, cfg.entity);
 
-      await safeClick(page.getByRole('button', { name: /Add/i }));
+      await safeClick(page.getByRole('button', { name: /^\+ Add/ }));
 
       // Check each visible tab in the config
       const visibleTabs = (cfg.tabs || []).filter((t: any) => t.visibility !== false);

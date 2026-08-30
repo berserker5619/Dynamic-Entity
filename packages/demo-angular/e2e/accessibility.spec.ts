@@ -34,7 +34,7 @@ test.describe('Accessibility', () => {
   test('the record form has no detectable violations', async ({ page }) => {
     await gotoDemo(page);
     await safeSelect(page.locator('#entitySelect'), 'clients');
-    await safeClick(page.getByRole('button', { name: /Add/i }));
+    await safeClick(page.getByRole('button', { name: /^\+ Add/ }));
     await expect(page.locator('[data-testid="form-panel"]')).toBeVisible();
 
     const results = await scan(page);
@@ -61,7 +61,7 @@ test.describe('Accessibility', () => {
     // and then skip itself — so the guarantee below was never once checked. A precondition
     // the fixture is supposed to satisfy belongs in an expect, not a skip.
     await safeSelect(page.locator('#entitySelect'), 'insuranceClaims');
-    await safeClick(page.getByRole('button', { name: /Add/i }));
+    await safeClick(page.getByRole('button', { name: /^\+ Add/ }));
     await expect(page.locator('[data-testid="form-panel"]')).toBeVisible();
 
     // `expect(await tabs.count())` reads the DOM once and does not retry, so it raced the

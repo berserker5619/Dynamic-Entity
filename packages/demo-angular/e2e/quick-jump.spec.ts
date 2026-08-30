@@ -14,7 +14,7 @@ test.describe('quick-jump from the summary panel', () => {
   async function openRecordView(page: import('@playwright/test').Page): Promise<void> {
     await gotoDemo(page);
     await safeSelect(page.locator('#entitySelect'), 'insuranceClaims');
-    await safeClick(page.getByRole('button', { name: /Add/i }));
+    await safeClick(page.getByRole('button', { name: /^\+ Add/ }));
     await safeClick(page.getByTestId('toggle-record-view'));
     await expect(page.getByTestId('summary-panel')).toBeVisible();
   }

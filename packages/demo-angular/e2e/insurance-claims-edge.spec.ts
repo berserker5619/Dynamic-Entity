@@ -1,5 +1,13 @@
 import { test, expect, type Page } from '@playwright/test';
 import { fieldById, fieldPart, gotoDemo, safeClick, safeSelect } from './test-helpers';
+import { INSURANCE_CLAIMS_RECORDS } from '../src/app/mock/seed-records';
+
+/**
+ * The demo seeds every entity, so a claims list is never empty to begin with. Deriving the
+ * baseline from the fixture keeps these counts honest when the fixture changes; a literal
+ * would quietly need editing twice.
+ */
+const SEEDED_CLAIMS = INSURANCE_CLAIMS_RECORDS.length;
 
 /**
  * Hostile paths on `insuranceClaims`: the same config the happy-path suite drives, but
@@ -14,7 +22,7 @@ import { fieldById, fieldPart, gotoDemo, safeClick, safeSelect } from './test-he
 async function openNewClaim(page: Page): Promise<void> {
   await gotoDemo(page);
   await safeSelect(page.locator('#entitySelect'), 'insuranceClaims');
-  await safeClick(page.getByRole('button', { name: /Add/i }));
+  await safeClick(page.getByRole('button', { name: /^\+ Add/ }));
   await expect(page.locator('[data-testid="form-panel"]')).toBeVisible();
 }
 
@@ -235,11 +243,13 @@ test.describe('insuranceClaims — hostile edge cases', () => {
     // The demo wires `(formReset)` to cancel: Reset must dump the half-built claim, not
     // persist it. A Reset that saved would show CLM-EDGE-3 in the list with 1 record.
     await safeClick(page.getByTestId('form-reset'));
-    await expect(page.getByRole('button', { name: /Add/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^\+ Add/ })).toBeVisible();
     await expect(page.getByText('CLM-EDGE-3')).toHaveCount(0);
-    await expect(page.getByText(/Showing 0 of 0 records/)).toBeVisible();
+    await expect(
+      page.getByText(new RegExp(`Showing ${SEEDED_CLAIMS} of ${SEEDED_CLAIMS} records`)),
+    ).toBeVisible();
 
-    await safeClick(page.getByRole('button', { name: /Add/i }));
+    await safeClick(page.getByRole('button', { name: /^\+ Add/ }));
     await expect(page.locator('[data-testid="form-panel"]')).toBeVisible();
     await fillRequired(page, 'CLM-EDGE-3');
     await safeClick(tab(page, 'Incident'));

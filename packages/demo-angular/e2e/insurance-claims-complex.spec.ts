@@ -1,5 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 import { fieldById, fieldPart, gotoDemo, safeClick, safeSelect } from './test-helpers';
+import { INSURANCE_CLAIMS_RECORDS } from '../src/app/mock/seed-records';
+
+/** Claims the demo seeds before this spec creates any of its own. */
+const SEEDED_CLAIMS = INSURANCE_CLAIMS_RECORDS.length;
 
 /**
  * Cross-feature gauntlets on `insuranceClaims` that the happy-path and hostile suites do
@@ -11,7 +15,7 @@ import { fieldById, fieldPart, gotoDemo, safeClick, safeSelect } from './test-he
 async function openNewClaim(page: Page): Promise<void> {
   await gotoDemo(page);
   await safeSelect(page.locator('#entitySelect'), 'insuranceClaims');
-  await safeClick(page.getByRole('button', { name: /Add/i }));
+  await safeClick(page.getByRole('button', { name: /^\+ Add/ }));
   await expect(page.locator('[data-testid="form-panel"]')).toBeVisible();
 }
 
@@ -266,7 +270,7 @@ test.describe('insuranceClaims — composed multi-feature flows', () => {
     await safeClick(save(page));
     await expect(page.getByText('CLM-SEARCH-A').first()).toBeVisible();
 
-    await safeClick(page.getByRole('button', { name: /Add/i }));
+    await safeClick(page.getByRole('button', { name: /^\+ Add/ }));
     await unlockClaimRef(page);
     await fieldPart(page, 'claimRef', 'input').fill('CLM-SEARCH-B');
     await fieldPart(page, 'claimantEmail', 'input').fill('b@example.com');
@@ -276,7 +280,8 @@ test.describe('insuranceClaims — composed multi-feature flows', () => {
     await fieldPart(page, 'incidentDate', 'input').fill('2026-01-11');
     await safeClick(save(page));
     await expect(page.getByText('CLM-SEARCH-B').first()).toBeVisible();
-    await expect(page.getByText(/Showing 2 of 2 records/)).toBeVisible();
+    const total = SEEDED_CLAIMS + 2;
+    await expect(page.getByText(new RegExp(`Showing ${total} of ${total} records`))).toBeVisible();
 
     const search = page.getByPlaceholder('Search clients…');
     await search.fill('CLM-SEARCH-A');

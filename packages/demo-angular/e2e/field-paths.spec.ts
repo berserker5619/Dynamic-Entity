@@ -14,7 +14,7 @@ test.describe('two fields sharing an id', () => {
   async function openPeople(page: import('@playwright/test').Page): Promise<void> {
     await gotoDemo(page);
     await safeSelect(page.locator('#entitySelect'), 'people');
-    await safeClick(page.getByRole('button', { name: /Add/i }));
+    await safeClick(page.getByRole('button', { name: /^\+ Add/ }));
     await expect(page.locator('[data-testid="form-panel"]')).toBeVisible();
   }
 

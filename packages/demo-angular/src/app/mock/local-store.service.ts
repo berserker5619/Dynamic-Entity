@@ -11,6 +11,13 @@ import {
   ORDERS_RECORDS,
   TEST_DATA_CONFIGS,
 } from './sample-data';
+import {
+  COMPLEX_FULL_TEST_RECORDS,
+  INSURANCE_CLAIMS_RECORDS,
+  ORGANIZATIONS_RECORDS,
+  PEOPLE_RECORDS,
+  VISIT_NOTES_RECORDS,
+} from './seed-records';
 
 const CONFIGS_KEY = 'de_demo_configs';
 const recordsKey = (entity: string) => `de_demo_records_${entity}`;
@@ -203,8 +210,22 @@ export class LocalStore {
     }
 
     this.write(CONFIGS_KEY, Array.from(mergedMap.values()));
-    if (!localStorage.getItem(recordsKey('clients'))) this.write(recordsKey('clients'), CLIENTS_RECORDS);
-    if (!localStorage.getItem(recordsKey('employees'))) this.write(recordsKey('employees'), EMPLOYEES_RECORDS);
-    if (!localStorage.getItem(recordsKey('orders'))) this.write(recordsKey('orders'), ORDERS_RECORDS);
+    // Every entity offered in the picker gets records. Seeding only the three demo entities
+    // left the five that come from test_data.json rendering an empty list — including
+    // insuranceClaims, the richest config here and the first thing a visitor is likely to
+    // open. The guard is per entity, so a list a user has since emptied stays empty.
+    const seeds: [string, Record<string, unknown>[]][] = [
+      ['clients', CLIENTS_RECORDS],
+      ['employees', EMPLOYEES_RECORDS],
+      ['orders', ORDERS_RECORDS],
+      ['organizations', ORGANIZATIONS_RECORDS],
+      ['visitNotes', VISIT_NOTES_RECORDS],
+      ['people', PEOPLE_RECORDS],
+      ['complexFullTest', COMPLEX_FULL_TEST_RECORDS],
+      ['insuranceClaims', INSURANCE_CLAIMS_RECORDS],
+    ];
+    for (const [entity, records] of seeds) {
+      if (!localStorage.getItem(recordsKey(entity))) this.write(recordsKey(entity), records);
+    }
   }
 }

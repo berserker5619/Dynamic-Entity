@@ -15,7 +15,7 @@ import { fieldById, fieldPart, gotoDemo, safeClick, safeSelect } from './test-he
 async function openNewClaim(page: Page): Promise<void> {
   await gotoDemo(page);
   await safeSelect(page.locator('#entitySelect'), 'insuranceClaims');
-  await safeClick(page.getByRole('button', { name: /Add/i }));
+  await safeClick(page.getByRole('button', { name: /^\+ Add/ }));
   await expect(page.locator('[data-testid="form-panel"]')).toBeVisible();
 }
 
@@ -196,7 +196,7 @@ test.describe('insuranceClaims — a complex config end to end', () => {
     const rows = items.locator('.ngx-field__array-item');
     const before = await rows.count();
 
-    await items.getByRole('button', { name: /Add/i }).first().click();
+    await items.getByRole('button', { name: /^\+ Add/ }).first().click();
     await expect(rows).toHaveCount(before + 1);
 
     // Row columns come from the array field's children.
