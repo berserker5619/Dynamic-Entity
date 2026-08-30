@@ -1,0 +1,92 @@
+name: Demo
+
+# Publishes packages/demo-angular to GitHub Pages.
+#
+# The demo is a pure static bundle, which is what makes this simple: no API and no
+# HttpClient (LocalStore keeps everything in localStorage), test_data.json is imported at
+# build time rather than fetched, and `routes` is empty — one page, no deep links. So there
+# is no 404.html fallback and no hash-routing workaround here, and none is missing.
+#
+# It builds from the workspace packages, not from npm, so the published demo always shows
+# what is on main rather than the last release.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never cancel a half-finished deployment: `cancel-in-progress` here could leave Pages
+# serving a partially uploaded artifact. Queue instead.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  CI: true
+  FORCE_COLOR: 0
+
+jobs:
+  build:
+    name: Build demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # A project Pages site is served from /<repo>/, not /, so every script and stylesheet
+      # href has to be prefixed or the page loads a blank white screen with four 404s in the
+      # console. `configure-pages` reports the real base path rather than assuming the repo
+      # name, which keeps this correct if the site ever moves to a custom domain.
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      # Two steps, not one. `--filter=demo-angular...` would build the libraries *and* the
+      # demo, and turbo forwards passthrough args to every task it runs — so `--base-href`
+      # would reach ng-packagr, which rejects it ("unknown option") and fails the build.
+      # `demo-angular^...` is the dependencies alone; the demo is then built directly, which
+      # is the only place the flag belongs.
+      - name: Build libraries
+        run: npx turbo run build --filter=demo-angular^...
+
+      - name: Build demo
+        working-directory: packages/demo-angular
+        run: npx ng build --base-href "${{ steps.pages.outputs.base_path }}/"
+
+      # Fail loudly here rather than shipping a white page. The Angular application builder
+      # emits to dist/<project>/browser, and a base href that did not get through is the one
+      # failure that still produces a plausible-looking artifact.
+      - name: Verify the bundle
+        run: |
+          out=packages/demo-angular/dist/demo-angular/browser
+          test -f "$out/index.html" || { echo "error: no index.html at $out"; exit 1; }
+          echo "base tag: $(grep -o '<base[^>]*>' "$out/index.html")"
+          grep -q "<base href=\"${{ steps.pages.outputs.base_path }}/\">" "$out/index.html" \
+            || { echo "error: base href is not ${{ steps.pages.outputs.base_path }}/"; exit 1; }
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/demo-angular/dist/demo-angular/browser
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

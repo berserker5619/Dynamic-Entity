@@ -33,6 +33,7 @@
       <mat-label>Label ({{ lang() }})</mat-label>
       <input
         matInput
+        data-testid="field-label"
         [ngModel]="labelValue(f)"
         (ngModelChange)="store.setFieldLabel(f.id, lang(), $event)"
       />

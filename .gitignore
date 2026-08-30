@@ -19,6 +19,11 @@ playwright-report/
 blob-report/
 .nyc_output/
 
+# Showcase recordings — the harness in packages/demo-angular/showcase/ is source and is
+# tracked; what it renders is regenerable and large (megabytes of .webm per run).
+**/showcase-output/
+**/showcase-mp4/
+
 # Logs
 *.log
 npm-debug.log*
