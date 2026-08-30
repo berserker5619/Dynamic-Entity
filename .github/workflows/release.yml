@@ -46,7 +46,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           registry-url: https://registry.npmjs.org
 
@@ -82,16 +82,11 @@ jobs:
       - name: SSR renderApplication (zoneless)
         run: node scripts/verify-consumer.mjs --angular 20 --ssr --zoneless
 
-      # Verification above runs on Node 20, which is what the Angular 17 build tooling
-      # supports. Trusted publishing needs npm >= 11.5.1 on Node >= 22.14, so the runtime is
-      # switched here rather than for the whole job — building on Node 24 is not something
-      # this repo's toolchain has been validated against.
-      - name: Node 24 for publishing
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
-
+      # Trusted publishing needs npm >= 11.5.1, which is newer than the npm bundled with any
+      # Node release, so it is installed rather than assumed. The whole job used to build on
+      # Node 20 and switch to 24 only here, on the grounds that Angular 17's build tooling
+      # needed 20; that turned out to be untrue — Angular 17.3.12 installs the packed
+      # tarballs and compiles under strictTemplates on Node 24 — so the job runs one runtime.
       - name: Ensure npm supports trusted publishing
         run: |
           npm install -g npm@latest
