@@ -7,7 +7,11 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Unreleased]
+## [1.5.0] — 2026-08-30
+
+Work since 1.4.0: nothing in the builder names a field by typing any more, the
+validator understands the paths the builder authors, and the rule editor stopped
+locking the browser.
 
 ### Added
 
@@ -24,6 +28,33 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **The `people` entity in the reference dataset** has an `address` on Personal Details
   and another on Work Details, with `deskNumber` shown only when `[work.address]` is
   `HQ` — a config the validator used to refuse, now the fixture the path tests hold.
+- **Every field reference in the builder is now chosen from a list.** 1.4.0 covered the
+  rule form; `showWhen`, both ends of a `patchOnTrue` mapping and an `autoPatch` target
+  were still text boxes, and the cascade parent was a list of bare ids. All of them offer
+  the same field paths. Typing was the one way left to author a reference that names two
+  fields at once.
+- **A Tab picker on the field inspector.** `moveFieldToTab` shipped in 1.4.0 with nothing
+  calling it. Moving a field rewrites its path and repoints the rules that named it.
+- **`setActiveTab(tabId, { focusPanel: false })`.** Activating a tab moves focus into its
+  panel, which is right for a keyboard user pressing a tab. A quick-jump also switches tabs
+  and then focuses the field it was aiming at — and the panel focus runs on
+  `requestAnimationFrame`, after `afterNextRender`, so it landed second and took the focus
+  back. A caller that will focus something more specific can now say so.
+
+### Fixed
+
+- **The rule editor locked the browser.** `[ngModel]` on the targets multi-select was bound
+  to a method returning a fresh array on every call, so `ngModel` saw a new value on each
+  change-detection pass: it wrote, which scheduled another pass, which built another array.
+  Clicking "Rule" froze the page outright. The array identity is now held stable while its
+  contents are unchanged.
+- **A new `showWhen` condition seeded the literal string `field`**, which is not a field id
+  — so the condition referenced nothing and hid the field until someone noticed. It seeds a
+  real field, falling back to the placeholder only when there is nothing else to watch.
+- **The cascade parent offered the field as its own parent.**
+- **Three capabilities the demo could not reach**, and so nothing tested: the builder always
+  opened a blank entity and can now open any saved one; the record editor — the only host of
+  the quick-jump links — was never rendered; and no entity marked a field `showOnMinimize`.
 
 ---
 
