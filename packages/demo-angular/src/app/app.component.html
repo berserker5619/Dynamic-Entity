@@ -87,8 +87,17 @@
     } @else {
     <div class="form-wrapper">
       <h2>{{ selectedRecord() ? (selectedEntity() === 'clients' ? 'Edit Client' : 'Edit Record (' + selectedEntity() + ')') : (selectedEntity() === 'clients' ? 'New Client' : 'New Record (' + selectedEntity() + ')') }}</h2>
-      <ngx-dynamic-form [config]="config()!" [initialData]="selectedRecord() || {}" [userRoles]="userRoles()"
-        [loading]="loading()" (formSubmit)="onFormSubmit($event)" (formReset)="onCancel()"></ngx-dynamic-form>
+      <button class="nav-link" data-testid="toggle-record-view" (click)="recordView.set(!recordView())">
+        {{ recordView() ? 'Plain form' : 'Record view' }}
+      </button>
+      @if (recordView()) {
+        <ngx-dynamic-record-form [config]="config()!" [initialData]="selectedRecord() || {}"
+          [userRoles]="userRoles()" [loading]="loading()"
+          (formSubmit)="onFormSubmit($event)" (formReset)="onCancel()"></ngx-dynamic-record-form>
+      } @else {
+        <ngx-dynamic-form [config]="config()!" [initialData]="selectedRecord() || {}" [userRoles]="userRoles()"
+          [loading]="loading()" (formSubmit)="onFormSubmit($event)" (formReset)="onCancel()"></ngx-dynamic-form>
+      }
     </div>
     }
     } @else {

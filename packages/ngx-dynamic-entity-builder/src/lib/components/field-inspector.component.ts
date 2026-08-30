@@ -124,6 +124,42 @@ export class FieldInspectorComponent {
   }
 
   /**
+   * Every tab a field can live on, sub-tabs included.
+   *
+   * `moveFieldToTab` existed on the store with nothing calling it, so a field authored on the
+   * wrong tab had to be deleted and rebuilt — losing its validators, options and every rule
+   * aimed at it.
+   */
+  protected readonly tabOptions = computed<{ id: string; label: string }[]>(() =>
+    this.store
+      .fieldGroups()
+      .map(group => ({ id: group.tabId, label: resolveLabel(group.label, this.lang()) || group.tabId }))
+      .concat(
+        this.store
+          .tabs()
+          .flatMap(tab => [tab, ...(tab.children ?? [])])
+          .map(tab => ({ id: tab.id, label: resolveLabel(tab.label, this.lang()) || tab.id })),
+      )
+      .filter((tab, i, all) => all.findIndex(t => t.id === tab.id) === i),
+  );
+
+  /**
+   * The tab the selected field currently sits on.
+   *
+   * Looked up by identity rather than parsed out of the path: the scope of
+   * `incident.incidentDetails.incidentTime` is two segments and the field belongs to the
+   * *last* of them, while a field inside a group has the group id in that position and
+   * belongs to no tab of that name at all.
+   */
+  protected currentTabId(field: NestedFieldConfig): string {
+    return this.store.fieldGroups().find(group => group.fields.includes(field))?.tabId ?? '';
+  }
+
+  protected moveToTab(field: NestedFieldConfig, tabId: string): void {
+    if (tabId && tabId !== this.currentTabId(field)) this.store.moveFieldToTab(field.id, tabId);
+  }
+
+  /**
    * Fields offered wherever this inspector names one — the `showWhen` key and both ends of a
    * `patchOnTrue` mapping. All three were free text, which is the one way left to write a
    * reference that names two fields at once.

@@ -2,6 +2,7 @@ import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   DynamicFormComponent,
+  DynamicRecordFormComponent,
   EntityFormConfig,
   LocalizedText,
   VersionedRecord,
@@ -13,7 +14,7 @@ import { LocalStore } from './mock/local-store.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, DynamicFormComponent, BuilderPageComponent],
+  imports: [CommonModule, DynamicFormComponent, DynamicRecordFormComponent, BuilderPageComponent],
   templateUrl: './app.component.html',
 })
 export class AppComponent implements OnInit {
@@ -28,6 +29,13 @@ export class AppComponent implements OnInit {
   readonly allConfigs = signal<EntityFormConfig[]>([]);
   readonly records = signal<VersionedRecord[]>([]);
   readonly selectedRecord = signal<VersionedRecord | null>(null);
+  /**
+   * Renders the record editor instead of the plain form.
+   *
+   * `ngx-dynamic-record-form` is the only component with the summary panel and its quick-jump
+   * links, so without a way to reach it here nothing in the demo exercised `jumpToField`.
+   */
+  readonly recordView = signal(false);
   readonly selectedConfig = signal<Partial<EntityFormConfig> | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);

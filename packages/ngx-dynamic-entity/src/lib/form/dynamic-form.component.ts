@@ -408,11 +408,19 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     this.selectionSub?.unsubscribe();
   }
 
-  setActiveTab(tabId: string): void {
+  /**
+   * `focusPanel: false` is for a caller that is about to focus something more specific.
+   *
+   * Activating a tab moves focus into its panel, which is right for a keyboard user pressing
+   * a tab. A quick-jump also switches tabs, but then focuses the field it was aiming at — and
+   * the panel focus runs on `requestAnimationFrame`, after `afterNextRender`, so it landed
+   * second and took the focus back every time. Saying so is better than out-timing it.
+   */
+  setActiveTab(tabId: string, options?: { focusPanel?: boolean }): void {
     const changed = this.activeTab() !== tabId;
     if (changed) this.activeTabChange.emit(tabId);
     this.activeTab.set(tabId);
-    if (changed) this.focusActivePanel();
+    if (changed && options?.focusPanel !== false) this.focusActivePanel();
     const parent = findTab(this.tabs, tabId);
     if (parent?.children?.length) {
       this.activeSubTab.set(parent.children[0].id);
@@ -421,10 +429,10 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
-  setActiveSubTab(subTabId: string): void {
+  setActiveSubTab(subTabId: string, options?: { focusPanel?: boolean }): void {
     const changed = this.activeSubTab() !== subTabId;
     this.activeSubTab.set(subTabId);
-    if (changed) this.focusActivePanel();
+    if (changed && options?.focusPanel !== false) this.focusActivePanel();
   }
 
   getFieldSpan(field: NestedFieldConfig): string {

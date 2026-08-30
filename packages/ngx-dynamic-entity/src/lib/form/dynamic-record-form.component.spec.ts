@@ -229,7 +229,9 @@ describe('DynamicRecordFormComponent', () => {
 
       component.jumpToField('archived');
 
-      expect(setActiveTab).toHaveBeenCalledWith('meta');
+      // The panel focus is suppressed because the jump focuses the field instead; the panel
+      // would otherwise take it back on the next animation frame.
+      expect(setActiveTab).toHaveBeenCalledWith('meta', { focusPanel: false });
     });
 
     it('does nothing for an unknown field', () => {

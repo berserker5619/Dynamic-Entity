@@ -219,9 +219,23 @@ export class RuleFormComponent {
     return withExistingOptions(this.fieldOptions(), this.targetValues());
   }
 
-  /** Field targets only — a rule may also target a tab, which this picker does not manage. */
+  private cachedTargets: string[] = [];
+
+  /**
+   * Field targets only — a rule may also target a tab, which this picker does not manage.
+   *
+   * The array identity is held stable while the contents are unchanged. This is bound through
+   * `[ngModel]` on a multi-select, and a fresh array on each call made `ngModel` see a new
+   * value on every change-detection pass: it wrote, which scheduled another pass, which built
+   * another array. Opening the rule editor locked the browser outright.
+   */
   protected targetValues(): string[] {
-    return this.rule.targets.filter(t => t.type === 'field').map(t => t.id);
+    const ids = this.rule.targets.filter(t => t.type === 'field').map(t => t.id);
+    const unchanged =
+      ids.length === this.cachedTargets.length &&
+      ids.every((id, i) => id === this.cachedTargets[i]);
+    if (!unchanged) this.cachedTargets = ids;
+    return this.cachedTargets;
   }
 
   /**

@@ -428,3 +428,87 @@ describe('FieldInspectorComponent', () => {
     });
   });
 });
+
+/**
+ * `moveFieldToTab` sat on the store with nothing calling it, so a field authored on the wrong
+ * tab had to be deleted and rebuilt — losing its validators, options and every rule aimed at it.
+ */
+describe('FieldInspectorComponent — moving a field between tabs', () => {
+  let fixture: ComponentFixture<FieldInspectorComponent>;
+  let store: BuilderStore;
+
+  const api = () => fixture.componentInstance as unknown as {
+    tabOptions(): { id: string; label: string }[];
+    currentTabId(field: unknown): string;
+    moveToTab(field: unknown, tabId: string): void;
+  };
+
+  beforeEach(async () => {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [FieldInspectorComponent],
+      providers: [BuilderStore, provideNoopAnimations()],
+    }).compileComponents();
+
+    store = TestBed.inject(BuilderStore);
+    store.load({
+      entity: 'claims',
+      version: 1,
+      tabs: [
+        { id: 'claimant', label: { en: 'Claimant' }, fields: [{ id: 'claimRef', type: 'text', label: {} }] },
+        {
+          id: 'incident',
+          label: { en: 'Incident' },
+          children: [
+            {
+              id: 'incidentDetails',
+              label: { en: 'Details' },
+              fields: [{ id: 'incidentTime', type: 'time', label: {} }],
+            },
+          ],
+        },
+      ],
+    });
+    store.selectField('incidentTime');
+
+    fixture = TestBed.createComponent(FieldInspectorComponent);
+    fixture.detectChanges();
+  });
+
+  const selected = () => store.selectedField()!;
+
+  it('offers every tab, sub-tabs included', () => {
+    expect(api().tabOptions().map(t => t.id)).toEqual(
+      expect.arrayContaining(['claimant', 'incident', 'incidentDetails']),
+    );
+  });
+
+  /**
+   * Looked up by identity, not parsed out of the path: the scope of
+   * `incident.incidentDetails.incidentTime` is two segments and the field belongs to the last
+   * of them, so taking the first segment reported the parent tab instead.
+   */
+  it('reports the sub-tab a field actually sits on', () => {
+    expect(api().currentTabId(selected())).toBe('incidentDetails');
+  });
+
+  it('moves the field, and its path follows', () => {
+    api().moveToTab(selected(), 'claimant');
+
+    const moved = store.fields().find(f => f.id === 'incidentTime');
+    expect(moved?.refererField).toBe('claimant.incidentTime');
+    expect(api().currentTabId(moved!)).toBe('claimant');
+  });
+
+  it('does nothing when the field is already on that tab', () => {
+    const before = store.config();
+    api().moveToTab(selected(), 'incidentDetails');
+    expect(store.config()).toBe(before);
+  });
+
+  it('ignores an empty selection', () => {
+    const before = store.config();
+    api().moveToTab(selected(), '');
+    expect(store.config()).toBe(before);
+  });
+});

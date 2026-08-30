@@ -706,11 +706,14 @@ export class DynamicRecordFormComponent implements OnChanges {
     const location = this.locateField(fieldId);
     if (!location) return;
 
-    this.dynamicFormComp?.setActiveTab(location.tabId);
+    // The panel must not take the focus back: this jump is going to focus the field itself.
+    this.dynamicFormComp?.setActiveTab(location.tabId, { focusPanel: false });
     // `setActiveTab` resets to a tab's first child, so the sub-tab has to be selected after
     // it, not before. Without this the walk found sub-tab fields and then rendered the wrong
     // panel, so the element the callback below looks for never existed.
-    if (location.subTabId) this.dynamicFormComp?.setActiveSubTab(location.subTabId);
+    if (location.subTabId) {
+      this.dynamicFormComp?.setActiveSubTab(location.subTabId, { focusPanel: false });
+    }
 
     afterNextRender(
       () => {

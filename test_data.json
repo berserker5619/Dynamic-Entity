@@ -921,7 +921,8 @@
             "table": {
               "visible": true,
               "isName": true
-            }
+            },
+            "showOnMinimize": true
           },
           {
             "id": "claimantEmail",
@@ -1177,7 +1178,8 @@
                   "de": "Uhrzeit des Vorfalls"
                 },
                 "visibility": true,
-                "colSpan": 4
+                "colSpan": 4,
+                "showOnMinimize": true
               },
               {
                 "id": "reportedAt",
@@ -1382,7 +1384,8 @@
             "colSpan": 4,
             "validators": {
               "min": 0
-            }
+            },
+            "showOnMinimize": true
           },
           {
             "id": "auditorPin",

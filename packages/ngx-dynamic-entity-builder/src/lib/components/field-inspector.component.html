@@ -14,6 +14,20 @@
       <span class="deb-chip">{{ meta()?.label || f.type }}</span>
     </div>
 
+    @if (tabOptions().length > 1) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+        <mat-label>Tab</mat-label>
+        <mat-select data-testid="field-tab"
+          [ngModel]="currentTabId(f)" (ngModelChange)="moveToTab(f, $event)">
+          @for (tab of tabOptions(); track tab.id) {
+            <mat-option [value]="tab.id">{{ tab.label }}</mat-option>
+          }
+        </mat-select>
+        <mat-hint>Moving the field rewrites its path and repoints the rules that named it.</mat-hint>
+      </mat-form-field>
+    }
+
+
     <!-- Localised text (active language) -->
     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
       <mat-label>Label ({{ lang() }})</mat-label>

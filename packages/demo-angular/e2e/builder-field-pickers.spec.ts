@@ -2,6 +2,15 @@ import { expect, test } from '@playwright/test';
 import { builderPaletteButton, gotoDemo, safeClick } from './test-helpers';
 
 /**
+ * Options inside the open CDK overlay.
+ *
+ * `getByRole('option')` on its own also matches every native `<select>` on the page — the
+ * entity pickers among them — so it counted far more than the picker under test.
+ */
+const openOptions = (page: import('@playwright/test').Page) =>
+  page.locator('.cdk-overlay-pane').getByRole('option');
+
+/**
  * Every place the builder names a field used to be a text box, which is the one way left to
  * author a reference that names two fields at once — ids are unique per scope, so `address`
  * means nothing in particular once two tabs have one.
@@ -37,7 +46,7 @@ test.describe('the builder names fields by picking them', () => {
     await safeClick(page.getByTestId('add-show-when'));
 
     await safeClick(page.getByTestId('show-when-field'));
-    const options = page.getByRole('option');
+    const options = openOptions(page);
     await expect(options).toHaveCount(2);
     await expect(options.first()).toContainText('main.');
   });
@@ -62,16 +71,18 @@ test.describe('the builder names fields by picking them', () => {
     await safeClick(page.getByTestId('add-rule'));
 
     await safeClick(page.getByTestId('rule-targets'));
-    const options = page.getByRole('option');
+    const options = openOptions(page);
     await expect(options).toHaveCount(2);
-    await options.nth(0).click();
-    await options.nth(1).click();
+
+    // A new rule already targets the field it was created from, so selecting every option
+    // would toggle that one back off. Pick the one that is not selected yet.
+    await options.and(page.locator('[aria-selected="false"]')).first().click();
     await page.keyboard.press('Escape');
     await expect(page.locator('.cdk-overlay-backdrop')).toHaveCount(0);
 
-    // Both fields selected: the trigger text lists each chosen path.
-    await expect(page.getByTestId('rule-targets')).toContainText('main.text_1');
-    await expect(page.getByTestId('rule-targets')).toContainText('main.number_1');
+    const targets = page.getByTestId('rule-targets');
+    await expect(targets).toContainText('main.text_1');
+    await expect(targets).toContainText('main.number_1');
   });
 
   test('the cascade parent offers paths once a field is an entity reference', async ({ page }) => {
@@ -81,7 +92,7 @@ test.describe('the builder names fields by picking them', () => {
     await safeClick(builderPaletteButton(page, 'Entity Reference'));
 
     await safeClick(page.getByTestId('entity-ref-parent'));
-    const options = page.getByRole('option');
+    const options = openOptions(page);
     // "None" plus the one other field — never the entity-ref field itself, which cannot
     // cascade from its own value.
     await expect(options).toHaveCount(2);
