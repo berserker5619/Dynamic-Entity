@@ -1,3 +1,4 @@
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, Validators } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
@@ -194,6 +195,64 @@ describe('MarkdownFieldComponent', () => {
       fixture.componentInstance.control.setValue('second');
       fixture.detectChanges();
       expect(testid('preview-body')!.textContent).toContain('second');
+    });
+  });
+
+  describe('subscription lifecycle', () => {
+    beforeEach(() =>
+      TestBed.configureTestingModule({
+        imports: [MarkdownFieldComponent],
+        providers: [{ provide: MARKDOWN_RENDERER, useValue: (src: string) => `<p>${src}</p>` }],
+      }),
+    );
+
+    it('re-renders when the value is changed from outside the component', () => {
+      // Deliberately hosted rather than created as the fixture root. A root component is
+      // always checked, so an OnPush bug is invisible there — this assertion would pass with
+      // the subscription deleted. Inside a host, the child is skipped unless it is marked.
+      @Component({
+        standalone: true,
+        imports: [MarkdownFieldComponent],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `<ngx-markdown-field [field]="field" [control]="control" [readonly]="true" />`,
+      })
+      class HostComponent {
+        field: NestedFieldConfig = { id: 'notes', type: 'markdown', label: { en: 'Notes' } };
+        control = new FormControl('first');
+      }
+
+      const hostFixture = TestBed.createComponent(HostComponent);
+      hostFixture.detectChanges();
+      const el = hostFixture.nativeElement as HTMLElement;
+      const value = () => el.querySelector('[data-testid="field-notes-value"]')!.textContent;
+      expect(value()).toContain('first');
+
+      // Under OnPush this is neither an input nor a template event, so without the
+      // valueChanges subscription the view keeps the old document.
+      hostFixture.componentInstance.control.setValue('second');
+      hostFixture.detectChanges();
+      expect(value()).toContain('second');
+    });
+
+    it('follows a replacement control and drops the previous subscription', () => {
+      build('first', { readonly: true });
+      const original = fixture.componentInstance.control;
+
+      const replacement = new FormControl('replaced');
+      fixture.componentRef.setInput('control', replacement);
+      fixture.detectChanges();
+      expect(testid('value')!.textContent).toContain('replaced');
+
+      // The old control must no longer drive this view, or a stale form would keep
+      // repainting a field that has moved on.
+      original.setValue('stale');
+      fixture.detectChanges();
+      expect(testid('value')!.textContent).toContain('replaced');
+    });
+
+    it('survives being destroyed with a live subscription', () => {
+      build('first', { readonly: true });
+      expect(() => fixture.destroy()).not.toThrow();
     });
   });
 

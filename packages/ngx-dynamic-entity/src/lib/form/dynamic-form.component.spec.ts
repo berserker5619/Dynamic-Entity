@@ -192,6 +192,102 @@ describe('DynamicFormComponent', () => {
     });
   });
 
+  describe('the Ctrl+S shortcut', () => {
+    const press = (init: Partial<KeyboardEventInit> = {}) =>
+      component.handleKeyboardEvent(
+        new KeyboardEvent('keydown', { key: 's', ctrlKey: true, cancelable: true, ...init }),
+      );
+
+    it('submits a valid form the user may edit', () => {
+      build();
+      const submit = jest.spyOn(component, 'submit').mockImplementation(() => undefined);
+      press();
+      expect(submit).toHaveBeenCalledTimes(1);
+    });
+
+    it('accepts the Meta key so the shortcut works on a Mac', () => {
+      build();
+      const submit = jest.spyOn(component, 'submit').mockImplementation(() => undefined);
+      press({ ctrlKey: false, metaKey: true });
+      expect(submit).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores S without a modifier and other keys with one', () => {
+      build();
+      const submit = jest.spyOn(component, 'submit').mockImplementation(() => undefined);
+      press({ ctrlKey: false });
+      component.handleKeyboardEvent(new KeyboardEvent('keydown', { key: 'a', ctrlKey: true }));
+      expect(submit).not.toHaveBeenCalled();
+    });
+
+    it('does not submit a read-only form', () => {
+      build();
+      component.readonly = true;
+      const submit = jest.spyOn(component, 'submit').mockImplementation(() => undefined);
+      press();
+      // The keyboard must not reach a save the buttons deliberately withhold.
+      expect(submit).not.toHaveBeenCalled();
+    });
+
+    it('does not submit an invalid form', () => {
+      build();
+      // The stubbed ValidatorRegistryService attaches no validators, so invalidity is set
+      // directly — what is under test is the guard, not Angular's validation.
+      const control = component.form.get(Object.keys(component.form.controls)[0]);
+      control?.setErrors({ required: true });
+      expect(component.form.valid).toBe(false);
+
+      const submit = jest.spyOn(component, 'submit').mockImplementation(() => undefined);
+      press();
+      expect(submit).not.toHaveBeenCalled();
+    });
+
+    it('still swallows the browser Save dialog even when it will not submit', () => {
+      build();
+      component.readonly = true;
+      const event = new KeyboardEvent('keydown', { key: 's', ctrlKey: true, cancelable: true });
+      const prevented = jest.spyOn(event, 'preventDefault');
+      component.handleKeyboardEvent(event);
+      // Letting the browser open "Save page as…" over a form is worse than doing nothing.
+      expect(prevented).toHaveBeenCalled();
+    });
+  });
+
+  describe('drift and module tabs', () => {
+    it('names the source entity in the drift hint when the field declares one', () => {
+      build();
+      const hint = component.driftHint({
+        id: 'x',
+        type: 'text',
+        label: { en: 'X' },
+        referencedEntityKey: 'individuals',
+      });
+      expect(hint).toContain('"individuals"');
+    });
+
+    it('falls back to a generic phrase when it does not', () => {
+      build();
+      // A linked field with no recorded source still has to say something sensible.
+      const hint = component.driftHint({ id: 'x', type: 'text', label: { en: 'X' } });
+      expect(hint).toContain('its source entity');
+      expect(hint).not.toContain('undefined');
+    });
+
+    it('resolves no module component when the active tab names none', () => {
+      build();
+      expect(component.activeTabModuleComponent).toBeNull();
+    });
+
+    it('resolves no module component when a named module is not registered', () => {
+      build({
+        entity: 'clients',
+        tabs: [{ id: 'docs', label: { en: 'Docs' }, fields: [], moduleName: 'documents-view' }],
+      });
+      // Naming a module nothing registered must render nothing, not throw.
+      expect(component.activeTabModuleComponent).toBeNull();
+    });
+  });
+
   describe('the active tab across a record swap', () => {
     const twoTabs = (): EntityFormConfig => ({
       entity: 'people',
