@@ -55,6 +55,32 @@ describe('resolveLabel', () => {
   });
 });
 
+describe('formatDisplayValue for markdown', () => {
+  /**
+   * `markdown` has no case of its own and falls to the default, which stringifies. That is
+   * the right answer — a summary row wants the source, not rendered markup it cannot style
+   * and did not sanitize — but it is only right by accident until something pins it.
+   */
+  it('returns the source unchanged, rendering nothing', () => {
+    const src = '# Title\n\n**bold**';
+    expect(formatDisplayValue('markdown', undefined, src)).toBe(src);
+  });
+
+  it('never emits markup, even when the value already contains some', () => {
+    // A record could hold HTML if a consumer put it there. Summaries must not become an
+    // injection point, and stringifying is what keeps this inert.
+    const out = formatDisplayValue('markdown', undefined, '<script>x</script>');
+    expect(out).toBe('<script>x</script>');
+    expect(typeof out).toBe('string');
+  });
+
+  it('treats an empty document as empty', () => {
+    expect(formatDisplayValue('markdown', undefined, '')).toBe('—');
+    expect(formatDisplayValue('markdown', undefined, null)).toBe('—');
+    expect(formatDisplayValue('markdown', undefined, undefined)).toBe('—');
+  });
+});
+
 describe('formatDisplayValue', () => {
   // Canonical option shape: the displayed text is the stored value.
   const opts: DropdownOption[] = [{ en: 'Active' }, { en: 'Inactive' }];

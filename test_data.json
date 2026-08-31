@@ -88,6 +88,22 @@
             }
           },
           {
+            "id": "releaseNotes",
+            "type": "markdown",
+            "label": {
+              "en": "Release Notes",
+              "de": "Versionshinweise"
+            },
+            "placeholder": {
+              "en": "# Heading\nSupports **markdown** source."
+            },
+            "visibility": true,
+            "colSpan": 12,
+            "validators": {
+              "maxLength": 2000
+            }
+          },
+          {
             "id": "annualBudget",
             "type": "currency",
             "label": {

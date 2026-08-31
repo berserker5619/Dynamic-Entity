@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormControl } from '@angular/forms';
+import { FormControl, Validators } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { MarkdownFieldComponent } from './markdown-field.component';
 import { MARKDOWN_RENDERER } from '../tokens/injection-tokens';
@@ -109,6 +109,94 @@ describe('MarkdownFieldComponent', () => {
     });
   });
 
+  describe('labels, placeholder and language', () => {
+    beforeEach(() => TestBed.configureTestingModule({ imports: [MarkdownFieldComponent] }));
+
+    it('resolves the label and placeholder in the active language', () => {
+      fixture = TestBed.createComponent(MarkdownFieldComponent);
+      fixture.componentRef.setInput('field', {
+        id: 'notes',
+        type: 'markdown',
+        label: { en: 'Notes', de: 'Notizen' },
+        placeholder: { en: 'Write…', de: 'Schreiben…' },
+      } as NestedFieldConfig);
+      fixture.componentRef.setInput('control', new FormControl(''));
+      fixture.componentRef.setInput('language', 'de');
+      fixture.detectChanges();
+      host = fixture.nativeElement as HTMLElement;
+
+      expect(host.querySelector('.ngx-field__label')!.textContent).toContain('Notizen');
+      expect((testid('input') as HTMLTextAreaElement).placeholder).toBe('Schreiben…');
+    });
+  });
+
+  describe('validation', () => {
+    beforeEach(() => TestBed.configureTestingModule({ imports: [MarkdownFieldComponent] }));
+
+    it('shows an error only once the control is invalid and touched', () => {
+      const control = new FormControl('', { validators: [Validators.required] });
+      fixture = TestBed.createComponent(MarkdownFieldComponent);
+      fixture.componentRef.setInput('field', field);
+      fixture.componentRef.setInput('control', control);
+      fixture.detectChanges();
+      host = fixture.nativeElement as HTMLElement;
+
+      // Invalid, but untouched — an error here would shout at someone who has not typed yet.
+      expect(testid('error')).toBeNull();
+
+      control.markAsTouched();
+      fixture.detectChanges();
+      expect(testid('error')).toBeTruthy();
+    });
+  });
+
+  describe('edge values', () => {
+    beforeEach(() =>
+      TestBed.configureTestingModule({
+        imports: [MarkdownFieldComponent],
+        providers: [{ provide: MARKDOWN_RENDERER, useValue: (src: string) => `<p>${src}</p>` }],
+      }),
+    );
+
+    it('renders nothing for an empty document rather than empty markup', () => {
+      build('', { readonly: true });
+      // `<p></p>` would be a visually empty box the author cannot explain.
+      expect(testid('value')!.querySelector('p')).toBeNull();
+    });
+
+    it('survives a non-string value without calling the renderer', () => {
+      // A config edited by hand, or a migration, can put anything in a control.
+      expect(() => build(42 as unknown as string, { readonly: true })).not.toThrow();
+    });
+
+    it('masks in preference to rendering, even with a renderer present', () => {
+      build('# Secret', { readonly: true, masked: true });
+      expect(testid('masked')).toBeTruthy();
+      expect(testid('value')).toBeNull();
+      expect(host.textContent).not.toContain('Secret');
+    });
+  });
+
+  describe('preview tracks the source', () => {
+    beforeEach(() =>
+      TestBed.configureTestingModule({
+        imports: [MarkdownFieldComponent],
+        providers: [{ provide: MARKDOWN_RENDERER, useValue: (src: string) => `<p>${src}</p>` }],
+      }),
+    );
+
+    it('renders the current value, not the one present when Preview was opened', () => {
+      build('first');
+      (testid('preview') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(testid('preview-body')!.textContent).toContain('first');
+
+      fixture.componentInstance.control.setValue('second');
+      fixture.detectChanges();
+      expect(testid('preview-body')!.textContent).toContain('second');
+    });
+  });
+
   describe('sanitisation', () => {
     beforeEach(() =>
       TestBed.configureTestingModule({
@@ -124,6 +212,28 @@ describe('MarkdownFieldComponent', () => {
       const value = testid('value')!;
       expect(value.querySelector('p')?.textContent).toBe('ok');
       expect(value.querySelector('script')).toBeNull();
+    });
+
+    it('strips inline event handlers, which no tag name would catch', () => {
+      // The obvious test is <script>. The likelier payload is an attribute on a tag that
+      // looks harmless, so assert the attribute is gone rather than that the tag is.
+      build('<img src="x" onerror="window.pwned = true">', { readonly: true });
+      const img = testid('value')!.querySelector('img');
+      expect(img?.getAttribute('onerror')).toBeNull();
+    });
+
+    it('strips a javascript: URL on a link', () => {
+      build('<a href="javascript:alert(1)">click</a>', { readonly: true });
+      const href = testid('value')!.querySelector('a')?.getAttribute('href') ?? '';
+      expect(href.startsWith('javascript:')).toBe(false);
+    });
+
+    it('does the same in the editor preview, not only in read-only', () => {
+      // Two separate [innerHTML] bindings; covering one proves nothing about the other.
+      build('<p>ok</p><script>window.pwned = true;</script>');
+      (testid('preview') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(testid('preview-body')!.querySelector('script')).toBeNull();
     });
   });
 });

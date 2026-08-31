@@ -86,6 +86,8 @@ export const COMPLEX_FULL_TEST_RECORDS: Record<string, unknown>[] = [
       fullName: 'Helena Vasquez',
       emailAddress: 'helena.vasquez@example.com',
       bioNotes: 'Joined from the platform team. Owns the migration workstream.',
+      // Markdown source, not HTML — this is exactly what the record stores.
+      releaseNotes: '# Q3 rollout\n\nMigration completed in **three** phases.\n\n- Schema\n- Traffic\n- Cutover',
       annualBudget: 480000,
       teamCount: 12,
       department: 'ENG',
@@ -116,6 +118,7 @@ export const COMPLEX_FULL_TEST_RECORDS: Record<string, unknown>[] = [
       fullName: 'Ibrahim Haddad',
       emailAddress: 'ibrahim.haddad@example.com',
       bioNotes: 'Finance partner for the EMEA region.',
+      releaseNotes: '## Budget notes\n\nSee the *EMEA* breakdown before sign-off.',
       annualBudget: 265000,
       teamCount: 4,
       department: 'FIN',

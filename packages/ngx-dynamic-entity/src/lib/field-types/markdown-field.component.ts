@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, Input, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  Input,
+  OnChanges,
+  SimpleChanges,
+  inject,
+  signal,
+} from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { resolveLabel } from '@dynamic-entity/core';
@@ -92,7 +102,7 @@ import { MARKDOWN_RENDERER } from '../tokens/injection-tokens';
     </div>
   `,
 })
-export class MarkdownFieldComponent {
+export class MarkdownFieldComponent implements OnChanges {
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() language: string = 'en';
@@ -101,8 +111,28 @@ export class MarkdownFieldComponent {
 
   /** Optional — the field is fully usable without one. */
   private readonly render = inject(MARKDOWN_RENDERER, { optional: true });
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly previewing = signal(false);
+
+  private valueSub?: { unsubscribe(): void };
+
+  /**
+   * Re-render when the value changes from outside this component.
+   *
+   * `rendered()` reads `control.value`, which under OnPush is neither an input nor a
+   * template event: typing in the textarea updates through `formControl`, but a host
+   * calling `patchValue`, a rule, or an `autoPatch` mapping does not mark this component
+   * dirty. The preview and the read-only view would keep showing the previous document
+   * while the record already held a different one.
+   */
+  ngOnChanges(changes: SimpleChanges): void {
+    if (!changes['control']) return;
+    this.valueSub?.unsubscribe();
+    this.valueSub = this.control?.valueChanges?.subscribe(() => this.cdr.markForCheck());
+    if (this.valueSub) this.destroyRef.onDestroy(() => this.valueSub?.unsubscribe());
+  }
 
   /** A Preview tab that can only ever show the source back is worse than no tab. */
   protected get canPreview(): boolean {
