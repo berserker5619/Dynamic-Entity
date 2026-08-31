@@ -7,11 +7,98 @@ provider call. This covers the seams a consumer actually needs on day two.
 > packages, so they cannot drift out of date. Blocks fenced as `ts` are fragments that
 > reference your own classes and are illustrative only.
 
-Contents: [custom field types](#a-custom-field-type) · [validators](#custom-validators) ·
+Contents: [how a field is addressed](#how-a-field-is-addressed) ·
+[custom field types](#a-custom-field-type) · [validators](#custom-validators) ·
 [validation messages](#validation-messages-and-i18n) · [file uploads](#file-uploads) ·
 [entity references](#entity-references-and-cascades) · [lookup lists](#named-lookup-lists) ·
 [reading and driving the form](#reading-and-driving-the-form) ·
 [schema migration](#schema-migration) · [styling](#styling) · [testing](#testing)
+
+---
+
+## How a field is addressed
+
+Read this before the rest: `showWhen`, cascades, `autoPatch`, rules and the submitted
+record all name fields, and they all use the model below.
+
+**A field id is unique within its scope, not across the config.** A person may have a home
+address and a work address, and both are naturally called `address`:
+
+```json
+{
+  "entity": "people",
+  "tabs": [
+    { "id": "personal", "fields": [{ "id": "address", "type": "text" }] },
+    { "id": "work",     "fields": [{ "id": "address", "type": "text" }, { "id": "deskNumber", "type": "text" }] }
+  ]
+}
+```
+
+That is valid. The two fields build separate controls and submit separately:
+
+```json
+{ "personal": { "address": "…" }, "work": { "address": "…", "deskNumber": "…" } }
+```
+
+### What opens a scope
+
+A scope is the object a value nests under, and the record mirrors it exactly.
+
+| Construct | Effect on scope |
+|---|---|
+| A tab | Adds its id — `policy` → `policy.sumInsured` |
+| A tab with `flatData: true` | Adds **nothing**; its fields sit in the parent scope |
+| A sub-tab | Nests under its parent — `incident.incidentDetails.incidentDate` |
+| A `group` or `array` field | Adds its own id for its children — `settlement.lineItems.itemDescription` |
+
+Everything else — a plain field on a `flatData` tab at the top level — sits at the root and
+is addressed by its bare id.
+
+### `refererField` is the address
+
+Every field carries the resulting path in `refererField`. It is written for you when a
+config is loaded, and the builder maintains it as you edit:
+
+```json
+{ "id": "address", "type": "text", "refererField": "work.address" }
+```
+
+Two fields may share `address`; only one is `work.address`.
+
+### Naming a field in a reference
+
+Anywhere the config points at a field — a `showWhen` key, `entityReference.parentField`, an
+`autoPatch` target, a rule's `fieldId` or targets — the name may take either form:
+
+| Form | Example | Use when |
+|---|---|---|
+| Bracketed path | `[work.address]` | Always. This is what the builder writes. |
+| Bare id | `address` | The id exists in exactly one scope. |
+
+Bare ids are **backward compatibility, not the recommended form**. Every config written
+before paths existed uses them and keeps working, but a bare id stops naming anything the
+moment a second scope reuses it, so nothing new should be authored that way.
+
+### The failure this prevents
+
+An ambiguous bare reference is not a silent misfire — `validateConfig` reports it, names
+both scopes, and tells you what to write instead:
+
+```
+Ambiguous reference to "address": defined in personal and work.
+Name it by path instead, as [personal.address]. This field will never show.
+```
+
+`dynamic-entity validate ./config.json` runs the same check, so a CI job catches it before
+the config ships.
+
+What remains an error is two fields sharing an id **in one scope**, because there they would
+share a single control and a single record key, and the second would overwrite the first:
+
+```
+Duplicate field id "dup" (also at tabs[0].fields[0]).
+Two fields in main would share one control and one record key.
+```
 
 ---
 

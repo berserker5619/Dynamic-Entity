@@ -294,6 +294,11 @@ cd packages/demo-angular && npx playwright test
 Custom field types, validators, validation messages and i18n, upload handlers, entity-ref
 loaders, lookup lists, and the programmatic form API: see [EXTENDING.md](EXTENDING.md).
 
+Start with [how a field is addressed](EXTENDING.md#how-a-field-is-addressed). Field ids are
+unique **per scope**, not per config — `personal.address` and `work.address` are two
+different fields — and `showWhen`, cascades, `autoPatch`, rules and the submitted record all
+name fields by that model.
+
 ---
 
 ## 📝 Changelog
