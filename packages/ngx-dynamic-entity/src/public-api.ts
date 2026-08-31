@@ -39,6 +39,7 @@ export * from './lib/field-types/field-component.contract';
 // the seam exists to avoid.
 export * from './lib/field-types/text-field.component';
 export * from './lib/field-types/textarea-field.component';
+export * from './lib/field-types/markdown-field.component';
 export * from './lib/field-types/number-field.component';
 export * from './lib/field-types/currency-field.component';
 export * from './lib/field-types/email-field.component';

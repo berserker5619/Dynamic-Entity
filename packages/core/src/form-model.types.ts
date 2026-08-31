@@ -47,6 +47,7 @@ export type RawDropdownOption =
 export type RichFieldType =
   | 'text'
   | 'textarea'
+  | 'markdown'
   | 'number'
   | 'currency'
   | 'email'

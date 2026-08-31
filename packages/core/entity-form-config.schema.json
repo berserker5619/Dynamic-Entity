@@ -54,6 +54,7 @@
       "enum": [
         "text",
         "textarea",
+        "markdown",
         "number",
         "currency",
         "email",

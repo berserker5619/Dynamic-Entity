@@ -577,3 +577,50 @@ textarea.ngx-field__input {
     grid-column: 1 / -1 !important;
   }
 }
+
+/* ─── Markdown field ────────────────────────────────────────────────────────
+   With no MARKDOWN_RENDERER the field shows its own source, so the line breaks
+   the author typed are the only structure it has: pre-wrap is what preserves
+   them. Without this rule the read-only view collapses a document to one line. */
+.ngx-field__markdown--source {
+  white-space: pre-wrap;
+}
+
+/* Rendered output is consumer HTML. Keep it inside the field's column rather
+   than letting a wide table or long code line stretch the grid. */
+.ngx-field__markdown {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.ngx-field__markdown > :first-child { margin-top: 0; }
+.ngx-field__markdown > :last-child { margin-bottom: 0; }
+
+.ngx-field__markdown-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.ngx-field__markdown-tab {
+  font: inherit;
+  padding: 2px 10px;
+  cursor: pointer;
+  border: 1px solid var(--ngx-border, #d1d5db);
+  border-radius: 4px;
+  background: var(--ngx-surface, #fff);
+}
+
+.ngx-field__markdown-tab[aria-pressed='true'] {
+  background: var(--ngx-accent-soft, #eef2ff);
+  border-color: var(--ngx-accent, #6366f1);
+}
+
+/* The preview replaces the textarea, so give it a comparable height — otherwise
+   switching tabs makes the whole form jump. */
+.ngx-field__markdown--preview {
+  min-height: 8.5rem;
+  padding: 8px 10px;
+  border: 1px solid var(--ngx-border, #d1d5db);
+  border-radius: 4px;
+}

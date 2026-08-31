@@ -1,0 +1,136 @@
+import { ChangeDetectionStrategy, Component, Input, inject, signal } from '@angular/core';
+import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
+import type { NestedFieldConfig } from '@dynamic-entity/core';
+import { resolveLabel } from '@dynamic-entity/core';
+import { MARKDOWN_RENDERER } from '../tokens/injection-tokens';
+
+/**
+ * Markdown field: a long-form input that stores **markdown source**, never HTML.
+ *
+ * Storing the source rather than rendered HTML is the whole design. The record stays plain
+ * text — diffable, portable, safe to log, and impossible to turn into stored XSS by writing
+ * it into a database. Rendering happens at display time and only when a consumer asks for
+ * it, via `MARKDOWN_RENDERER`.
+ *
+ * Without a renderer this degrades to exactly what `textarea` does, plus preserved line
+ * breaks: the source is shown as text with nothing interpreted. That is the default because
+ * these packages declare no runtime dependencies beyond `tslib`, and a markdown parser is a
+ * large thing to force on a consumer who wanted a form library.
+ *
+ * With a renderer, its HTML is bound through `[innerHTML]`, which Angular sanitizes — see
+ * the token's own note on why that is a backstop rather than a licence.
+ */
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'ngx-markdown-field',
+  standalone: true,
+  imports: [ReactiveFormsModule],
+  template: `
+    <div
+      class="ngx-field ngx-field--markdown"
+      [attr.data-testid]="'field-' + field.id"
+      [attr.data-field-type]="field.type"
+      [class.ngx-field--readonly]="readonly"
+      [class.ngx-field--masked]="masked"
+    >
+      <label class="ngx-field__label" [attr.for]="field.id">{{ label }}</label>
+
+      @if (masked) {
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
+      } @else if (readonly) {
+        @if (rendered(); as html) {
+          <div class="ngx-field__value ngx-field__markdown" [attr.data-testid]="'field-' + field.id + '-value'" [innerHTML]="html"></div>
+        } @else {
+          <!-- No renderer: the source is the display. The stylesheet keeps its line
+               breaks with white-space: pre-wrap, and interpolation escapes it. -->
+          <span class="ngx-field__value ngx-field__markdown--source" [attr.data-testid]="'field-' + field.id + '-value'">{{ control.value }}</span>
+        }
+      } @else {
+        <div class="ngx-field__markdown-editor">
+          @if (canPreview) {
+            <div class="ngx-field__markdown-tabs" role="group" [attr.aria-label]="label + ' editor mode'">
+              <button
+                type="button"
+                class="ngx-field__markdown-tab"
+                [attr.data-testid]="'field-' + field.id + '-write'"
+                [attr.aria-pressed]="!previewing()"
+                (click)="previewing.set(false)"
+              >
+                Write
+              </button>
+              <button
+                type="button"
+                class="ngx-field__markdown-tab"
+                [attr.data-testid]="'field-' + field.id + '-preview'"
+                [attr.aria-pressed]="previewing()"
+                (click)="previewing.set(true)"
+              >
+                Preview
+              </button>
+            </div>
+          }
+
+          @if (previewing()) {
+            <div class="ngx-field__markdown ngx-field__markdown--preview" [attr.data-testid]="'field-' + field.id + '-preview-body'" [innerHTML]="rendered()"></div>
+          } @else {
+            <textarea
+              [id]="field.id"
+              class="ngx-field__input ngx-field__input--markdown"
+              [attr.data-testid]="'field-' + field.id + '-input'"
+              [formControl]="$any(control)"
+              [placeholder]="placeholder"
+              [attr.disabled]="field.disabled ? true : null"
+              rows="6"
+            ></textarea>
+          }
+        </div>
+
+        @if (control.invalid && control.touched) {
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">This field has an error</span>
+        }
+      }
+    </div>
+  `,
+})
+export class MarkdownFieldComponent {
+  @Input() field!: NestedFieldConfig;
+  @Input() control!: AbstractControl;
+  @Input() language: string = 'en';
+  @Input() readonly: boolean = false;
+  @Input() masked: boolean = false;
+
+  /** Optional — the field is fully usable without one. */
+  private readonly render = inject(MARKDOWN_RENDERER, { optional: true });
+
+  protected readonly previewing = signal(false);
+
+  /** A Preview tab that can only ever show the source back is worse than no tab. */
+  protected get canPreview(): boolean {
+    return !!this.render;
+  }
+
+  get label(): string {
+    return resolveLabel(this.field?.label, this.language);
+  }
+
+  get placeholder(): string {
+    return resolveLabel(this.field?.placeholder, this.language);
+  }
+
+  /**
+   * Rendered HTML, or null when there is no renderer or nothing to render.
+   *
+   * A renderer is consumer code and may throw on input it does not like. Letting that
+   * escape would take down the whole form over one malformed field, so it falls back to the
+   * source text — which is what the field would have shown with no renderer at all.
+   */
+  protected rendered(): string | null {
+    const source = this.control?.value;
+    if (!this.render || typeof source !== 'string' || source === '') return null;
+    try {
+      return this.render(source);
+    } catch {
+      return null;
+    }
+  }
+}

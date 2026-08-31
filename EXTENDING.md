@@ -11,6 +11,7 @@ Contents: [how a field is addressed](#how-a-field-is-addressed) ·
 [custom field types](#a-custom-field-type) · [validators](#custom-validators) ·
 [validation messages](#validation-messages-and-i18n) · [file uploads](#file-uploads) ·
 [entity references](#entity-references-and-cascades) · [lookup lists](#named-lookup-lists) ·
+[markdown](#markdown) ·
 [reading and driving the form](#reading-and-driving-the-form) ·
 [schema migration](#schema-migration) · [styling](#styling) · [testing](#testing)
 
@@ -336,6 +337,50 @@ const cityField: NestedFieldConfig = {
 ```
 
 A cascading child holds until its parent has a value rather than loading the unfiltered list.
+
+---
+
+## Markdown
+
+The `markdown` field stores **markdown source**, never HTML. The record stays plain text —
+diffable, portable, safe to log, and impossible to turn into stored XSS by writing it to a
+database.
+
+It works with no configuration: the editor is a textarea, and a read-only view shows the
+source with its line breaks preserved and nothing interpreted. That is deliberate. These
+packages declare no runtime dependencies beyond `tslib`, and a markdown parser is a large
+thing to force on someone who wanted a form library.
+
+To render it, provide one. Any function from source to HTML will do:
+
+```typescript
+import { ApplicationConfig } from '@angular/core';
+import { MARKDOWN_RENDERER, provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideNgxDynamicEntity({}),
+    {
+      provide: MARKDOWN_RENDERER,
+      useValue: (source: string) => renderMarkdown(source),
+    },
+  ],
+};
+
+declare function renderMarkdown(source: string): string;
+```
+
+With a renderer the editor also gains Write and Preview tabs; without one there is no
+Preview tab, because it could only ever show the source back.
+
+**On safety.** The returned HTML is bound through `[innerHTML]`, so Angular's sanitizer
+strips scripts and event handlers before anything reaches the DOM. Treat that as a backstop,
+not a licence: configure your renderer to escape raw HTML in its input as well. Sanitizing
+removes the dangerous parts *silently*, so an author who pastes a `<script>` is not told
+their content was altered — they simply lose it.
+
+A renderer is your code, and it may throw on input it dislikes. If it does, the field falls
+back to showing the source rather than letting the exception take down the whole form.
 
 ---
 

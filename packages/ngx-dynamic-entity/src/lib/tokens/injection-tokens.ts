@@ -171,3 +171,25 @@ export type ConfigSourceHandler = (
 export const CONFIG_SOURCE = new InjectionToken<ConfigSourceHandler>('CONFIG_SOURCE');
 
 
+
+/**
+ * Turns the markdown a `markdown` field stores into HTML for display.
+ *
+ * Optional, and deliberately not bundled: these packages declare no runtime dependencies
+ * beyond `tslib`, and a markdown parser is a large one to force on every consumer. Without
+ * a renderer the field still works — it stores and shows the source text, with line breaks
+ * preserved and nothing interpreted.
+ *
+ * The returned HTML is bound through `[innerHTML]`, so Angular's sanitizer strips scripts
+ * and event handlers before it reaches the DOM. That is a backstop, not a licence: a
+ * renderer should still be configured to escape raw HTML in its input, because sanitizing
+ * removes the dangerous parts silently rather than telling the author their content was
+ * altered.
+ *
+ * @example
+ * import { marked } from 'marked';
+ * { provide: MARKDOWN_RENDERER, useValue: (src: string) => marked.parse(src) as string }
+ */
+export const MARKDOWN_RENDERER = new InjectionToken<(source: string) => string>(
+  'MARKDOWN_RENDERER',
+);

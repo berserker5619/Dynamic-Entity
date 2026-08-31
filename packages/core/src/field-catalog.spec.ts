@@ -14,7 +14,7 @@ import {
  */
 describe('FIELD_TYPE_CATALOG', () => {
   const ALL_TYPES: RichFieldType[] = [
-    'text', 'textarea', 'number', 'currency', 'email', 'password', 'date', 'datetime',
+    'text', 'textarea', 'markdown', 'number', 'currency', 'email', 'password', 'date', 'datetime',
     'time', 'monthYear', 'dropdown', 'radio', 'checkbox', 'boolean', 'multiSelect', 'entity-ref',
     'group', 'array', 'image', 'file',
   ];

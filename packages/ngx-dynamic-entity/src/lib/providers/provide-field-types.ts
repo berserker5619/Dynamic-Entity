@@ -3,6 +3,7 @@ import { FIELD_TYPE_SETS } from '../tokens/injection-tokens';
 
 import { TextFieldComponent } from '../field-types/text-field.component';
 import { TextareaFieldComponent } from '../field-types/textarea-field.component';
+import { MarkdownFieldComponent } from '../field-types/markdown-field.component';
 import { NumberFieldComponent } from '../field-types/number-field.component';
 import { CurrencyFieldComponent } from '../field-types/currency-field.component';
 import { EmailFieldComponent } from '../field-types/email-field.component';
@@ -45,6 +46,7 @@ export function builtInFieldTypes(): Record<string, Type<any>> {
   return {
     text: TextFieldComponent,
     textarea: TextareaFieldComponent,
+    markdown: MarkdownFieldComponent,
     number: NumberFieldComponent,
     currency: CurrencyFieldComponent,
     email: EmailFieldComponent,

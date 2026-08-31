@@ -15,6 +15,7 @@ class OverrideTextComponent {}
 const ALL_BUILTIN_FIELD_TYPES = [
   'text',
   'textarea',
+  'markdown',
   'number',
   'currency',
   'email',

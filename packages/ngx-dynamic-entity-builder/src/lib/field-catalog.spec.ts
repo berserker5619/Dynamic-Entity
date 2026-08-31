@@ -11,6 +11,7 @@ describe('field-catalog', () => {
     expect(types).toEqual([
       'text',
       'textarea',
+      'markdown',
       'number',
       'currency',
       'email',
