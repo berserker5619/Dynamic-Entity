@@ -37,6 +37,64 @@ describe('EntityBuilderComponent', () => {
       b => b.querySelector('mat-icon')?.textContent?.trim() === icon,
     ) as HTMLButtonElement;
 
+  describe('undo / redo keyboard shortcuts', () => {
+    function press(key: string, init: Partial<KeyboardEventInit> & { target?: Element } = {}): void {
+      const { target, ...rest } = init;
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...rest });
+      if (target) target.dispatchEvent(event);
+      else document.dispatchEvent(event);
+    }
+
+    it('undoes on Ctrl+Z and redoes on Ctrl+Shift+Z', () => {
+      const undo = jest.spyOn(store, 'undo');
+      const redo = jest.spyOn(store, 'redo');
+
+      press('z', { ctrlKey: true });
+      expect(undo).toHaveBeenCalledTimes(1);
+      expect(redo).not.toHaveBeenCalled();
+
+      press('z', { ctrlKey: true, shiftKey: true });
+      expect(redo).toHaveBeenCalledTimes(1);
+    });
+
+    it('accepts the Meta key, so the shortcut works on a Mac', () => {
+      const undo = jest.spyOn(store, 'undo');
+      press('z', { metaKey: true });
+      expect(undo).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores Z without a modifier, and other keys with one', () => {
+      const undo = jest.spyOn(store, 'undo');
+      press('z');
+      press('y', { ctrlKey: true });
+      expect(undo).not.toHaveBeenCalled();
+    });
+
+    it('leaves the shortcut to a focused input or textarea', () => {
+      const undo = jest.spyOn(store, 'undo');
+      // An input has its own undo stack. Taking Ctrl+Z from it would discard a structural
+      // edit when the author only wanted the last character back.
+      for (const tag of ['input', 'textarea']) {
+        const el = document.createElement(tag);
+        document.body.appendChild(el);
+        press('z', { ctrlKey: true, target: el });
+        el.remove();
+      }
+      expect(undo).not.toHaveBeenCalled();
+    });
+
+    it('leaves the shortcut to a contenteditable element', () => {
+      const undo = jest.spyOn(store, 'undo');
+      const el = document.createElement('div');
+      // jsdom does not derive isContentEditable from the attribute.
+      Object.defineProperty(el, 'isContentEditable', { value: true });
+      document.body.appendChild(el);
+      press('z', { ctrlKey: true, target: el });
+      el.remove();
+      expect(undo).not.toHaveBeenCalled();
+    });
+  });
+
   it('creates and starts with no field rows', () => {
     expect(component).toBeTruthy();
     expect(fieldRows().length).toBe(0);

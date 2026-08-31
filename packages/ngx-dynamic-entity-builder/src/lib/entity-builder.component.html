@@ -16,6 +16,29 @@
     </button>
   }
 
+  <button
+    mat-icon-button
+    type="button"
+    data-testid="builder-undo"
+    [disabled]="!store.canUndo()"
+    (click)="store.undo()"
+    matTooltip="Undo (Ctrl+Z)"
+    aria-label="Undo"
+  >
+    <mat-icon>undo</mat-icon>
+  </button>
+  <button
+    mat-icon-button
+    type="button"
+    data-testid="builder-redo"
+    [disabled]="!store.canRedo()"
+    (click)="store.redo()"
+    matTooltip="Redo (Ctrl+Shift+Z)"
+    aria-label="Redo"
+  >
+    <mat-icon>redo</mat-icon>
+  </button>
+
   <button mat-button type="button" (click)="copyJson()">
     <mat-icon>content_copy</mat-icon> Copy JSON
   </button>

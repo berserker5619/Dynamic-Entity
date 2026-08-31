@@ -31,6 +31,23 @@ test.describe('Accessibility', () => {
     return new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
   };
 
+  /**
+   * A violation, described well enough to act on from a CI log alone.
+   *
+   * `id: help` says what rule broke but not what broke it, so a failure that does not
+   * reproduce locally leaves nothing to work from — which is exactly what happened once
+   * here. Naming the offending nodes turns "colour-contrast somewhere in the builder" into
+   * a selector.
+   */
+  const describeViolations = (results: { violations: any[] }): string[] =>
+    results.violations.map(v => {
+      const where = (v.nodes ?? [])
+        .slice(0, 3)
+        .map((n: any) => (n.target ?? []).join(' '))
+        .join(' | ');
+      return `${v.id}: ${v.help}${where ? ` — at ${where}` : ''}`;
+    });
+
   test('the record form has no detectable violations', async ({ page }) => {
     await gotoDemo(page);
     await safeSelect(page.locator('#entitySelect'), 'clients');
@@ -38,7 +55,7 @@ test.describe('Accessibility', () => {
     await expect(page.locator('[data-testid="form-panel"]')).toBeVisible();
 
     const results = await scan(page);
-    expect(results.violations.map(v => `${v.id}: ${v.help}`)).toEqual([]);
+    expect(describeViolations(results)).toEqual([]);
   });
 
   test('the builder has no detectable violations', async ({ page }) => {
@@ -47,7 +64,7 @@ test.describe('Accessibility', () => {
     await expect(page.locator('ngx-entity-builder')).toBeVisible();
 
     const results = await scan(page);
-    expect(results.violations.map(v => `${v.id}: ${v.help}`)).toEqual([]);
+    expect(describeViolations(results)).toEqual([]);
   });
 
   /**

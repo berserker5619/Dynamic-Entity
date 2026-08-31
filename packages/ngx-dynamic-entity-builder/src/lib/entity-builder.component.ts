@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, effect, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -91,6 +91,25 @@ export class EntityBuilderComponent implements OnChanges {
 
   constructor() {
     effect(() => this.configChange.emit(this.store.config()), { allowSignalWrites: true });
+  }
+
+  /**
+   * Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z, but only when the user is not typing.
+   *
+   * A textarea or input has its own undo stack, and hijacking it would make Ctrl+Z revert a
+   * whole structural edit when the author only wanted to take back a character.
+   */
+  @HostListener('document:keydown', ['$event'])
+  protected onKeydown(event: KeyboardEvent): void {
+    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'z') return;
+
+    const target = event.target as HTMLElement | null;
+    const tag = target?.tagName?.toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) return;
+
+    event.preventDefault();
+    if (event.shiftKey) this.store.redo();
+    else this.store.undo();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
