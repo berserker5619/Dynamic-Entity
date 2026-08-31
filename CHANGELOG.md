@@ -7,6 +7,62 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.7.0] — 2026-08-31
+
+Work since 1.6.0: a second long-form field type, and a builder that will open the
+per-scope configs the rest of the stack has accepted since 1.4.0.
+
+### Added
+
+- **A `markdown` field.** `textarea` was the only long-form input. The important
+  decision is what it stores: **markdown source, never HTML**, so the record stays
+  plain text — diffable, portable, safe to log, and impossible to turn into stored
+  XSS by writing it to a database.
+
+  It works with nothing configured — the editor is a textarea, and a read-only
+  view shows the source with its line breaks preserved and nothing interpreted.
+  That default exists because these packages declare no runtime dependencies
+  beyond `tslib`, and a markdown parser is a large thing to force on someone who
+  wanted a form library. To render, provide `MARKDOWN_RENDERER`, in the same shape
+  as `UPLOAD_HANDLER` and the lookup registries; a Preview tab appears only when
+  one exists, since without it Preview could only echo the source back.
+
+  Rendered HTML is bound through `[innerHTML]`, so Angular's sanitizer strips
+  scripts, inline handlers and `javascript:` URLs — a backstop, not a licence, and
+  one the specs assert rather than assume. A renderer that throws falls back to the
+  source instead of taking the form down.
+
+  Field types go from 20 to 21. `FIELD_TYPE_CATALOG`, the JSON Schema enum and both
+  documented lists move together.
+
+### Fixed
+
+- **The builder can open a config with the same id in two scopes.** `people` ships
+  `personal.address` and `work.address`; loading it raised "Duplicate field id" and,
+  because an error disables Save, made the whole config a dead end where unrelated
+  edits could not be saved either. Id uniqueness is now counted per scope, using
+  core's `collectFieldScopes` rather than a second copy of the rule. Two ids in one
+  scope remain an error — there they share a control and a record key.
+
+  Relaxing only the check would have turned a safe failure into a corrupting one:
+  every matcher in the store compared bare ids, so `mutateField` rewrote *both*
+  `address` fields on a rename, `removeField` deleted both, and `moveField` moved
+  whichever came first. Each now resolves the target once and matches on identity.
+
+- **A `markdown` field re-renders when its value changes from outside.** Under
+  OnPush the rendered output read `control.value`, which is neither an input nor a
+  template event, so `patchValue`, a rule or an `autoPatch` mapping left the
+  previous document on screen.
+
+### Documentation
+
+- **[How a field is addressed](EXTENDING.md#how-a-field-is-addressed).**
+  `refererField` is the substance of 1.4.0 through 1.6.0 and had appeared in no
+  documentation file at all. It now leads `EXTENDING.md`: what opens a scope, why
+  `[work.address]` is the form to write, and the two errors the model prevents.
+
+---
+
 ## [1.6.0] — 2026-08-31
 
 Work since 1.5.0. The headline is that `permissions.edit` now means what it says:
