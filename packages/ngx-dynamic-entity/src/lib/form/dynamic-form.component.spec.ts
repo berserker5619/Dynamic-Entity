@@ -192,6 +192,64 @@ describe('DynamicFormComponent', () => {
     });
   });
 
+  describe('the active tab across a record swap', () => {
+    const twoTabs = (): EntityFormConfig => ({
+      entity: 'people',
+      tabs: [
+        { id: 'personal', label: { en: 'Personal' }, fields: [{ id: 'fullName', type: 'text' }] },
+        { id: 'work', label: { en: 'Work' }, fields: [{ id: 'deskNumber', type: 'text' }] },
+      ],
+    });
+
+    function swapInitialData(from: unknown, to: unknown): void {
+      component.initialData = to as Record<string, unknown>;
+      component.ngOnChanges({ initialData: new SimpleChange(from, to, false) });
+    }
+
+    it('returns to the first tab when a different record is loaded', () => {
+      build(twoTabs());
+      component.setActiveTab('work');
+      expect(component.activeTab()).toBe('work');
+
+      // A mounted form swapped to another record kept the previous record's tab, so the new
+      // record opened on a tab the reader never chose.
+      swapInitialData({ personal: { fullName: 'Ada' } }, { personal: { fullName: 'Grace' } });
+      expect(component.activeTab()).toBe('personal');
+    });
+
+    it('stays put when the same empty record is re-bound', () => {
+      build(twoTabs());
+      component.setActiveTab('work');
+
+      // `[initialData]="record() || {}"` hands over a fresh literal on every evaluation.
+      // Treating that as a record swap would drag someone off the tab they were filling in.
+      swapInitialData({}, {});
+      expect(component.activeTab()).toBe('work');
+    });
+
+    it('stays put when the binding is re-evaluated with null', () => {
+      build(twoTabs());
+      component.setActiveTab('work');
+      swapInitialData(undefined, null);
+      expect(component.activeTab()).toBe('work');
+    });
+
+    it('does not steal focus when the host swaps the record', () => {
+      build(twoTabs());
+      component.setActiveTab('work');
+      const focusSpy = jest.spyOn(
+        component as unknown as { focusActivePanel: () => void },
+        'focusActivePanel',
+      );
+
+      swapInitialData({ personal: { fullName: 'Ada' } }, { personal: { fullName: 'Grace' } });
+
+      // Focus follows a user choosing a tab, not a host replacing the record beneath them.
+      expect(component.activeTab()).toBe('personal');
+      expect(focusSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('tabs and visibility', () => {
     it('filters fields to the active tab', () => {
       component.setActiveTab('tab1');

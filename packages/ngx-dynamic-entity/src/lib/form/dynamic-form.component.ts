@@ -8,6 +8,7 @@ import {
   OnChanges,
   OnDestroy,
   OnInit,
+  SimpleChange,
   SimpleChanges,
   signal,
   computed,
@@ -396,10 +397,37 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     }
     if (changes['config'] || changes['initialData']) {
       this.buildForm();
-      if (this.visibleTabs.length > 0 && !this.activeTab()) {
-        this.setActiveTab(this.visibleTabs[0].id);
+      if (this.visibleTabs.length === 0) return;
+
+      // The first tab used to be chosen only when no tab was active yet, and nothing ever
+      // cleared `activeTab` — so a form that stays mounted while `initialData` is swapped
+      // opened the next record on the tab the previous one was left on. The demo escaped it
+      // by destroying the form between records; a host that keeps it mounted did not.
+      //
+      // Resetting here is consistent with what already happens: `buildForm` assigns a brand
+      // new FormGroup, so a changed `initialData` has already discarded every control and
+      // all validation state. The tab was the one thing pretending nothing had changed.
+      if (!this.activeTab() || this.isRecordSwap(changes['initialData'])) {
+        // No focus steal: the panel gains focus when a *user* picks a tab, not when a host
+        // swaps the record underneath them.
+        this.setActiveTab(this.visibleTabs[0].id, { focusPanel: false });
       }
     }
+  }
+
+  /**
+   * Whether an `initialData` change represents loading a different record.
+   *
+   * Not every change does. A template binding like `[initialData]="record() || {}"` yields a
+   * fresh object literal on each evaluation, so `ngOnChanges` fires with two empty objects
+   * and nothing has actually been loaded — resetting there would drag someone back to the
+   * first tab while they were filling in a new record on the third.
+   */
+  private isRecordSwap(change: SimpleChange | undefined): boolean {
+    if (!change || change.isFirstChange()) return false;
+    const empty = (v: unknown): boolean =>
+      v === null || v === undefined || (typeof v === 'object' && Object.keys(v as object).length === 0);
+    return !(empty(change.previousValue) && empty(change.currentValue));
   }
 
   ngOnDestroy(): void {
