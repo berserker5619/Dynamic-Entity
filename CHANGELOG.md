@@ -7,6 +7,49 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.6.0] — 2026-08-31
+
+Work since 1.5.0. The headline is that `permissions.edit` now means what it says:
+it decides whether the fields are editable, not merely whether a Save button is
+drawn.
+
+### Fixed
+
+- **`permissions.edit` is honoured by the fields, not just the actions block.**
+  A role outside the edit list received a fully editable form — it could type
+  into every field and only discovered the record was not its to change when no
+  Save button appeared, which is after the typing rather than before.
+  `DynamicFormComponent.isFieldReadonly` consulted the `readonly` input, the
+  field's own flag, `readOnlyFields` and the critical-field lock, but never the
+  permission. Unlocking a `criticalField` had the same hole, so a viewer could
+  open the one control that exists to make an edit deliberate.
+- **`DynamicRecordFormComponent` computes permissions at all.** It declared a
+  `userRoles` input and read it from nowhere: no `RbacService`, no permissions,
+  so the record view was editable for every role. It now resolves them on the
+  same terms as the plain form, cached against `config` and `userRoles` and
+  invalidated when either changes.
+
+A config that declares no `permissions` is unaffected —
+`hasPermission(roles, undefined)` is true, so the unrestricted case stays
+editable. That is the common case, and a unit test pins it alongside the denied
+case, the granted case, and re-evaluation after a role switch.
+
+**Upgrading:** if you relied on RBAC-denied fields staying editable, they are
+read-only now. Pass `readonly="false"` semantics through your own inputs, or
+widen `permissions.edit`, whichever matches what you meant.
+
+### Demo
+
+The demo is published at
+<https://berserker5619.github.io/Dynamic-Entity/> and now seeds records for
+every entity rather than three of eight — `insuranceClaims`, the richest config
+here, previously opened to an empty list. It also exposes all three record
+presentations the renderer supports: the editable form, the record view with its
+per-tab "Edit section" flow, and a data-only view (`isReadOnly`) that had no
+route to it, since a role that could edit always saw the Edit section button.
+
+---
+
 ## [1.5.0] — 2026-08-30
 
 Work since 1.4.0: nothing in the builder names a field by typing any more, the
