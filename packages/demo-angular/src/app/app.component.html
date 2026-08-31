@@ -87,16 +87,25 @@
     } @else {
     <div class="form-wrapper">
       <h2>{{ selectedRecord() ? (selectedEntity() === 'clients' ? 'Edit Client' : 'Edit Record (' + selectedEntity() + ')') : (selectedEntity() === 'clients' ? 'New Client' : 'New Record (' + selectedEntity() + ')') }}</h2>
-      <button class="nav-link" data-testid="toggle-record-view" (click)="recordView.set(!recordView())">
-        {{ recordView() ? 'Plain form' : 'Record view' }}
-      </button>
-      @if (recordView()) {
-        <ngx-dynamic-record-form [config]="config()!" [initialData]="selectedRecord() || {}"
-          [userRoles]="userRoles()" [loading]="loading()"
-          (formSubmit)="onFormSubmit($event)" (formReset)="onCancel()"></ngx-dynamic-record-form>
-      } @else {
+      <div class="mode-switch" role="group" aria-label="Record presentation">
+        <button class="nav-link" data-testid="mode-form" [class.nav-link--active]="formMode() === 'form'"
+          [attr.aria-pressed]="formMode() === 'form'" (click)="formMode.set('form')">Form</button>
+        <!-- Kept as `toggle-record-view`: this is the control that opens the record view, and
+             the summary/quick-jump specs address it by that name. -->
+        <button class="nav-link" data-testid="toggle-record-view" [class.nav-link--active]="formMode() === 'record'"
+          [attr.aria-pressed]="formMode() === 'record'" (click)="formMode.set('record')">Record view</button>
+        <button class="nav-link" data-testid="mode-data" [class.nav-link--active]="formMode() === 'data'"
+          [attr.aria-pressed]="formMode() === 'data'" (click)="formMode.set('data')">Data only</button>
+      </div>
+      @if (formMode() === 'form') {
         <ngx-dynamic-form [config]="config()!" [initialData]="selectedRecord() || {}" [userRoles]="userRoles()"
           [loading]="loading()" (formSubmit)="onFormSubmit($event)" (formReset)="onCancel()"></ngx-dynamic-form>
+      } @else {
+        <!-- `isReadOnly` is what makes 'data' different from 'record': it drops the per-tab
+             Edit section, so the record is values and nothing else for every role. -->
+        <ngx-dynamic-record-form [config]="config()!" [initialData]="selectedRecord() || {}"
+          [userRoles]="userRoles()" [loading]="loading()" [isReadOnly]="formMode() === 'data'"
+          (formSubmit)="onFormSubmit($event)" (formReset)="onCancel()"></ngx-dynamic-record-form>
       }
     </div>
     }

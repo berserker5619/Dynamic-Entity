@@ -35,7 +35,19 @@ export class AppComponent implements OnInit {
    * `ngx-dynamic-record-form` is the only component with the summary panel and its quick-jump
    * links, so without a way to reach it here nothing in the demo exercised `jumpToField`.
    */
-  readonly recordView = signal(false);
+  /**
+   * How the open record is presented. Three modes, because the renderer supports three and
+   * the demo previously reached only two:
+   *
+   *   'form'   — the editable form.
+   *   'record' — read-only, with a per-tab "Edit section" flow (the record component's
+   *              `viewMode` default).
+   *   'data'   — read-only with no edit affordance at all, via `isReadOnly`. This one had
+   *              no way to be reached: an editing role always saw the Edit section button,
+   *              so the data-only presentation was only ever visible by switching to a role
+   *              that could not edit anyway.
+   */
+  readonly formMode = signal<'form' | 'record' | 'data'>('form');
   readonly selectedConfig = signal<Partial<EntityFormConfig> | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);

@@ -1,0 +1,7 @@
+
+/* Three-way record presentation switch: Form / Record view / Data only. */
+.mode-switch {
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
