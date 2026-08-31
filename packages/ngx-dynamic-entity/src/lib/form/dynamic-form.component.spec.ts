@@ -242,6 +242,68 @@ describe('DynamicFormComponent', () => {
     });
   });
 
+  describe('edit permission', () => {
+    /**
+     * `permissions.edit` used to gate the Save button alone, so a role without edit rights
+     * got a fully editable form and only found out the record was not theirs to change when
+     * no Save appeared — after typing into it.
+     */
+    function buildAsViewer(): void {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [DynamicFormComponent, ReactiveFormsModule],
+        providers: [
+          {
+            provide: ValidatorRegistryService,
+            useValue: {
+              resolveAll: jest.fn().mockReturnValue([]),
+              resolveFromConfig: jest.fn().mockReturnValue([]),
+              resolveAsyncFromConfig: jest.fn().mockReturnValue([]),
+            },
+          },
+          { provide: HookRegistryService, useValue: mockHookRegistry },
+          {
+            provide: RbacService,
+            useValue: {
+              getPermissions: jest
+                .fn()
+                .mockReturnValue({ canView: true, canEdit: false, canDelete: false }),
+            },
+          },
+        ],
+      });
+      build();
+    }
+
+    it('renders every field read-only when the roles may not edit', () => {
+      buildAsViewer();
+      const fields = (mockConfig.tabs ?? []).flatMap(t => t.fields ?? []);
+      expect(fields.length).toBeGreaterThan(0);
+      for (const field of fields) {
+        expect(component.isFieldReadonly(field)).toBe(true);
+      }
+    });
+
+    it('leaves fields editable when the roles may edit', () => {
+      const fields = (mockConfig.tabs ?? []).flatMap(t => t.fields ?? []);
+      const plain = fields.filter(f => !f.readonly && !f.criticalField);
+      expect(plain.length).toBeGreaterThan(0);
+      for (const field of plain) {
+        expect(component.isFieldReadonly(field)).toBe(false);
+      }
+    });
+
+    it('refuses to unlock a critical field without edit rights', () => {
+      buildAsViewer();
+      const critical = (mockConfig.tabs ?? [])
+        .flatMap(t => t.fields ?? [])
+        .find(f => f.criticalField);
+      if (!critical) return;
+      component.toggleFieldLock(critical);
+      expect(component.isFieldReadonly(critical)).toBe(true);
+    });
+  });
+
   describe('criticalField locking', () => {
     beforeEach(() => {
       build({

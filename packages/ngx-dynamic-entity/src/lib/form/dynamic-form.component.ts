@@ -454,6 +454,11 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   isFieldReadonly(field: NestedFieldConfig): boolean {
     return (
       this.readonly ||
+      // `permissions.edit` gated the Save button and nothing else, so a role without edit
+      // rights received a fully editable form: it could type into every field, and only
+      // discovered the record was not theirs to change when no Save button appeared. The
+      // permission means the record may not be edited, so the fields say so.
+      !this.permissions.canEdit ||
       !!field.readonly ||
       this.readOnlyFields.includes(field.id) ||
       this.isFieldLocked(field)
@@ -461,7 +466,9 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   toggleFieldLock(field: NestedFieldConfig): void {
-    if (!field.criticalField || this.readonly) return;
+    // Unlocking is an edit. Without the permission check a viewer could open the lock on a
+    // critical field, which is the one control that exists to make editing deliberate.
+    if (!field.criticalField || this.readonly || !this.permissions.canEdit) return;
     const next = new Set(this.unlockedFields());
     if (next.has(field.id)) next.delete(field.id);
     else next.add(field.id);

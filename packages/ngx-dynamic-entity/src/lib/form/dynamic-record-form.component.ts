@@ -6,6 +6,7 @@ import { findTab, formatDisplayValue, getTabData, resolveLabel } from '@dynamic-
 import { DynamicFormComponent } from './dynamic-form.component';
 import { DynamicFieldComponent } from './dynamic-field/dynamic-field.component';
 import { RulesEvaluationService } from '../services/rules-evaluation.service';
+import { RbacService } from '../services/rbac.service';
 
 /**
  * Distinguishes "no tab holds this field" from "the field holds undefined", so the tab walk
@@ -245,6 +246,7 @@ export class DynamicRecordFormComponent implements OnChanges {
   @ViewChild(DynamicFormComponent) dynamicFormComp?: DynamicFormComponent;
 
   private readonly rulesEvaluation = inject(RulesEvaluationService);
+  private readonly rbacService = inject(RbacService);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly injector = inject(Injector);
 
@@ -279,9 +281,23 @@ export class DynamicRecordFormComponent implements OnChanges {
     this.dismissed.set(new Set(this.dismissed()).add(fieldId));
   }
 
+  /**
+   * Whether the current roles may edit this record.
+   *
+   * `userRoles` was declared as an input here and then read by nothing at all — this
+   * component computed no permissions of any kind, so the record view was fully editable
+   * for every role while the plain form at least hid its Save button. Cached on the same
+   * terms as the sibling component: it depends only on `config` and `userRoles`.
+   */
+  private permissionsCache: ReturnType<RbacService['getPermissions']> | null = null;
+
+  get permissions(): ReturnType<RbacService['getPermissions']> {
+    return (this.permissionsCache ??= this.rbacService.getPermissions(this.config, this.userRoles));
+  }
+
   /** True when nothing in the record may be edited. */
   get recordReadOnly(): boolean {
-    return this.readonly || this.isReadOnly;
+    return this.readonly || this.isReadOnly || !this.permissions.canEdit;
   }
 
   // ─── Inline array-row editing ───────────────────────────────────────────────
@@ -516,6 +532,11 @@ export class DynamicRecordFormComponent implements OnChanges {
    * after the first keystroke.
    */
   ngOnChanges(changes: SimpleChanges): void {
+    // Permissions depend on these two and nothing else; a stale cache would keep a record
+    // editable after a role switch.
+    if (changes['config'] || changes['userRoles']) {
+      this.permissionsCache = null;
+    }
     if (changes['initialData'] || changes['config']) {
       this.originalBaseline.set({ ...(this.initialData ?? {}) });
       this.currentData.set({ ...(this.initialData ?? {}) });

@@ -64,6 +64,12 @@ export class AppComponent implements OnInit {
     this.selectedEntity.set(entityKey);
     this.currentPage.set(1);
     this.searchTerm.set('');
+    // Switching entity while a record was open kept that record selected and swapped the
+    // config underneath it, leaving the form bound to a record the new schema knows nothing
+    // about — every field blank under a heading naming the new entity. A different entity
+    // means a different list.
+    this.selectedRecord.set(null);
+    if (this.view() === 'form') this.view.set('list');
     this.loadEntity(entityKey);
   }
 

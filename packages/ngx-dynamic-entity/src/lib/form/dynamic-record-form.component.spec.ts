@@ -63,6 +63,49 @@ describe('DynamicRecordFormComponent', () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
+  describe('edit permission', () => {
+    /**
+     * `userRoles` was an input this component declared and then read from nowhere: it
+     * computed no permissions at all, so the record view stayed fully editable for every
+     * role while the plain form at least hid its Save button.
+     */
+    function buildWithRoles(permissions: EntityFormConfig['permissions'], roles: string[]): void {
+      const scoped: EntityFormConfig = { ...config, permissions };
+      fixture = TestBed.createComponent(DynamicRecordFormComponent);
+      component = fixture.componentInstance;
+      component.config = scoped;
+      component.userRoles = roles;
+      component.ngOnChanges({ config: new SimpleChange(undefined, scoped, true) });
+      fixture.detectChanges();
+    }
+
+    it('is read-only when the roles are outside the edit list', () => {
+      buildWithRoles({ view: ['admin', 'viewer'], edit: ['admin'] }, ['viewer']);
+      expect(component.recordReadOnly).toBe(true);
+    });
+
+    it('is editable when the roles are inside the edit list', () => {
+      buildWithRoles({ view: ['admin', 'viewer'], edit: ['admin'] }, ['admin']);
+      expect(component.recordReadOnly).toBe(false);
+    });
+
+    it('stays editable when the config declares no permissions at all', () => {
+      // The overwhelmingly common case, and the one this change must not regress:
+      // hasPermission(roles, undefined) is true, so an unrestricted config is unaffected.
+      build();
+      expect(component.recordReadOnly).toBe(false);
+    });
+
+    it('re-evaluates when the roles change', () => {
+      buildWithRoles({ edit: ['admin'] }, ['admin']);
+      expect(component.recordReadOnly).toBe(false);
+
+      component.userRoles = ['viewer'];
+      component.ngOnChanges({ userRoles: new SimpleChange(['admin'], ['viewer'], false) });
+      expect(component.recordReadOnly).toBe(true);
+    });
+  });
+
   describe('header', () => {
     it('resolves the record title from the localized config name', () => {
       build();

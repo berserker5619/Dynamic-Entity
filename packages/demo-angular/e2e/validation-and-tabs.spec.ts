@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { fieldByLabel, gotoDemo, recordButton, safeClick } from './test-helpers';
+import { fieldByLabel, fieldPart, gotoDemo, recordButton, safeClick } from './test-helpers';
 
 const testDataPath = path.resolve(__dirname, '../../../test_data.json');
 const rawData = fs.readFileSync(testDataPath, 'utf8');
@@ -37,8 +37,12 @@ test.describe('Dynamic Entity E2E - Validation, Roles, and Config Manager', () =
     // actions block rather than disabling it — so Save and Reset are absent, not greyed out.
     await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Reset' })).toHaveCount(0);
-    // The record stays readable — this is a permission check, not a hidden form.
-    await expect(fieldByLabel(page, 'Name').locator('input')).toHaveValue('Acme Corp');
+    // The record stays readable — this is a permission check, not a hidden form. It is
+    // readable as text, not as a filled-in input: `permissions.edit` used to gate the Save
+    // button alone, so a viewer got editable fields and only discovered the record was not
+    // theirs to change after typing into it.
+    await expect(fieldPart(page, 'name', 'value')).toHaveText('Acme Corp');
+    await expect(fieldByLabel(page, 'Name').locator('input')).toHaveCount(0);
 
     // The same record, as a role that may edit: Save is live. Asserting both halves is what
     // stops this passing for the wrong reason — a Save button disabled by a validation bug

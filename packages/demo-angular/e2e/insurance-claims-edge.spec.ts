@@ -288,7 +288,9 @@ test.describe('insuranceClaims — hostile edge cases', () => {
     await safeClick(page.getByRole('button', { name: 'Viewer (Readonly)' }));
     await safeClick(page.getByRole('button', { name: /CLM-EDGE-4/i }).first());
     await expect(page.getByTestId('form-actions')).toHaveCount(0);
-    await expect(fieldPart(page, 'claimantEmail', 'input')).toHaveValue('edge@example.com');
+    // Readable, and read-only: without edit rights the fields render as values, not inputs.
+    await expect(fieldPart(page, 'claimantEmail', 'value')).toHaveText('edge@example.com');
+    await expect(fieldPart(page, 'claimantEmail', 'input')).toHaveCount(0);
 
     await safeClick(page.getByRole('button', { name: /Back to List/i }));
     await safeClick(page.getByRole('button', { name: 'IT Support (Masked Salary)' }));
