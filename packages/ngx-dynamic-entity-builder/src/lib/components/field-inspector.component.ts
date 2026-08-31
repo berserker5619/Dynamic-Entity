@@ -156,7 +156,7 @@ export class FieldInspectorComponent {
   }
 
   protected moveToTab(field: NestedFieldConfig, tabId: string): void {
-    if (tabId && tabId !== this.currentTabId(field)) this.store.moveFieldToTab(field.id, tabId);
+    if (tabId && tabId !== this.currentTabId(field)) this.store.moveFieldToTab(this.store.keyOf(field), tabId);
   }
 
   /**
@@ -200,7 +200,7 @@ export class FieldInspectorComponent {
     let n = 1;
     while (key in next) key = `field_${++n}`;
     next[key] = true;
-    this.store.setShowWhen(field.id, next);
+    this.store.setShowWhen(this.store.keyOf(field), next);
   }
 
   protected renameShowWhen(field: NestedFieldConfig, oldKey: string, newKey: string): void {
@@ -211,17 +211,17 @@ export class FieldInspectorComponent {
     const next: Record<string, unknown> = {};
     // Rebuild in order so the row does not jump while the user is typing.
     for (const [k, v] of Object.entries(current)) next[k === oldKey ? trimmed : k] = v;
-    this.store.setShowWhen(field.id, next);
+    this.store.setShowWhen(this.store.keyOf(field), next);
   }
 
   protected setShowWhenValue(field: NestedFieldConfig, key: string, raw: string): void {
-    this.store.setShowWhen(field.id, { ...(field.showWhen ?? {}), [key]: this.parseShowWhen(raw) });
+    this.store.setShowWhen(this.store.keyOf(field), { ...(field.showWhen ?? {}), [key]: this.parseShowWhen(raw) });
   }
 
   protected removeShowWhen(field: NestedFieldConfig, key: string): void {
     const next = { ...(field.showWhen ?? {}) };
     delete next[key];
-    this.store.setShowWhen(field.id, next);
+    this.store.setShowWhen(this.store.keyOf(field), next);
   }
 
   /**

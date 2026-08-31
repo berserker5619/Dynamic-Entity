@@ -24,13 +24,13 @@ import { getFieldTypeMeta } from '../field-catalog';
       cdkDrag
       class="deb-field-row"
       data-testid="builder-field-row"
-      [class.deb-field-row--active]="store.selectedFieldId() === field.id"
-      (click)="store.selectField(field.id)"
-      (keydown.enter)="store.selectField(field.id)"
-      (keydown.space)="store.selectField(field.id); $event.preventDefault()"
+      [class.deb-field-row--active]="store.isSelected(field)"
+      (click)="store.selectField(store.keyOf(field))"
+      (keydown.enter)="store.selectField(store.keyOf(field))"
+      (keydown.space)="store.selectField(store.keyOf(field)); $event.preventDefault()"
       role="button"
       tabindex="0"
-      [attr.aria-pressed]="store.selectedFieldId() === field.id"
+      [attr.aria-pressed]="store.isSelected(field)"
       [attr.aria-label]="'Select field ' + fieldLabel(field)"
     >
       <mat-icon class="deb-drag-handle" cdkDragHandle aria-hidden="true" title="Drag to reorder (or use the move buttons)">drag_indicator</mat-icon>
@@ -53,24 +53,24 @@ import { getFieldTypeMeta } from '../field-catalog';
       <button mat-icon-button type="button" [disabled]="index === 0"
         [attr.data-testid]="'row-up-' + field.id"
         [attr.aria-label]="'Move ' + fieldLabel(field) + ' up'"
-        (click)="store.moveField(field.id, -1); $event.stopPropagation()" matTooltip="Move up">
+        (click)="store.moveField(store.keyOf(field), -1); $event.stopPropagation()" matTooltip="Move up">
         <mat-icon>arrow_upward</mat-icon>
       </button>
       <button mat-icon-button type="button" [disabled]="index === totalCount - 1"
         [attr.data-testid]="'row-down-' + field.id"
         [attr.aria-label]="'Move ' + fieldLabel(field) + ' down'"
-        (click)="store.moveField(field.id, 1); $event.stopPropagation()" matTooltip="Move down">
+        (click)="store.moveField(store.keyOf(field), 1); $event.stopPropagation()" matTooltip="Move down">
         <mat-icon>arrow_downward</mat-icon>
       </button>
       <button mat-icon-button type="button"
         [attr.data-testid]="'row-duplicate-' + field.id"
         [attr.aria-label]="'Duplicate ' + fieldLabel(field)"
-        (click)="store.duplicateField(field.id); $event.stopPropagation()" matTooltip="Duplicate">
+        (click)="store.duplicateField(store.keyOf(field)); $event.stopPropagation()" matTooltip="Duplicate">
         <mat-icon>content_copy</mat-icon>
       </button>
       <button mat-icon-button type="button" color="warn"
         [attr.data-testid]="'row-delete-' + field.id"
-        (click)="store.removeField(field.id); $event.stopPropagation()" matTooltip="Delete">
+        (click)="store.removeField(store.keyOf(field)); $event.stopPropagation()" matTooltip="Delete">
         <mat-icon>delete</mat-icon>
       </button>
     </div>

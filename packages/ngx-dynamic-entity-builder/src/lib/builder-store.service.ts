@@ -279,18 +279,63 @@ export class BuilderStore {
     return ids;
   }
 
-  private findFieldInTabs(tabs: NestedTabConfig[] = [], id: string): NestedFieldConfig | null {
+  /**
+   * Resolve a field by key, where a key is either its `refererField` path or a bare id.
+   *
+   * Every resolution in this store funnels through here, which is why a bare id was enough
+   * to edit the wrong field: with `personal.address` and `work.address` both present, the
+   * first match won, so selecting or editing the second one silently addressed the first.
+   *
+   * The path is tried across the whole tree before any bare id is, so an exact key never
+   * loses to a nearer-but-wrong match. Bare ids still resolve — every existing caller and
+   * spec passes one, and for an unambiguous id it is the same field either way.
+   */
+  private findFieldInTabs(tabs: NestedTabConfig[] = [], key: string): NestedFieldConfig | null {
+    return this.findFieldBy(tabs, f => f.refererField === key) ?? this.findFieldBy(tabs, f => f.id === key);
+  }
+
+  private findFieldBy(
+    tabs: NestedTabConfig[] = [],
+    match: (f: NestedFieldConfig) => boolean,
+  ): NestedFieldConfig | null {
     for (const t of tabs) {
-      if (t.fields) {
-        const found = t.fields.find(f => f.id === id);
-        if (found) return found;
-      }
+      const found = t.fields?.find(match);
+      if (found) return found;
       if (t.children) {
-        const found = this.findFieldInTabs(t.children, id);
-        if (found) return found;
+        const nested = this.findFieldBy(t.children, match);
+        if (nested) return nested;
       }
     }
     return null;
+  }
+
+  /**
+   * The key a caller should hand back to address this exact field. Templates use it so a
+   * click on the second of two same-named fields selects that one.
+   */
+  keyOf(field: { id: string; refererField?: string }): string {
+    return field.refererField || field.id;
+  }
+
+  /**
+   * Whether this exact field is the selected one.
+   *
+   * Not `selectedFieldId() === field.id`: selection may hold a bare id or a path depending
+   * on who set it, and with two fields sharing an id a bare comparison lights up both rows
+   * — or neither, once the click starts storing a path. Resolving both sides answers for
+   * the field itself.
+   */
+  isSelected(field: NestedFieldConfig): boolean {
+    const key = this._selectedFieldId();
+    if (!key) return false;
+    // Same key, same field — and this is the path a row click takes, so it is the common
+    // case. It also covers a field handed in as an @Input that the store's own config has
+    // no object for, which identity alone cannot.
+    if (key === this.keyOf(field)) return true;
+    // Otherwise the selection is in the other form (a bare id against a field that carries a
+    // path, or vice versa), so let it resolve and compare the field it names.
+    const resolved = this.findFieldInTabs(this._config().tabs, key);
+    return !!resolved && resolved === field;
   }
 
   // ─── Field CRUD ─────────────────────────────────────────────────────────────
@@ -335,7 +380,7 @@ export class BuilderStore {
     if (this.allFieldIds(this._config().tabs).has(trimmed)) return;
     if (!this.findFieldInTabs(this._config().tabs, oldId)) return;
 
-    this.applyRename(oldId, trimmed);
+    this.applyRename(oldId, oldId, trimmed);
     this.manualIds.delete(oldId);
     this.manualIds.add(trimmed);
   }
@@ -353,9 +398,25 @@ export class BuilderStore {
    * That was survivable while renaming was a rare manual act; label-derived ids make it
    * routine, so the references move with it.
    */
-  private applyRename(oldId: string, newId: string): void {
+  /**
+   * `key` addresses the field to rename; `oldId` is the bare id every *reference* to it
+   * carries. They were one parameter, which worked only while an id was unique across the
+   * config: resolving needs the path, while `showWhen`, `parentField`, `autoPatch` targets
+   * and rules are all keyed by bare id and never match a path.
+   */
+  private applyRename(key: string, oldId: string, newId: string): void {
+    // Selection is held as whatever the caller passed — `addField` stores a bare id while a
+    // canvas click stores a path — so comparing the two strings said "not selected" for a
+    // field that plainly was, and the inspector emptied itself mid-rename. Compare the
+    // fields the two keys resolve to instead.
+    const selectedKey = this._selectedFieldId();
+    const tabsNow = this._config().tabs;
+    const wasSelected =
+      !!selectedKey &&
+      this.findFieldInTabs(tabsNow, selectedKey) === this.findFieldInTabs(tabsNow, key);
+
     this.mutate(draft => {
-      const field = this.findFieldInTabs(draft.tabs, oldId);
+      const field = this.findFieldInTabs(draft.tabs, key);
       if (!field) return;
       field.id = newId;
 
@@ -409,19 +470,39 @@ export class BuilderStore {
       })),
     );
 
-    if (this._selectedFieldId() === oldId) this._selectedFieldId.set(newId);
+    // `mutate` restamps `refererField`, so the key's last segment moves with the id. Without
+    // this the selection points at a path nothing resolves to any more, and the inspector
+    // empties itself mid-keystroke as soon as a typed label derives a new id.
+    if (wasSelected) {
+      // Keep the shape the selection already had: a bare id stays bare, a path keeps its
+      // scope and moves only its last segment.
+      const cut = selectedKey!.lastIndexOf('.');
+      this._selectedFieldId.set(cut === -1 ? newId : `${selectedKey!.slice(0, cut + 1)}${newId}`);
+    }
   }
 
-  removeField(id: string): void {
+  removeField(key: string): void {
+    let removedId: string | null = null;
     this.mutate(draft => {
+      // Resolve inside the draft, then remove that one by identity. Filtering on
+      // `f.id !== id` deleted every field sharing the id, so removing `work.address` took
+      // `personal.address` with it.
+      const target = this.findFieldInTabs(draft.tabs, key);
+      if (!target) return;
+      removedId = target.id;
       for (const tab of this.flattenTabs(draft.tabs)) {
         if (tab.fields) {
-          tab.fields = tab.fields.filter(f => f.id !== id);
+          tab.fields = tab.fields.filter(f => f !== target);
         }
       }
     });
-    this.manualIds.delete(id);
-    if (this._selectedFieldId() === id) this._selectedFieldId.set(null);
+    if (removedId === null) return;
+    // `manualIds` is keyed by bare id and shared by every field carrying it, so it is only
+    // safe to forget once no field uses that id any more.
+    if (!this.getAllFields(this._config().tabs ?? []).some(f => f.id === removedId)) {
+      this.manualIds.delete(removedId);
+    }
+    if (this._selectedFieldId() === key) this._selectedFieldId.set(null);
   }
 
   duplicateField(id: string): string | null {
@@ -449,11 +530,17 @@ export class BuilderStore {
     return newId;
   }
 
-  moveField(id: string, direction: -1 | 1): void {
+  moveField(key: string, direction: -1 | 1): void {
     this.mutate(draft => {
+      // Resolve by key, then locate that object — `f.id === id` moved whichever same-named
+      // field the walk reached first, which for two `address` fields was never the one the
+      // arrow button belonged to.
+      const wanted = this.findFieldInTabs(draft.tabs, key);
+      if (!wanted) return;
+
       for (const tab of this.flattenTabs(draft.tabs)) {
         const fields = tab.fields ?? [];
-        const from = fields.findIndex(f => f.id === id);
+        const from = fields.findIndex(f => f === wanted);
         if (from !== -1) {
           const to = from + direction;
           if (to < 0 || to >= fields.length) return;
@@ -485,8 +572,13 @@ export class BuilderStore {
       const targetTab = this.flattenTabs(draft.tabs).find(t => t.id === targetTabId);
       if (!targetTab) return;
 
+      // Resolve by key first so a path names one field, then locate that object. Matching
+      // `f.id === id` moved whichever same-named field came first in the walk.
+      const wanted = this.findFieldInTabs(draft.tabs, id);
+      if (!wanted) return;
+
       for (const tab of this.flattenTabs(draft.tabs)) {
-        const index = (tab.fields ?? []).findIndex(f => f.id === id);
+        const index = (tab.fields ?? []).findIndex(f => f === wanted);
         if (index === -1) continue;
         if (tab.id === targetTabId) return; // already there; nothing to do
 
@@ -538,17 +630,25 @@ export class BuilderStore {
    * Only the config's default language drives the id; translating a label must not rename
    * anything.
    */
-  setFieldLabel(id: string, language: string, value: string): void {
+  setFieldLabel(key: string, language: string, value: string): void {
     // Bound to a keystroke event, so this uses the structural-sharing path.
-    this.mutateField(id, field => ({ ...field, label: { ...field.label, [language]: value } }));
+    this.mutateField(key, field => ({ ...field, label: { ...field.label, [language]: value } }));
 
     if (language !== (this._config().defaultLanguage ?? 'en')) return;
-    if (this.manualIds.has(id)) return;
+
+    // The mutation is addressed by key, but everything below is about the *id*: `manualIds`
+    // records bare ids, `availableId` compares bare ids, and a rename replaces one. Reading
+    // the field's own id keeps the two straight — passing the path into `manualIds.has`
+    // would never match, so a pinned id would silently start following the label again.
+    const field = this.findFieldInTabs(this._config().tabs, key);
+    if (!field) return;
+    const currentId = field.id;
+    if (this.manualIds.has(currentId)) return;
 
     const derived = labelToId(value);
-    if (!derived || derived === id) return;
+    if (!derived || derived === currentId) return;
 
-    this.applyRename(id, this.availableId(derived, id));
+    this.applyRename(this.keyOf(field), currentId, this.availableId(derived, currentId));
   }
 
   /** `derived`, or `derived_2`, `derived_3`… if another field already holds it. */
@@ -1160,14 +1260,21 @@ export class BuilderStore {
    *
    * Returns without touching anything when the field is not found.
    */
-  private mutateField(id: string, update: (field: NestedFieldConfig) => NestedFieldConfig): void {
+  private mutateField(key: string, update: (field: NestedFieldConfig) => NestedFieldConfig): void {
     let found = false;
+
+    // Resolve once, then match on object identity. Matching on `field.id === id` inside the
+    // walk updated *every* field carrying that id, so renaming `work.address` also rewrote
+    // `personal.address` — both rows changed, and the second write was silent. Identity
+    // cannot be ambiguous the way a bare id can.
+    const target = this.findFieldInTabs(this._config().tabs, key);
+    if (!target) return;
 
     const visitFields = (fields: NestedFieldConfig[] | undefined): NestedFieldConfig[] | undefined => {
       if (!fields) return fields;
       let changed = false;
       const next = fields.map(field => {
-        if (field.id === id) {
+        if (field === target) {
           found = true;
           changed = true;
           return update(field);
@@ -1274,23 +1381,35 @@ export class BuilderStore {
       }
     }
 
-    // Id uniqueness is a whole-config invariant, and it is counted over the entire field
-    // tree rather than `allFields`, which stops at a tab's own fields. Two ids colliding
-    // inside a group or array went unreported even though rules, showWhen conditions and
-    // autoPatch mappings all address fields by bare id and would resolve to whichever one
-    // the lookup happened to reach first.
-    const idCounts = new Map<string, number>();
-    const countIds = (fields: NestedFieldConfig[] | undefined) => {
-      for (const f of fields ?? []) {
-        idCounts.set(f.id, (idCounts.get(f.id) ?? 0) + 1);
-        if (f.children?.length) countIds(f.children);
-      }
-    };
-    for (const tab of this.flattenTabs(config.tabs)) countIds(tab.fields);
+    // Id uniqueness is a *per-scope* invariant, not a whole-config one — this counted into
+    // one flat map keyed by bare id, so it rejected `personal.address` alongside
+    // `work.address` and made every such config unopenable: Save is disabled while an error
+    // stands, so unrelated edits could not be saved either. The runtime, the record shape
+    // and `validateConfig` have all accepted per-scope ids since 1.4.0; this was the last
+    // component still enforcing the old rule, and it enforced it against configs the rest
+    // of the stack calls valid.
+    //
+    // The scope rule itself comes from core rather than being reimplemented here, so the
+    // builder and the validator cannot drift apart on what "same scope" means.
+    const scopeCounts = new Map<string, { id: string; count: number }>();
+    for (const entry of collectFieldScopes(config)) {
+      if (!entry.field.id) continue;
+      const key = `${entry.scope}::${entry.field.id}`;
+      const seen = scopeCounts.get(key);
+      if (seen) seen.count += 1;
+      else scopeCounts.set(key, { id: entry.field.id, count: 1 });
+    }
 
-    for (const [id, count] of idCounts) {
+    for (const [key, { id, count }] of scopeCounts) {
       if (count > 1) {
-        problems.push({ level: 'error', message: `Duplicate field id "${id}" (${count}×).`, fieldId: id });
+        // Still an error, and it must stay one: two fields in the same scope share a single
+        // control and a single record key, so the second silently overwrites the first.
+        const scope = key.slice(0, key.lastIndexOf('::'));
+        problems.push({
+          level: 'error',
+          message: `Duplicate field id "${id}" (${count}×) in ${scope}. Two fields in one scope share a control and a record key.`,
+          fieldId: id,
+        });
       }
     }
 

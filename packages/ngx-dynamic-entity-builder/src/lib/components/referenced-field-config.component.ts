@@ -94,21 +94,21 @@ export class ReferencedFieldConfigComponent {
 
   protected toggleReferenced(field: NestedFieldConfig, enabled: boolean): void {
     if (enabled) {
-      this.store.updateField(field.id, { isReferenced: true });
+      this.store.updateField(this.store.keyOf(field), { isReferenced: true });
     } else {
-      this.store.unlinkReferencedField(field.id);
+      this.store.unlinkReferencedField(this.store.keyOf(field));
     }
   }
 
   protected updateEntityKey(field: NestedFieldConfig, key: string): void {
     const trimmed = key.trim();
-    this.store.updateField(field.id, { referencedEntityKey: trimmed || undefined });
+    this.store.updateField(this.store.keyOf(field), { referencedEntityKey: trimmed || undefined });
     this.checkDriftForField(field.id);
   }
 
   protected updateFieldId(field: NestedFieldConfig, fieldId: string): void {
     const trimmed = fieldId.trim();
-    this.store.updateField(field.id, { referencedFieldId: trimmed || undefined });
+    this.store.updateField(this.store.keyOf(field), { referencedFieldId: trimmed || undefined });
     this.checkDriftForField(field.id);
   }
 
@@ -119,7 +119,7 @@ export class ReferencedFieldConfigComponent {
 
     const sourceField = this.findField(sourceConfig.tabs ?? [], field.referencedFieldId);
     if (sourceField) {
-      this.store.syncReferencedField(field.id, sourceField);
+      this.store.syncReferencedField(this.store.keyOf(field), sourceField);
     }
   }
 

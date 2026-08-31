@@ -1091,9 +1091,12 @@ describe('BuilderStore — field id uniqueness spans the whole tree', () => {
     expect(ids).not.toContain('text_1');
   });
 
-  it('reports a duplicate id that collides inside a group', () => {
-    store.updateField('text_2', { id: 'text_2' });
-    // Force a collision with the group child by renaming the sub-tab field to match.
+  it('accepts the same id in two different scopes', () => {
+    // A group opens a scope, so these nest as `{ main: { group1: { dup }, dup } }` — two
+    // record keys, two controls, no collision. This used to be reported as an error because
+    // ids were counted into one flat map, which made every such config unopenable: an error
+    // disables Save, so unrelated edits could not be saved either. `validateConfig` accepts
+    // this exact shape, and the builder now applies core's scope rule rather than its own.
     store.load({
       entity: 'x',
       version: 1,
@@ -1114,6 +1117,102 @@ describe('BuilderStore — field id uniqueness spans the whole tree', () => {
       ],
     });
 
+    expect(store.errors().some(p => /Duplicate field id "dup"/.test(p.message))).toBe(false);
+  });
+
+  it('still reports two fields sharing an id in the SAME scope', () => {
+    // The half that must not be relaxed: one scope means one control and one record key, so
+    // the second field silently overwrites the first.
+    store.load({
+      entity: 'x',
+      version: 1,
+      tabs: [
+        {
+          id: 'main',
+          label: { en: 'Main' },
+          fields: [
+            { id: 'dup', type: 'text', label: { en: 'First' } },
+            { id: 'dup', type: 'text', label: { en: 'Second' } },
+          ],
+        },
+      ],
+    });
+
     expect(store.errors().some(p => /Duplicate field id "dup"/.test(p.message))).toBe(true);
+  });
+
+  describe('addressing one of two fields that share an id', () => {
+    const twoAddresses = () => ({
+      entity: 'people',
+      version: 1,
+      tabs: [
+        {
+          id: 'personal',
+          label: { en: 'Personal' },
+          fields: [{ id: 'address', type: 'text' as const, label: { en: 'Home' } }],
+        },
+        {
+          id: 'work',
+          label: { en: 'Work' },
+          fields: [{ id: 'address', type: 'text' as const, label: { en: 'Office' } }],
+        },
+      ],
+    });
+
+    const labels = () =>
+      store.fields().map(f => `${f.refererField}=${f.label?.['en'] ?? ''}`);
+
+    it('edits only the field the path names', () => {
+      store.load(twoAddresses());
+      expect(labels()).toEqual(['personal.address=Home', 'work.address=Office']);
+
+      store.updateField('work.address', { label: { en: 'Office EDITED' } });
+
+      // The bug: every matcher compared bare ids, and `mutateField` mapped over the whole
+      // tree calling update() on each match — so renaming one rewrote both.
+      expect(labels()).toEqual(['personal.address=Home', 'work.address=Office EDITED']);
+    });
+
+    it('renames only the field the path names', () => {
+      store.load(twoAddresses());
+      store.setFieldLabel('work.address', 'en', 'Desk Location');
+
+      const home = store.fields().find(f => f.refererField?.startsWith('personal.'));
+      expect(home?.label?.['en']).toBe('Home');
+      expect(home?.id).toBe('address');
+    });
+
+    it('removes only the field the path names', () => {
+      store.load(twoAddresses());
+      store.removeField('work.address');
+
+      const remaining = store.fields();
+      expect(remaining).toHaveLength(1);
+      expect(remaining[0].refererField).toBe('personal.address');
+    });
+
+    it('selects the field the path names, not the first match', () => {
+      store.load(twoAddresses());
+      store.selectField('work.address');
+      expect(store.selectedField()?.label?.['en']).toBe('Office');
+
+      store.selectField('personal.address');
+      expect(store.selectedField()?.label?.['en']).toBe('Home');
+    });
+  });
+
+  it('accepts an id reused across sibling tabs, as the runtime does', () => {
+    // The case this whole change exists for: `people` ships `personal.address` and
+    // `work.address`, and the builder refused to open it.
+    store.load({
+      entity: 'people',
+      version: 1,
+      tabs: [
+        { id: 'personal', label: { en: 'Personal' }, fields: [{ id: 'address', type: 'text', label: { en: 'Home' } }] },
+        { id: 'work', label: { en: 'Work' }, fields: [{ id: 'address', type: 'text', label: { en: 'Office' } }] },
+      ],
+    });
+
+    expect(store.errors()).toEqual([]);
   });
 });

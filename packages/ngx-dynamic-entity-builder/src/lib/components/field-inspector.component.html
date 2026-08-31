@@ -35,7 +35,7 @@
         matInput
         data-testid="field-label"
         [ngModel]="labelValue(f)"
-        (ngModelChange)="store.setFieldLabel(f.id, lang(), $event)"
+        (ngModelChange)="store.setFieldLabel(store.keyOf(f), lang(), $event)"
       />
     </mat-form-field>
 
@@ -45,7 +45,7 @@
         <input
           matInput
           [ngModel]="placeholderValue(f)"
-          (ngModelChange)="store.setFieldPlaceholder(f.id, lang(), $event)"
+          (ngModelChange)="store.setFieldPlaceholder(store.keyOf(f), lang(), $event)"
         />
       </mat-form-field>
     }
@@ -56,7 +56,7 @@
         <input
           matInput
           [ngModel]="f.defaultValue ?? ''"
-          (ngModelChange)="store.updateField(f.id, { defaultValue: $event })"
+          (ngModelChange)="store.updateField(store.keyOf(f), { defaultValue: $event })"
         />
       </mat-form-field>
     }
@@ -77,7 +77,7 @@
           @for (v of m.flagValidators; track v) {
             <mat-checkbox
               [ngModel]="store.hasFlagValidator(f, v)"
-              (ngModelChange)="store.toggleFlagValidator(f.id, v, $event)"
+              (ngModelChange)="store.toggleFlagValidator(store.keyOf(f), v, $event)"
             >{{ v }}</mat-checkbox>
           }
         </div>
@@ -88,7 +88,7 @@
               matInput
               type="number"
               [ngModel]="store.getParamValidator(f, v)"
-              (ngModelChange)="store.setParamValidator(f.id, v, toNum($event))"
+              (ngModelChange)="store.setParamValidator(store.keyOf(f), v, toNum($event))"
             />
           </mat-form-field>
         }
@@ -104,7 +104,7 @@
         <mat-select
           data-testid="data-source"
           [ngModel]="store.fieldDataSource(f)"
-          (ngModelChange)="store.setFieldDataSource(f.id, $event)"
+          (ngModelChange)="store.setFieldDataSource(store.keyOf(f), $event)"
         >
           <mat-option value="none">Nothing yet</mat-option>
           <mat-option value="manual">Options authored here</mat-option>
@@ -121,7 +121,7 @@
           matInput
           data-testid="list-name"
           [ngModel]="f.listName ?? ''"
-          (ngModelChange)="store.setListName(f.id, $event)"
+          (ngModelChange)="store.setListName(store.keyOf(f), $event)"
         />
       </mat-form-field>
       <p class="deb-hint">
@@ -134,7 +134,7 @@
     @if (meta()?.hasOptions && store.fieldDataSource(f) !== 'lookup') {
       <div class="deb-row" style="justify-content: space-between;">
         <span class="deb-section-title">Options</span>
-        <button mat-stroked-button type="button" (click)="store.addOption(f.id)">
+        <button mat-stroked-button type="button" (click)="store.addOption(store.keyOf(f))">
           <mat-icon>add</mat-icon> Option
         </button>
       </div>
@@ -147,11 +147,11 @@
               matInput
               [attr.data-testid]="'option-' + $index"
               [ngModel]="optionLabel(opt)"
-              (ngModelChange)="store.setOptionLabel(f.id, $index, lang(), $event)"
+              (ngModelChange)="store.setOptionLabel(store.keyOf(f), $index, lang(), $event)"
             />
           </mat-form-field>
           <button mat-icon-button type="button" color="warn"
-            (click)="store.removeOption(f.id, $index)" matTooltip="Remove option">
+            (click)="store.removeOption(store.keyOf(f), $index)" matTooltip="Remove option">
             <mat-icon>delete</mat-icon>
           </button>
         </div>
@@ -168,33 +168,33 @@
     <div class="deb-toggles">
       <mat-slide-toggle
         [ngModel]="f.visibility ?? true"
-        (ngModelChange)="store.updateField(f.id, { visibility: $event })"
+        (ngModelChange)="store.updateField(store.keyOf(f), { visibility: $event })"
       >Visible</mat-slide-toggle>
       <mat-slide-toggle
         [ngModel]="f.table?.visible ?? false"
-        (ngModelChange)="store.updateField(f.id, { table: { visible: $event } })"
+        (ngModelChange)="store.updateField(store.keyOf(f), { table: { visible: $event } })"
       >Table column</mat-slide-toggle>
       <mat-slide-toggle
         [ngModel]="f.readonly ?? false"
-        (ngModelChange)="store.updateField(f.id, { readonly: $event })"
+        (ngModelChange)="store.updateField(store.keyOf(f), { readonly: $event })"
       >Read-only</mat-slide-toggle>
       <mat-slide-toggle
         [ngModel]="f.disabled ?? false"
-        (ngModelChange)="store.updateField(f.id, { disabled: $event })"
+        (ngModelChange)="store.updateField(store.keyOf(f), { disabled: $event })"
       >Disabled</mat-slide-toggle>
       <mat-slide-toggle
         [ngModel]="f.maskData ?? false"
-        (ngModelChange)="store.updateField(f.id, { maskData: $event })"
+        (ngModelChange)="store.updateField(store.keyOf(f), { maskData: $event })"
       >Mask data (RBAC)</mat-slide-toggle>
       <mat-slide-toggle
         data-testid="toggle-critical"
         [ngModel]="f.criticalField ?? false"
-        (ngModelChange)="store.updateField(f.id, { criticalField: $event })"
+        (ngModelChange)="store.updateField(store.keyOf(f), { criticalField: $event })"
         matTooltip="Renders locked; editing it announces a change against the session baseline."
       >Critical field</mat-slide-toggle>
       <mat-slide-toggle
         [ngModel]="f.showOnMinimize ?? false"
-        (ngModelChange)="store.updateField(f.id, { showOnMinimize: $event })"
+        (ngModelChange)="store.updateField(store.keyOf(f), { showOnMinimize: $event })"
         matTooltip="Shown in the record editor's summary panel."
       >Show in summary</mat-slide-toggle>
     </div>
@@ -241,7 +241,7 @@
       <div class="deb-row deb-row--split">
         <span class="deb-section-title">Copy on true</span>
         <button mat-stroked-button type="button" data-testid="add-patch-on-true"
-          (click)="store.addPatchOnTrueMapping(f.id)">
+          (click)="store.addPatchOnTrueMapping(store.keyOf(f))">
           <mat-icon>add</mat-icon> Mapping
         </button>
       </div>
@@ -251,7 +251,7 @@
             <mat-label>From field</mat-label>
             <mat-select data-testid="patch-on-true-from"
               [ngModel]="mapping.from"
-              (ngModelChange)="store.updatePatchOnTrueMapping(f.id, $index, { from: $event })">
+              (ngModelChange)="store.updatePatchOnTrueMapping(store.keyOf(f), $index, { from: $event })">
               @for (option of optionsWith(mapping.from); track option.value) {
                 <mat-option [value]="option.value">
                   {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
@@ -263,7 +263,7 @@
             <mat-label>To field</mat-label>
             <mat-select data-testid="patch-on-true-to"
               [ngModel]="mapping.to"
-              (ngModelChange)="store.updatePatchOnTrueMapping(f.id, $index, { to: $event })">
+              (ngModelChange)="store.updatePatchOnTrueMapping(store.keyOf(f), $index, { to: $event })">
               @for (option of optionsWith(mapping.to); track option.value) {
                 <mat-option [value]="option.value">
                   {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
@@ -272,7 +272,7 @@
             </mat-select>
           </mat-form-field>
           <button mat-icon-button type="button" color="warn" matTooltip="Remove mapping"
-            (click)="store.removePatchOnTrueMapping(f.id, $index)">
+            (click)="store.removePatchOnTrueMapping(store.keyOf(f), $index)">
             <mat-icon>delete</mat-icon>
           </button>
         </div>

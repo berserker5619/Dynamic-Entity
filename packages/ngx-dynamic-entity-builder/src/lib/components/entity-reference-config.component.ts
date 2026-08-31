@@ -131,7 +131,7 @@ import { BuilderStore } from '../builder-store.service';
             mat-stroked-button
             type="button"
             data-testid="add-auto-patch"
-            (click)="store.addAutoPatchMapping(f.id)"
+            (click)="store.addAutoPatchMapping(store.keyOf(f))"
           >
             <mat-icon>add</mat-icon> Mapping
           </button>
@@ -143,7 +143,7 @@ import { BuilderStore } from '../builder-store.service';
             <mat-select
               data-testid="auto-patch-tab"
               [ngModel]="f.autoPatch.targetTab"
-              (ngModelChange)="store.setAutoPatchTargetTab(f.id, $event)"
+              (ngModelChange)="store.setAutoPatchTargetTab(store.keyOf(f), $event)"
             >
               @for (tab of store.tabs(); track tab.id) {
                 <mat-option [value]="tab.id">{{ tabLabel(tab.id) }}</mat-option>
@@ -158,7 +158,7 @@ import { BuilderStore } from '../builder-store.service';
                 <input
                   matInput
                   [ngModel]="mapping.source"
-                  (ngModelChange)="store.updateAutoPatchMapping(f.id, $index, { source: $event })"
+                  (ngModelChange)="store.updateAutoPatchMapping(store.keyOf(f), $index, { source: $event })"
                 />
               </mat-form-field>
               <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -166,7 +166,7 @@ import { BuilderStore } from '../builder-store.service';
                 <mat-select
                   data-testid="auto-patch-target"
                   [ngModel]="mapping.target"
-                  (ngModelChange)="store.updateAutoPatchMapping(f.id, $index, { target: $event })"
+                  (ngModelChange)="store.updateAutoPatchMapping(store.keyOf(f), $index, { target: $event })"
                 >
                   @for (option of optionsWith(mapping.target); track option.value) {
                     <mat-option [value]="option.value">
@@ -180,7 +180,7 @@ import { BuilderStore } from '../builder-store.service';
                 type="button"
                 color="warn"
                 matTooltip="Remove mapping"
-                (click)="store.removeAutoPatchMapping(f.id, $index)"
+                (click)="store.removeAutoPatchMapping(store.keyOf(f), $index)"
               >
                 <mat-icon>delete</mat-icon>
               </button>
@@ -268,7 +268,7 @@ export class EntityReferenceConfigComponent {
   }
 
   protected patchRef(field: NestedFieldConfig, patch: Record<string, unknown>): void {
-    this.store.updateEntityReference(field.id, patch);
+    this.store.updateEntityReference(this.store.keyOf(field), patch);
   }
 
   protected fieldLabel(field: NestedFieldConfig): string {
