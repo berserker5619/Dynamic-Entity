@@ -35,6 +35,13 @@ test.describe('two fields sharing an id', () => {
     await expect(page.locator('[data-testid="form-panel"]')).toBeVisible();
 
     // The two addresses must not have collapsed into one another.
+    //
+    // Both tabs are selected explicitly. `fieldPart` resolves whichever `address` input is
+    // currently in the DOM, so reading it without choosing a tab first quietly asserted
+    // *which tab the form reopens on* as well — and that is a separate question, covered by
+    // the unit specs on `activeTab`. Under CI load this test failed on that incidental
+    // coupling rather than on the values it exists to check.
+    await safeClick(tab(page, 'Personal Details'));
     await expect(fieldPart(page, 'address', 'input')).toHaveValue('Home Street 1');
     await safeClick(tab(page, 'Work Details'));
     await expect(fieldPart(page, 'address', 'input')).toHaveValue('Office Road 2');
