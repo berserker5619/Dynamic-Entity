@@ -8,8 +8,8 @@ import { fieldPart, gotoDemo, recordButton, safeClick, safeFill, safeSelect } fr
  * show is the thing that actually matters to a consumer: that the source survives a real
  * save and reload, and that what lands in storage is markdown rather than HTML.
  *
- * The demo registers no `MARKDOWN_RENDERER`, so this also exercises the default path — the
- * one every consumer gets before they configure anything.
+ * The demo registers a small local `MARKDOWN_RENDERER`, so the rendered path, the Preview
+ * tab and sanitisation are all reachable here rather than only in unit tests with a stub.
  */
 test.describe('markdown field', () => {
   const SOURCE = '# Title\n\nSome **bold** text.';
@@ -31,12 +31,35 @@ test.describe('markdown field', () => {
     await expect(input).toHaveValue(/\*\*three\*\*/);
   });
 
-  test('offers no Preview tab when no renderer is registered', async ({ page }) => {
+  test('offers Write and Preview, and Preview renders the source', async ({ page }) => {
     await openFirstRecord(page);
 
-    // A Preview that could only echo the source back is worse than no Preview.
-    await expect(fieldPart(page, 'releaseNotes', 'preview')).toHaveCount(0);
-    await expect(fieldPart(page, 'releaseNotes', 'write')).toHaveCount(0);
+    await safeClick(fieldPart(page, 'releaseNotes', 'preview'));
+    const preview = fieldPart(page, 'releaseNotes', 'preview-body');
+    // The seeded source starts `# Q3 rollout` and contains `**three**`.
+    await expect(preview.locator('h1')).toHaveText('Q3 rollout');
+    await expect(preview.locator('strong')).toHaveText('three');
+    await expect(preview.locator('li')).toHaveCount(3);
+
+    // Write returns to the source, unchanged by having been previewed.
+    await safeClick(fieldPart(page, 'releaseNotes', 'write'));
+    await expect(fieldPart(page, 'releaseNotes', 'input')).toHaveValue(/^# Q3 rollout/);
+  });
+
+  test('escapes HTML in the source rather than letting it through', async ({ page }) => {
+    await openFirstRecord(page);
+    await safeFill(
+      fieldPart(page, 'releaseNotes', 'input'),
+      '# Title\n\n<script>window.pwned = true;</script>',
+    );
+    await safeClick(fieldPart(page, 'releaseNotes', 'preview'));
+
+    const preview = fieldPart(page, 'releaseNotes', 'preview-body');
+    await expect(preview.locator('h1')).toHaveText('Title');
+    await expect(preview.locator('script')).toHaveCount(0);
+    // Escaped, so the author can see what they typed rather than losing it silently.
+    await expect(preview).toContainText('<script>');
+    expect(await page.evaluate(() => (window as unknown as Record<string, unknown>)['pwned'])).toBeUndefined();
   });
 
   test('stores the source through a save and reload, never HTML', async ({ page }) => {
@@ -59,16 +82,16 @@ test.describe('markdown field', () => {
     expect(stored).not.toContain('<strong');
   });
 
-  test('renders as read-only text in Data only, with nothing interpreted', async ({ page }) => {
+  test('renders the markdown in Data only, not the raw source', async ({ page }) => {
     await openFirstRecord(page);
     await safeClick(page.getByTestId('mode-data'));
 
     const value = fieldPart(page, 'releaseNotes', 'value');
     await expect(value).toBeVisible();
-    // No renderer, so the markers are shown, not obeyed.
-    await expect(value).toContainText('# Q3 rollout');
-    await expect(value.locator('h1')).toHaveCount(0);
-    await expect(value.locator('strong')).toHaveCount(0);
+    // A read-only view is where rendering matters most — nobody wants to read `**bold**`.
+    await expect(value.locator('h1')).toHaveText('Q3 rollout');
+    await expect(value.locator('strong')).toHaveText('three');
+    await expect(value).not.toContainText('# Q3 rollout');
   });
 
   test('is masked for a role that may not see it', async ({ page }) => {

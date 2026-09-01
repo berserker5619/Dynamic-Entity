@@ -2,10 +2,17 @@ import { ApplicationConfig } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { routes } from './app.routes';
-import { COMMON_MODULES_REGISTRY, CONFIG_SOURCE, provideBuiltInFieldTypes, provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+import {
+  COMMON_MODULES_REGISTRY,
+  CONFIG_SOURCE,
+  MARKDOWN_RENDERER,
+  provideBuiltInFieldTypes,
+  provideNgxDynamicEntity,
+} from 'ngx-dynamic-entity';
 import { CLIENT_TIER_LIST, MASKED_ROLES, ORDER_REFERENCE_DATA } from './mock/sample-data';
 import { SampleModuleTabComponent } from './mock/sample-module.component';
 import { LocalStore } from './mock/local-store.service';
+import { renderMarkdown } from './mock/markdown-renderer';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -48,6 +55,11 @@ export const appConfig: ApplicationConfig = {
     }),
     // Field components are opt-in so unused ones tree-shake out. The demo renders every
     // configuration in test_data.json, so it registers the full built-in set.
-    provideBuiltInFieldTypes()
+    provideBuiltInFieldTypes(),
+    // A `markdown` field works with no renderer — it shows its source. Registering one is
+    // what turns on the Preview tab and the rendered read-only view, so the demo supplies a
+    // small local function rather than a parser dependency: the token takes any
+    // source-to-HTML function, and saying so is the point.
+    { provide: MARKDOWN_RENDERER, useValue: renderMarkdown }
   ]
 };
