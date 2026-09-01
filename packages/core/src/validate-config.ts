@@ -170,6 +170,11 @@ export function validateConfig(
     // A `group` field stores its children under itself, so they get their own scope. An
     // `array` field's rows do too. Either way the children are not siblings of the field.
     const childScope = isContainer ? [...scope, field.id] : scope;
+    // Present but not a collection: the children are dropped, and without this nothing says
+    // so. `asArray` stops the crash; this is what stops the silence.
+    if (field.children !== undefined && !Array.isArray(field.children)) {
+      add('error', `${path}.children`, 'children must be an array; it will be ignored.');
+    }
     asArray(field.children).forEach((child, i) => visitField(child, `${path}.children[${i}]`, childScope));
   };
 
@@ -197,6 +202,14 @@ export function validateConfig(
     // `flatData` puts the tab's fields at the parent's level instead of under the tab id,
     // so such a tab shares its parent's scope rather than opening one.
     const tabScope = tab.flatData || !tab.id ? scope : [...scope, tab.id];
+    for (const [key, value] of [
+      ['fields', tab.fields],
+      ['children', tab.children],
+    ] as const) {
+      if (value !== undefined && !Array.isArray(value)) {
+        add('error', `${path}.${key}`, `${key} must be an array; it will be ignored.`);
+      }
+    }
     asArray(tab.fields).forEach((f, i) => visitField(f, `${path}.fields[${i}]`, tabScope));
     asArray(tab.children).forEach((t, i) => visitTab(t, `${path}.children[${i}]`, tabScope));
   };

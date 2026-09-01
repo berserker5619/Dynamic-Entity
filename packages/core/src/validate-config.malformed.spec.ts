@@ -107,6 +107,34 @@ describe('validateConfig — malformed input', () => {
     expect(issues.filter(i => /Rule is missing or not an object/.test(i.message))).toHaveLength(2);
   });
 
+  it('reports a collection that is present but is not an array', () => {
+    // Fuzzing found this crashing; fixing the crash then hid it. `fields: 'x'` is coerced to
+    // empty, and `!tab.fields?.length` is false for a non-empty string, so even the
+    // "renders empty" warning was skipped. The author lost their fields in silence.
+    const config = {
+      entity: 'clients',
+      tabs: [{ id: 'main', label: { en: 'Main' }, fields: 'not-an-array' }],
+    };
+    expect(messages(config)).toContain('fields must be an array; it will be ignored.');
+  });
+
+  it('reports non-array children on a tab and on a field', () => {
+    const config = {
+      entity: 'clients',
+      tabs: [
+        {
+          id: 'main',
+          label: { en: 'Main' },
+          fields: [{ id: 'g', type: 'group', label: { en: 'G' }, children: 7 }],
+          children: 'nope',
+        },
+      ],
+    };
+    const found = messages(config);
+    expect(found).toContain('children must be an array; it will be ignored.');
+    expect(found.filter(m => /children must be an array/.test(m))).toHaveLength(2);
+  });
+
   it('survives a config that is not an object at all', () => {
     for (const input of [null, undefined, 'a string', 42, []]) {
       expect(() => validateConfig(input as never)).not.toThrow();
