@@ -7,6 +7,49 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.8.1] — 2026-09-01
+
+Hardening, almost all of it found by adding property-based fuzzing over `core` and
+integration tests across the three packages.
+
+### Fixed
+
+- **`core` no longer throws on a malformed config.** Seven crashes, all the same
+  shape: `?.` guards `undefined` and nothing else, so a config holding a string, a
+  number or `null` where a collection belongs reached `.map` or `.forEach` and
+  threw. `validateConfig`, `collectFieldScopes`, `normalizeConfig`,
+  `normalizeConfigOptions`, `parseFieldRef` and `evaluateFormRules` were all
+  affected — including the validator failing on the input it exists to describe,
+  which took `dynamic-entity validate` down with it in CI.
+
+  `normalizeConfig` also skipped its object-to-array conversion for every *falsy*
+  non-array, because the guard was `x && !Array.isArray(x)`.
+
+- **The builder no longer saves a config `validateConfig` rejects.** An entity
+  with no tabs is an error to core — nothing can render — while the builder
+  reported a warning and left Save enabled. The builder now defers to core, in
+  core's wording.
+
+- **Focus no longer scrolls the page.** `focusActivePanel` exists to tell a screen
+  reader the panel changed; the default `focus()` also scrolls it into view, which
+  jumps the layout on a short viewport. It now passes `preventScroll`.
+
+### Upgrading
+
+`BuilderStore.isValid()` returns `false` for an entity with no tabs, where it
+returned `true`. Nothing is stuck: `addField` creates the first tab when there is
+none, so one field is enough. If you drive the builder programmatically and
+asserted on the old value, that assertion changes.
+
+### Internal
+
+1,337 unit tests and 124 e2e across two Playwright projects — the second is a
+narrow viewport, which the responsive grid collapse never had. Core is fuzzed with
+1500 seeded runs per property, and the seed is printed on failure so a red run is
+reproducible.
+
+---
+
 ## [1.8.0] — 2026-09-01
 
 Work since 1.7.0: undo and redo in the builder, and three defects found by
