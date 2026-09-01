@@ -242,6 +242,12 @@ export function validateConfig(
   };
 
   const checkRefs = (field: NestedFieldConfig, path: string) => {
+    // This pass walks the tree a second time and so needs its own guard. `visitField`
+    // reports a malformed entry and returns; without the same check here a `null` in
+    // `fields` threw a TypeError instead — crashing the validator on exactly the input it
+    // exists to describe, and taking `dynamic-entity validate` down with it in CI.
+    if (!field || typeof field !== 'object') return;
+
     for (const key of Object.keys(field.showWhen ?? {})) {
       flagRef(key, `${path}.showWhen`, 'This field will never show.');
     }
@@ -258,6 +264,7 @@ export function validateConfig(
   };
   const walkTabsForRefs = (tabs: NestedTabConfig[] | undefined, base: string) => {
     tabs?.forEach((tab, i) => {
+      if (!tab || typeof tab !== 'object') return;
       tab.fields?.forEach((f, j) => checkRefs(f, `${base}[${i}].fields[${j}]`));
       walkTabsForRefs(tab.children, `${base}[${i}].children`);
     });

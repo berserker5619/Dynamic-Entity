@@ -8,7 +8,7 @@ module.exports = {
   // Thresholds sit just under the current numbers: they are a ratchet against regression,
   // not a target to game. Raise them when coverage genuinely improves.
   coverageThreshold: {
-    global: { statements: 92, branches: 84, functions: 96, lines: 96 },
+    global: { statements: 96, branches: 89, functions: 98, lines: 98 },
     './src/**/*.ts': { statements: 85, branches: 75, functions: 85, lines: 85 },
   },
   modulePathIgnorePatterns: ['<rootDir>/dist/'],

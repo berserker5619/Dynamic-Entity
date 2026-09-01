@@ -45,10 +45,11 @@ export class DateFieldComponent {
   /** ISO 8601 date → locale display string (ONEHERMES convention: always UTC, display in user locale) */
   formatDate(value: string | null): string {
     if (!value) return '—';
-    try {
-      return new Date(value).toLocaleDateString();
-    } catch {
-      return value;
-    }
+    // `new Date('nonsense')` does not throw and `toLocaleDateString()` returns the *string*
+    // "Invalid Date", so the try/catch this replaced never fired and readers saw that text
+    // instead of their data. Records outlive schemas — a field retyped from text to date can
+    // hold anything — so an unparseable value is shown as stored.
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString();
   }
 }

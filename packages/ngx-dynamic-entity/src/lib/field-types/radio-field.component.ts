@@ -93,7 +93,11 @@ export class RadioFieldComponent {
    * into an id attribute.
    */
   getRadioId(option: DropdownOption): string {
-    const text = String(this.getOptVal(option) ?? 'opt');
+    // `??` cannot fire here: `resolveOptionValue` returns '' for an empty option, not null,
+    // so every valueless option produced the same id — and duplicate ids break the `for`
+    // that ties each label to its input.
+    const raw = String(this.getOptVal(option) ?? '').trim();
+    const text = raw || 'opt';
     return `${this.field.id}-${text.trim().replace(/\s+/g, '_').toLowerCase()}`;
   }
 
