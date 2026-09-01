@@ -111,7 +111,11 @@ export function evaluateFormRules(
   if (!rules?.length) return result;
 
   // Sort rules by priority (ascending)
-  const sorted = [...rules].filter(r => r.enabled).sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
+  // Rules are stored beside the config and arrive from the same places, so a malformed entry
+  // is as likely here as in `tabs`. One bad rule must not stop the others being applied.
+  const sorted = [...rules]
+    .filter(r => r && typeof r === 'object' && r.enabled)
+    .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
 
   for (const rule of sorted) {
     const fieldValue = formValues[rule.fieldId];

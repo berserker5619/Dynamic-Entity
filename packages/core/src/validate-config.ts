@@ -47,6 +47,15 @@ const ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
  * also check a rule's trigger, `compareToField` and field targets against the same path/id
  * rule as `showWhen`.
  */
+/**
+ * `fields`, `children` and `tabs` are config data, so they may be any shape at all.
+ * `?.forEach` guards `undefined` and nothing else — a string or a number reached it and
+ * threw, crashing the validator on the input it exists to describe.
+ */
+function asArray<T>(value: T[] | undefined): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
 export function validateConfig(
   config: EntityFormConfig | null | undefined,
   options: ValidateConfigOptions = {},
@@ -161,7 +170,7 @@ export function validateConfig(
     // A `group` field stores its children under itself, so they get their own scope. An
     // `array` field's rows do too. Either way the children are not siblings of the field.
     const childScope = isContainer ? [...scope, field.id] : scope;
-    field.children?.forEach((child, i) => visitField(child, `${path}.children[${i}]`, childScope));
+    asArray(field.children).forEach((child, i) => visitField(child, `${path}.children[${i}]`, childScope));
   };
 
   const visitTab = (tab: NestedTabConfig, path: string, scope: readonly string[]) => {
@@ -188,8 +197,8 @@ export function validateConfig(
     // `flatData` puts the tab's fields at the parent's level instead of under the tab id,
     // so such a tab shares its parent's scope rather than opening one.
     const tabScope = tab.flatData || !tab.id ? scope : [...scope, tab.id];
-    tab.fields?.forEach((f, i) => visitField(f, `${path}.fields[${i}]`, tabScope));
-    tab.children?.forEach((t, i) => visitTab(t, `${path}.children[${i}]`, tabScope));
+    asArray(tab.fields).forEach((f, i) => visitField(f, `${path}.fields[${i}]`, tabScope));
+    asArray(tab.children).forEach((t, i) => visitTab(t, `${path}.children[${i}]`, tabScope));
   };
 
   if (!Array.isArray(config.tabs) || config.tabs.length === 0) {
@@ -260,12 +269,12 @@ export function validateConfig(
       flagRef(mapping.from, `${path}.patchOnTrue[${i}].from`, 'Nothing will be copied from.');
       flagRef(mapping.to, `${path}.patchOnTrue[${i}].to`, 'Nothing will be copied to.');
     });
-    field.children?.forEach((c, i) => checkRefs(c, `${path}.children[${i}]`));
+    asArray(field.children).forEach((c, i) => checkRefs(c, `${path}.children[${i}]`));
   };
   const walkTabsForRefs = (tabs: NestedTabConfig[] | undefined, base: string) => {
-    tabs?.forEach((tab, i) => {
+    asArray(tabs).forEach((tab, i) => {
       if (!tab || typeof tab !== 'object') return;
-      tab.fields?.forEach((f, j) => checkRefs(f, `${base}[${i}].fields[${j}]`));
+      asArray(tab.fields).forEach((f, j) => checkRefs(f, `${base}[${i}].fields[${j}]`));
       walkTabsForRefs(tab.children, `${base}[${i}].children`);
     });
   };

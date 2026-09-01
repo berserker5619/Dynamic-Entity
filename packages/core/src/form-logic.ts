@@ -76,6 +76,11 @@ export function normalizeOption(option: RawDropdownOption | null | undefined): D
  * callers can use identity to skip redundant work.
  */
 export function normalizeConfigOptions(config: EntityFormConfig): EntityFormConfig {
+  // The signature says EntityFormConfig, but this is a library boundary: the renderer calls
+  // it with whatever a host bound to `[config]`, and a null there is a bad input rather than
+  // a reason to throw inside change detection.
+  if (!config || typeof config !== 'object') return config;
+
   let changed = false;
 
   /** Two canonical options are the same when they carry the same languages and text. */
@@ -89,8 +94,13 @@ export function normalizeConfigOptions(config: EntityFormConfig): EntityFormConf
   };
 
   const normalizeFieldOptions = (field: NestedFieldConfig): NestedFieldConfig => {
-    const children = field.children?.map(normalizeFieldOptions);
-    const childrenChanged = !!children?.some((c, i) => c !== field.children![i]);
+    // A malformed entry inside `fields` is passed through untouched rather than crashing the
+    // walk: `validateConfig` is what reports it, and normalising is not the place to decide
+    // a config is unusable.
+    if (!field || typeof field !== 'object') return field;
+
+    const children = asTyped(field.children)?.map(normalizeFieldOptions);
+    const childrenChanged = !!children?.some((c, i) => c !== asArrayLoose(field.children)[i]);
 
     let options = field.options;
     let listName = field.listName;
@@ -126,16 +136,18 @@ export function normalizeConfigOptions(config: EntityFormConfig): EntityFormConf
   };
 
   const normalizeTabOptions = (tab: NestedTabConfig): NestedTabConfig => {
-    const fields = tab.fields?.map(normalizeFieldOptions);
-    const children = tab.children?.map(normalizeTabOptions);
-    const fieldsChanged = !!fields?.some((f, i) => f !== tab.fields![i]);
-    const childrenChanged = !!children?.some((c, i) => c !== tab.children![i]);
+    if (!tab || typeof tab !== 'object') return tab;
+
+    const fields = asTyped(tab.fields)?.map(normalizeFieldOptions);
+    const children = asTyped(tab.children)?.map(normalizeTabOptions);
+    const fieldsChanged = !!fields?.some((f, i) => f !== asArrayLoose(tab.fields)[i]);
+    const childrenChanged = !!children?.some((c, i) => c !== asArrayLoose(tab.children)[i]);
 
     if (!fieldsChanged && !childrenChanged) return tab;
     return { ...tab, ...(fields ? { fields } : {}), ...(children ? { children } : {}) };
   };
 
-  const tabs = config.tabs?.map(normalizeTabOptions);
+  const tabs = asTyped(config.tabs)?.map(normalizeTabOptions);
   if (!changed) return config;
   return { ...config, tabs: tabs ?? [] };
 }
@@ -591,6 +603,39 @@ export function normalizeField(field: unknown): NestedFieldConfig {
 /**
  * Normalises a raw tab from storage, supporting object-keyed fields and children.
  */
+/**
+ * Coerce a `tabs` / `fields` / `children` slot into an array.
+ *
+ * Older configs stored these as objects keyed by id, so an object is converted and its key
+ * lifted into `id`. Anything else — a string, a number, `null` — is not a collection and
+ * becomes an empty one, because the alternative is `.map` throwing on data the caller has
+ * no control over.
+ */
+/** Comparison helper for the structural-sharing checks; never indexes a non-array. */
+function asArrayLoose(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+/**
+ * Keep `undefined` as `undefined` — the structural-sharing checks below distinguish "absent"
+ * from "empty" — but turn any other non-array into an empty one. `?.map` only ever guarded
+ * the first of those, so a `fields: ''` from a hand-edited config threw.
+ */
+function asTyped<T>(value: T[] | undefined): T[] | undefined {
+  if (value === undefined) return undefined;
+  return Array.isArray(value) ? value : [];
+}
+
+function toEntryArray(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).map(([id, v]) =>
+      v && typeof v === 'object' ? { ...(v as object), id } : { id },
+    );
+  }
+  return [];
+}
+
 export function normalizeTab(tab: unknown): NestedTabConfig {
   if (!tab || typeof tab !== 'object') return tab as NestedTabConfig;
   const t = tab as Record<string, unknown>;
@@ -598,23 +643,19 @@ export function normalizeTab(tab: unknown): NestedTabConfig {
   const { _id, ...rest } = t;
   void _id;
 
-  let fields = (t['fields'] ?? []) as unknown[];
-  if (fields && !Array.isArray(fields)) {
-    fields = Object.entries(fields as Record<string, unknown>).map(([id, f]) => ({ ...(f as object), id }));
-  }
-
-  let children = (t['children'] ?? []) as unknown[];
-  if (children && !Array.isArray(children)) {
-    children = Object.entries(children as Record<string, unknown>).map(([id, c]) => ({ ...(c as object), id }));
-  }
+  // `x && !Array.isArray(x)` let every *falsy* non-array through untouched — a `''` or a
+  // `0` in `fields` reached `.map` and threw. Anything that is not an array is either an
+  // object to convert or nothing usable at all.
+  const fields = toEntryArray(t['fields']);
+  const children = toEntryArray(t['children']);
 
   return {
     ...rest,
     id: computedId,
     label: normalizeLocalizedText(t['label']),
     isPrimaryTab: Boolean(t['isPrimaryTab']),
-    fields: (fields as unknown[]).map(f => normalizeField(f)),
-    children: (children as unknown[]).map(c => normalizeTab(c)),
+    fields: fields.map(f => normalizeField(f)),
+    children: children.map(c => normalizeTab(c)),
   } as NestedTabConfig;
 }
 
@@ -629,17 +670,14 @@ export function normalizeConfig(config: unknown): EntityFormConfig {
   const { _id, ...rest } = c;
   void _id;
 
-  let tabs = (c['tabs'] ?? []) as unknown[];
-  if (tabs && !Array.isArray(tabs)) {
-    tabs = Object.entries(tabs as Record<string, unknown>).map(([id, t]) => ({ ...(t as object), id }));
-  }
+  const tabs = toEntryArray(c['tabs']);
 
   return {
     ...rest,
     id: computedId,
     name: normalizeLocalizedText(c['name'] ?? { en: (c['entity'] as string) ?? 'New Entity' }),
     isSystemDefined: (c['isSystemDefined'] as boolean) ?? false,
-    tabs: (tabs as unknown[]).map(t => normalizeTab(t)),
+    tabs: tabs.map(t => normalizeTab(t)),
   } as unknown as EntityFormConfig;
 }
 

@@ -22,6 +22,11 @@ export interface FieldScopeEntry {
   path: string;
 }
 
+/** Config collections may be any shape; `?.` guards undefined and nothing else. */
+function asArray<T>(value: T[] | undefined): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
 export const ROOT_SCOPE = '(root)';
 
 const scopeKey = (segments: readonly string[]): string => segments.join('.') || ROOT_SCOPE;
@@ -40,15 +45,15 @@ export function collectFieldScopes(
     // A container stores its children under itself, so they are not siblings of the field.
     const isContainer = field.type === 'group' || field.type === 'array';
     const childScope = isContainer && field.id ? [...scope, field.id] : scope;
-    field.children?.forEach((child, i) => visitField(child, `${path}.children[${i}]`, childScope));
+    asArray(field.children).forEach((child, i) => visitField(child, `${path}.children[${i}]`, childScope));
   };
 
   const visitTab = (tab: NestedTabConfig, path: string, scope: readonly string[]): void => {
     if (!tab || typeof tab !== 'object') return;
     // `flatData` puts the tab's fields at the parent's level rather than under the tab id.
     const tabScope = tab.flatData || !tab.id ? scope : [...scope, tab.id];
-    tab.fields?.forEach((f, i) => visitField(f, `${path}.fields[${i}]`, tabScope));
-    tab.children?.forEach((t, i) => visitTab(t, `${path}.children[${i}]`, tabScope));
+    asArray(tab.fields).forEach((f, i) => visitField(f, `${path}.fields[${i}]`, tabScope));
+    asArray(tab.children).forEach((t, i) => visitTab(t, `${path}.children[${i}]`, tabScope));
   };
 
   config.tabs.forEach((tab, i) => visitTab(tab, `tabs[${i}]`, []));
@@ -118,7 +123,9 @@ export function toRefToken(path: string): string {
  * keep resolving by id, so nothing has to be rewritten to keep working.
  */
 export function parseFieldRef(reference: string): { kind: 'ref' | 'id'; value: string } {
-  const trimmed = reference?.trim() ?? '';
+  // `?.trim()` guards undefined but not a number, an array or an object — and a reference
+  // is config data, so it may be any of them.
+  const trimmed = typeof reference === 'string' ? reference.trim() : '';
   const isRef = trimmed.length > 2 && trimmed.startsWith('[') && trimmed.endsWith(']');
   return isRef
     ? { kind: 'ref', value: trimmed.slice(1, -1).trim() }
