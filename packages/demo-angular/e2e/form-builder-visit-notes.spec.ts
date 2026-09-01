@@ -80,16 +80,22 @@ async function addOption(page: Page, value: string, label: string): Promise<void
   // "+ Option" button is in the inspector Options section
   const addOptBtn = page.locator('ngx-field-inspector button').filter({ hasText: 'Option' }).first();
   await expect(addOptBtn).toBeVisible({ timeout: 5000 });
-  await addOptBtn.click();
 
-  // Fill the LAST option row (most recently added)
+  // Count first, then wait for the row to actually appear.
+  //
+  // This used to click and read `count()` straight afterwards. `count()` does not retry, so
+  // whenever the new row had not rendered yet it returned the old total and `nth(count - 1)`
+  // filled the *previous* row — overwriting a label that was already set and leaving the new
+  // one blank. That is the intermittent missing option this spec kept failing on under CI
+  // load. `toHaveCount` retries, so the row is there before it is filled.
   const optRows = page.getByTestId('option-row');
-  const count = await optRows.count();
-  const lastRow = optRows.nth(count - 1);
+  const before = await optRows.count();
+  await addOptBtn.click();
+  await expect(optRows).toHaveCount(before + 1);
 
   // One input per option: the displayed text IS the stored value, so `value` is unused.
   void value;
-  await lastRow.locator('input').fill(label);
+  await optRows.nth(before).locator('input').fill(label);
 }
 
 /** Set the entity name in the top-left settings panel. */

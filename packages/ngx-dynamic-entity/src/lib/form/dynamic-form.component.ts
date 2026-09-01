@@ -397,6 +397,21 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     }
     if (changes['config'] || changes['initialData']) {
       this.buildForm();
+
+      // Clear *before* the guard below, not after it.
+      //
+      // The reset used to sit behind `if (visibleTabs.length === 0) return`, so a swap that
+      // arrived while no tab was visible — a config still being applied, or every tab hidden
+      // by a rule at that instant — skipped it entirely and the previous record's tab
+      // survived into the next one. Clearing is unconditional and cheap, and safe on its own
+      // because `activeTabConfig` already falls back to the first visible tab when nothing
+      // is selected. Selecting the tab is what needs tabs to exist; forgetting the old one
+      // does not.
+      if (changes['config'] || this.isRecordSwap(changes['initialData'])) {
+        this.activeTab.set('');
+        this.activeSubTab.set('');
+      }
+
       if (this.visibleTabs.length === 0) return;
 
       // The first tab used to be chosen only when no tab was active yet, and nothing ever
@@ -407,7 +422,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
       // Resetting here is consistent with what already happens: `buildForm` assigns a brand
       // new FormGroup, so a changed `initialData` has already discarded every control and
       // all validation state. The tab was the one thing pretending nothing had changed.
-      if (!this.activeTab() || this.isRecordSwap(changes['initialData'])) {
+      if (!this.activeTab()) {
         // No focus steal: the panel gains focus when a *user* picks a tab, not when a host
         // swaps the record underneath them.
         this.setActiveTab(this.visibleTabs[0].id, { focusPanel: false });

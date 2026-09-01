@@ -330,6 +330,45 @@ describe('DynamicFormComponent', () => {
       expect(component.activeTab()).toBe('work');
     });
 
+    it('forgets the old tab even when no tab is visible at that instant', () => {
+      build(twoTabs());
+      component.setActiveTab('work');
+      expect(component.activeTab()).toBe('work');
+
+      // The reset used to sit behind an early return taken when `visibleTabs` was empty, so
+      // a swap arriving in that window skipped it and the previous record's tab survived.
+      const empty: EntityFormConfig = { entity: 'people', tabs: [] };
+      component.config = empty;
+      component.initialData = { personal: { fullName: 'Grace' } };
+      component.ngOnChanges({
+        config: new SimpleChange(twoTabs(), empty, false),
+        initialData: new SimpleChange({ personal: { fullName: 'Ada' } }, component.initialData, false),
+      });
+
+      expect(component.activeTab()).toBe('');
+
+      // And once tabs exist again it lands on the first one, not the one left behind.
+      const restored = twoTabs();
+      component.config = restored;
+      component.ngOnChanges({ config: new SimpleChange(empty, restored, false) });
+      expect(component.activeTab()).toBe('personal');
+    });
+
+    it('clears the active sub-tab alongside the tab', () => {
+      build(twoTabs());
+      component.setActiveTab('work');
+      swapInitialData({ personal: { fullName: 'Ada' } }, { personal: { fullName: 'Grace' } });
+      // A stale sub-tab is the same bug one level down.
+      expect(component.activeSubTab()).toBe('');
+    });
+
+    it('renders the first visible tab while nothing is selected', () => {
+      build(twoTabs());
+      component.activeTab.set('');
+      // `activeTabConfig` falling back is what makes clearing safe on its own.
+      expect(component.activeTabConfig?.id).toBe('personal');
+    });
+
     it('does not steal focus when the host swaps the record', () => {
       build(twoTabs());
       component.setActiveTab('work');
