@@ -182,19 +182,15 @@ describe('integration — a config authored in the builder renders and submits',
   });
 
   /**
-   * The builder and core disagree about an empty entity, and this pins the disagreement
-   * rather than papering over it.
+   * The builder and core now agree about an empty entity.
    *
-   * Undo all the way back and the config is the empty starting state. `validateConfig` calls
-   * that an **error** — no tabs means nothing can render — while the builder reports only a
-   * warning and leaves Save enabled. So the builder will save a config that
-   * `dynamic-entity validate` then rejects in CI: the mirror image of the bug where it
-   * refused a config core accepted.
-   *
-   * Which side should move is a product decision (may an entity be saved before it has any
-   * tabs?), so this asserts today's behaviour and names the gap.
+   * They did not: `validateConfig` called a config with no tabs an error while the builder
+   * reported a warning and left Save enabled, so the builder could save something
+   * `dynamic-entity validate` then rejected in CI — the mirror of the bug where it refused
+   * a config core accepted. Found by these integration specs, because neither package's own
+   * suite can see a disagreement with the other.
    */
-  it('lets the builder save an empty entity that core rejects', () => {
+  it('agrees with core that an empty entity cannot be saved', () => {
     store.setEntityName('clients');
     store.addField('text');
     while (store.canUndo()) store.undo();
@@ -202,7 +198,17 @@ describe('integration — a config authored in the builder renders and submits',
     const coreErrors = validateConfig(store.exportConfig()).filter(i => i.level === 'error');
     expect(coreErrors.map(e => e.message)).toContain('At least one tab is required.');
 
-    // The builder does not agree, and this is the line to change if that is settled.
+    expect(store.isValid()).toBe(false);
+    expect(store.errors().map(e => e.message)).toContain('At least one tab is required.');
+  });
+
+  it('enables Save again as soon as the entity has somewhere to put a field', () => {
+    store.setEntityName('clients');
+    expect(store.isValid()).toBe(false);
+
+    // `addField` creates the first tab when there is none, so one field is enough.
+    store.addField('text');
+    expect(validateConfig(store.exportConfig()).filter(i => i.level === 'error')).toEqual([]);
     expect(store.isValid()).toBe(true);
   });
 });

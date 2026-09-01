@@ -1475,6 +1475,15 @@ export class BuilderStore {
   private validate(config: EntityFormConfig): BuilderProblem[] {
     const problems: BuilderProblem[] = [];
 
+    // Core calls a config with no tabs an error — nothing can render — and the builder used
+    // to report only a warning and leave Save enabled. That let the builder save a config
+    // `dynamic-entity validate` then rejected in CI: the mirror of the bug where it refused
+    // one core accepted. The builder defers to core here, as it already does for the scope
+    // rule, and the message is core's so the two read the same in both places.
+    if (!config.tabs?.length) {
+      problems.push({ level: 'error', message: 'At least one tab is required.' });
+    }
+
     if (!config.entity || !config.entity.trim()) {
       problems.push({ level: 'error', message: 'Entity name is required.' });
     } else if (!ID_PATTERN.test(config.entity)) {

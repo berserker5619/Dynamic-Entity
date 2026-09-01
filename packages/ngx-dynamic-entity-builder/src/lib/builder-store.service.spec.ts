@@ -19,7 +19,8 @@ describe('BuilderStore', () => {
     it('accepts a valid entity name', () => {
       store.setEntityName('clients');
       expect(store.config().entity).toBe('clients');
-      expect(store.errors().length).toBe(0);
+      // Scoped to the name: a brand-new config still has no tabs, which is its own error.
+      expect(store.errors().some(p => /entity name/i.test(p.message))).toBe(false);
     });
 
     it('rejects an invalid entity name', () => {

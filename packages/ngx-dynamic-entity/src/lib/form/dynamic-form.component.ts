@@ -1089,7 +1089,13 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
    */
   private focusActivePanel(): void {
     if (typeof requestAnimationFrame !== 'function') return;
-    requestAnimationFrame(() => this.formPanel?.nativeElement?.focus?.());
+    requestAnimationFrame(() =>
+      // `preventScroll` because this focus exists to tell a screen reader the panel changed,
+      // not to move the page. The default scrolls the panel into view, which on a short
+      // viewport jumps the layout — enough that a Save button below it moves out from under
+      // a tap. The panel sits directly beneath the tab strip and is already on screen.
+      this.formPanel?.nativeElement?.focus?.({ preventScroll: true }),
+    );
   }
 
   /** Accessible name for the field panel — it is the tabpanel for the active tab. */
