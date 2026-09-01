@@ -7,6 +7,58 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.8.0] — 2026-09-01
+
+Work since 1.7.0: undo and redo in the builder, and three defects found by
+covering the branches that had none.
+
+### Added
+
+- **Undo / redo in the builder.** Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z, plus toolbar
+  buttons that disable at the ends of the history. `BuilderStore` gains `undo()`,
+  `redo()`, `canUndo` and `canRedo`.
+
+  History records the `{config, rules}` pair — they are two signals, and undoing
+  one without the other could leave a rule pointing at a field that no longer
+  exists. Consecutive edits coalesce inside 400ms *when the structure is
+  unchanged*, so typing a label is one undo step while a fast double-click on the
+  palette is still two.
+
+  The shortcut ignores keystrokes aimed at an input, textarea or contenteditable:
+  those have their own undo stack, and hijacking it would discard a structural
+  edit when the author wanted one character back.
+
+### Fixed
+
+- **`validateConfig` crashed on a malformed config.** A `null` in `fields` or
+  `tabs` threw "Cannot read properties of null" — it failed on exactly the input
+  it exists to describe, and took `dynamic-entity validate` down with it in CI.
+  The main pass guards; the *second* pass that re-walks the tree for references
+  did not. It now reports the entry and carries on.
+
+- **A `date` field showed "Invalid Date".** `new Date('nonsense')` does not throw
+  and `toLocaleDateString()` returns that string, so the try/catch meant to fall
+  back to the stored value was dead code. Records outlive schemas — a field
+  retyped from text to date can hold anything — so an unparseable value is now
+  shown as stored.
+
+- **Radio options with no value shared one input id.** The `?? 'opt'` fallback
+  could not fire, because option resolution returns `''` rather than null.
+  Duplicate ids break the `for` that ties each label to its input.
+
+- **The form returned to the wrong tab.** A form kept mounted while `initialData`
+  was swapped opened the next record on the previous one's tab. Fixed in two
+  steps: 1.7.0's reset was placed after an early return that a swap could skip,
+  so it is now cleared before that guard. `activeTabConfig` already falls back to
+  the first visible tab, which is what makes clearing safe on its own.
+
+### Internal
+
+Branch coverage rose to 90% in core, 88% in the renderer and 85% in the builder,
+and the thresholds moved up to hold it. 1,317 unit tests, 102 e2e.
+
+---
+
 ## [1.7.0] — 2026-08-31
 
 Work since 1.6.0: a second long-form field type, and a builder that will open the
