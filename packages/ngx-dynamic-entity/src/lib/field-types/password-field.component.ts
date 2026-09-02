@@ -20,7 +20,7 @@ import { resolveLabel } from '@dynamic-entity/core';
       [class.ngx-field--readonly]="readonly"
       [class.ngx-field--masked]="masked"
     >
-      <label class="ngx-field__label">{{ label }}</label>
+      <label class="ngx-field__label" [attr.for]="field.id">{{ label }}</label>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
           maskedText
@@ -30,6 +30,7 @@ import { resolveLabel } from '@dynamic-entity/core';
       } @else {
         <div class="ngx-field__password-wrap">
           <input
+            [id]="field.id"
             class="ngx-field__input"
             [attr.data-testid]="'field-' + field.id + '-input'"
             [type]="visible() ? 'text' : 'password'"

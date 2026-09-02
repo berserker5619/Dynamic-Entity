@@ -147,20 +147,59 @@ export function resolveUiText<K extends string>(
   language: string,
   params?: UiTextParams,
 ): string {
-  const fallback = defaults[key] ?? '';
+  const fallback = ownString(defaults, key);
   const resolved = !overrides
     ? fallback
     : typeof overrides === 'function'
-      ? overrides(key, fallback, language) || fallback
+      ? askResolver(overrides, key, fallback, language)
       : // `resolveLabel` handles a bare string at runtime but does not say so in its
         // signature, so the branch is taken here rather than leaning on an undeclared one.
-        resolveOne(overrides[key], language) || fallback;
+        resolveOne(own<UiTextValue | undefined>(overrides, key), language) || fallback;
 
   return interpolate(resolved, params);
 }
 
+/**
+ * An **own** entry, or `undefined`.
+ *
+ * `map[key]` walks the prototype chain, so `toString` answers with `Function` and
+ * `__proto__` with `Object.prototype` — neither of which is a string, and both of which
+ * reach `interpolate` and then a template. The key type rules that out in TypeScript; a key
+ * arriving from a translation catalogue at runtime, or from a host written in JavaScript,
+ * does not.
+ */
+function own<T>(map: Partial<Record<string, T>>, key: string): T | undefined {
+  return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined;
+}
+
+function ownString<K extends string>(defaults: Readonly<Record<K, string>>, key: K): string {
+  const value = own(defaults as Record<string, unknown>, key);
+  return typeof value === 'string' ? value : '';
+}
+
+/**
+ * A resolver runs inside change detection, once per label per pass, in someone else's code.
+ *
+ * If it throws, the exception surfaces from a template expression and the form does not
+ * render at all — every form in the application, over one bad catalogue entry. Falling back
+ * to English is the same answer this function already gives for a resolver that returns
+ * nothing, and it keeps a translation fault a translation fault rather than an outage.
+ */
+function askResolver<K extends string>(resolver: UiTextResolverFor<K>, key: K, fallback: string, language: string): string {
+  try {
+    const answer = resolver(key, fallback, language);
+    return typeof answer === 'string' && answer ? answer : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function resolveOne(value: UiTextValue | undefined, language: string): string {
-  return typeof value === 'string' ? value : resolveLabel(value, language);
+  if (typeof value === 'string') return value;
+  const resolved = resolveLabel(value, language);
+  // `resolveLabel` is typed to return a string and does, for every shape it is documented
+  // to take. A host handing it a number reaches `Object.values(42)`, which is empty.
+  return typeof resolved === 'string' ? resolved : '';
 }
 
 /**
@@ -187,5 +226,10 @@ export class UiTextService {
 /** A placeholder with no matching param is left as written, which is visible in review. */
 function interpolate(text: string, params?: UiTextParams): string {
   if (!params) return text;
-  return text.replace(PLACEHOLDER, (match, name) => (name in params ? String(params[name]) : match));
+  // `name in params` would answer for `toString` and `constructor` too, substituting a
+  // function body into a sentence. Only what the caller actually passed counts.
+  return text.replace(PLACEHOLDER, (match, name) => {
+    const value = own(params as Record<string, unknown>, name);
+    return value === undefined || value === null ? match : String(value);
+  });
 }

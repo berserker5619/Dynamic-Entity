@@ -97,4 +97,5 @@ export type {
   RuleAction,
   RuleEvaluationResult,
   CommonModuleEntry,
+  ComponentClass,
 } from '@dynamic-entity/core';

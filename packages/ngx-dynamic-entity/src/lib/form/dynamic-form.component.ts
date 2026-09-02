@@ -271,11 +271,41 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     return subTabs.find(s => s.id === subId) ?? subTabs[0];
   }
 
+  /**
+   * The component to mount for the active tab, or `null` if there is nothing to mount.
+   *
+   * A registry entry may name its component with a **selector string** — `COMMON_MODULES`
+   * is a catalogue of names for the builder's picker, and the token's own example showed
+   * one. `ngComponentOutlet` mounts a component *type*, so a string reached it and Angular
+   * threw an assertion the moment somebody opened that tab. Following the documented shape
+   * broke the feature, which is worse than the feature not existing.
+   *
+   * A string now resolves to nothing renderable and says why, once per module.
+   */
   get activeTabModuleComponent(): any | null {
     const active = this.activeSubTabConfig ?? this.activeTabConfig;
     if (!active?.moduleName || !this.commonModulesRegistry) return null;
     const entry = this.commonModulesRegistry.find(m => m.id === active.moduleName || m.component === active.moduleName);
-    return entry ? entry.component : null;
+    if (!entry) return null;
+    if (typeof entry.component === 'string') {
+      this.warnSelectorModule(entry.id, entry.component);
+      return null;
+    }
+    return entry.component;
+  }
+
+  /** Warned once per module id, because a getter runs on every change-detection pass. */
+  private readonly warnedSelectorModules = new Set<string>();
+
+  private warnSelectorModule(id: string, selector: string): void {
+    if (this.warnedSelectorModules.has(id)) return;
+    this.warnedSelectorModules.add(id);
+    console.warn(
+      `[ngx-dynamic-entity] The common module '${id}' is registered with the selector ` +
+        `'${selector}' rather than a component class, so there is nothing to mount for its ` +
+        `tab. Register the component itself: ` +
+        `{ id: '${id}', label: {...}, component: MyComponent }.`,
+    );
   }
 
   get fieldsForActiveTab(): NestedFieldConfig[] {

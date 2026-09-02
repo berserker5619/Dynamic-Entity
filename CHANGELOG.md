@@ -54,6 +54,36 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Five field types rendered a control with no accessible name.** `multiSelect`,
+  `currency`, `email`, `password` and `monthYear` drew a `<label>` beside their
+  control without pointing at it, so a screen reader announced an unlabelled combo
+  box and clicking the label focused nothing. The accessibility scan never saw it:
+  it ran over a demo config made of text and dropdowns, and none of the five are in
+  it. `monthYear` additionally names each of its two selects, because one label in
+  front of a pair does not say which half the reader has landed on.
+
+  A per-component sweep now asserts that every rendered control has a name, so a
+  field type added later is covered the day it is registered rather than the day
+  someone points an axe run at a page that happens to contain it.
+
+- **A common module registered by selector took its tab down.** `CommonModuleEntry`
+  typed `component` as a string, the token's own example showed one, and
+  `COMMON_MODULES` — the catalogue the builder's picker offers — is made of them. The
+  renderer passes that value to `ngComponentOutlet`, which mounts a component *type*
+  and throws an assertion on a string. Following the documented shape broke the
+  feature, which is worse than the feature not existing.
+
+  `component` is now `string | ComponentClass`, a selector resolves to nothing
+  renderable and warns once naming the fix, and the examples show a class.
+
+- **`resolveUiText` could return something that was not text.** `map[key]` walks the
+  prototype chain, so a key of `toString` answered with a function and `__proto__`
+  with an object — both of which reached the template. A resolver that threw took
+  the whole form down rather than one label, and a `{placeholder}` matching an
+  inherited name substituted a function body into a sentence. Keys are typed, but
+  these values arrive from a translation catalogue, a JSON file, or a host written in
+  JavaScript, and none of that is checked at the boundary.
+
 - **Configured validation messages now reach every field type.** They reached three of
   fifteen. The other twelve rendered a fixed "This field has an error", so a consumer
   who configured `validationMessages` saw it on text, number and dropdown and the
@@ -64,6 +94,22 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`core` reports a collection that is present but is not an array.** `tabs: {}` or
   `fields: 'x'` was silently ignored rather than reported, which read as an empty
   entity instead of a malformed one.
+
+### Internal
+
+**1,521 unit tests and 148 E2E**, up from 1,337 and 124 at 1.8.1. What is new is the
+*kind*: two source sweeps that assert the published key lists and the templates agree
+in both directions; two rendering sweeps that mount every field type and the whole
+builder with every key overridden and assert no English default survives in the
+markup; a per-component accessible-name sweep; property-based fuzzing of
+`resolveUiText` over 1,500 seeded override shapes per property; and an E2E that
+asserts German text does not push the page into a horizontal scroll at 412px. The
+three fixes above were all found by one of them.
+
+The demo's reference stylesheet also gained `flex-wrap` on the tab strip and
+shrinkable header rows: a five-tab form was wider than a phone, and the narrow
+Playwright project had been rendering that horizontal scroll on every run without
+asserting on it.
 
 ### Notes
 

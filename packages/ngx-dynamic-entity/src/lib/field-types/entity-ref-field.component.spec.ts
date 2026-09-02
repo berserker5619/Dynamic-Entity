@@ -151,9 +151,7 @@ describe('EntityRefFieldComponent', () => {
 
     fixture.componentInstance.control.setValue('de');
 
-    expect(seen).toEqual([
-      { fieldId: 'country', option: expect.objectContaining({ value: 'de', label: 'Germany' }) },
-    ]);
+    expect(seen).toEqual([{ fieldId: 'country', option: expect.objectContaining({ value: 'de', label: 'Germany' }) }]);
   });
 
   it('renders empty options when no loader is registered', async () => {
@@ -281,6 +279,45 @@ describe('EntityRefFieldComponent — selection published from a real change eve
     expect(seen[0].option?.value).toBe('fr');
     // The record is what autoPatch copies from, so an empty one is a silent no-op downstream.
     expect(seen[0].option?.record).toBeDefined();
+  });
+
+  it('reads the control when called with no value of its own', async () => {
+    // `onSelectionChange()` is also called imperatively — from `valueChanges`, which carries
+    // no argument. The argument-less path has to fall back to the control, and did so
+    // untested: a regression there would break autoPatch only for programmatic changes,
+    // which is the half no click reproduces.
+    const fixture = await setup(
+      { id: 'country', type: 'entity-ref', label: { en: 'Country' } },
+      { country: () => Promise.resolve(COUNTRIES) },
+    );
+
+    const bus = TestBed.inject(EntityRefSelectionService);
+    const seen: any[] = [];
+    bus.selection$.subscribe(e => seen.push(e));
+
+    fixture.componentInstance.control.setValue('fr');
+    fixture.componentInstance.onSelectionChange();
+    fixture.detectChanges();
+
+    expect(seen.at(-1).option?.value).toBe('fr');
+  });
+
+  it('publishes null for a control value no option matches', async () => {
+    const fixture = await setup(
+      { id: 'country', type: 'entity-ref', label: { en: 'Country' } },
+      { country: () => Promise.resolve(COUNTRIES) },
+    );
+
+    const bus = TestBed.inject(EntityRefSelectionService);
+    const seen: any[] = [];
+    bus.selection$.subscribe(e => seen.push(e));
+
+    // A record can hold a value whose option has since been removed from the source.
+    fixture.componentInstance.control.setValue('atlantis');
+    fixture.componentInstance.onSelectionChange();
+    fixture.detectChanges();
+
+    expect(seen.at(-1).option).toBeNull();
   });
 
   it('publishes null when the selection is cleared', async () => {

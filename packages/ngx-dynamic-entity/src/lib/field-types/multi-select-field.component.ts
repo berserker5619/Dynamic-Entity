@@ -3,12 +3,7 @@ import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
-import {
-  getOptionStoredValue,
-  resolveLabel,
-  resolveOptionLabel,
-  valuesMatch,
-} from '@dynamic-entity/core';
+import { getOptionStoredValue, resolveLabel, resolveOptionLabel, valuesMatch } from '@dynamic-entity/core';
 import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-registry.service';
 
 @Component({
@@ -17,17 +12,27 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <div class="ngx-field ngx-field--multiSelect"
-      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
-      <label class="ngx-field__label">{{ label }}</label>
+    <div
+      class="ngx-field ngx-field--multiSelect"
+      [attr.data-testid]="'field-' + field.id"
+      [attr.data-field-type]="field.type"
+      [class.ngx-field--readonly]="readonly"
+      [class.ngx-field--masked]="masked"
+    >
+      <label class="ngx-field__label" [attr.for]="field.id">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
+          maskedText
+        }}</span>
       } @else if (readonly) {
-        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ getLabels(control.value) }}</span>
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{
+          getLabels(control.value)
+        }}</span>
       } @else {
         <select
           [id]="field.id"
-          class="ngx-field__input" [attr.data-testid]="'field-' + field.id + '-input'"
+          class="ngx-field__input"
+          [attr.data-testid]="'field-' + field.id + '-input'"
           [formControl]="$any(control)"
           [compareWith]="compareFn"
           [attr.disabled]="field.disabled ? true : null"
@@ -132,5 +137,4 @@ export class MultiSelectFieldComponent {
       'pattern',
     ]);
   }
-
 }

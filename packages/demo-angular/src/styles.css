@@ -61,7 +61,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-heading);
   letter-spacing: -0.02em;
 }
@@ -90,8 +95,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ─── Sleek Glassmorphic Header ─── */
@@ -111,6 +122,25 @@ h1, h2, h3, h4, h5, h6 {
   flex-wrap: wrap;
 }
 
+/*
+ * The header's own rows wrap, and may shrink.
+ *
+ * The header itself already wrapped, but its rows are flex items whose default
+ * `min-width: auto` refuses to go narrower than their content. At 412px the title row stayed
+ * 563px wide and took the whole document into a horizontal scroll, which the narrow
+ * Playwright project rendered on every run without ever asserting on. Every nested row needs
+ * the same treatment, not just the outermost.
+ */
+.demo-header div {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* `width: auto` sizes the picker to its longest entity name, which is wider than a phone. */
+.demo-header select {
+  max-width: 100%;
+}
+
 .demo-header h1 {
   font-size: 19px;
   font-weight: 800;
@@ -124,7 +154,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .demo-header h1::before {
-  content: "⚡";
+  content: '⚡';
   font-size: 18px;
   background: var(--primary-gradient);
   -webkit-background-clip: text;
@@ -234,6 +264,15 @@ h1, h2, h3, h4, h5, h6 {
 
 .ngx-form__tabs {
   display: flex;
+  /*
+   * Wraps on a narrow viewport.
+   *
+   * A five-tab strip is wider than a phone, and without this the strip pushed the whole
+   * document into a horizontal scroll — every field then sat off-centre and the last tab was
+   * unreachable without panning. This stylesheet is the reference a consumer copies, so the
+   * rule belongs here rather than in the demo's own layout.
+   */
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 24px;
   border-bottom: 2px solid var(--border);

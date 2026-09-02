@@ -41,7 +41,13 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
       [class.ngx-field--readonly]="readonly"
       [class.ngx-field--masked]="masked"
     >
-      <label class="ngx-field__label">{{ label }}</label>
+      <!--
+        Points at the month select: one visible label stands in front of two controls, and a
+        label pointing at neither of them announces as nothing and focuses nothing when
+        clicked. Each select then carries its own name below, because "Billing Cycle" alone
+        does not say which half of the pair the screen reader has landed on.
+      -->
+      <label class="ngx-field__label" [attr.for]="field.id + '-month'">{{ label }}</label>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
           maskedText
@@ -53,7 +59,9 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
       } @else {
         <div class="ngx-field__month-year-wrap">
           <select
+            [id]="field.id + '-month'"
             class="ngx-field__input ngx-field__input--month"
+            [attr.aria-label]="label + ' ' + ui.text('month', language)"
             [attr.data-testid]="'field-' + field.id + '-month'"
             [value]="selectedMonth"
             (change)="onMonthChange($any($event.target).value)"
@@ -65,7 +73,9 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
             }
           </select>
           <select
+            [id]="field.id + '-year'"
             class="ngx-field__input ngx-field__input--year"
+            [attr.aria-label]="label + ' ' + ui.text('year', language)"
             [attr.data-testid]="'field-' + field.id + '-year'"
             [value]="selectedYear"
             (change)="onYearChange($any($event.target).value)"

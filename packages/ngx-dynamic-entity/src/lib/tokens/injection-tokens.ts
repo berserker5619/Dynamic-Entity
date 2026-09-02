@@ -111,13 +111,18 @@ export const HOOK_REGISTRY = new InjectionToken<Map<string, HookFn>>('HOOK_REGIS
  * The library ships no built-in implementations. Consumers provide their own list
  * so the builder's module-picker and the renderer's tab switcher know what's available.
  *
+ * `component` must be the component **class**: it is mounted through `ngComponentOutlet`,
+ * which takes a type, not a selector. An entry naming a selector string renders nothing and
+ * warns — `COMMON_MODULES` in core is a catalogue of names for the builder's picker, and
+ * offering a module the renderer cannot mount is the one way to get this wrong.
+ *
  * @example
  * providers: [
  *   {
  *     provide: COMMON_MODULES_REGISTRY,
  *     useValue: [
- *       { id: 'documents', label: { en: 'Documents' }, component: 'app-documents-view' },
- *       { id: 'audit',     label: { en: 'Audit Log'  }, component: 'app-audit' },
+ *       { id: 'documents', label: { en: 'Documents' }, component: DocumentsViewComponent },
+ *       { id: 'audit',     label: { en: 'Audit Log'  }, component: AuditLogComponent },
  *     ] satisfies CommonModuleEntry[]
  *   }
  * ]

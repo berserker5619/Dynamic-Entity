@@ -68,6 +68,52 @@ test.describe('Accessibility', () => {
   });
 
   /**
+   * The same two scans with the interface in German.
+   *
+   * Translation is where accessible names go missing: an `aria-label` that resolves to an
+   * empty string leaves an icon button announcing as "button", and a heading whose text is
+   * replaced by nothing breaks the document outline. Neither is visible on screen — the
+   * button still draws, the layout still looks right — so a scan is the only thing that
+   * catches it, and scanning only the English build checks the one language that was never
+   * at risk.
+   */
+  test('the record form has no detectable violations in German', async ({ page }) => {
+    await gotoDemo(page);
+    await safeSelect(page.locator('#entitySelect'), 'complexFullTest');
+    await safeClick(page.getByTestId('ui-lang-de'));
+    await safeClick(page.getByRole('button', { name: /^\+ Add/ }));
+    await expect(page.locator('[data-testid="form-panel"]')).toBeVisible();
+
+    const results = await scan(page);
+    expect(describeViolations(results)).toEqual([]);
+  });
+
+  test('the widest configuration has no detectable violations either', async ({ page }) => {
+    // `clients` is three fields of two types. Scanning only that is how five field types
+    // shipped with a label that pointed at nothing: `multiSelect`, `currency`, `email`,
+    // `password` and `monthYear` are simply not in it. `insuranceClaims` renders twenty.
+    await gotoDemo(page);
+    await safeSelect(page.locator('#entitySelect'), 'insuranceClaims');
+    await safeClick(page.getByRole('button', { name: /^\+ Add/ }));
+    await expect(page.locator('[data-testid="form-panel"]')).toBeVisible();
+
+    const results = await scan(page);
+    expect(describeViolations(results)).toEqual([]);
+  });
+
+  test('the builder has no detectable violations in German', async ({ page }) => {
+    await gotoDemo(page);
+    await safeClick(page.getByTestId('ui-lang-de'));
+    await safeClick(page.getByRole('button', { name: /Form Builder/i }));
+    await expect(page.locator('ngx-entity-builder')).toBeVisible();
+    // The chrome is German before the scan starts, not mid-swap.
+    await expect(page.locator('.deb-toolbar__title')).toHaveText(/Entitäten-Baukasten/);
+
+    const results = await scan(page);
+    expect(describeViolations(results)).toEqual([]);
+  });
+
+  /**
    * Activating a tab replaces everything below it while focus stays on the tab button, so a
    * keyboard or screen-reader user gets no indication the content changed and has to tab
    * back through the whole strip to reach it.
