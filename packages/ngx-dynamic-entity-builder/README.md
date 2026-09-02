@@ -35,7 +35,8 @@ export const appConfig: ApplicationConfig = {
 - **Rules manager** — create, reorder, edit, and toggle reactive rules (`RuleFormComponent`, `FieldRulesListComponent`).
 - **Tab & tree manager** — organize primary tabs, sub-tabs, nested groups, and array field lists. Nesting is recursive; no depth limit is enforced.
 - **Live preview slot** — a projected content slot, so the builder renders a preview without depending on the renderer package.
-- **All 20 field types** from the `@dynamic-entity/core` catalog.
+- **Undo & redo** — `Ctrl`/`Cmd`+`Z` and `Ctrl`/`Cmd`+`Shift`+`Z`, plus toolbar buttons that disable at the ends of the history. Consecutive edits inside 400ms merge when the structure is unchanged, so typing a label is one step while adding two fields is two.
+- **All 21 field types** from the `@dynamic-entity/core` catalog.
 
 ---
 
@@ -66,6 +67,29 @@ export const appConfig: ApplicationConfig = {
 |---|---|
 | `configChange` | `EntityFormConfig` — emitted on every edit. |
 | `save` | `EntityFormConfig` — emitted when the user saves. |
+
+---
+
+## ↩️ Undo & redo
+
+Wired to the toolbar and to `Ctrl`/`Cmd`+`Z` / `Ctrl`/`Cmd`+`Shift`+`Z`. The shortcut is
+ignored while focus is in an input, textarea or contenteditable — those have their own undo
+stack, and taking it over would discard a structural edit when the author wanted one
+character back.
+
+Driving it yourself, from a host that injects `BuilderStore`:
+
+```ts
+store.undo();          // no-op at the start of history
+store.redo();          // no-op at the end
+store.canUndo();       // signal — bind it to your own button's disabled state
+store.canRedo();
+```
+
+History records the config and its rules **together**: they are two signals, and undoing one
+without the other could leave a rule pointing at a field that no longer exists. Loading a
+config or resetting starts history again, so opening an entity is not something you can undo
+past.
 
 ---
 

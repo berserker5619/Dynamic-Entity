@@ -25,7 +25,7 @@ No Angular Material required. This package has no dependency on Material or the 
 - **`DynamicRecordFormComponent`** — record editor with summary drawer (`showOnMinimize`), profile header, and per-section saving.
 - **Reactive rules** — real-time condition evaluation driving field/tab visibility, validation errors and warnings, and info banners.
 - **Entity references & cascades** — consumer-registered loaders, parent→child dropdown filtering, and `autoPatch` record copying.
-- **20 field types** — each a standalone component, registered explicitly so unused types are never bundled.
+- **21 field types** — each a standalone component, registered explicitly so unused types are never bundled.
 
 ---
 
@@ -60,6 +60,11 @@ provideFieldTypes({ text: TextFieldComponent, dropdown: DropdownFieldComponent }
 ```
 
 Multiple `provideFieldTypes` calls merge; on a key collision the later registration wins. Pass your own component for a key to override a built-in, or add a key of your own for a custom type.
+
+Some field types take an optional collaborator. A `markdown` field renders its source as
+text until you register a renderer — see
+[Markdown](../../EXTENDING.md#markdown) for `MARKDOWN_RENDERER`, which is any function from
+source to HTML.
 
 ---
 
@@ -97,6 +102,51 @@ Multiple `provideFieldTypes` calls merge; on a key collision the later registrat
 | `formChange` | `Record<string, any>` |
 | `formReset` | `void` |
 | `activeTabChange` | `string` (tab id) |
+
+---
+
+## 📄 Three ways to present a record
+
+`DynamicFormComponent` is the editable form. `DynamicRecordFormComponent` renders the same
+config as a record, and two of its inputs decide how much a reader may do:
+
+| Presentation | Component | Inputs |
+|---|---|---|
+| **Form** | `ngx-dynamic-form` | editable controls plus the actions block |
+| **Record view** | `ngx-dynamic-record-form` | `viewMode` (default `true`) — values, with a per-tab "Edit section" flow |
+| **Data only** | `ngx-dynamic-record-form` | `isReadOnly="true"` — values, and no way to edit them |
+
+```html
+<!-- Read-only for everyone, whatever their roles allow. -->
+<ngx-dynamic-record-form
+  [config]="config"
+  [initialData]="record"
+  [userRoles]="roles"
+  [isReadOnly]="true"
+></ngx-dynamic-record-form>
+```
+
+`viewMode="false"` gives a directly editable record with no view/edit distinction, for hosts
+that do not want the section flow.
+
+### Record-form inputs
+
+| Input | Type | Notes |
+|---|---|---|
+| `config` / `initialData` / `userRoles` / `language` | — | As the form component. |
+| `viewMode` | `boolean` | Default `true`. Read-only with a per-tab edit flow. |
+| `isReadOnly` | `boolean` | Whole record read-only, with no edit affordance at all. |
+| `readOnlyFields` | `string[]` | Specific ids read-only while the rest stays editable. |
+| `rules` | `FormRule[]` | Optional reactive rules. |
+
+| Output | Payload |
+|---|---|
+| `formSubmit` / `formChange` / `formReset` | As the form component. |
+| `sectionSave` | `{ tabId, record }` — one tab was saved. |
+
+**RBAC applies on top of all three.** Roles outside `permissions.edit` get a read-only
+record whichever presentation you choose — see [Security](#-security), because that is a
+rendering decision, not an access-control boundary.
 
 ---
 
