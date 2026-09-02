@@ -1,6 +1,7 @@
-import { Component, Input, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, signal, ChangeDetectionStrategy, inject} from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
+import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
 
 /** Password field: masked input with show/hide eye toggle. */
@@ -36,14 +37,15 @@ import { resolveLabel } from '@dynamic-entity/core';
             {{ visible() ? '🙈' : '👁' }}
           </button>
         </div>
-        @if (control.invalid && control.touched) {
-          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">This field has an error</span>
+        @if (errorMessage) {
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">{{ errorMessage }}</span>
         }
       }
     </div>
   `,
 })
 export class PasswordFieldComponent {
+  private readonly messages = inject(ValidationMessagesService);
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() language: string = 'en';
@@ -63,4 +65,23 @@ export class PasswordFieldComponent {
   toggleVisibility(): void {
     this.visible.update(v => !v);
   }
+  /**
+   * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({
+   * validationMessages })` reaches this field. It used to render a fixed
+   * "This field has an error", which made a documented, configurable feature work on three
+   * of fifteen field types.
+   */
+  get errorMessage(): string {
+    if (!this.control?.errors || !this.control.touched) return '';
+    return this.messages.resolve(this.control.errors, this.language, [
+      'required',
+      'email',
+      'min',
+      'max',
+      'minlength',
+      'maxlength',
+      'pattern',
+    ]);
+  }
+
 }

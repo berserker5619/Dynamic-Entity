@@ -1,6 +1,7 @@
 import { Component, Input, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
+import { ValidationMessagesService } from '../services/validation-messages.service';
 import {
   getOptionStoredValue,
   resolveLabel,
@@ -40,14 +41,15 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
             }
           }
         </select>
-        @if (control.invalid && control.touched) {
-          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">This field has an error</span>
+        @if (errorMessage) {
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">{{ errorMessage }}</span>
         }
       }
     </div>
   `,
 })
 export class MultiSelectFieldComponent {
+  private readonly messages = inject(ValidationMessagesService);
   private readonly lookups = inject(LookupRegistryService);
 
   private _field!: NestedFieldConfig;
@@ -109,4 +111,23 @@ export class MultiSelectFieldComponent {
       })
       .join(', ');
   }
+  /**
+   * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({
+   * validationMessages })` reaches this field. It used to render a fixed
+   * "This field has an error", which made a documented, configurable feature work on three
+   * of fifteen field types.
+   */
+  get errorMessage(): string {
+    if (!this.control?.errors || !this.control.touched) return '';
+    return this.messages.resolve(this.control.errors, this.language, [
+      'required',
+      'email',
+      'min',
+      'max',
+      'minlength',
+      'maxlength',
+      'pattern',
+    ]);
+  }
+
 }

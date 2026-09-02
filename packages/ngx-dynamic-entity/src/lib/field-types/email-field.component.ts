@@ -1,6 +1,7 @@
-import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, inject} from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
+import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
 
 /** Email field: type="email" input with inline validation hint. */
@@ -28,20 +29,19 @@ import { resolveLabel } from '@dynamic-entity/core';
           [placeholder]="placeholder || 'you@example.com'"
           [attr.disabled]="field.disabled ? true : null"
         />
-        @if (control.invalid && control.touched) {
-          @if (control.errors?.['required']) {
-            <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">Email is required</span>
-          } @else if (control.errors?.['email']) {
-            <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">Enter a valid email address</span>
-          } @else {
-            <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">This field has an error</span>
-          }
+        @if (errorMessage) {
+          <!-- One branch, resolved by the service. The template used to spell out "Email is
+               required" and "Enter a valid email address" itself, so a host configuring
+               validationMessages was overridden by markup it could not reach. The service
+               defaults say the same thing. -->
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">{{ errorMessage }}</span>
         }
       }
     </div>
   `,
 })
 export class EmailFieldComponent {
+  private readonly messages = inject(ValidationMessagesService);
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() language: string = 'en';
@@ -55,4 +55,23 @@ export class EmailFieldComponent {
   get placeholder(): string {
     return resolveLabel(this.field?.placeholder, this.language);
   }
+  /**
+   * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({
+   * validationMessages })` reaches this field. It used to render a fixed
+   * "This field has an error", which made a documented, configurable feature work on three
+   * of fifteen field types.
+   */
+  get errorMessage(): string {
+    if (!this.control?.errors || !this.control.touched) return '';
+    return this.messages.resolve(this.control.errors, this.language, [
+      'required',
+      'email',
+      'min',
+      'max',
+      'minlength',
+      'maxlength',
+      'pattern',
+    ]);
+  }
+
 }

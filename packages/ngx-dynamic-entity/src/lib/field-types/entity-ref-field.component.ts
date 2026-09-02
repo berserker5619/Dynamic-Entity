@@ -2,6 +2,7 @@ import { Component, DestroyRef, Input, OnInit, inject, signal, ChangeDetectionSt
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig, ReferenceOption } from '@dynamic-entity/core';
+import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
 import { CascadeDataService } from '../services/cascade-data.service';
 import { EntityRefSelectionService } from '../services/entity-ref-selection.service';
@@ -46,14 +47,15 @@ import { EntityRefSelectionService } from '../services/entity-ref-selection.serv
             <span class="ngx-field__hint" [attr.data-testid]="'field-' + field.id + '-hint'">Select {{ parentFieldId }} first.</span>
           }
         }
-        @if (control.invalid && control.touched) {
-          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">This field has an error</span>
+        @if (errorMessage) {
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">{{ errorMessage }}</span>
         }
       }
     </div>
   `,
 })
 export class EntityRefFieldComponent implements OnInit {
+  private readonly messages = inject(ValidationMessagesService);
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() language: string = 'en';
@@ -158,4 +160,23 @@ export class EntityRefFieldComponent implements OnInit {
         void this.reload();
       });
   }
+  /**
+   * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({
+   * validationMessages })` reaches this field. It used to render a fixed
+   * "This field has an error", which made a documented, configurable feature work on three
+   * of fifteen field types.
+   */
+  get errorMessage(): string {
+    if (!this.control?.errors || !this.control.touched) return '';
+    return this.messages.resolve(this.control.errors, this.language, [
+      'required',
+      'email',
+      'min',
+      'max',
+      'minlength',
+      'maxlength',
+      'pattern',
+    ]);
+  }
+
 }

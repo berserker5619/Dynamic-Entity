@@ -1,6 +1,7 @@
-import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, inject} from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
+import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
 
 /** Currency field: number input with locale-aware currency symbol prefix. */
@@ -29,14 +30,15 @@ import { resolveLabel } from '@dynamic-entity/core';
             [attr.disabled]="field.disabled ? true : null"
           />
         </div>
-        @if (control.invalid && control.touched) {
-          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">This field has an error</span>
+        @if (errorMessage) {
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">{{ errorMessage }}</span>
         }
       }
     </div>
   `,
 })
 export class CurrencyFieldComponent {
+  private readonly messages = inject(ValidationMessagesService);
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() language: string = 'en';
@@ -60,4 +62,23 @@ export class CurrencyFieldComponent {
       return '$';
     }
   }
+  /**
+   * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({
+   * validationMessages })` reaches this field. It used to render a fixed
+   * "This field has an error", which made a documented, configurable feature work on three
+   * of fifteen field types.
+   */
+  get errorMessage(): string {
+    if (!this.control?.errors || !this.control.touched) return '';
+    return this.messages.resolve(this.control.errors, this.language, [
+      'required',
+      'email',
+      'min',
+      'max',
+      'minlength',
+      'maxlength',
+      'pattern',
+    ]);
+  }
+
 }

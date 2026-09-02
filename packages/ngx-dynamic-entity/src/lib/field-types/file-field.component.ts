@@ -1,6 +1,7 @@
 import { Component, inject, Input, signal, ChangeDetectionStrategy } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
 import type { FileRef, NestedFieldConfig } from '@dynamic-entity/core';
+import { ValidationMessagesService } from '../services/validation-messages.service';
 import { fileRefName, resolveLabel } from '@dynamic-entity/core';
 import { FileUploadService } from '../services/file-upload.service';
 
@@ -50,14 +51,18 @@ import { FileUploadService } from '../services/file-upload.service';
             }
           </label>
         </div>
-        @if (uploadError()) {
-          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">{{ uploadError() }}</span>
+        <!-- An upload failure and an unmet validator are different problems, and this only
+             ever showed the first. A required file left unchosen said nothing, and a
+             configured required message had no element to appear in. -->
+        @if (uploadError() || errorMessage) {
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" role="alert">{{ uploadError() || errorMessage }}</span>
         }
       }
     </div>
   `,
 })
 export class FileFieldComponent {
+  private readonly messages = inject(ValidationMessagesService);
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() language: string = 'en';
@@ -103,4 +108,10 @@ export class FileFieldComponent {
     this.control.setValue(null);
     this.control.markAsTouched();
   }
+  /** Validation, as distinct from the upload failures this field already reported. */
+  get errorMessage(): string {
+    if (!this.control?.errors || !this.control.touched) return '';
+    return this.messages.resolve(this.control.errors, this.language, ['required', 'pattern']);
+  }
+
 }
