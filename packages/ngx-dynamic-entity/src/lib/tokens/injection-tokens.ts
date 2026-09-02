@@ -193,3 +193,16 @@ export const CONFIG_SOURCE = new InjectionToken<ConfigSourceHandler>('CONFIG_SOU
 export const MARKDOWN_RENDERER = new InjectionToken<(source: string) => string>(
   'MARKDOWN_RENDERER',
 );
+
+/**
+ * The text a masked field shows in place of its value. Defaults to `XXXXXXXXX`.
+ *
+ * Masking is presentational — see SECURITY.md — and what it prints is a product decision:
+ * `••••••••` reads as a redaction, "Hidden" reads as a permission, and a localized string
+ * reads as neither in English. It was a literal repeated across every field component, so
+ * there was no way to choose.
+ *
+ * @example
+ * { provide: MASKED_PLACEHOLDER, useValue: '••••••••' }
+ */
+export const MASKED_PLACEHOLDER = new InjectionToken<string>('MASKED_PLACEHOLDER');

@@ -1,6 +1,7 @@
 import { Component, Input, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
+import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import {
   getOptionStoredValue,
   resolveLabel,
@@ -28,7 +29,7 @@ import { ValidationMessagesService } from '../services/validation-messages.servi
         @if (field.validators?.required) { <span class="ngx-field__req">*</span> }
       </label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
       } @else if (readonly) {
         <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ getLabel(control.value) }}</span>
       } @else {
@@ -58,6 +59,8 @@ import { ValidationMessagesService } from '../services/validation-messages.servi
   `,
 })
 export class DropdownFieldComponent {
+  /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
+  protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly lookups = inject(LookupRegistryService);
   private readonly messages = inject(ValidationMessagesService);
 

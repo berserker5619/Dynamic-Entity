@@ -2,6 +2,7 @@ import { Component, DestroyRef, Input, OnInit, inject, signal, ChangeDetectionSt
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig, ReferenceOption } from '@dynamic-entity/core';
+import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
 import { CascadeDataService } from '../services/cascade-data.service';
@@ -25,7 +26,7 @@ import { EntityRefSelectionService } from '../services/entity-ref-selection.serv
       [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
       <label class="ngx-field__label" [attr.for]="'field-' + field.id">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
       } @else if (readonly) {
         <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ getLabel(control.value) }}</span>
       } @else {
@@ -55,6 +56,8 @@ import { EntityRefSelectionService } from '../services/entity-ref-selection.serv
   `,
 })
 export class EntityRefFieldComponent implements OnInit {
+  /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
+  protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;

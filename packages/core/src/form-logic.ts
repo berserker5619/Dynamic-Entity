@@ -254,6 +254,46 @@ export function resolveOptionLabel(option: unknown, lang = 'en'): string {
 }
 
 /** Format a raw stored value for read-only display, per field type. */
+/**
+ * How a date, datetime or time is turned into display text.
+ *
+ * The defaults use the browser's locale, which is what this has always done — passing the
+ * form's `language` instead would silently change the format for every existing consumer
+ * whose browser is not set to it, and nobody asked for that. `language` selects *content*
+ * (which `LocalizedText` key), which is a different question from how to format a date.
+ *
+ * A host that wants the two tied together, or a fixed format, replaces these:
+ *
+ * ```ts
+ * setDateFormatters({ date: (d, lang) => d.toLocaleDateString(lang ?? []) });
+ * ```
+ */
+export interface DateFormatters {
+  date(value: Date, lang?: string): string;
+  datetime(value: Date, lang?: string): string;
+  time(value: Date, lang?: string): string;
+}
+
+const DEFAULT_DATE_FORMATTERS: DateFormatters = {
+  date: d => d.toLocaleDateString(),
+  datetime: d => d.toLocaleString(),
+  time: d => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+};
+
+let formatters: DateFormatters = DEFAULT_DATE_FORMATTERS;
+
+/**
+ * Override how dates are displayed, for the whole application.
+ *
+ * Module-level rather than an injection token because `formatDisplayValue` is a pure
+ * function in a framework-agnostic package — the renderer, the builder and a Node CLI all
+ * call it, and only one of those has an injector. Pass a partial object to change one kind;
+ * call with no argument to restore the defaults.
+ */
+export function setDateFormatters(next?: Partial<DateFormatters>): void {
+  formatters = next ? { ...DEFAULT_DATE_FORMATTERS, ...next } : DEFAULT_DATE_FORMATTERS;
+}
+
 export function formatDisplayValue(
   type: RichFieldType | string,
   options: DropdownOption[] | undefined,
@@ -273,11 +313,11 @@ export function formatDisplayValue(
     case 'date':
     case 'monthYear': {
       const d = new Date(raw as string);
-      return Number.isNaN(d.getTime()) ? EMPTY : d.toLocaleDateString();
+      return Number.isNaN(d.getTime()) ? EMPTY : formatters.date(d, lang);
     }
     case 'datetime': {
       const d = new Date(raw as string);
-      return Number.isNaN(d.getTime()) ? EMPTY : d.toLocaleString();
+      return Number.isNaN(d.getTime()) ? EMPTY : formatters.datetime(d, lang);
     }
 
     // A bare time has no date and no zone, so it is stored as `HH:mm` and never goes
@@ -289,8 +329,7 @@ export function formatDisplayValue(
       const hours = Number(match[1]);
       const minutes = Number(match[2]);
       if (hours > 23 || minutes > 59) return EMPTY;
-      return new Date(2000, 0, 1, hours, minutes)
-        .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return formatters.time(new Date(2000, 0, 1, hours, minutes), lang);
     }
 
     case 'dropdown':

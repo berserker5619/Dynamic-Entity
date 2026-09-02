@@ -11,7 +11,7 @@ Contents: [how a field is addressed](#how-a-field-is-addressed) ·
 [custom field types](#a-custom-field-type) · [validators](#custom-validators) ·
 [validation messages](#validation-messages-and-i18n) · [file uploads](#file-uploads) ·
 [entity references](#entity-references-and-cascades) · [lookup lists](#named-lookup-lists) ·
-[markdown](#markdown) ·
+[markdown](#markdown) · [presentation defaults](#presentation-defaults) ·
 [reading and driving the form](#reading-and-driving-the-form) ·
 [schema migration](#schema-migration) · [styling](#styling) · [testing](#testing)
 
@@ -337,6 +337,56 @@ const cityField: NestedFieldConfig = {
 ```
 
 A cascading child holds until its parent has a value rather than loading the unfiltered list.
+
+---
+
+## Presentation defaults
+
+Two things the library prints were literals until they were asked about, so neither could be
+changed. Both keep their previous default: an unconfigured install looks exactly as it did.
+
+### What a masked field shows
+
+Masking is presentational (see [Security](README.md#-security)), and the text it prints is a
+product decision — bullets read as a redaction, a word reads as a permission, and English
+reads as neither if your app is not in English.
+
+```typescript
+import { ApplicationConfig } from '@angular/core';
+import { MASKED_PLACEHOLDER, provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideNgxDynamicEntity({}),
+    { provide: MASKED_PLACEHOLDER, useValue: '••••••••' },
+  ],
+};
+```
+
+Defaults to `XXXXXXXXX`.
+
+### How dates are formatted
+
+`date`, `datetime` and `time` display through `toLocaleDateString` and friends in the
+**browser's** locale, not the form's `language`. That is deliberate: `language` selects which
+`LocalizedText` key to read, which is a different question from how to punctuate a date, and
+tying them together would change the format for every consumer whose browser is set to
+something else.
+
+If your app does want them tied — or wants a fixed format — say so:
+
+```typescript
+import { setDateFormatters } from '@dynamic-entity/core';
+
+setDateFormatters({
+  date: (value, lang) => value.toLocaleDateString(lang ?? []),
+});
+```
+
+A partial object overrides one kind and leaves the rest; calling `setDateFormatters()` with
+no argument restores the defaults. It is module-level rather than an injection token because
+`formatDisplayValue` is a pure function in a framework-agnostic package — the renderer, the
+builder and the CLI all call it, and only one of those has an injector.
 
 ---
 

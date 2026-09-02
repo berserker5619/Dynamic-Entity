@@ -1,6 +1,7 @@
-import { Component, Input, forwardRef, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, forwardRef, ChangeDetectionStrategy, inject} from '@angular/core';
 import { AbstractControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig, EntityFormConfig } from '@dynamic-entity/core';
+import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { resolveLabel } from '@dynamic-entity/core';
 import { DynamicFieldComponent } from '../form/dynamic-field/dynamic-field.component';
 
@@ -15,7 +16,7 @@ import { DynamicFieldComponent } from '../form/dynamic-field/dynamic-field.compo
       [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
       <legend class="ngx-field__legend">{{ label }}</legend>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
       } @else {
         <div class="ngx-field__group-children">
           @for (child of field.children ?? []; track child.id) {
@@ -58,6 +59,8 @@ import { DynamicFieldComponent } from '../form/dynamic-field/dynamic-field.compo
   ],
 })
 export class GroupFieldComponent {
+  /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
+  protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() config!: EntityFormConfig;

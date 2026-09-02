@@ -1,6 +1,7 @@
 import { Component, OnDestroy, inject, Input, signal, ChangeDetectionStrategy } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
 import type { FileRef, NestedFieldConfig } from '@dynamic-entity/core';
+import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
 import { FileUploadService } from '../services/file-upload.service';
@@ -21,7 +22,7 @@ import { FileUploadService } from '../services/file-upload.service';
       [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
       <label class="ngx-field__label" [attr.for]="'field-' + field.id">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
       } @else {
         <div class="ngx-field__image-wrap">
           @if (previewUrl()) {
@@ -66,6 +67,8 @@ import { FileUploadService } from '../services/file-upload.service';
   `,
 })
 export class ImageFieldComponent implements OnDestroy {
+  /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
+  protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;

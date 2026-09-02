@@ -1,6 +1,7 @@
 import { Component, Input, ChangeDetectionStrategy, inject} from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
+import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
 
@@ -14,7 +15,7 @@ import { resolveLabel } from '@dynamic-entity/core';
       [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
       @if (masked) {
         <label class="ngx-field__label">{{ label }}</label>
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
       } @else if (readonly) {
         <label class="ngx-field__label">{{ label }}</label>
         <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ control.value ? 'Yes' : 'No' }}</span>
@@ -37,6 +38,8 @@ import { resolveLabel } from '@dynamic-entity/core';
   `,
 })
 export class CheckboxFieldComponent {
+  /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
+  protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;

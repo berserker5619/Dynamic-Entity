@@ -1,6 +1,7 @@
 import { Component, Input, inject, forwardRef, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig, EntityFormConfig } from '@dynamic-entity/core';
+import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { resolveLabel } from '@dynamic-entity/core';
 import { DynamicFieldComponent } from '../form/dynamic-field/dynamic-field.component';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
@@ -25,7 +26,7 @@ import { ValidatorRegistryService } from '../services/validator-registry.service
       </div>
 
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
       } @else {
         <div class="ngx-field__array-list">
           @for (itemGroup of formArray.controls; track idx; let idx = $index) {
@@ -131,6 +132,8 @@ import { ValidatorRegistryService } from '../services/validator-registry.service
   ],
 })
 export class ArrayFieldComponent {
+  /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
+  protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   /**
    * addItem/removeItem are public and may be called from outside this component's template,
    * which under OnPush would not re-render. The host also watches the control, but this

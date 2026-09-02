@@ -1,6 +1,7 @@
 import { Component, Input, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
+import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import {
   getOptionStoredValue,
@@ -20,7 +21,7 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
       [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
       <label class="ngx-field__label">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
       } @else if (readonly) {
         <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ getLabels(control.value) }}</span>
       } @else {
@@ -49,6 +50,8 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
   `,
 })
 export class MultiSelectFieldComponent {
+  /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
+  protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
   private readonly lookups = inject(LookupRegistryService);
 

@@ -13,7 +13,7 @@ import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
-import { MARKDOWN_RENDERER } from '../tokens/injection-tokens';
+import { MARKDOWN_RENDERER, MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 
 /**
  * Markdown field: a long-form input that stores **markdown source**, never HTML.
@@ -47,7 +47,7 @@ import { MARKDOWN_RENDERER } from '../tokens/injection-tokens';
       <label class="ngx-field__label" [attr.for]="field.id">{{ label }}</label>
 
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
       } @else if (readonly) {
         @if (rendered(); as html) {
           <div class="ngx-field__value ngx-field__markdown" [attr.data-testid]="'field-' + field.id + '-value'" [innerHTML]="html"></div>
@@ -104,6 +104,8 @@ import { MARKDOWN_RENDERER } from '../tokens/injection-tokens';
   `,
 })
 export class MarkdownFieldComponent implements OnChanges {
+  /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
+  protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;

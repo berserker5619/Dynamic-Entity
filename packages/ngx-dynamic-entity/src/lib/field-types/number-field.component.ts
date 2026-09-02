@@ -1,6 +1,7 @@
 import { Component, Input, inject, ChangeDetectionStrategy } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
+import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { resolveLabel } from '@dynamic-entity/core';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 
@@ -22,7 +23,7 @@ import { ValidationMessagesService } from '../services/validation-messages.servi
         @if (field.validators?.required) { <span class="ngx-field__req">*</span> }
       </label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">XXXXXXXXX</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
       } @else if (readonly) {
         <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ control.value ?? '—' }}</span>
       } @else {
@@ -44,6 +45,8 @@ import { ValidationMessagesService } from '../services/validation-messages.servi
   `,
 })
 export class NumberFieldComponent {
+  /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
+  protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
 
   @Input() field!: NestedFieldConfig;
