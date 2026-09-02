@@ -27,6 +27,7 @@ No Angular Material required. This package has no dependency on Material or the 
 - **Entity references & cascades** — consumer-registered loaders, parent→child dropdown filtering, and `autoPatch` record copying.
 - **21 field types** — each a standalone component, registered explicitly so unused types are never bundled.
 - **Fully translatable** — config text is `LocalizedText`; the library's own buttons and empty states resolve through `uiText`.
+- **Configurable masking and dates** — `MASKED_PLACEHOLDER` replaces the `XXXXXXXXX` literal; `setDateFormatters` in `@dynamic-entity/core` replaces the browser-locale date punctuation.
 
 ---
 
@@ -91,6 +92,38 @@ Transloco or `$localize` — a resolver `(key, defaultText, language) => string`
 through `UI_TEXT`. Resolution is per key: anything you leave out keeps its English default.
 `DEFAULT_UI_TEXT` exports every key with its English source string, so a translation file can
 be generated from it. See [i18n](../../EXTENDING.md#validation-messages-and-i18n).
+
+---
+
+## 🎭 Masked placeholder and dates
+
+A masked field shows `XXXXXXXXX` unless you replace it. The real value stays in the control
+either way — see [Security](#-security).
+
+```typescript
+import { ApplicationConfig } from '@angular/core';
+import { MASKED_PLACEHOLDER, provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+
+export const maskedPlaceholderConfig: ApplicationConfig = {
+  providers: [
+    provideNgxDynamicEntity({}),
+    { provide: MASKED_PLACEHOLDER, useValue: '••••••••' },
+  ],
+};
+```
+
+`date` / `datetime` / `time` still format in the browser's locale. To use the form's
+`language`, or a fixed format, call `setDateFormatters` from `@dynamic-entity/core`:
+
+```typescript
+import { setDateFormatters } from '@dynamic-entity/core';
+
+setDateFormatters({
+  date: (value, lang) => value.toLocaleDateString(lang ?? []),
+});
+```
+
+A partial object overrides one kind; `setDateFormatters()` restores the defaults.
 
 ---
 
@@ -196,7 +229,7 @@ This applies in both directions — `initialData` is read with it and `formSubmi
 
 ## 🔐 Security
 
-`userRoles`, `EntityPermissions`, and `maskData` affect **rendering only**. A masked field displays `XXXXXXXXX` while the real value stays in the form control and is included in the `formSubmit` payload. Enforce authorization on the server and never send a user data they may not see.
+`userRoles`, `EntityPermissions`, and `maskData` affect **rendering only**. A masked field displays `XXXXXXXXX` by default (`MASKED_PLACEHOLDER` overrides the text) while the real value stays in the form control and is included in the `formSubmit` payload. Enforce authorization on the server and never send a user data they may not see.
 
 ---
 

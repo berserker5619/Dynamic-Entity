@@ -29,12 +29,13 @@ All three share a version and are released together.
 
 - **21 field types** — `text`, `textarea`, `markdown`, `number`, `currency`, `email`, `password`, `date`, `datetime`, `time`, `monthYear`, `dropdown`, `radio`, `checkbox`, `boolean`, `multiSelect`, `entity-ref`, `group`, `array`, `image`, `file`. Every type is a standalone component you can register individually, or swap for your own.
 - **Reactive rules engine** — three action types (`visibility` to show/hide a field or tab, `validation` to attach an error or warning, `info` to raise a banner) driven by 18 condition operators including `EQUAL`, `CONTAINS`, `IN`, `DATE_BEFORE`, `HAS_ITEMS` and `VALUE_CHANGED`. Conditions within a rule are ANDed; rules apply in `priority` order.
-- **Role-based field visibility & masking** — per-entity `view`/`edit`/`delete` role lists, plus `maskData` to render a field as `XXXXXXXXX` for configured roles. **This is presentational only — see [Security](#-security).**
+- **Role-based field visibility & masking** — per-entity `view`/`edit`/`delete` role lists, plus `maskData` to render a field as `XXXXXXXXX` for configured roles (override the text with `MASKED_PLACEHOLDER`). **This is presentational only — see [Security](#-security).**
 - **Cross-entity referenced fields** — link a field to a source entity, snapshot what was copied, and detect drift when the source changes. Drift is surfaced in the builder.
 - **Sync and async validation** — built-in validators, your own by name, and async checks against a server. A form cannot be submitted while an async check is pending, and a `beforeSave` hook can abort the save outright.
 - **Named lookup lists** — sync or async master lists resolved by name, with localized labels, fallbacks, and an integrity report for values that no longer match any option.
 - **Visual builder** — click-to-add palette, drag-and-drop reordering, and a recursive tree editor for tabs, sub-tabs, groups, and arrays.
 - **Localizable end to end** — config labels, placeholders and options are `LocalizedText` keyed by language; the libraries' own chrome (Save, Reset, "No rows yet.", every builder panel) resolves through `uiText` / `BUILDER_TEXT`, either as `LocalizedText` per key or through a resolver into an existing i18n layer.
+- **Configurable date display** — `date` / `datetime` / `time` format through `setDateFormatters` in `@dynamic-entity/core`. The default stays the browser's locale, not the form's `language`.
 - **100% standalone** — every component is `standalone: true`; the packages contain no `NgModule`. Signals are used for internal state; component inputs and outputs are decorator-based.
 
 ---
@@ -243,10 +244,44 @@ persisting.
 
 `EntityPermissions` (`view` / `edit` / `delete` role lists) and `maskData` control **what the browser renders**. They are a UI convenience, not an access-control boundary:
 
-- A masked value is replaced with `XXXXXXXXX` in the template, but the real value remains in the form control and is included in the `(formSubmit)` payload.
+- A masked value is replaced with `XXXXXXXXX` by default (`MASKED_PLACEHOLDER` overrides the text), but the real value remains in the form control and is included in the `(formSubmit)` payload.
 - Any role check performed here runs on the client and can be bypassed.
 
 **Authorize on the server.** Never send a user data they are not permitted to see, and re-check every permission when the submitted record reaches your API.
+
+---
+
+## 🎭 Presentation
+
+The masked placeholder and date punctuation were literals until they were asked about, so
+neither could be changed. Both keep their previous default: an unconfigured install looks
+exactly as it did.
+
+```typescript
+import { ApplicationConfig } from '@angular/core';
+import { MASKED_PLACEHOLDER, provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+
+export const maskedPlaceholderConfig: ApplicationConfig = {
+  providers: [
+    provideNgxDynamicEntity({}),
+    { provide: MASKED_PLACEHOLDER, useValue: '••••••••' },
+  ],
+};
+```
+
+Dates format in the **browser's** locale, not the form's `language` — `language` selects
+which `LocalizedText` key to read. To tie them together, or to fix a format:
+
+```typescript
+import { setDateFormatters } from '@dynamic-entity/core';
+
+setDateFormatters({
+  date: (value, lang) => value.toLocaleDateString(lang ?? []),
+});
+```
+
+A partial object overrides one kind; `setDateFormatters()` with no argument restores the
+defaults. Full notes: [Presentation defaults](EXTENDING.md#presentation-defaults).
 
 ---
 
@@ -292,8 +327,9 @@ cd packages/demo-angular && npx playwright test
 
 ## 🧩 Extending
 
-Custom field types, validators, validation messages and i18n, upload handlers, entity-ref
-loaders, lookup lists, and the programmatic form API: see [EXTENDING.md](EXTENDING.md).
+Custom field types, validators, validation messages and i18n, the masked placeholder, date
+formatters, upload handlers, entity-ref loaders, lookup lists, and the programmatic form
+API: see [EXTENDING.md](EXTENDING.md).
 
 Start with [how a field is addressed](EXTENDING.md#how-a-field-is-addressed). Field ids are
 unique **per scope**, not per config — `personal.address` and `work.address` are two

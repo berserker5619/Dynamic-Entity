@@ -20,7 +20,7 @@ npm install @dynamic-entity/core
 ## ✨ Features
 
 - **Nested entity form model (`EntityFormConfig`)** — tabbed hierarchies, sub-tabs, nested groups, arrays, and field table display metadata.
-- **Pure form logic** — label resolution, display value formatting, nested data access, and masking, all as side-effect-free functions.
+- **Pure form logic** — label resolution, display value formatting (`setDateFormatters` for `date` / `datetime` / `time`), nested data access, and masking, all as side-effect-free functions.
 - **Rules engine** — condition evaluation over 18 operators (`EQUAL`, `NOT_EQUAL`, `CONTAINS`, `NOT_CONTAINS`, `STARTS_WITH`, `ENDS_WITH`, `IS_EMPTY`, `IS_NOT_EMPTY`, `LESS_THAN`, `MORE_THAN`, `LESS_THAN_EQUAL`, `MORE_THAN_EQUAL`, `DATE_BEFORE`, `DATE_AFTER`, `IN`, `NOT_IN`, `HAS_ITEMS`, `VALUE_CHANGED`) producing three action types: `visibility`, `validation`, and `info`.
 - **Canonical field catalog** — `FIELD_TYPE_CATALOG` is the single source of truth for the 21 field type keys (`text`, `textarea`, `markdown`, `number`, `currency`, `email`, `password`, `date`, `datetime`, `time`, `monthYear`, `dropdown`, `radio`, `checkbox`, `boolean`, `multiSelect`, `entity-ref`, `group`, `array`, `image`, `file`), consumed by both the renderer and the builder.
 - **Entity reference contracts** — `EntityReferenceLoader`, option normalisation, and pure cascade filtering (`lookupFilter` / `lookupPath`).
@@ -44,7 +44,7 @@ import {
 const label = resolveLabel({ en: 'First Name', de: 'Vorname' }, 'en'); // "First Name"
 
 // 2. Inspect the field type vocabulary
-console.log(FIELD_TYPE_CATALOG.length); // 19
+console.log(FIELD_TYPE_CATALOG.length); // 21
 
 // 3. Raise an info banner on the `annualBudget` field when it exceeds 5,000,000
 const rules: FormRule[] = [
@@ -86,6 +86,28 @@ declare const originalValues: Record<string, unknown>;
 
 const changed = evaluateFormRules(rules, currentValues, originalValues);
 ```
+
+---
+
+## Date display
+
+`formatDisplayValue` formats `date`, `datetime` and `time` through the **runtime's** locale
+(`toLocaleDateString` and friends), not the form's `language`. `language` selects which
+`LocalizedText` key to read; tying the two would change the punctuation for every consumer
+whose browser (or Node `Intl`) is set to something else.
+
+```typescript
+import { setDateFormatters } from '@dynamic-entity/core';
+
+setDateFormatters({
+  date: (value, lang) => value.toLocaleDateString(lang ?? []),
+});
+```
+
+A partial object overrides one kind and leaves the rest. `setDateFormatters()` with no
+argument restores the defaults. It is module-level rather than an injection token because
+`formatDisplayValue` is a pure function — the renderer, the builder and the CLI all call it,
+and only one of those has an injector.
 
 ---
 

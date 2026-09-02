@@ -7,6 +7,23 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.9.1] — 2026-09-02
+
+The npm README pages now document `MASKED_PLACEHOLDER` and `setDateFormatters`.
+Both shipped in 1.9.0, but only `EXTENDING.md` mentioned them, and npm does not
+show that file. No runtime change.
+
+### Docs
+
+- Root, core and renderer READMEs cover the masked placeholder, date formatters,
+  and that `XXXXXXXXX` is the default rather than the only text. The core Quick
+  Start comment on catalog length is 21, matching the list above it.
+- The builder README points those two knobs at the renderer and core, so a
+  reader of that page is not left looking for a builder token that does not
+  exist.
+
+---
+
 ## [1.9.0] — 2026-09-02
 
 Every word the libraries render themselves is now translatable, and every
