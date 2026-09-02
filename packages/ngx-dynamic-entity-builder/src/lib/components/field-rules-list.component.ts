@@ -8,6 +8,7 @@ import { toRefToken } from '@dynamic-entity/core';
 import { BuilderStore } from '../builder-store.service';
 import { deepClone } from '../clone';
 import { RuleFormComponent } from './rule-form.component';
+import { BuilderTextService } from '../builder-text';
 
 /**
  * FieldRulesListComponent — the rules attached to the selected field: view, reorder,
@@ -21,7 +22,7 @@ import { RuleFormComponent } from './rule-form.component';
   template: `
     <div class="deb-rules">
       <div class="deb-rules__head">
-        <span class="deb-section-title">Rules</span>
+        <span class="deb-section-title">{{ ui.text('rules') }}</span>
         <button
           mat-stroked-button
           type="button"
@@ -29,7 +30,7 @@ import { RuleFormComponent } from './rule-form.component';
           [disabled]="!store.selectedFieldId()"
           (click)="startCreate()"
         >
-          <mat-icon>add</mat-icon> Rule
+          <mat-icon>add</mat-icon> {{ ui.text('rule') }}
         </button>
       </div>
 
@@ -38,7 +39,7 @@ import { RuleFormComponent } from './rule-form.component';
       }
 
       @if (store.rulesForSelectedField().length === 0 && !editing()) {
-        <p class="deb-hint" data-testid="rules-empty">No rules on this field.</p>
+        <p class="deb-hint" data-testid="rules-empty">{{ ui.text('noRulesOnField') }}</p>
       }
 
       @for (rule of store.rulesForSelectedField(); track rule.id) {
@@ -46,19 +47,20 @@ import { RuleFormComponent } from './rule-form.component';
           <div class="deb-rule-item__body">
             <span class="deb-rule-item__summary">{{ summarize(rule) }}</span>
             <span class="deb-rule-item__meta">
-              priority {{ rule.priority }} · {{ rule.targets.length }} target(s)
+              {{ ui.text('rulePriority', { priority: rule.priority, targets: rule.targets.length }) }}
             </span>
           </div>
           <div class="deb-rule-item__actions">
             <mat-slide-toggle
               [checked]="rule.enabled"
-              matTooltip="Enable / disable"
+              [matTooltip]="ui.text('toggleRule')"
               (change)="store.toggleRule(rule.id!, $event.checked)"
             />
             <button
               mat-icon-button
               type="button"
-              matTooltip="Move up" aria-label="Move rule up"
+              [matTooltip]="ui.text('moveUp')"
+              [attr.aria-label]="ui.text('moveRuleUp')"
               [attr.data-testid]="'rule-up-' + rule.id"
               (click)="store.moveRule(rule.id!, -1)"
             >
@@ -67,7 +69,8 @@ import { RuleFormComponent } from './rule-form.component';
             <button
               mat-icon-button
               type="button"
-              matTooltip="Move down" aria-label="Move rule down"
+              [matTooltip]="ui.text('moveDown')"
+              [attr.aria-label]="ui.text('moveRuleDown')"
               [attr.data-testid]="'rule-down-' + rule.id"
               (click)="store.moveRule(rule.id!, 1)"
             >
@@ -76,7 +79,7 @@ import { RuleFormComponent } from './rule-form.component';
             <button
               mat-icon-button
               type="button"
-              matTooltip="Edit rule"
+              [matTooltip]="ui.text('editRule')"
               [attr.data-testid]="'rule-edit-' + rule.id"
               (click)="startEdit(rule)"
             >
@@ -86,7 +89,7 @@ import { RuleFormComponent } from './rule-form.component';
               mat-icon-button
               type="button"
               color="warn"
-              matTooltip="Delete rule"
+              [matTooltip]="ui.text('deleteRule')"
               [attr.data-testid]="'rule-delete-' + rule.id"
               (click)="store.removeRule(rule.id!)"
             >
@@ -144,6 +147,8 @@ import { RuleFormComponent } from './rule-form.component';
   ],
 })
 export class FieldRulesListComponent {
+  /** Builder chrome, overridable via BUILDER_TEXT. */
+  protected readonly ui = inject(BuilderTextService);
   protected readonly store = inject(BuilderStore);
 
   /** The rule currently open in the editor — a new draft or a copy of an existing rule. */

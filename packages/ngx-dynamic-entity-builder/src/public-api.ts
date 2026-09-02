@@ -11,6 +11,9 @@ export * from './lib/components/entity-reference-config.component';
 export * from './lib/components/entity-builder-canvas.component';
 export * from './lib/components/entity-builder-tree-node.component';
 
+// UI text for the builder's own chrome
+export * from './lib/builder-text';
+
 // Store (provided per builder instance)
 export * from './lib/builder-store.service';
 

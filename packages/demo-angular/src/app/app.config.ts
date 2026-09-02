@@ -13,6 +13,8 @@ import { CLIENT_TIER_LIST, MASKED_ROLES, ORDER_REFERENCE_DATA } from './mock/sam
 import { SampleModuleTabComponent } from './mock/sample-module.component';
 import { LocalStore } from './mock/local-store.service';
 import { renderMarkdown } from './mock/markdown-renderer';
+import { BUILDER_TEXT } from 'ngx-dynamic-entity-builder';
+import { DEMO_BUILDER_TEXT, DEMO_UI_TEXT } from './mock/ui-text-de';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -25,9 +27,7 @@ export const appConfig: ApplicationConfig = {
     },
     {
       provide: COMMON_MODULES_REGISTRY,
-      useValue: [
-        { id: 'documents-view', label: { en: 'Documents' }, component: SampleModuleTabComponent },
-      ],
+      useValue: [{ id: 'documents-view', label: { en: 'Documents' }, component: SampleModuleTabComponent }],
     },
     // No API/HTTP — all data lives in localStorage via LocalStore. maskedRoles still drives
     // field masking inside the renderer's forms.
@@ -42,9 +42,7 @@ export const appConfig: ApplicationConfig = {
         // apply `lookupFilter` client-side, so this stays correct either way.
         cities: ctx =>
           Promise.resolve(
-            ORDER_REFERENCE_DATA.cities.filter(
-              c => !ctx?.parentValue || c.record.country === ctx.parentValue,
-            ),
+            ORDER_REFERENCE_DATA.cities.filter(c => !ctx?.parentValue || c.record.country === ctx.parentValue),
           ),
       },
       // Named master lists for fields that set `listName`. A loader, not a bare Promise, so
@@ -52,6 +50,10 @@ export const appConfig: ApplicationConfig = {
       lookups: {
         clientTier: () => Promise.resolve(CLIENT_TIER_LIST),
       },
+      // The library's own buttons and empty states, in both languages the demo offers. Field
+      // labels come from the config and already follow `language`; without this the chrome
+      // around them stays English whatever `language` says.
+      uiText: DEMO_UI_TEXT,
     }),
     // Field components are opt-in so unused ones tree-shake out. The demo renders every
     // configuration in test_data.json, so it registers the full built-in set.
@@ -60,6 +62,9 @@ export const appConfig: ApplicationConfig = {
     // what turns on the Preview tab and the rendered read-only view, so the demo supplies a
     // small local function rather than a parser dependency: the token takes any
     // source-to-HTML function, and saying so is the point.
-    { provide: MARKDOWN_RENDERER, useValue: renderMarkdown }
-  ]
+    { provide: MARKDOWN_RENDERER, useValue: renderMarkdown },
+    // The builder's chrome is a separate vocabulary with its own token — an app that ships
+    // only the renderer has no use for these keys.
+    { provide: BUILDER_TEXT, useValue: DEMO_BUILDER_TEXT },
+  ],
 };

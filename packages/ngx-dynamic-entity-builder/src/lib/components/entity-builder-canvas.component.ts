@@ -6,28 +6,23 @@ import { MatIconModule } from '@angular/material/icon';
 import { resolveLabel } from '@dynamic-entity/core';
 import { BuilderStore, type BuilderFieldGroup } from '../builder-store.service';
 import { EntityBuilderTreeNodeComponent } from './entity-builder-tree-node.component';
+import { BuilderTextService } from '../builder-text';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-entity-builder-canvas',
   standalone: true,
-  imports: [
-    CommonModule,
-    DragDropModule,
-    MatCardModule,
-    MatIconModule,
-    EntityBuilderTreeNodeComponent,
-  ],
+  imports: [CommonModule, DragDropModule, MatCardModule, MatIconModule, EntityBuilderTreeNodeComponent],
   template: `
     <mat-card class="deb-canvas">
       <mat-card-header>
-        <mat-card-title>Fields ({{ store.fields().length }})</mat-card-title>
+        <mat-card-title>{{ ui.text('fieldsHeading', { count: store.fields().length }) }}</mat-card-title>
       </mat-card-header>
       <mat-card-content>
         @if (store.fields().length === 0) {
           <div class="deb-empty">
             <mat-icon>widgets</mat-icon>
-            <p>No fields yet. Pick a type from <strong>Add field</strong> to get started.</p>
+            <p>{{ ui.text('canvasEmpty') }}</p>
           </div>
         }
 
@@ -49,11 +44,7 @@ import { EntityBuilderTreeNodeComponent } from './entity-builder-tree-node.compo
             (cdkDropListDropped)="onDrop(group.tabId, $event)"
           >
             @for (f of group.fields; track f.id; let i = $index, count = $count) {
-              <ngx-entity-builder-tree-node
-                [field]="f"
-                [index]="i"
-                [totalCount]="count"
-              />
+              <ngx-entity-builder-tree-node [field]="f" [index]="i" [totalCount]="count" />
             }
           </div>
         }
@@ -62,6 +53,8 @@ import { EntityBuilderTreeNodeComponent } from './entity-builder-tree-node.compo
   `,
 })
 export class EntityBuilderCanvasComponent {
+  /** Builder chrome, overridable via BUILDER_TEXT. */
+  protected readonly ui = inject(BuilderTextService);
   protected readonly store = inject(BuilderStore);
 
   /**

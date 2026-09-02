@@ -5,6 +5,7 @@ import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { fileRefName, resolveLabel } from '@dynamic-entity/core';
 import { FileUploadService } from '../services/file-upload.service';
+import { UiTextService } from '../services/ui-text.service';
 
 /**
  * File field: file input with filename display and download link.
@@ -16,15 +17,22 @@ import { FileUploadService } from '../services/file-upload.service';
   standalone: true,
   imports: [],
   template: `
-    <div class="ngx-field ngx-field--file"
-      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div
+      class="ngx-field ngx-field--file"
+      [attr.data-testid]="'field-' + field.id"
+      [attr.data-field-type]="field.type"
+      [class.ngx-field--readonly]="readonly"
+      [class.ngx-field--masked]="masked"
+    >
       <label class="ngx-field__label" [attr.for]="'field-' + field.id">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
+          maskedText
+        }}</span>
       } @else if (readonly) {
         @if (fileUrl()) {
           <a class="ngx-field__file-link" [href]="fileUrl()!" target="_blank" rel="noopener">
-            📎 {{ fileName() || 'Download file' }}
+            📎 {{ fileName() || ui.text('downloadFile', language) }}
           </a>
         } @else {
           <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">—</span>
@@ -34,14 +42,21 @@ import { FileUploadService } from '../services/file-upload.service';
           @if (fileName()) {
             <div class="ngx-field__file-selected">
               <span class="ngx-field__file-name">📎 {{ fileName() }}</span>
-              <button type="button" class="ngx-field__remove-btn" (click)="remove()" aria-label="Remove file">✕</button>
+              <button
+                type="button"
+                class="ngx-field__remove-btn"
+                (click)="remove()"
+                [attr.aria-label]="ui.text('removeFile', language)"
+              >
+                ✕
+              </button>
             </div>
           }
           <label class="ngx-field__upload-btn" [class.ngx-field__upload-btn--loading]="uploading()">
             @if (uploading()) {
-              <span>Uploading…</span>
+              <span>{{ ui.text('uploading', language) }}</span>
             } @else {
-              <span>{{ fileName() ? 'Replace file' : 'Choose file' }}</span>
+              <span>{{ fileName() ? ui.text('replaceFile', language) : ui.text('chooseFile', language) }}</span>
               <input
                 type="file"
                 class="ngx-field__file-input"
@@ -56,13 +71,17 @@ import { FileUploadService } from '../services/file-upload.service';
              ever showed the first. A required file left unchosen said nothing, and a
              configured required message had no element to appear in. -->
         @if (uploadError() || errorMessage) {
-          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" role="alert">{{ uploadError() || errorMessage }}</span>
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" role="alert">{{
+            uploadError() || errorMessage
+          }}</span>
         }
       }
     </div>
   `,
 })
 export class FileFieldComponent {
+  /** Library chrome, overridable via UI_TEXT. */
+  protected readonly ui = inject(UiTextService);
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
@@ -116,5 +135,4 @@ export class FileFieldComponent {
     if (!this.control?.errors || !this.control.touched) return '';
     return this.messages.resolve(this.control.errors, this.language, ['required', 'pattern']);
   }
-
 }

@@ -27,6 +27,20 @@
         (click)="setView('builder')">Form Builder</button>
     </nav>
 
+    <!--
+      Interface language. Distinct from the role switcher next to it: this changes the words
+      the *libraries* render — Save, Reset, "No rows yet.", every builder panel — which were
+      English literals until `uiText` / `BUILDER_TEXT` existed. The demo config's own labels
+      are en-only and fall back, which is what makes the chrome switch visible on its own.
+    -->
+    <div class="role-switcher" data-testid="ui-language-switcher">
+      <span>Interface:</span>
+      <button class="role-btn" data-testid="ui-lang-en" [class.role-btn--active]="language() === 'en'"
+        [attr.aria-pressed]="language() === 'en'" (click)="language.set('en')">English</button>
+      <button class="role-btn" data-testid="ui-lang-de" [class.role-btn--active]="language() === 'de'"
+        [attr.aria-pressed]="language() === 'de'" (click)="language.set('de')">Deutsch</button>
+    </div>
+
     <div class="role-switcher">
       <span>Role:</span>
       <button class="role-btn" [class.role-btn--active]="currentRole() === 'admin'"
@@ -99,12 +113,14 @@
       </div>
       @if (formMode() === 'form') {
         <ngx-dynamic-form [config]="config()!" [initialData]="selectedRecord() || {}" [userRoles]="userRoles()"
-          [loading]="loading()" (formSubmit)="onFormSubmit($event)" (formReset)="onCancel()"></ngx-dynamic-form>
+          [language]="language()" [loading]="loading()" (formSubmit)="onFormSubmit($event)"
+          (formReset)="onCancel()"></ngx-dynamic-form>
       } @else {
         <!-- `isReadOnly` is what makes 'data' different from 'record': it drops the per-tab
              Edit section, so the record is values and nothing else for every role. -->
         <ngx-dynamic-record-form [config]="config()!" [initialData]="selectedRecord() || {}"
-          [userRoles]="userRoles()" [loading]="loading()" [isReadOnly]="formMode() === 'data'"
+          [userRoles]="userRoles()" [language]="language()" [loading]="loading()"
+          [isReadOnly]="formMode() === 'data'"
           (formSubmit)="onFormSubmit($event)" (formReset)="onCancel()"></ngx-dynamic-record-form>
       }
     </div>
@@ -156,7 +172,7 @@
     }
 
     @if (view() === 'builder') {
-    <app-builder-page (entitySaved)="onBuilderSave($event)"></app-builder-page>
+    <app-builder-page [uiLanguage]="language()" (entitySaved)="onBuilderSave($event)"></app-builder-page>
     }
   </main>
 </div>

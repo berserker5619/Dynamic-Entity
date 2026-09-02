@@ -5,6 +5,7 @@ import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { resolveLabel } from '@dynamic-entity/core';
 import { DynamicFieldComponent } from '../form/dynamic-field/dynamic-field.component';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
+import { UiTextService } from '../services/ui-text.service';
 
 /** Renders repeating rows for a FormArray, with Add Item and Remove. */
 @Component({
@@ -13,30 +14,45 @@ import { ValidatorRegistryService } from '../services/validator-registry.service
   standalone: true,
   imports: [ReactiveFormsModule, forwardRef(() => DynamicFieldComponent)],
   template: `
-    <div class="ngx-field ngx-field--array"
-      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div
+      class="ngx-field ngx-field--array"
+      [attr.data-testid]="'field-' + field.id"
+      [attr.data-field-type]="field.type"
+      [class.ngx-field--readonly]="readonly"
+      [class.ngx-field--masked]="masked"
+    >
       <div class="ngx-field__array-header">
         <label class="ngx-field__label">{{ label }}</label>
         @if (!readonly && !masked) {
-          <button type="button" class="ngx-field__array-add-btn"
-            [attr.data-testid]="'field-' + field.id + '-add'" (click)="addItem()">
-            + Add Item
+          <button
+            type="button"
+            class="ngx-field__array-add-btn"
+            [attr.data-testid]="'field-' + field.id + '-add'"
+            (click)="addItem()"
+          >
+            {{ ui.text('addItem', language) }}
           </button>
         }
       </div>
 
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
+          maskedText
+        }}</span>
       } @else {
         <div class="ngx-field__array-list">
           @for (itemGroup of formArray.controls; track idx; let idx = $index) {
             <div class="ngx-field__array-item" [attr.data-testid]="'field-' + field.id + '-row'">
               <div class="ngx-field__array-item-header">
-                <span class="ngx-field__array-item-title">Item #{{ idx + 1 }}</span>
+                <span class="ngx-field__array-item-title">{{ ui.text('itemNumber', language, { number: idx + 1 }) }}</span>
                 @if (!readonly) {
-                  <button type="button" class="ngx-field__array-remove-btn"
-                    [attr.data-testid]="'field-' + field.id + '-remove-' + idx" (click)="removeItem(idx)">
-                    Remove
+                  <button
+                    type="button"
+                    class="ngx-field__array-remove-btn"
+                    [attr.data-testid]="'field-' + field.id + '-remove-' + idx"
+                    (click)="removeItem(idx)"
+                  >
+                    {{ ui.text('remove', language) }}
                   </button>
                 }
               </div>
@@ -57,7 +73,9 @@ import { ValidatorRegistryService } from '../services/validator-registry.service
             </div>
           }
           @if (formArray.controls.length === 0) {
-            <div class="ngx-field__array-empty" [attr.data-testid]="'field-' + field.id + '-empty'">No items added yet.</div>
+            <div class="ngx-field__array-empty" [attr.data-testid]="'field-' + field.id + '-empty'">
+              {{ ui.text('noItems', language) }}
+            </div>
           }
         </div>
       }
@@ -132,6 +150,8 @@ import { ValidatorRegistryService } from '../services/validator-registry.service
   ],
 })
 export class ArrayFieldComponent {
+  /** Library chrome, overridable via UI_TEXT. */
+  protected readonly ui = inject(UiTextService);
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   /**

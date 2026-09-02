@@ -6,7 +6,7 @@ import {
   EntityFormConfig,
   LocalizedText,
   VersionedRecord,
-  resolveLabel
+  resolveLabel,
 } from 'ngx-dynamic-entity';
 import { BuilderPageComponent } from './builder-page.component';
 import { LocalStore } from './mock/local-store.service';
@@ -24,6 +24,16 @@ export class AppComponent implements OnInit {
   // ─── Signals ──────────────────────────────────────────────────────────────
   readonly selectedEntity = signal<string>('clients');
   readonly userRoles = signal<string[]>(['admin']);
+  /**
+   * The interface language, passed to `[language]` on the forms and `[uiLanguage]` on the
+   * builder.
+   *
+   * It selects both the `LocalizedText` entry a config label resolves to and, through the
+   * `uiText` / `BUILDER_TEXT` packs registered in `app.config.ts`, the words the libraries
+   * render themselves. The demo's own configs are en-only and fall back, so switching this
+   * is a clean demonstration of the second half.
+   */
+  readonly language = signal<'en' | 'de'>('en');
   readonly view = signal<'list' | 'form' | 'config' | 'builder'>('list');
   readonly config = signal<EntityFormConfig | null>(null);
   readonly allConfigs = signal<EntityFormConfig[]>([]);
@@ -239,7 +249,17 @@ export class AppComponent implements OnInit {
       // or the row reads "[object Object]".
       return `${rec['name']} — ${rec['company']} · ${this.asText(rec['status'])}`;
     }
-    const keys = ['name', 'fullName', 'firstName', 'title', 'company', 'organizationName', 'studentName', 'patientName', 'description'];
+    const keys = [
+      'name',
+      'fullName',
+      'firstName',
+      'title',
+      'company',
+      'organizationName',
+      'studentName',
+      'patientName',
+      'description',
+    ];
     for (const k of keys) {
       if (rec[k]) return String(rec[k]);
       for (const val of Object.values(rec)) {

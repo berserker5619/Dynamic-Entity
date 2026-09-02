@@ -18,7 +18,7 @@
         <h2 class="ngx-record-editor__title" data-testid="record-title">
           {{ recordTitle }}
         </h2>
-        <span class="ngx-record-editor__subtitle">Entity: {{ config.entity }}</span>
+        <span class="ngx-record-editor__subtitle">{{ ui.text('entityLabel', language, { entity: config.entity }) }}</span>
       </div>
     </div>
 
@@ -35,7 +35,7 @@
           [attr.aria-checked]="headerToggleValue"
           (change)="toggleHeaderStatus()"
         />
-        <span class="ngx-record-editor__header-toggle-text">{{ headerToggleValue ? 'Yes' : 'No' }}</span>
+        <span class="ngx-record-editor__header-toggle-text">{{ ui.text(headerToggleValue ? 'yes' : 'no', language) }}</span>
       </label>
     }
   </div>
@@ -52,16 +52,18 @@
         type="button"
         class="ngx-record-editor__banner-dismiss"
         [attr.data-testid]="'dismiss-' + banner.fieldId"
-        [attr.aria-label]="'Dismiss: ' + banner.message"
+        [attr.aria-label]="ui.text('dismissBanner', language, { message: banner.message })"
         (click)="dismissInfoBanner(banner.fieldId)"
-      >✕</button>
+      >
+        ✕
+      </button>
     </div>
   }
 
   <!-- Modification baseline banner -->
   @if (isModified()) {
     <div class="ngx-record-editor__banner ngx-record-editor__banner--warning">
-      🔒 Record modified from session baseline — unsaved changes pending.
+      {{ ui.text('recordModified', language) }}
     </div>
   }
 
@@ -73,7 +75,7 @@
           class="ngx-record-editor__summary-item"
           [attr.data-testid]="'summary-' + sf.id"
           (click)="jumpToField(sf.id)"
-          [title]="'Click to jump to ' + formatFieldLabel(sf)"
+          [title]="ui.text('jumpToField', language, { field: formatFieldLabel(sf) })"
         >
           <span class="ngx-record-editor__summary-label">{{ formatFieldLabel(sf) }}</span>
           <span class="ngx-record-editor__summary-val">{{ formatFieldValue(sf) }}</span>
@@ -86,16 +88,16 @@
   @if (viewMode && !recordReadOnly) {
     <div class="ngx-record-editor__section-bar">
       @if (isEditingActiveTab) {
-        <span class="ngx-record-editor__section-hint">Editing this section</span>
+        <span class="ngx-record-editor__section-hint">{{ ui.text('editingSection', language) }}</span>
         <button type="button" class="ngx-form__reset" data-testid="cancel-section" (click)="cancelSection()">
-          Cancel
+          {{ ui.text('cancel', language) }}
         </button>
         <button type="button" class="ngx-form__submit" data-testid="save-section" (click)="saveSection()">
-          Save section
+          {{ ui.text('saveSection', language) }}
         </button>
       } @else {
         <button type="button" class="ngx-form__reset" data-testid="edit-section" (click)="editSection()">
-          Edit section
+          {{ ui.text('editSection', language) }}
         </button>
       }
     </div>
@@ -120,7 +122,9 @@
             class="ngx-form__reset"
             [attr.data-testid]="'add-row-' + arrayField.id"
             (click)="openAddRow(arrayField)"
-          >+ Row</button>
+          >
+            {{ ui.text('addRow', language) }}
+          </button>
         }
       </div>
 
@@ -128,16 +132,26 @@
         <div class="ngx-record-editor__row" [attr.data-testid]="'row-' + arrayField.id + '-' + $index">
           <span class="ngx-record-editor__row-text">{{ rowSummary(arrayField, row) }}</span>
           @if (!sectionReadOnly) {
-            <button type="button" class="ngx-record-editor__row-btn"
+            <button
+              type="button"
+              class="ngx-record-editor__row-btn"
               [attr.data-testid]="'edit-row-' + arrayField.id + '-' + $index"
-              (click)="openEditRow(arrayField, $index)">Edit</button>
-            <button type="button" class="ngx-record-editor__row-btn"
+              (click)="openEditRow(arrayField, $index)"
+            >
+              {{ ui.text('edit', language) }}
+            </button>
+            <button
+              type="button"
+              class="ngx-record-editor__row-btn"
               [attr.data-testid]="'delete-row-' + arrayField.id + '-' + $index"
-              (click)="deleteRow(arrayField, $index)">Delete</button>
+              (click)="deleteRow(arrayField, $index)"
+            >
+              {{ ui.text('delete', language) }}
+            </button>
           }
         </div>
       } @empty {
-        <p class="ngx-record-editor__row-empty">No rows yet.</p>
+        <p class="ngx-record-editor__row-empty">{{ ui.text('noRows', language) }}</p>
       }
     </div>
   }
@@ -149,7 +163,7 @@
   @if (inlineRowField(); as rowField) {
     <div class="ngx-record-editor__drawer" data-testid="row-drawer" [formGroup]="inlineRowForm!">
       <div class="ngx-record-editor__rows-head">
-        <strong>{{ inlineRowIndex() === null ? 'Add' : 'Edit' }} {{ formatFieldLabel(rowField) }} row</strong>
+        <strong>{{ rowDrawerTitle(rowField) }}</strong>
       </div>
 
       <div class="ngx-form__panel">
@@ -167,8 +181,12 @@
       </div>
 
       <div class="ngx-record-editor__section-bar">
-        <button type="button" class="ngx-form__reset" data-testid="cancel-row" (click)="cancelRow()">Cancel</button>
-        <button type="button" class="ngx-form__submit" data-testid="save-row" (click)="saveRow()">Save row</button>
+        <button type="button" class="ngx-form__reset" data-testid="cancel-row" (click)="cancelRow()">
+          {{ ui.text('cancel', language) }}
+        </button>
+        <button type="button" class="ngx-form__submit" data-testid="save-row" (click)="saveRow()">
+          {{ ui.text('saveRow', language) }}
+        </button>
       </div>
     </div>
   }

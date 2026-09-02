@@ -19,6 +19,7 @@ export * from './lib/services/rbac.service';
 export * from './lib/services/rules-evaluation.service';
 export * from './lib/services/config-source.service';
 export * from './lib/services/validation-messages.service';
+export * from './lib/services/ui-text.service';
 
 // Components — the library ships form UI only; rendering a data table is the consumer's choice.
 export * from './lib/form/dynamic-form.component';

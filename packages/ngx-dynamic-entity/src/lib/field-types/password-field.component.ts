@@ -1,8 +1,9 @@
-import { Component, Input, signal, ChangeDetectionStrategy, inject} from '@angular/core';
+import { Component, Input, signal, ChangeDetectionStrategy, inject } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
+import { UiTextService } from '../services/ui-text.service';
 import { resolveLabel } from '@dynamic-entity/core';
 
 /** Password field: masked input with show/hide eye toggle. */
@@ -12,17 +13,25 @@ import { resolveLabel } from '@dynamic-entity/core';
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <div class="ngx-field ngx-field--password"
-      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div
+      class="ngx-field ngx-field--password"
+      [attr.data-testid]="'field-' + field.id"
+      [attr.data-field-type]="field.type"
+      [class.ngx-field--readonly]="readonly"
+      [class.ngx-field--masked]="masked"
+    >
       <label class="ngx-field__label">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
+          maskedText
+        }}</span>
       } @else if (readonly) {
         <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">••••••••</span>
       } @else {
         <div class="ngx-field__password-wrap">
           <input
-            class="ngx-field__input" [attr.data-testid]="'field-' + field.id + '-input'"
+            class="ngx-field__input"
+            [attr.data-testid]="'field-' + field.id + '-input'"
             [type]="visible() ? 'text' : 'password'"
             autocomplete="current-password"
             [formControl]="$any(control)"
@@ -33,7 +42,7 @@ import { resolveLabel } from '@dynamic-entity/core';
             type="button"
             class="ngx-field__eye-btn"
             (click)="toggleVisibility()"
-            [attr.aria-label]="visible() ? 'Hide password' : 'Show password'"
+            [attr.aria-label]="ui.text(visible() ? 'hidePassword' : 'showPassword', language)"
           >
             {{ visible() ? '🙈' : '👁' }}
           </button>
@@ -49,6 +58,8 @@ export class PasswordFieldComponent {
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
+  /** Library chrome, overridable via UI_TEXT. */
+  protected readonly ui = inject(UiTextService);
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() language: string = 'en';
@@ -86,5 +97,4 @@ export class PasswordFieldComponent {
       'pattern',
     ]);
   }
-
 }

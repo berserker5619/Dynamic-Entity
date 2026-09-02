@@ -24,13 +24,7 @@ import { NgComponentOutlet } from '@angular/common';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
-import type {
-  AutoPatchConfig,
-  EntityFormConfig,
-  FormRule,
-  NestedFieldConfig,
-  NestedTabConfig,
-} from '@dynamic-entity/core';
+import type { AutoPatchConfig, EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
 import {
   ambiguousFieldIds,
   collectFieldScopes,
@@ -59,6 +53,7 @@ import { HookRegistryService } from '../services/hook-registry.service';
 import { RbacService } from '../services/rbac.service';
 import { RulesEvaluationService } from '../services/rules-evaluation.service';
 import { EntityRefSelectionService } from '../services/entity-ref-selection.service';
+import { UiTextService } from '../services/ui-text.service';
 
 /**
  * DynamicFormComponent — the main form component.
@@ -119,6 +114,8 @@ import { EntityRefSelectionService } from '../services/entity-ref-selection.serv
   ],
 })
 export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
+  /** Library chrome, overridable via UI_TEXT. */
+  protected readonly ui = inject(UiTextService);
   // ─── Inputs ───────────────────────────────────────────────────────────────
   /**
    * The schema to render.
@@ -231,9 +228,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   // ─── Computed ─────────────────────────────────────────────────────────────
-  readonly ruleResult = computed(() =>
-    this.rulesEvaluation.evaluate(this.rules, this.formValues(), this.baseline()),
-  );
+  readonly ruleResult = computed(() => this.rulesEvaluation.evaluate(this.rules, this.formValues(), this.baseline()));
 
   /**
    * Critical fields whose value differs from the session baseline.
@@ -244,9 +239,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     const baseline = this.baseline();
     if (!baseline || Object.keys(baseline).length === 0) return [];
     const values = this.formValues();
-    return this.allFields().filter(
-      f => f.criticalField && !this.sameValue(values[f.id], baseline[f.id]),
-    );
+    return this.allFields().filter(f => f.criticalField && !this.sameValue(values[f.id], baseline[f.id]));
   });
 
   get tabs(): NestedTabConfig[] {
@@ -281,22 +274,18 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   get activeTabModuleComponent(): any | null {
     const active = this.activeSubTabConfig ?? this.activeTabConfig;
     if (!active?.moduleName || !this.commonModulesRegistry) return null;
-    const entry = this.commonModulesRegistry.find(
-      m => m.id === active.moduleName || m.component === active.moduleName,
-    );
+    const entry = this.commonModulesRegistry.find(m => m.id === active.moduleName || m.component === active.moduleName);
     return entry ? entry.component : null;
   }
 
   get fieldsForActiveTab(): NestedFieldConfig[] {
     const active = this.activeSubTabConfig ?? this.activeTabConfig;
     if (active?.moduleName) return [];
-    const rawFields = active ? (active.fields || []) : ((this.config?.tabs || []).flatMap(t => t.fields || []));
+    const rawFields = active ? active.fields || [] : (this.config?.tabs || []).flatMap(t => t.fields || []);
     const currentValues = this.formValues();
     const hiddenFields = new Set<string>(this.ruleResult().hiddenFields);
 
-    return rawFields.filter(
-      field => evaluateFieldVisibility(field, currentValues) && !this.namesField(hiddenFields, field),
-    );
+    return rawFields.filter(field => evaluateFieldVisibility(field, currentValues) && !this.namesField(hiddenFields, field));
   }
 
   /**
@@ -522,6 +511,19 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     return resolveLabel(field.label, this.language);
   }
 
+  /**
+   * The changed critical fields as one comma-separated string.
+   *
+   * Joined here rather than looped in the template because the banner is a sentence with the
+   * list inside it, and a sentence has to reach `UI_TEXT` whole — a translation moves the
+   * list somewhere else in the clause.
+   */
+  changedCriticalFieldLabels(): string {
+    return this.changedCriticalFields()
+      .map(field => this.resolveFieldLabel(field))
+      .join(', ');
+  }
+
   // ─── Form construction ────────────────────────────────────────────────────
 
   private buildForm(): void {
@@ -573,9 +575,8 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
 
     // Rebuilding must not stack subscriptions on successive config/data changes.
     this.valueSub?.unsubscribe();
-    const changes$ = this.changeDebounceMs > 0
-      ? this.form.valueChanges.pipe(debounceTime(this.changeDebounceMs))
-      : this.form.valueChanges;
+    const changes$ =
+      this.changeDebounceMs > 0 ? this.form.valueChanges.pipe(debounceTime(this.changeDebounceMs)) : this.form.valueChanges;
     // Validity is not value: an async validator settling flips `pending` and then `invalid`
     // with no value change and no template event, so under OnPush the Save button would
     // never re-enable. submitBlocked reads form.pending and form.invalid, so this is what
@@ -1112,9 +1113,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
    * filling the form in.
    */
   driftHint(field: NestedFieldConfig): string {
-    const source = field.referencedEntityKey
-      ? `"${field.referencedEntityKey}"`
-      : 'its source entity';
+    const source = field.referencedEntityKey ? `"${field.referencedEntityKey}"` : 'its source entity';
     return `This field is linked to ${source} and its definition there has changed since it was linked.`;
   }
 

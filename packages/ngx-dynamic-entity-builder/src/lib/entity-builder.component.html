@@ -1,6 +1,6 @@
 <mat-toolbar class="deb-toolbar" color="primary">
   <mat-icon>dashboard_customize</mat-icon>
-  <span class="deb-toolbar__title">Entity Builder</span>
+  <span class="deb-toolbar__title">{{ ui.text('builderTitle') }}</span>
   <span class="deb-spacer"></span>
 
   @if (store.problems().length) {
@@ -9,7 +9,7 @@
       type="button"
       class="deb-problems"
       [class.deb-problems--error]="!store.isValid()"
-      [matTooltip]="store.problems().length + ' issue(s) — hover items in the list'"
+      [matTooltip]="ui.text('issuesTooltip', { count: store.problems().length })"
     >
       <mat-icon>{{ store.isValid() ? 'warning' : 'error' }}</mat-icon>
       {{ store.errors().length }} / {{ store.problems().length }}
@@ -22,8 +22,8 @@
     data-testid="builder-undo"
     [disabled]="!store.canUndo()"
     (click)="store.undo()"
-    matTooltip="Undo (Ctrl+Z)"
-    aria-label="Undo"
+    [matTooltip]="ui.text('undoTooltip')"
+    [attr.aria-label]="ui.text('undo')"
   >
     <mat-icon>undo</mat-icon>
   </button>
@@ -33,18 +33,16 @@
     data-testid="builder-redo"
     [disabled]="!store.canRedo()"
     (click)="store.redo()"
-    matTooltip="Redo (Ctrl+Shift+Z)"
-    aria-label="Redo"
+    [matTooltip]="ui.text('redoTooltip')"
+    [attr.aria-label]="ui.text('redo')"
   >
     <mat-icon>redo</mat-icon>
   </button>
 
-  <button mat-button type="button" (click)="copyJson()">
-    <mat-icon>content_copy</mat-icon> Copy JSON
-  </button>
+  <button mat-button type="button" (click)="copyJson()"><mat-icon>content_copy</mat-icon> {{ ui.text('copyJson') }}</button>
   <!-- primary, not accent: white on Material's default pink accent is 3.33:1, below AA. -->
   <button mat-flat-button color="primary" type="button" [disabled]="!store.isValid()" (click)="doSave()">
-    <mat-icon>save</mat-icon> Save
+    <mat-icon>save</mat-icon> {{ ui.text('save') }}
   </button>
 </mat-toolbar>
 
@@ -54,19 +52,20 @@
     <mat-card>
       <mat-card-content>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-          <mat-label>Entity name</mat-label>
+          <mat-label>{{ ui.text('entityName') }}</mat-label>
           <input
             matInput
             [ngModel]="store.config().entity"
             (ngModelChange)="store.setEntityName($event)"
-            placeholder="e.g. clients"
+            [placeholder]="ui.text('entityNamePlaceholder')"
           />
         </mat-form-field>
 
         <div class="deb-row">
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-grow">
-            <mat-label>Editing language</mat-label>
+            <mat-label>{{ ui.text('editingLanguage') }}</mat-label>
             <mat-select
+              data-testid="builder-editing-language"
               [ngModel]="store.activeLanguage()"
               (ngModelChange)="store.setActiveLanguage($event)"
             >
@@ -77,19 +76,18 @@
           </mat-form-field>
         </div>
 
-        <mat-slide-toggle
-          [ngModel]="store.config().maskData ?? false"
-          (ngModelChange)="store.setMaskData($event)"
-        >Mask this entity (RBAC)</mat-slide-toggle>
+        <mat-slide-toggle [ngModel]="store.config().maskData ?? false" (ngModelChange)="store.setMaskData($event)">{{
+          ui.text('maskEntity')
+        }}</mat-slide-toggle>
 
         <mat-expansion-panel class="deb-rbac">
           <mat-expansion-panel-header>
-            <mat-panel-title>Permissions</mat-panel-title>
+            <mat-panel-title>{{ ui.text('permissions') }}</mat-panel-title>
           </mat-expansion-panel-header>
           @for (action of rbacActions; track action) {
             @if (availableRoles.length) {
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-                <mat-label>{{ action }} roles</mat-label>
+                <mat-label>{{ ui.text('actionRoles', { action }) }}</mat-label>
                 <mat-select multiple [ngModel]="rolesFor(action)" (ngModelChange)="setRoles(action, $event)">
                   @for (role of availableRoles; track role) {
                     <mat-option [value]="role">{{ role }}</mat-option>
@@ -98,22 +96,20 @@
               </mat-form-field>
             } @else {
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-                <mat-label>{{ action }} roles (comma-separated)</mat-label>
-                <input
-                  matInput
-                  [ngModel]="rolesFor(action).join(', ')"
-                  (ngModelChange)="setRolesFromText(action, $event)"
-                />
+                <mat-label>{{ ui.text('actionRolesPlaceholder', { action }) }}</mat-label>
+                <input matInput [ngModel]="rolesFor(action).join(', ')" (ngModelChange)="setRolesFromText(action, $event)" />
               </mat-form-field>
             }
           }
-          <p class="deb-hint">Empty = no restriction for that action.</p>
+          <p class="deb-hint">{{ ui.text('permissionsHint') }}</p>
         </mat-expansion-panel>
       </mat-card-content>
     </mat-card>
 
     <mat-card>
-      <mat-card-header><mat-card-title>Add field</mat-card-title></mat-card-header>
+      <mat-card-header
+        ><mat-card-title>{{ ui.text('addField') }}</mat-card-title></mat-card-header
+      >
       <mat-card-content>
         <ngx-field-palette (pick)="store.addField($event)"></ngx-field-palette>
       </mat-card-content>
@@ -134,7 +130,9 @@
   <!-- ─── Right: inspector ─── -->
   <div class="deb-col deb-col--right">
     <mat-card>
-      <mat-card-header><mat-card-title>Field properties</mat-card-title></mat-card-header>
+      <mat-card-header
+        ><mat-card-title>{{ ui.text('fieldProperties') }}</mat-card-title></mat-card-header
+      >
       <mat-card-content>
         <ngx-field-inspector></ngx-field-inspector>
       </mat-card-content>
@@ -146,7 +144,7 @@
 <div class="deb-footer">
   <mat-expansion-panel>
     <mat-expansion-panel-header>
-      <mat-panel-title><mat-icon>data_object</mat-icon>&nbsp;Config JSON</mat-panel-title>
+      <mat-panel-title><mat-icon>data_object</mat-icon>&nbsp;{{ ui.text('configJson') }}</mat-panel-title>
     </mat-expansion-panel-header>
     <pre class="deb-json">{{ json }}</pre>
   </mat-expansion-panel>

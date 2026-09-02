@@ -10,6 +10,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { ConfigSourceService } from 'ngx-dynamic-entity';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { BuilderStore } from '../builder-store.service';
+import { BuilderTextService } from '../builder-text';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -29,56 +30,54 @@ import { BuilderStore } from '../builder-store.service';
     @if (field(); as f) {
       <div class="deb-referenced-field" style="margin-top: 16px;">
         <div class="deb-row" style="justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <span class="deb-section-title" style="margin:0;">Referenced Field</span>
+          <span class="deb-section-title" style="margin:0;">{{ ui.text('referencedField') }}</span>
           <mat-slide-toggle
             data-testid="toggle-referenced"
             [ngModel]="f.isReferenced ?? false"
             (ngModelChange)="toggleReferenced(f, $event)"
           >
-            Link
+            {{ ui.text('link') }}
           </mat-slide-toggle>
         </div>
 
         @if (f.isReferenced) {
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full" style="margin-bottom: 8px;">
-            <mat-label>Source Entity Key</mat-label>
+            <mat-label>{{ ui.text('sourceEntityKey') }}</mat-label>
             <input
               matInput
               data-testid="referenced-entity-key"
               [ngModel]="f.referencedEntityKey ?? ''"
               (ngModelChange)="updateEntityKey(f, $event)"
-              placeholder="e.g. individuals"
+              [placeholder]="ui.text('sourceEntityKeyPlaceholder')"
             />
           </mat-form-field>
 
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full" style="margin-bottom: 8px;">
-            <mat-label>Source Field ID</mat-label>
+            <mat-label>{{ ui.text('sourceFieldId') }}</mat-label>
             <input
               matInput
               data-testid="referenced-field-id"
               [ngModel]="f.referencedFieldId ?? ''"
               (ngModelChange)="updateFieldId(f, $event)"
-              placeholder="e.g. firstName"
+              [placeholder]="ui.text('sourceFieldIdPlaceholder')"
             />
           </mat-form-field>
 
           @if (f.hasDrift) {
-            <div class="deb-drift-banner" data-testid="drift-banner" style="background: #fff3e0; border: 1px solid #ffe0b2; padding: 8px 12px; border-radius: 4px; margin-top: 8px;">
+            <div
+              class="deb-drift-banner"
+              data-testid="drift-banner"
+              style="background: #fff3e0; border: 1px solid #ffe0b2; padding: 8px 12px; border-radius: 4px; margin-top: 8px;"
+            >
               <div class="deb-row" style="gap: 8px; align-items: center; color: #e65100; font-weight: 500;">
                 <mat-icon style="font-size: 18px; width:18px; height:18px;">warning</mat-icon>
-                <span>Source field definition has drifted!</span>
+                <span>{{ ui.text('driftHeading') }}</span>
               </div>
               <p style="margin: 4px 0 8px 0; font-size: 12px; color: #666;">
-                The upstream field configuration in "{{ f.referencedEntityKey }}" has evolved.
+                {{ ui.text('driftBody', { entity: f.referencedEntityKey ?? '' }) }}
               </p>
-              <button
-                mat-flat-button
-                color="warn"
-                type="button"
-                data-testid="sync-source-btn"
-                (click)="syncWithSource(f)"
-              >
-                Sync with Source
+              <button mat-flat-button color="warn" type="button" data-testid="sync-source-btn" (click)="syncWithSource(f)">
+                {{ ui.text('syncWithSource') }}
               </button>
             </div>
           }
@@ -88,6 +87,8 @@ import { BuilderStore } from '../builder-store.service';
   `,
 })
 export class ReferencedFieldConfigComponent {
+  /** Builder chrome, overridable via BUILDER_TEXT. */
+  protected readonly ui = inject(BuilderTextService);
   protected readonly store = inject(BuilderStore);
   protected readonly configSource = inject(ConfigSourceService, { optional: true }) as ConfigSourceService | null;
   protected readonly field = computed(() => this.store.selectedField());

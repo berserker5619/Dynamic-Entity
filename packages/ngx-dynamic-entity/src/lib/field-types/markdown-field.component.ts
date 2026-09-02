@@ -12,6 +12,7 @@ import {
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { ValidationMessagesService } from '../services/validation-messages.service';
+import { UiTextService } from '../services/ui-text.service';
 import { resolveLabel } from '@dynamic-entity/core';
 import { MARKDOWN_RENDERER, MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 
@@ -47,19 +48,31 @@ import { MARKDOWN_RENDERER, MASKED_PLACEHOLDER } from '../tokens/injection-token
       <label class="ngx-field__label" [attr.for]="field.id">{{ label }}</label>
 
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
+          maskedText
+        }}</span>
       } @else if (readonly) {
         @if (rendered(); as html) {
-          <div class="ngx-field__value ngx-field__markdown" [attr.data-testid]="'field-' + field.id + '-value'" [innerHTML]="html"></div>
+          <div
+            class="ngx-field__value ngx-field__markdown"
+            [attr.data-testid]="'field-' + field.id + '-value'"
+            [innerHTML]="html"
+          ></div>
         } @else {
           <!-- No renderer: the source is the display. The stylesheet keeps its line
                breaks with white-space: pre-wrap, and interpolation escapes it. -->
-          <span class="ngx-field__value ngx-field__markdown--source" [attr.data-testid]="'field-' + field.id + '-value'">{{ control.value }}</span>
+          <span class="ngx-field__value ngx-field__markdown--source" [attr.data-testid]="'field-' + field.id + '-value'">{{
+            control.value
+          }}</span>
         }
       } @else {
         <div class="ngx-field__markdown-editor">
           @if (canPreview) {
-            <div class="ngx-field__markdown-tabs" role="group" [attr.aria-label]="label + ' editor mode'">
+            <div
+              class="ngx-field__markdown-tabs"
+              role="group"
+              [attr.aria-label]="ui.text('markdownEditorMode', language, { label })"
+            >
               <button
                 type="button"
                 class="ngx-field__markdown-tab"
@@ -67,7 +80,7 @@ import { MARKDOWN_RENDERER, MASKED_PLACEHOLDER } from '../tokens/injection-token
                 [attr.aria-pressed]="!previewing()"
                 (click)="previewing.set(false)"
               >
-                Write
+                {{ ui.text('write', language) }}
               </button>
               <button
                 type="button"
@@ -76,13 +89,17 @@ import { MARKDOWN_RENDERER, MASKED_PLACEHOLDER } from '../tokens/injection-token
                 [attr.aria-pressed]="previewing()"
                 (click)="previewing.set(true)"
               >
-                Preview
+                {{ ui.text('preview', language) }}
               </button>
             </div>
           }
 
           @if (previewing()) {
-            <div class="ngx-field__markdown ngx-field__markdown--preview" [attr.data-testid]="'field-' + field.id + '-preview-body'" [innerHTML]="rendered()"></div>
+            <div
+              class="ngx-field__markdown ngx-field__markdown--preview"
+              [attr.data-testid]="'field-' + field.id + '-preview-body'"
+              [innerHTML]="rendered()"
+            ></div>
           } @else {
             <textarea
               [id]="field.id"
@@ -107,6 +124,8 @@ export class MarkdownFieldComponent implements OnChanges {
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
+  /** Library chrome, overridable via UI_TEXT. */
+  protected readonly ui = inject(UiTextService);
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
   @Input() language: string = 'en';
@@ -185,5 +204,4 @@ export class MarkdownFieldComponent implements OnChanges {
       'pattern',
     ]);
   }
-
 }

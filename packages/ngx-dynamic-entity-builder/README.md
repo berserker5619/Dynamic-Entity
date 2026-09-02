@@ -37,6 +37,7 @@ export const appConfig: ApplicationConfig = {
 - **Live preview slot** — a projected content slot, so the builder renders a preview without depending on the renderer package.
 - **Undo & redo** — `Ctrl`/`Cmd`+`Z` and `Ctrl`/`Cmd`+`Shift`+`Z`, plus toolbar buttons that disable at the ends of the history. Consecutive edits inside 400ms merge when the structure is unchanged, so typing a label is one step while adding two fields is two.
 - **All 21 field types** from the `@dynamic-entity/core` catalog.
+- **Translatable interface** — every word the builder itself renders resolves through `BUILDER_TEXT`; `uiLanguage` picks the locale.
 
 ---
 
@@ -46,6 +47,7 @@ export const appConfig: ApplicationConfig = {
 <ngx-entity-builder
   [config]="initialConfig"
   [languages]="['en', 'de']"
+  [uiLanguage]="'en'"
   [availableRoles]="['admin', 'editor']"
   (configChange)="onConfigUpdated($event)"
   (save)="onSave($event)"
@@ -58,6 +60,7 @@ export const appConfig: ApplicationConfig = {
 |---|---|---|
 | `config` | `EntityFormConfig \| undefined` | Omit to start from an empty schema. |
 | `languages` | `string[]` | Locales offered for localized labels. Defaults to `['en']`. |
+| `uiLanguage` | `string` | Locale for the builder's **own** chrome, not the labels being authored. Defaults to `'en'`. |
 | `availableRoles` | `string[]` | Roles offered in the permissions editor. |
 | `commonModules` | `readonly CommonModuleEntry[]` | Shared-module options for tabs. |
 
@@ -90,6 +93,37 @@ History records the config and its rules **together**: they are two signals, and
 without the other could leave a rule pointing at a field that no longer exists. Loading a
 config or resetting starts history again, so opening an entity is not something you can undo
 past.
+
+---
+
+## 🌍 Translating the builder
+
+Every word the builder renders itself — panel headings, tooltips, empty states — resolves
+through `BUILDER_TEXT`. The library does no translating; it publishes the keys and resolves
+what you hand back, per key, falling back to English for anything you leave out.
+
+```typescript
+import { BUILDER_TEXT } from 'ngx-dynamic-entity-builder';
+
+export const builderTextProvider = {
+  provide: BUILDER_TEXT,
+  useValue: {
+    save: { en: 'Save', de: 'Speichern' },
+    addField: { en: 'Add field', de: 'Feld hinzufügen' },
+  },
+};
+```
+
+A value may be `LocalizedText`, a flat string, or a resolver
+`(key, defaultText, language) => string` for a host that already has ngx-translate, Transloco
+or `$localize`. `DEFAULT_BUILDER_TEXT` exports all 149 keys with their English source
+strings, so a translation file can be generated from it rather than transcribed.
+
+**`uiLanguage` is not `languages`.** `languages` is the vocabulary a label is _authored_ in,
+and `store.activeLanguage()` says which entry the inspector is editing right now. Tying the
+chrome to that would flip the whole interface every time an author switched the label
+language they were working on. `BuilderTextService` is root-provided, so two builders mounted
+at once share one chrome language.
 
 ---
 

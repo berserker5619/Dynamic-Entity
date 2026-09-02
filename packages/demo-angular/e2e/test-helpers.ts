@@ -60,10 +60,7 @@ export function builderTabInputs(page: Page): Locator {
 }
 
 export function builderPaletteButton(page: Page, name: string): Locator {
-  return page
-    .locator('[data-testid^="palette-"]')
-    .filter({ hasText: name })
-    .first();
+  return page.locator('[data-testid^="palette-"]').filter({ hasText: name }).first();
 }
 
 export async function safeClick(locator: Locator): Promise<void> {
@@ -109,9 +106,7 @@ export async function safeSelect(locator: Locator, value: string): Promise<void>
   const labels = (await locator.locator('option').allInnerTexts()).map(text => text.trim());
   const match = labels.find(label => label === value.trim());
   if (!match) {
-    throw new Error(
-      `safeSelect: no option with value or label "${value}". Options: ${labels.join(' | ')}`,
-    );
+    throw new Error(`safeSelect: no option with value or label "${value}". Options: ${labels.join(' | ')}`);
   }
   await locator.selectOption({ label: match });
 }
@@ -130,6 +125,10 @@ export async function safeSelect(locator: Locator, value: string): Promise<void>
  */
 export async function selectMatOption(page: Page, triggerTestId: string, optionName: string): Promise<void> {
   await safeClick(page.getByTestId(triggerTestId));
-  await safeClick(page.getByRole('option', { name: optionName }));
+  // Scoped to the open panel: a native `<option>` also carries role=option, so an unscoped
+  // lookup matches every entity in the two `<select>` elements on the page and fails strict
+  // mode. It passed until an option name happened to collide with one of them. The panel is
+  // the only `listbox` on the page — a collapsed native select exposes none.
+  await safeClick(page.getByRole('listbox').getByRole('option', { name: optionName }));
   await expect(page.locator('.cdk-overlay-backdrop')).toHaveCount(0);
 }

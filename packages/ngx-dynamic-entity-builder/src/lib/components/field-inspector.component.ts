@@ -17,6 +17,7 @@ import { getFieldTypeMeta, type FieldTypeMeta } from '../field-catalog';
 import { EntityReferenceConfigComponent } from './entity-reference-config.component';
 import { FieldRulesListComponent } from './field-rules-list.component';
 import { ReferencedFieldConfigComponent } from './referenced-field-config.component';
+import { BuilderTextService } from '../builder-text';
 
 /**
  * FieldInspectorComponent — edits every property of the currently selected field.
@@ -92,6 +93,8 @@ import { ReferencedFieldConfigComponent } from './referenced-field-config.compon
   ],
 })
 export class FieldInspectorComponent {
+  /** Builder chrome, overridable via BUILDER_TEXT. */
+  protected readonly ui = inject(BuilderTextService);
   protected readonly store = inject(BuilderStore);
 
   protected readonly field = this.store.selectedField;
@@ -103,7 +106,6 @@ export class FieldInspectorComponent {
   protected lang(): string {
     return this.store.activeLanguage();
   }
-
 
   protected toNum(value: unknown): number | null {
     if (value === '' || value === null || value === undefined) return null;

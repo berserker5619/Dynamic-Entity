@@ -2,14 +2,10 @@ import { Component, Input, inject, signal, ChangeDetectionStrategy } from '@angu
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
-import {
-  getOptionStoredValue,
-  resolveLabel,
-  resolveOptionLabel,
-  valuesMatch,
-} from '@dynamic-entity/core';
+import { getOptionStoredValue, resolveLabel, resolveOptionLabel, valuesMatch } from '@dynamic-entity/core';
 import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-registry.service';
 import { ValidationMessagesService } from '../services/validation-messages.service';
+import { UiTextService } from '../services/ui-text.service';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -19,30 +15,38 @@ import { ValidationMessagesService } from '../services/validation-messages.servi
   template: `
     <div
       class="ngx-field ngx-field--dropdown"
-      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type"
+      [attr.data-testid]="'field-' + field.id"
+      [attr.data-field-type]="field.type"
       [class.ngx-field--readonly]="readonly"
       [class.ngx-field--masked]="masked"
       [class.ngx-field--invalid]="control && control.invalid && control.touched"
     >
       <label class="ngx-field__label" [attr.for]="field.id">
         {{ label }}
-        @if (field.validators?.required) { <span class="ngx-field__req">*</span> }
+        @if (field.validators?.required) {
+          <span class="ngx-field__req">*</span>
+        }
       </label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
+          maskedText
+        }}</span>
       } @else if (readonly) {
-        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ getLabel(control.value) }}</span>
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{
+          getLabel(control.value)
+        }}</span>
       } @else {
         <select
           [id]="field.id"
-          class="ngx-field__input" [attr.data-testid]="'field-' + field.id + '-input'"
+          class="ngx-field__input"
+          [attr.data-testid]="'field-' + field.id + '-input'"
           [formControl]="$any(control)"
           [compareWith]="compareFn"
           [attr.disabled]="field.disabled ? true : null"
           [attr.aria-invalid]="control.invalid && control.touched"
           [attr.aria-describedby]="errorMessage ? field.id + '-error' : null"
         >
-          <option [value]="''">{{ placeholder || 'Select...' }}</option>
+          <option [value]="''">{{ placeholder || ui.text('selectPlaceholder', language) }}</option>
           @for (option of options(); track getOptLabel(option)) {
             @if (isObjectVal(option)) {
               <option [ngValue]="getOptStoredVal(option)">{{ getOptLabel(option) }}</option>
@@ -52,13 +56,21 @@ import { ValidationMessagesService } from '../services/validation-messages.servi
           }
         </select>
         @if (errorMessage) {
-          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" [id]="field.id + '-error'" role="alert">{{ errorMessage }}</span>
+          <span
+            class="ngx-field__error"
+            [attr.data-testid]="'field-' + field.id + '-error'"
+            [id]="field.id + '-error'"
+            role="alert"
+            >{{ errorMessage }}</span
+          >
         }
       }
     </div>
   `,
 })
 export class DropdownFieldComponent {
+  /** Library chrome, overridable via UI_TEXT. */
+  protected readonly ui = inject(UiTextService);
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly lookups = inject(LookupRegistryService);

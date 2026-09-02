@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EntityBuilderComponent, EntityFormConfig } from 'ngx-dynamic-entity-builder';
 import { DynamicFormComponent } from 'ngx-dynamic-entity';
@@ -14,7 +14,14 @@ import { LocalStore } from './mock/local-store.service';
   imports: [CommonModule, EntityBuilderComponent, DynamicFormComponent],
   template: `
     @if (message()) {
-      <div class="builder-toast" data-testid="builder-toast" [attr.data-error]="isError()" [class.builder-toast--error]="isError()">{{ message() }}</div>
+      <div
+        class="builder-toast"
+        data-testid="builder-toast"
+        [attr.data-error]="isError()"
+        [class.builder-toast--error]="isError()"
+      >
+        {{ message() }}
+      </div>
     }
 
     <!--
@@ -40,6 +47,7 @@ import { LocalStore } from './mock/local-store.service';
     <ngx-entity-builder
       [config]="editing()"
       [languages]="['en', 'de']"
+      [uiLanguage]="uiLanguage"
       [availableRoles]="['admin', 'manager', 'IT_SUPPORT', 'viewer']"
       [commonModules]="commonModules"
       (configChange)="draft.set($event)"
@@ -93,6 +101,15 @@ export class BuilderPageComponent {
 
   @Output() entitySaved = new EventEmitter<string>();
 
+  /**
+   * The builder's own interface language, passed down from the demo header.
+   *
+   * Not the same as `languages` above, which is the vocabulary a *label* is authored in.
+   * Switching the label language you are editing should not translate the panel around it,
+   * so the builder keeps the two apart and so does this host.
+   */
+  @Input() uiLanguage = 'en';
+
   readonly commonModules = COMMON_MODULES;
 
   readonly editing = signal<EntityFormConfig>({
@@ -106,7 +123,12 @@ export class BuilderPageComponent {
   readonly isError = signal(false);
 
   readonly loadedEntity = signal('');
-  readonly savedEntities = signal<string[]>(this.store.listConfigs().map(c => String(c['entity'])).sort());
+  readonly savedEntities = signal<string[]>(
+    this.store
+      .listConfigs()
+      .map(c => String(c['entity']))
+      .sort(),
+  );
 
   private blankConfig(): EntityFormConfig {
     return { entity: 'new_entity', version: 1, tabs: [{ id: 'main', label: { en: 'Main' }, fields: [] }] };
@@ -121,9 +143,7 @@ export class BuilderPageComponent {
   loadEntity(entity: string): void {
     this.loadedEntity.set(entity);
     const saved = entity ? this.store.getConfig(entity) : null;
-    const next = saved
-      ? (JSON.parse(JSON.stringify(saved)) as EntityFormConfig)
-      : this.blankConfig();
+    const next = saved ? (JSON.parse(JSON.stringify(saved)) as EntityFormConfig) : this.blankConfig();
     this.editing.set(next);
     this.draft.set(next);
     this.message.set(null);
@@ -139,7 +159,12 @@ export class BuilderPageComponent {
       }
       this.isError.set(false);
       this.message.set(`Saved "${config.entity}" ✓`);
-      this.savedEntities.set(this.store.listConfigs().map(c => String(c['entity'])).sort());
+      this.savedEntities.set(
+        this.store
+          .listConfigs()
+          .map(c => String(c['entity']))
+          .sort(),
+      );
       this.entitySaved.emit(config.entity);
     } catch (err: any) {
       this.isError.set(true);

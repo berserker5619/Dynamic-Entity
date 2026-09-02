@@ -11,6 +11,7 @@ import type { NestedTabConfig } from '@dynamic-entity/core';
 import { resolveLabel } from '@dynamic-entity/core';
 import { SYSTEM_DEFAULT_CAN_EDIT } from 'ngx-dynamic-entity';
 import { BuilderStore } from '../builder-store.service';
+import { BuilderTextService } from '../builder-text';
 
 /**
  * Re-exported so existing imports from this package keep working.
@@ -43,21 +44,21 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
   template: `
     <div class="deb-tabs">
       <div class="deb-tabs__head">
-        <span class="deb-section-title">Tabs Manager</span>
+        <span class="deb-section-title">{{ ui.text('tabsManager') }}</span>
         <button mat-stroked-button type="button" (click)="store.addTab()">
-          <mat-icon>add</mat-icon> Add Tab
+          <mat-icon>add</mat-icon> {{ ui.text('addTab') }}
         </button>
       </div>
 
       @if (store.tabs().length === 0) {
-        <p class="deb-hint">No tabs — all fields render in a single section.</p>
+        <p class="deb-hint">{{ ui.text('noTabs') }}</p>
       }
 
       @for (tab of store.tabs(); track tab.id; let i = $index, count = $count) {
         <div class="deb-tab-card" [class.deb-tab-card--system]="tab.systemDefault">
           <div class="deb-tabs__row" [attr.data-testid]="'tab-row-' + tab.id">
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-grow">
-              <mat-label>{{ tab.id }} {{ tab.systemDefault ? '(System)' : '' }}</mat-label>
+              <mat-label>{{ tab.id }} {{ tab.systemDefault ? ui.text('systemTag') : '' }}</mat-label>
               <input
                 matInput
                 [disabled]="!canEditTab(tab)"
@@ -70,7 +71,8 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
               type="button"
               [disabled]="i === 0 || !canEditTab(tab)"
               (click)="store.moveTab(tab.id, -1)"
-              matTooltip="Move up" aria-label="Move tab up"
+              [matTooltip]="ui.text('moveUp')"
+              [attr.aria-label]="ui.text('moveTabUp')"
             >
               <mat-icon>arrow_upward</mat-icon>
             </button>
@@ -79,7 +81,8 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
               type="button"
               [disabled]="i === count - 1 || !canEditTab(tab)"
               (click)="store.moveTab(tab.id, 1)"
-              matTooltip="Move down" aria-label="Move tab down"
+              [matTooltip]="ui.text('moveDown')"
+              [attr.aria-label]="ui.text('moveTabDown')"
             >
               <mat-icon>arrow_downward</mat-icon>
             </button>
@@ -89,7 +92,8 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
               color="warn"
               [disabled]="!canEditTab(tab)"
               (click)="store.removeTab(tab.id)"
-              matTooltip="Remove tab" aria-label="Remove tab"
+              [matTooltip]="ui.text('removeTab')"
+              [attr.aria-label]="ui.text('removeTab')"
             >
               <mat-icon>delete</mat-icon>
             </button>
@@ -102,47 +106,41 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
               [ngModel]="tab.flatData"
               (ngModelChange)="store.updateTab(tab.id, { flatData: $event })"
             >
-              Flat Data
+              {{ ui.text('flatData') }}
             </mat-checkbox>
             <mat-checkbox
               [disabled]="!canEditTab(tab)"
               [ngModel]="tab.isPrimaryTab"
               (ngModelChange)="$event ? store.setPrimaryTab(tab.id) : store.updateTab(tab.id, { isPrimaryTab: false })"
             >
-              Primary Tab
+              {{ ui.text('primaryTab') }}
             </mat-checkbox>
             <mat-checkbox
               [disabled]="!canEditTab(tab)"
               [ngModel]="tab.maskData"
               (ngModelChange)="store.updateTab(tab.id, { maskData: $event })"
             >
-              Mask Tab Data
+              {{ ui.text('maskTabData') }}
             </mat-checkbox>
             <mat-checkbox
               [disabled]="!canEditTab(tab)"
               [ngModel]="tab.systemDefault"
               (ngModelChange)="store.updateTab(tab.id, { systemDefault: $event })"
             >
-              System Default
+              {{ ui.text('systemDefault') }}
             </mat-checkbox>
-            <button
-              mat-button
-              type="button"
-              color="primary"
-              [disabled]="!canEditTab(tab)"
-              (click)="store.addSubTab(tab.id)"
-            >
-              + Sub-tab
+            <button mat-button type="button" color="primary" [disabled]="!canEditTab(tab)" (click)="store.addSubTab(tab.id)">
+              {{ ui.text('addSubTab') }}
             </button>
           </div>
 
           <!-- Module tab configuration -->
           <div class="deb-tab-module">
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-grow">
-              <mat-label>Consumer Module Name (Optional)</mat-label>
+              <mat-label>{{ ui.text('consumerModuleName') }}</mat-label>
               <input
                 matInput
-                placeholder="e.g. documents-view"
+                [placeholder]="ui.text('consumerModulePlaceholder')"
                 [disabled]="!canEditTab(tab)"
                 [ngModel]="tab.moduleName"
                 (ngModelChange)="store.updateTab(tab.id, { moduleName: $event || undefined })"
@@ -153,7 +151,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
           <!-- Sub-tabs recursive render (Level 2) -->
           @if (tab.children && tab.children.length > 0) {
             <div class="deb-subtabs">
-              <span class="deb-subtabs__title">Sub-tabs:</span>
+              <span class="deb-subtabs__title">{{ ui.text('subTabs') }}</span>
               @for (sub of tab.children; track sub.id) {
                 <div class="deb-tabs__row deb-subtab-row" [attr.data-testid]="'subtab-row-' + sub.id">
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-grow">
@@ -171,7 +169,8 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
                     color="warn"
                     [disabled]="!canEditTab(sub)"
                     (click)="store.removeTab(sub.id)"
-                    matTooltip="Remove sub-tab" aria-label="Remove sub-tab"
+                    [matTooltip]="ui.text('removeSubTab')"
+                    [attr.aria-label]="ui.text('removeSubTab')"
                   >
                     <mat-icon>delete</mat-icon>
                   </button>
@@ -237,8 +236,12 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
   ],
 })
 export class TabManagerComponent {
+  /** Builder chrome, overridable via BUILDER_TEXT. */
+  protected readonly ui = inject(BuilderTextService);
   protected readonly store = inject(BuilderStore);
-  private readonly canEditSystemDefaultsFn = inject<(roles: string[]) => boolean>(SYSTEM_DEFAULT_CAN_EDIT, { optional: true });
+  private readonly canEditSystemDefaultsFn = inject<(roles: string[]) => boolean>(SYSTEM_DEFAULT_CAN_EDIT, {
+    optional: true,
+  });
 
   protected lang(): string {
     return this.store.activeLanguage();

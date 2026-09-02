@@ -7,6 +7,7 @@ import { ValidationMessagesService } from '../services/validation-messages.servi
 import { resolveLabel } from '@dynamic-entity/core';
 import { CascadeDataService } from '../services/cascade-data.service';
 import { EntityRefSelectionService } from '../services/entity-ref-selection.service';
+import { UiTextService } from '../services/ui-text.service';
 
 /**
  * EntityRefFieldComponent — a select populated from a consumer-registered loader.
@@ -22,30 +23,44 @@ import { EntityRefSelectionService } from '../services/entity-ref-selection.serv
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <div class="ngx-field ngx-field--entity-ref"
-      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div
+      class="ngx-field ngx-field--entity-ref"
+      [attr.data-testid]="'field-' + field.id"
+      [attr.data-field-type]="field.type"
+      [class.ngx-field--readonly]="readonly"
+      [class.ngx-field--masked]="masked"
+    >
       <label class="ngx-field__label" [attr.for]="'field-' + field.id">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
+          maskedText
+        }}</span>
       } @else if (readonly) {
-        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ getLabel(control.value) }}</span>
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{
+          getLabel(control.value)
+        }}</span>
       } @else {
         @if (loading()) {
-          <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-loading'" role="status">Loading…</span>
+          <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-loading'" role="status">{{
+            ui.text('loading', language)
+          }}</span>
         } @else {
           <select
-            class="ngx-field__input" [attr.data-testid]="'field-' + field.id + '-input'"
+            class="ngx-field__input"
+            [attr.data-testid]="'field-' + field.id + '-input'"
             [id]="'field-' + field.id"
             [formControl]="$any(control)"
             [attr.disabled]="field.disabled ? true : null"
           >
-            <option value="">{{ placeholder || 'Select...' }}</option>
+            <option value="">{{ placeholder || ui.text('selectPlaceholder', language) }}</option>
             @for (option of options(); track option.value) {
               <option [value]="option.value">{{ option.label }}</option>
             }
           </select>
           @if (awaitingParent()) {
-            <span class="ngx-field__hint" [attr.data-testid]="'field-' + field.id + '-hint'">Select {{ parentFieldId }} first.</span>
+            <span class="ngx-field__hint" [attr.data-testid]="'field-' + field.id + '-hint'">{{
+              ui.text('selectParentFirst', language, { field: parentFieldId ?? '' })
+            }}</span>
           }
         }
         @if (errorMessage) {
@@ -56,6 +71,8 @@ import { EntityRefSelectionService } from '../services/entity-ref-selection.serv
   `,
 })
 export class EntityRefFieldComponent implements OnInit {
+  /** Library chrome, overridable via UI_TEXT. */
+  protected readonly ui = inject(UiTextService);
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
@@ -109,9 +126,7 @@ export class EntityRefFieldComponent implements OnInit {
 
     this.loading.set(true);
     try {
-      this.options.set(
-        await this.cascade.load(this.field, { parentValue, lang: this.language }),
-      );
+      this.options.set(await this.cascade.load(this.field, { parentValue, lang: this.language }));
     } finally {
       this.loading.set(false);
     }
@@ -137,7 +152,7 @@ export class EntityRefFieldComponent implements OnInit {
 
   getLabel(value: any): string {
     const option = this.options().find(o => String(o.value) === String(value));
-    return option?.label ?? (value ?? '—');
+    return option?.label ?? value ?? '—';
   }
 
   private parentValue(): unknown {
@@ -153,15 +168,13 @@ export class EntityRefFieldComponent implements OnInit {
     const parentControl = this.control?.parent?.get(parentId);
     if (!parentControl) return;
 
-    parentControl.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        if (this.control.value) {
-          this.control.setValue('', { emitEvent: false });
-          this.selectionBus.emit(this.field.id, null);
-        }
-        void this.reload();
-      });
+    parentControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (this.control.value) {
+        this.control.setValue('', { emitEvent: false });
+        this.selectionBus.emit(this.field.id, null);
+      }
+      void this.reload();
+    });
   }
   /**
    * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({
@@ -181,5 +194,4 @@ export class EntityRefFieldComponent implements OnInit {
       'pattern',
     ]);
   }
-
 }

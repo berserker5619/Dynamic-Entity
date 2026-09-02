@@ -1,13 +1,24 @@
-import { Component, Input, ChangeDetectionStrategy, inject} from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, inject } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
+import { UiTextService } from '../services/ui-text.service';
 
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -23,33 +34,44 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <div class="ngx-field ngx-field--month-year"
-      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div
+      class="ngx-field ngx-field--month-year"
+      [attr.data-testid]="'field-' + field.id"
+      [attr.data-field-type]="field.type"
+      [class.ngx-field--readonly]="readonly"
+      [class.ngx-field--masked]="masked"
+    >
       <label class="ngx-field__label">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
+          maskedText
+        }}</span>
       } @else if (readonly) {
-        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ formatValue(control.value) }}</span>
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{
+          formatValue(control.value)
+        }}</span>
       } @else {
         <div class="ngx-field__month-year-wrap">
           <select
-            class="ngx-field__input ngx-field__input--month" [attr.data-testid]="'field-' + field.id + '-month'"
+            class="ngx-field__input ngx-field__input--month"
+            [attr.data-testid]="'field-' + field.id + '-month'"
             [value]="selectedMonth"
             (change)="onMonthChange($any($event.target).value)"
             [attr.disabled]="field.disabled ? true : null"
           >
-            <option value="">Month</option>
+            <option value="">{{ ui.text('month', language) }}</option>
             @for (m of months; track m.value) {
               <option [value]="m.value">{{ m.label }}</option>
             }
           </select>
           <select
-            class="ngx-field__input ngx-field__input--year" [attr.data-testid]="'field-' + field.id + '-year'"
+            class="ngx-field__input ngx-field__input--year"
+            [attr.data-testid]="'field-' + field.id + '-year'"
             [value]="selectedYear"
             (change)="onYearChange($any($event.target).value)"
             [attr.disabled]="field.disabled ? true : null"
           >
-            <option value="">Year</option>
+            <option value="">{{ ui.text('year', language) }}</option>
             @for (y of years; track y) {
               <option [value]="y">{{ y }}</option>
             }
@@ -63,6 +85,8 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
   `,
 })
 export class MonthYearFieldComponent {
+  /** Library chrome, overridable via UI_TEXT. */
+  protected readonly ui = inject(UiTextService);
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
@@ -126,5 +150,4 @@ export class MonthYearFieldComponent {
       'pattern',
     ]);
   }
-
 }

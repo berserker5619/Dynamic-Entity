@@ -283,6 +283,109 @@ Keys are Angular error keys (`required`, `email`, `pattern`, `minlength`, `maxle
 a string or `(language, error) => string`. Unlisted keys keep their English default, so
 overriding one does not mean supplying them all.
 
+### The library's own chrome
+
+`Save`, `Reset`, `No rows yet.` and the forty-odd other strings the renderer prints itself
+were English literals in the templates, so an application in German rendered German labels
+around English buttons. They resolve through `UI_TEXT`.
+
+The library does no translating. It publishes the keys it renders and resolves whatever you
+hand back, per key — overriding three buttons does not mean supplying the other forty-six,
+and a value that comes back empty falls through to English rather than rendering a blank
+control. Three accepted forms:
+
+**`LocalizedText` per key.** The shape the config already uses, resolved against the form's
+`language` by the same function that resolves the label beside it:
+
+```typescript
+import { provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+
+export const germanChrome = provideNgxDynamicEntity({
+  uiText: {
+    save: { en: 'Save', de: 'Speichern' },
+    reset: { en: 'Reset', de: 'Zurücksetzen' },
+    noRows: { en: 'No rows yet.', de: 'Noch keine Zeilen.' },
+  },
+});
+```
+
+**Flat strings.** One language, or a host that re-provides on switch:
+
+```typescript
+import { provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+
+export const oneLanguage = provideNgxDynamicEntity({ uiText: { save: 'Speichern' } });
+```
+
+**A resolver.** For an existing i18n layer — ngx-translate, Transloco, `$localize` — whose
+catalogue is language-first (`de.json`) and which already holds its own idea of the current
+language:
+
+```typescript
+import { UI_TEXT } from 'ngx-dynamic-entity';
+
+/** Whatever your app already translates through. */
+declare const translate: { instant(key: string): string };
+
+export const uiTextProvider = {
+  provide: UI_TEXT,
+  useValue: (key: string, defaultText: string) => translate.instant(`dynamicEntity.${key}`) || defaultText,
+};
+```
+
+It is read during change detection, so it must be synchronous and cheap.
+
+`DEFAULT_UI_TEXT` is exported — every key with its English source string, so a translation
+file can be generated from it rather than transcribed by hand. `UiTextKey` is the key union,
+which makes a mistyped key a compile error instead of a blank button.
+
+#### Sentences with a value in them
+
+A sentence containing a value travels as one string, because word order moves between
+languages and fragments joined in a template cannot be translated:
+
+```typescript
+import { provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+
+export const bannerText = provideNgxDynamicEntity({
+  uiText: {
+    criticalFieldChanged: {
+      en: '🔒 Critical field changed: {fields} — this differs from the value at the start of this session.',
+      de: '🔒 Kritisches Feld geändert: {fields} — Abweichung vom Wert zu Sitzungsbeginn.',
+    },
+  },
+});
+```
+
+The `{placeholder}` slots are filled wherever the translation puts them. One with no matching
+value is left as written, so a wrong name shows on screen rather than silently blanking.
+
+### The builder's chrome
+
+Same contract, deliberately a separate vocabulary: `BUILDER_TEXT`, `DEFAULT_BUILDER_TEXT`,
+`BuilderTextKey`, `BuilderTextService`. An application shipping only the renderer should not
+see a hundred and fifty builder keys in completion. What the two share is `resolveUiText`,
+the resolution rule itself.
+
+```typescript
+import { BUILDER_TEXT } from 'ngx-dynamic-entity-builder';
+
+export const builderTextProvider = {
+  provide: BUILDER_TEXT,
+  useValue: { save: { en: 'Save', de: 'Speichern' } },
+};
+```
+
+The builder has two languages on screen at once, and they are not the same thing:
+
+```html
+<ngx-entity-builder [uiLanguage]="'de'" [languages]="['en', 'de']" />
+```
+
+`languages` is the vocabulary a label is **authored** in; `uiLanguage` is the language the
+builder's own interface is in. Switching the label language you are editing should not
+translate the panel around it.
+
 ---
 
 ## File uploads

@@ -3,12 +3,12 @@
     <!-- Identity -->
     <div class="deb-row">
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Field id</mat-label>
+        <mat-label>{{ ui.text('fieldId') }}</mat-label>
         <input matInput data-testid="field-id" [value]="f.id" disabled />
         @if (store.hasManualId(f.id)) {
-          <mat-hint>The stored data key for this saved field — fixed.</mat-hint>
+          <mat-hint>{{ ui.text('fieldIdFixedHint') }}</mat-hint>
         } @else {
-          <mat-hint>Derived from the label. Used as the data key.</mat-hint>
+          <mat-hint>{{ ui.text('fieldIdDerivedHint') }}</mat-hint>
         }
       </mat-form-field>
       <span class="deb-chip">{{ meta()?.label || f.type }}</span>
@@ -16,21 +16,19 @@
 
     @if (tabOptions().length > 1) {
       <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-        <mat-label>Tab</mat-label>
-        <mat-select data-testid="field-tab"
-          [ngModel]="currentTabId(f)" (ngModelChange)="moveToTab(f, $event)">
+        <mat-label>{{ ui.text('tab') }}</mat-label>
+        <mat-select data-testid="field-tab" [ngModel]="currentTabId(f)" (ngModelChange)="moveToTab(f, $event)">
           @for (tab of tabOptions(); track tab.id) {
             <mat-option [value]="tab.id">{{ tab.label }}</mat-option>
           }
         </mat-select>
-        <mat-hint>Moving the field rewrites its path and repoints the rules that named it.</mat-hint>
+        <mat-hint>{{ ui.text('tabMoveHint') }}</mat-hint>
       </mat-form-field>
     }
 
-
     <!-- Localised text (active language) -->
     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-      <mat-label>Label ({{ lang() }})</mat-label>
+      <mat-label>{{ ui.text('labelInLanguage', { language: lang() }) }}</mat-label>
       <input
         matInput
         data-testid="field-label"
@@ -41,7 +39,7 @@
 
     @if (meta()?.supportsPlaceholder) {
       <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-        <mat-label>Placeholder ({{ lang() }})</mat-label>
+        <mat-label>{{ ui.text('placeholderInLanguage', { language: lang() }) }}</mat-label>
         <input
           matInput
           [ngModel]="placeholderValue(f)"
@@ -52,7 +50,7 @@
 
     @if (meta()?.supportsDefaultValue) {
       <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-        <mat-label>Default value</mat-label>
+        <mat-label>{{ ui.text('defaultValue') }}</mat-label>
         <input
           matInput
           [ngModel]="f.defaultValue ?? ''"
@@ -72,13 +70,14 @@
     <!-- Validators -->
     @if (meta(); as m) {
       @if (m.flagValidators.length || m.paramValidators.length) {
-        <span class="deb-section-title">Validation</span>
+        <span class="deb-section-title">{{ ui.text('validation') }}</span>
         <div class="deb-toggles">
           @for (v of m.flagValidators; track v) {
             <mat-checkbox
               [ngModel]="store.hasFlagValidator(f, v)"
               (ngModelChange)="store.toggleFlagValidator(store.keyOf(f), v, $event)"
-            >{{ v }}</mat-checkbox>
+              >{{ v }}</mat-checkbox
+            >
           }
         </div>
         @for (v of m.paramValidators; track v) {
@@ -98,17 +97,17 @@
     <!-- Options (dropdown / radio / multiSelect) -->
     @if (meta()?.hasOptions) {
       <mat-divider></mat-divider>
-      <span class="deb-section-title">Data source</span>
+      <span class="deb-section-title">{{ ui.text('dataSource') }}</span>
       <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-        <mat-label>Options come from</mat-label>
+        <mat-label>{{ ui.text('optionsComeFrom') }}</mat-label>
         <mat-select
           data-testid="data-source"
           [ngModel]="store.fieldDataSource(f)"
           (ngModelChange)="store.setFieldDataSource(store.keyOf(f), $event)"
         >
-          <mat-option value="none">Nothing yet</mat-option>
-          <mat-option value="manual">Options authored here</mat-option>
-          <mat-option value="lookup">A named list</mat-option>
+          <mat-option value="none">{{ ui.text('optionsSourceNone') }}</mat-option>
+          <mat-option value="manual">{{ ui.text('optionsSourceInline') }}</mat-option>
+          <mat-option value="lookup">{{ ui.text('optionsSourceList') }}</mat-option>
         </mat-select>
       </mat-form-field>
     }
@@ -116,7 +115,7 @@
     <!-- Named lookup list -->
     @if (meta()?.hasOptions && store.fieldDataSource(f) === 'lookup') {
       <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-        <mat-label>List name</mat-label>
+        <mat-label>{{ ui.text('listName') }}</mat-label>
         <input
           matInput
           data-testid="list-name"
@@ -125,24 +124,23 @@
         />
       </mat-form-field>
       <p class="deb-hint">
-        The consuming app resolves this name through its lookup registry. Options are not
-        authored here.
+        {{ ui.text('listNameHint') }}
       </p>
     }
 
     <!-- Inline options -->
     @if (meta()?.hasOptions && store.fieldDataSource(f) !== 'lookup') {
-      <div class="deb-row" style="justify-content: space-between;">
-        <span class="deb-section-title">Options</span>
+      <div class="deb-row" style="justify-content: space-between">
+        <span class="deb-section-title">{{ ui.text('options') }}</span>
         <button mat-stroked-button type="button" (click)="store.addOption(store.keyOf(f))">
-          <mat-icon>add</mat-icon> Option
+          <mat-icon>add</mat-icon> {{ ui.text('option') }}
         </button>
       </div>
       @for (opt of f.options ?? []; track $index) {
         <div class="deb-option-row" data-testid="option-row">
           <!-- One input: the displayed text is the stored value. -->
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-            <mat-label>Option ({{ lang() }})</mat-label>
+            <mat-label>{{ ui.text('optionInLanguage', { language: lang() }) }}</mat-label>
             <input
               matInput
               [attr.data-testid]="'option-' + $index"
@@ -150,70 +148,85 @@
               (ngModelChange)="store.setOptionLabel(store.keyOf(f), $index, lang(), $event)"
             />
           </mat-form-field>
-          <button mat-icon-button type="button" color="warn"
-            (click)="store.removeOption(store.keyOf(f), $index)" matTooltip="Remove option">
+          <button
+            mat-icon-button
+            type="button"
+            color="warn"
+            (click)="store.removeOption(store.keyOf(f), $index)"
+            [matTooltip]="ui.text('removeOption')"
+          >
             <mat-icon>delete</mat-icon>
           </button>
         </div>
       }
       @if (!(f.options ?? []).length) {
-        <p class="deb-hint">No options yet — add at least one.</p>
+        <p class="deb-hint">{{ ui.text('noOptionsYet') }}</p>
       }
     }
 
     <mat-divider></mat-divider>
 
     <!-- Flags -->
-    <span class="deb-section-title">Display</span>
+    <span class="deb-section-title">{{ ui.text('display') }}</span>
     <div class="deb-toggles">
       <mat-slide-toggle
         [ngModel]="f.visibility ?? true"
         (ngModelChange)="store.updateField(store.keyOf(f), { visibility: $event })"
-      >Visible</mat-slide-toggle>
+        >{{ ui.text('visible') }}</mat-slide-toggle
+      >
       <mat-slide-toggle
         [ngModel]="f.table?.visible ?? false"
         (ngModelChange)="store.updateField(store.keyOf(f), { table: { visible: $event } })"
-      >Table column</mat-slide-toggle>
+        >{{ ui.text('tableColumn') }}</mat-slide-toggle
+      >
       <mat-slide-toggle
         [ngModel]="f.readonly ?? false"
         (ngModelChange)="store.updateField(store.keyOf(f), { readonly: $event })"
-      >Read-only</mat-slide-toggle>
+        >{{ ui.text('readOnly') }}</mat-slide-toggle
+      >
       <mat-slide-toggle
         [ngModel]="f.disabled ?? false"
         (ngModelChange)="store.updateField(store.keyOf(f), { disabled: $event })"
-      >Disabled</mat-slide-toggle>
+        >{{ ui.text('disabled') }}</mat-slide-toggle
+      >
       <mat-slide-toggle
         [ngModel]="f.maskData ?? false"
         (ngModelChange)="store.updateField(store.keyOf(f), { maskData: $event })"
-      >Mask data (RBAC)</mat-slide-toggle>
+        >{{ ui.text('maskData') }}</mat-slide-toggle
+      >
       <mat-slide-toggle
         data-testid="toggle-critical"
         [ngModel]="f.criticalField ?? false"
         (ngModelChange)="store.updateField(store.keyOf(f), { criticalField: $event })"
-        matTooltip="Renders locked; editing it announces a change against the session baseline."
-      >Critical field</mat-slide-toggle>
+        [matTooltip]="ui.text('criticalFieldTooltip')"
+        >{{ ui.text('criticalField') }}</mat-slide-toggle
+      >
       <mat-slide-toggle
         [ngModel]="f.showOnMinimize ?? false"
         (ngModelChange)="store.updateField(store.keyOf(f), { showOnMinimize: $event })"
-        matTooltip="Shown in the record editor's summary panel."
-      >Show in summary</mat-slide-toggle>
+        [matTooltip]="ui.text('showInSummaryTooltip')"
+        >{{ ui.text('showInSummary') }}</mat-slide-toggle
+      >
     </div>
 
     <mat-divider></mat-divider>
 
     <!-- Conditional visibility (static showWhen) -->
     <div class="deb-row deb-row--split">
-      <span class="deb-section-title">Show when</span>
+      <span class="deb-section-title">{{ ui.text('showWhen') }}</span>
       <button mat-stroked-button type="button" data-testid="add-show-when" (click)="addShowWhen(f)">
-        <mat-icon>add</mat-icon> Condition
+        <mat-icon>add</mat-icon> {{ ui.text('condition') }}
       </button>
     </div>
     @for (entry of showWhenEntries(f); track entry.key) {
       <div class="deb-option-row" data-testid="option-row">
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>Watched field</mat-label>
-          <mat-select data-testid="show-when-field"
-            [ngModel]="entry.key" (ngModelChange)="renameShowWhen(f, entry.key, $event)">
+          <mat-label>{{ ui.text('watchedField') }}</mat-label>
+          <mat-select
+            data-testid="show-when-field"
+            [ngModel]="entry.key"
+            (ngModelChange)="renameShowWhen(f, entry.key, $event)"
+          >
             @for (option of optionsWith(entry.key); track option.value) {
               <mat-option [value]="option.value">
                 {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
@@ -222,36 +235,47 @@
           </mat-select>
         </mat-form-field>
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>Equals</mat-label>
+          <mat-label>{{ ui.text('equals') }}</mat-label>
           <input matInput [ngModel]="entry.display" (ngModelChange)="setShowWhenValue(f, entry.key, $event)" />
         </mat-form-field>
-        <button mat-icon-button type="button" color="warn" matTooltip="Remove condition"
-          (click)="removeShowWhen(f, entry.key)">
+        <button
+          mat-icon-button
+          type="button"
+          color="warn"
+          [matTooltip]="ui.text('removeCondition')"
+          (click)="removeShowWhen(f, entry.key)"
+        >
           <mat-icon>delete</mat-icon>
         </button>
       </div>
     }
     @if (!showWhenEntries(f).length) {
-      <p class="deb-hint">Always visible. Add a condition to show this field only for certain values.</p>
+      <p class="deb-hint">{{ ui.text('alwaysVisibleHint') }}</p>
     }
 
     <!-- patchOnTrue (boolean/checkbox only) -->
     @if (f.type === 'boolean' || f.type === 'checkbox') {
       <mat-divider></mat-divider>
       <div class="deb-row deb-row--split">
-        <span class="deb-section-title">Copy on true</span>
-        <button mat-stroked-button type="button" data-testid="add-patch-on-true"
-          (click)="store.addPatchOnTrueMapping(store.keyOf(f))">
-          <mat-icon>add</mat-icon> Mapping
+        <span class="deb-section-title">{{ ui.text('copyOnTrue') }}</span>
+        <button
+          mat-stroked-button
+          type="button"
+          data-testid="add-patch-on-true"
+          (click)="store.addPatchOnTrueMapping(store.keyOf(f))"
+        >
+          <mat-icon>add</mat-icon> {{ ui.text('mapping') }}
         </button>
       </div>
       @for (mapping of f.patchOnTrue ?? []; track $index) {
         <div class="deb-option-row" data-testid="option-row">
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>From field</mat-label>
-            <mat-select data-testid="patch-on-true-from"
+            <mat-label>{{ ui.text('fromField') }}</mat-label>
+            <mat-select
+              data-testid="patch-on-true-from"
               [ngModel]="mapping.from"
-              (ngModelChange)="store.updatePatchOnTrueMapping(store.keyOf(f), $index, { from: $event })">
+              (ngModelChange)="store.updatePatchOnTrueMapping(store.keyOf(f), $index, { from: $event })"
+            >
               @for (option of optionsWith(mapping.from); track option.value) {
                 <mat-option [value]="option.value">
                   {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
@@ -260,10 +284,12 @@
             </mat-select>
           </mat-form-field>
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>To field</mat-label>
-            <mat-select data-testid="patch-on-true-to"
+            <mat-label>{{ ui.text('toField') }}</mat-label>
+            <mat-select
+              data-testid="patch-on-true-to"
               [ngModel]="mapping.to"
-              (ngModelChange)="store.updatePatchOnTrueMapping(store.keyOf(f), $index, { to: $event })">
+              (ngModelChange)="store.updatePatchOnTrueMapping(store.keyOf(f), $index, { to: $event })"
+            >
               @for (option of optionsWith(mapping.to); track option.value) {
                 <mat-option [value]="option.value">
                   {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
@@ -271,14 +297,19 @@
               }
             </mat-select>
           </mat-form-field>
-          <button mat-icon-button type="button" color="warn" matTooltip="Remove mapping"
-            (click)="store.removePatchOnTrueMapping(store.keyOf(f), $index)">
+          <button
+            mat-icon-button
+            type="button"
+            color="warn"
+            [matTooltip]="ui.text('removeMapping')"
+            (click)="store.removePatchOnTrueMapping(store.keyOf(f), $index)"
+          >
             <mat-icon>delete</mat-icon>
           </button>
         </div>
       }
       @if (!(f.patchOnTrue ?? []).length) {
-        <p class="deb-hint">When this flips to true, copy one field's value into another.</p>
+        <p class="deb-hint">{{ ui.text('copyOnTrueHint') }}</p>
       }
     }
 
@@ -295,6 +326,6 @@
 } @else {
   <div class="deb-inspector__empty">
     <mat-icon>touch_app</mat-icon>
-    <p>Select a field to edit its properties.</p>
+    <p>{{ ui.text('inspectorEmpty') }}</p>
   </div>
 }

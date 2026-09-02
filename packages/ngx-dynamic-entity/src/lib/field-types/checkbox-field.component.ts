@@ -1,9 +1,10 @@
-import { Component, Input, ChangeDetectionStrategy, inject} from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, inject } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
+import { UiTextService } from '../services/ui-text.service';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -11,19 +12,29 @@ import { resolveLabel } from '@dynamic-entity/core';
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <div class="ngx-field ngx-field--checkbox"
-      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div
+      class="ngx-field ngx-field--checkbox"
+      [attr.data-testid]="'field-' + field.id"
+      [attr.data-field-type]="field.type"
+      [class.ngx-field--readonly]="readonly"
+      [class.ngx-field--masked]="masked"
+    >
       @if (masked) {
         <label class="ngx-field__label">{{ label }}</label>
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
+          maskedText
+        }}</span>
       } @else if (readonly) {
         <label class="ngx-field__label">{{ label }}</label>
-        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ control.value ? 'Yes' : 'No' }}</span>
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{
+          control.value ? ui.text('yes', language) : ui.text('no', language)
+        }}</span>
       } @else {
         <label class="ngx-field__label" [attr.for]="field.id">
           <input
             [id]="field.id"
-            class="ngx-field__input" [attr.data-testid]="'field-' + field.id + '-input'"
+            class="ngx-field__input"
+            [attr.data-testid]="'field-' + field.id + '-input'"
             type="checkbox"
             [formControl]="$any(control)"
             [attr.disabled]="field.disabled ? true : null"
@@ -31,13 +42,17 @@ import { resolveLabel } from '@dynamic-entity/core';
           {{ label }}
         </label>
         @if (errorMessage) {
-          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" role="alert">{{ errorMessage }}</span>
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" role="alert">{{
+            errorMessage
+          }}</span>
         }
       }
     </div>
   `,
 })
 export class CheckboxFieldComponent {
+  /** Library chrome, overridable via UI_TEXT. */
+  protected readonly ui = inject(UiTextService);
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
@@ -60,5 +75,4 @@ export class CheckboxFieldComponent {
     if (!this.control?.errors || !this.control.touched) return '';
     return this.messages.resolve(this.control.errors, this.language, ['required', 'pattern']);
   }
-
 }

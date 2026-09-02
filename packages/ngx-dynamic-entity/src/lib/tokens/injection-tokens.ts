@@ -8,6 +8,7 @@ import type {
   RecordMigration,
 } from '@dynamic-entity/core';
 import { InMemoryEntityRefCacheStore, type EntityRefCacheStore } from '../services/entity-ref-cache';
+import type { UiTextOverrides } from '../services/ui-text.service';
 
 /** Roles that see XXXXXXXXX for masked fields. Presentational only — enforce authz server-side. */
 export const MASKED_ROLES = new InjectionToken<string[]>('MASKED_ROLES');
@@ -33,9 +34,7 @@ export const FIELD_TYPE_SETS = new InjectionToken<Record<string, Type<any>>[]>('
  * return an array, a Promise, or an Observable of `ReferenceOption[]`. `ctx` is optional,
  * so a zero-arg loader (`() => svc.list()`) is still a valid registration.
  */
-export const ENTITY_REF_REGISTRY = new InjectionToken<Map<string, EntityReferenceLoader>>(
-  'ENTITY_REF_REGISTRY',
-);
+export const ENTITY_REF_REGISTRY = new InjectionToken<Map<string, EntityReferenceLoader>>('ENTITY_REF_REGISTRY');
 
 /**
  * Registry: list name → the values of a named master list (`field.listName`).
@@ -94,9 +93,7 @@ export const VALIDATOR_REGISTRY = new InjectionToken<Map<string, any>>('VALIDATO
  * validator runs only once the synchronous ones pass, and puts the control into `pending`
  * while it does. Name them from a schema with `validators: { customAsync: ['uniqueEmail'] }`.
  */
-export const ASYNC_VALIDATOR_REGISTRY = new InjectionToken<Map<string, any>>(
-  'ASYNC_VALIDATOR_REGISTRY',
-);
+export const ASYNC_VALIDATOR_REGISTRY = new InjectionToken<Map<string, any>>('ASYNC_VALIDATOR_REGISTRY');
 
 /**
  * A registered hook: receives the payload, returns it (or a replacement), sync or async.
@@ -125,9 +122,7 @@ export const HOOK_REGISTRY = new InjectionToken<Map<string, HookFn>>('HOOK_REGIS
  *   }
  * ]
  */
-export const COMMON_MODULES_REGISTRY = new InjectionToken<CommonModuleEntry[]>(
-  'COMMON_MODULES_REGISTRY',
-);
+export const COMMON_MODULES_REGISTRY = new InjectionToken<CommonModuleEntry[]>('COMMON_MODULES_REGISTRY');
 
 /**
  * Consumer-provided file/image upload handler.
@@ -147,30 +142,24 @@ export const UPLOAD_HANDLER = new InjectionToken<FileUploadHandler>('UPLOAD_HAND
  * @example
  * { provide: ENTITY_REF_CACHE_STORE, useClass: SessionStorageRefCache }
  */
-export const ENTITY_REF_CACHE_STORE = new InjectionToken<EntityRefCacheStore>(
-  'ENTITY_REF_CACHE_STORE',
-  { providedIn: 'root', factory: () => new InMemoryEntityRefCacheStore() },
-);
+export const ENTITY_REF_CACHE_STORE = new InjectionToken<EntityRefCacheStore>('ENTITY_REF_CACHE_STORE', {
+  providedIn: 'root',
+  factory: () => new InMemoryEntityRefCacheStore(),
+});
 
 /**
  * Consumer-provided predicate function to check whether user roles can edit system default tabs or fields.
  * Defaults to allowing edits if not provided.
  */
-export const SYSTEM_DEFAULT_CAN_EDIT = new InjectionToken<(roles: string[]) => boolean>(
-  'SYSTEM_DEFAULT_CAN_EDIT',
-);
+export const SYSTEM_DEFAULT_CAN_EDIT = new InjectionToken<(roles: string[]) => boolean>('SYSTEM_DEFAULT_CAN_EDIT');
 
-export type ConfigSourceHandler = (
-  entityKey: string,
-) => any;
+export type ConfigSourceHandler = (entityKey: string) => any;
 
 /**
  * Registry/Resolver for resolving an EntityFormConfig by entity key across entities (Phase 8).
  * Enables cross-entity field referencing (`isReferenced`, `referencedEntityKey`, `referencedFieldId`, `hasDrift`).
  */
 export const CONFIG_SOURCE = new InjectionToken<ConfigSourceHandler>('CONFIG_SOURCE');
-
-
 
 /**
  * Turns the markdown a `markdown` field stores into HTML for display.
@@ -190,9 +179,7 @@ export const CONFIG_SOURCE = new InjectionToken<ConfigSourceHandler>('CONFIG_SOU
  * import { marked } from 'marked';
  * { provide: MARKDOWN_RENDERER, useValue: (src: string) => marked.parse(src) as string }
  */
-export const MARKDOWN_RENDERER = new InjectionToken<(source: string) => string>(
-  'MARKDOWN_RENDERER',
-);
+export const MARKDOWN_RENDERER = new InjectionToken<(source: string) => string>('MARKDOWN_RENDERER');
 
 /**
  * The text a masked field shows in place of its value. Defaults to `XXXXXXXXX`.
@@ -206,3 +193,40 @@ export const MARKDOWN_RENDERER = new InjectionToken<(source: string) => string>(
  * { provide: MASKED_PLACEHOLDER, useValue: '••••••••' }
  */
 export const MASKED_PLACEHOLDER = new InjectionToken<string>('MASKED_PLACEHOLDER');
+
+/**
+ * Overrides for the library's own chrome — Save, Reset, "No rows yet.", and the rest.
+ *
+ * Field labels and options come from the config as `LocalizedText` and already follow the
+ * form's `language`. This is the text *around* them, which was English literals in the
+ * templates: an application in German rendered German labels around English buttons.
+ *
+ * The library does no translating — it publishes the keys it renders and resolves whatever
+ * a host hands back. `DEFAULT_UI_TEXT` is the full list of keys with their English source
+ * strings, so a translation file can be generated from it rather than transcribed. Anything
+ * left out keeps its English default.
+ *
+ * @example The config's own shape — `LocalizedText` per key, resolved against `language`
+ * {
+ *   provide: UI_TEXT,
+ *   useValue: {
+ *     save: { en: 'Save', de: 'Speichern' },
+ *     reset: { en: 'Reset', de: 'Zurücksetzen' },
+ *   },
+ * }
+ *
+ * @example One language, or a host that re-provides on switch
+ * { provide: UI_TEXT, useValue: { save: 'Speichern', reset: 'Zurücksetzen' } }
+ *
+ * @example An existing i18n layer (ngx-translate, Transloco, $localize)
+ * {
+ *   provide: UI_TEXT,
+ *   useFactory: () => {
+ *     const translate = inject(TranslateService);
+ *     return (key, defaultText) => translate.instant(`dynamicEntity.${key}`) || defaultText;
+ *   },
+ * }
+ *
+ * A resolver is read during change detection, so it must be synchronous and cheap.
+ */
+export const UI_TEXT = new InjectionToken<UiTextOverrides>('UI_TEXT');

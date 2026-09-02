@@ -10,7 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import type { FormRule, RuleOperator } from '@dynamic-entity/core';
 import { BuilderStore } from '../builder-store.service';
 import { fieldPathOptions, withExistingOptions, type FieldPathOption } from '../field-path-options';
-
+import { BuilderTextService } from '../builder-text';
 
 /**
  * RuleFormComponent — dialog/panel form for creating or editing a FormRule.
@@ -19,22 +19,14 @@ import { fieldPathOptions, withExistingOptions, type FieldPathOption } from '../
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-rule-form',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatInputModule,
-    MatSelectModule,
-  ],
+  imports: [CommonModule, FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule],
   template: `
     <div class="deb-rule-form">
-      <h3 class="deb-rule-form__title">{{ rule.id ? 'Edit Rule' : 'New Form Rule' }}</h3>
+      <h3 class="deb-rule-form__title">{{ ui.text(rule.id ? 'editRuleTitle' : 'newRuleTitle') }}</h3>
 
       <!-- Trigger Field -->
       <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-        <mat-label>Trigger Field</mat-label>
+        <mat-label>{{ ui.text('triggerField') }}</mat-label>
         <mat-select [(ngModel)]="rule.fieldId" data-testid="rule-trigger">
           @for (option of triggerOptions(); track option.value) {
             <mat-option [value]="option.value">
@@ -46,13 +38,8 @@ import { fieldPathOptions, withExistingOptions, type FieldPathOption } from '../
 
       <!-- Targets: the fields this rule acts on -->
       <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-        <mat-label>Apply to fields</mat-label>
-        <mat-select
-          multiple
-          data-testid="rule-targets"
-          [ngModel]="targetValues()"
-          (ngModelChange)="setTargets($event)"
-        >
+        <mat-label>{{ ui.text('applyToFields') }}</mat-label>
+        <mat-select multiple data-testid="rule-targets" [ngModel]="targetValues()" (ngModelChange)="setTargets($event)">
           @for (option of targetOptions(); track option.value) {
             <mat-option [value]="option.value">
               {{ option.label }} <span class="deb-rule-path">{{ option.path }}</span>
@@ -63,11 +50,11 @@ import { fieldPathOptions, withExistingOptions, type FieldPathOption } from '../
 
       <!-- Conditions -->
       <div class="deb-rule-section">
-        <h4>Conditions</h4>
+        <h4>{{ ui.text('conditions') }}</h4>
         @for (cond of rule.conditions; track $index) {
           <div class="deb-rule-row">
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>Operator</mat-label>
+              <mat-label>{{ ui.text('operator') }}</mat-label>
               <mat-select [(ngModel)]="cond.operator">
                 @for (op of operators; track op) {
                   <mat-option [value]="op">{{ op }}</mat-option>
@@ -75,8 +62,8 @@ import { fieldPathOptions, withExistingOptions, type FieldPathOption } from '../
               </mat-select>
             </mat-form-field>
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>Value</mat-label>
-              <input matInput [(ngModel)]="cond.value" placeholder="Condition value" />
+              <mat-label>{{ ui.text('value') }}</mat-label>
+              <input matInput [(ngModel)]="cond.value" [placeholder]="ui.text('conditionValuePlaceholder')" />
             </mat-form-field>
             <button mat-icon-button color="warn" type="button" (click)="removeCondition($index)">
               <mat-icon>delete</mat-icon>
@@ -84,32 +71,32 @@ import { fieldPathOptions, withExistingOptions, type FieldPathOption } from '../
           </div>
         }
         <button mat-stroked-button type="button" (click)="addCondition()">
-          <mat-icon>add</mat-icon> Add Condition
+          <mat-icon>add</mat-icon> {{ ui.text('addCondition') }}
         </button>
       </div>
 
       <!-- Action -->
       <div class="deb-rule-section">
-        <h4>Action</h4>
+        <h4>{{ ui.text('action') }}</h4>
         <div class="deb-rule-row">
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Action Type</mat-label>
+            <mat-label>{{ ui.text('actionType') }}</mat-label>
             <mat-select [(ngModel)]="rule.action.type">
-              <mat-option value="visibility">Visibility (Show/Hide)</mat-option>
-              <mat-option value="validation">Validation Message</mat-option>
-              <mat-option value="info">Info Banner</mat-option>
+              <mat-option value="visibility">{{ ui.text('actionVisibility') }}</mat-option>
+              <mat-option value="validation">{{ ui.text('actionValidationMessage') }}</mat-option>
+              <mat-option value="info">{{ ui.text('actionInfoBanner') }}</mat-option>
             </mat-select>
           </mat-form-field>
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Value / Message</mat-label>
-            <input matInput [(ngModel)]="rule.action.value" placeholder="false to hide, or message text" />
+            <mat-label>{{ ui.text('valueOrMessage') }}</mat-label>
+            <input matInput [(ngModel)]="rule.action.value" [placeholder]="ui.text('valueOrMessagePlaceholder')" />
           </mat-form-field>
         </div>
       </div>
 
       <div class="deb-rule-form__actions">
-        <button mat-button type="button" (click)="cancel.emit()">Cancel</button>
-        <button mat-raised-button color="primary" type="button" (click)="save.emit(rule)">Save Rule</button>
+        <button mat-button type="button" (click)="cancel.emit()">{{ ui.text('cancel') }}</button>
+        <button mat-raised-button color="primary" type="button" (click)="save.emit(rule)">{{ ui.text('saveRule') }}</button>
       </div>
     </div>
   `,
@@ -166,6 +153,8 @@ import { fieldPathOptions, withExistingOptions, type FieldPathOption } from '../
   ],
 })
 export class RuleFormComponent {
+  /** Builder chrome, overridable via BUILDER_TEXT. */
+  protected readonly ui = inject(BuilderTextService);
   private readonly store = inject(BuilderStore);
 
   @Input() rule: FormRule = {
@@ -231,9 +220,7 @@ export class RuleFormComponent {
    */
   protected targetValues(): string[] {
     const ids = this.rule.targets.filter(t => t.type === 'field').map(t => t.id);
-    const unchanged =
-      ids.length === this.cachedTargets.length &&
-      ids.every((id, i) => id === this.cachedTargets[i]);
+    const unchanged = ids.length === this.cachedTargets.length && ids.every((id, i) => id === this.cachedTargets[i]);
     if (!unchanged) this.cachedTargets = ids;
     return this.cachedTargets;
   }

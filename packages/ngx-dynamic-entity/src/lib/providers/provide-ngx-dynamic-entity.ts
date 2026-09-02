@@ -10,8 +10,10 @@ import {
   VALIDATION_MESSAGES,
   LOOKUP_REGISTRY,
   MASKED_ROLES,
+  UI_TEXT,
   VALIDATOR_REGISTRY,
 } from '../tokens/injection-tokens';
+import type { UiTextOverrides } from '../services/ui-text.service';
 
 export interface NgxDynamicEntityConfig {
   /** Roles that see masked field values as XXXXXXXXX */
@@ -35,6 +37,14 @@ export interface NgxDynamicEntityConfig {
    * Unlisted keys keep their English default.
    */
   validationMessages?: Record<string, string | ((language: string, error: any) => string)>;
+  /**
+   * Override the library's own chrome — Save, Reset, "No rows yet.". Either a partial map
+   * keyed by `UiTextKey`, whose values are strings or the same `LocalizedText` a field label
+   * uses (`{ en, de }`, resolved against the form's `language`), or a resolver
+   * `(key, defaultText, language) => string` that hands the key to an existing i18n layer.
+   * `DEFAULT_UI_TEXT` lists every key with its English source string; unlisted keys keep it.
+   */
+  uiText?: UiTextOverrides;
   /**
    * Async validator functions keyed by name, for checks that need a server — uniqueness,
    * availability, a remote rule. Name them from a schema with
@@ -80,4 +90,5 @@ export const provideNgxDynamicEntity = (config: NgxDynamicEntityConfig = {}): En
     { provide: HOOK_REGISTRY, useValue: new Map(Object.entries(config.hooks ?? {})) },
     { provide: RECORD_MIGRATIONS, useValue: config.migrations ?? [] },
     { provide: VALIDATION_MESSAGES, useValue: config.validationMessages ?? {} },
+    { provide: UI_TEXT, useValue: config.uiText ?? {} },
   ]);

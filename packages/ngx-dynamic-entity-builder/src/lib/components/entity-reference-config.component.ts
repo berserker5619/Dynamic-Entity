@@ -12,6 +12,7 @@ import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { resolveLabel, toRefToken } from '@dynamic-entity/core';
 import { fieldPathOptions, withExistingOptions, type FieldPathOption } from '../field-path-options';
 import { BuilderStore } from '../builder-store.service';
+import { BuilderTextService } from '../builder-text';
 
 /**
  * EntityReferenceConfigComponent — authors the `entityReference` block of an entity-ref field:
@@ -38,32 +39,32 @@ import { BuilderStore } from '../builder-store.service';
   template: `
     @if (field(); as f) {
       <div class="deb-entity-ref">
-        <span class="deb-section-title">Entity reference</span>
+        <span class="deb-section-title">{{ ui.text('entityReference') }}</span>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-          <mat-label>Registry key</mat-label>
+          <mat-label>{{ ui.text('registryKey') }}</mat-label>
           <input
             matInput
             data-testid="entity-ref-key"
             [ngModel]="ref(f).linkedEntityKey ?? ''"
             (ngModelChange)="patchRef(f, { linkedEntityKey: $event || undefined })"
           />
-          <mat-hint>Key the consumer registered a loader under. Defaults to the field id.</mat-hint>
+          <mat-hint>{{ ui.text('registryKeyHint') }}</mat-hint>
         </mat-form-field>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-          <mat-label>Display fields</mat-label>
+          <mat-label>{{ ui.text('displayFields') }}</mat-label>
           <input
             matInput
             data-testid="entity-ref-display-fields"
             [ngModel]="displayFieldsText(f)"
             (ngModelChange)="setDisplayFields(f, $event)"
           />
-          <mat-hint>Comma-separated record paths used to build each option label.</mat-hint>
+          <mat-hint>{{ ui.text('displayFieldsHint') }}</mat-hint>
         </mat-form-field>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-          <mat-label>Static filters (JSON)</mat-label>
+          <mat-label>{{ ui.text('staticFilters') }}</mat-label>
           <input
             matInput
             data-testid="entity-ref-filters"
@@ -73,52 +74,52 @@ import { BuilderStore } from '../builder-store.service';
           @if (filtersError()) {
             <mat-hint class="deb-error-hint">{{ filtersError() }}</mat-hint>
           } @else {
-            <mat-hint>Passed to the loader, e.g. &#123;"isEmployee": false&#125;.</mat-hint>
+            <mat-hint>{{ ui.text('staticFiltersHint') }}</mat-hint>
           }
         </mat-form-field>
 
         <mat-divider></mat-divider>
 
         <!-- Cascade -->
-        <span class="deb-section-title">Cascade</span>
+        <span class="deb-section-title">{{ ui.text('cascade') }}</span>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-          <mat-label>Parent field</mat-label>
+          <mat-label>{{ ui.text('parentField') }}</mat-label>
           <mat-select
             data-testid="entity-ref-parent"
             [ngModel]="ref(f).parentField ?? ''"
             (ngModelChange)="patchRef(f, { parentField: $event || undefined })"
           >
-            <mat-option value="">None — load all options</mat-option>
+            <mat-option value="">{{ ui.text('parentFieldNone') }}</mat-option>
             @for (option of parentOptions(); track option.value) {
               <mat-option [value]="option.value">
                 {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
               </mat-option>
             }
           </mat-select>
-          <mat-hint>This field's options reload whenever the parent changes.</mat-hint>
+          <mat-hint>{{ ui.text('cascadeHint') }}</mat-hint>
         </mat-form-field>
 
         @if (ref(f).parentField) {
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-            <mat-label>Lookup filter path</mat-label>
+            <mat-label>{{ ui.text('lookupFilterPath') }}</mat-label>
             <input
               matInput
               data-testid="entity-ref-lookup-filter"
               [ngModel]="ref(f).lookupFilter ?? ''"
               (ngModelChange)="patchRef(f, { lookupFilter: $event || undefined })"
             />
-            <mat-hint>Keep options whose record matches the parent value at this path.</mat-hint>
+            <mat-hint>{{ ui.text('lookupFilterPathHint') }}</mat-hint>
           </mat-form-field>
 
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-            <mat-label>Lookup path (nested options)</mat-label>
+            <mat-label>{{ ui.text('lookupPath') }}</mat-label>
             <input
               matInput
               data-testid="entity-ref-lookup-path"
               [ngModel]="ref(f).lookupPath ?? ''"
               (ngModelChange)="patchRef(f, { lookupPath: $event || undefined })"
             />
-            <mat-hint>Take options from this array on the selected parent's record instead.</mat-hint>
+            <mat-hint>{{ ui.text('lookupPathHint') }}</mat-hint>
           </mat-form-field>
         }
 
@@ -126,20 +127,20 @@ import { BuilderStore } from '../builder-store.service';
 
         <!-- autoPatch -->
         <div class="deb-row deb-row--split">
-          <span class="deb-section-title">Auto-patch on select</span>
+          <span class="deb-section-title">{{ ui.text('autoPatchOnSelect') }}</span>
           <button
             mat-stroked-button
             type="button"
             data-testid="add-auto-patch"
             (click)="store.addAutoPatchMapping(store.keyOf(f))"
           >
-            <mat-icon>add</mat-icon> Mapping
+            <mat-icon>add</mat-icon> {{ ui.text('mapping') }}
           </button>
         </div>
 
         @if (f.autoPatch) {
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-            <mat-label>Target tab</mat-label>
+            <mat-label>{{ ui.text('targetTab') }}</mat-label>
             <mat-select
               data-testid="auto-patch-tab"
               [ngModel]="f.autoPatch.targetTab"
@@ -154,7 +155,7 @@ import { BuilderStore } from '../builder-store.service';
           @for (mapping of f.autoPatch.mappings; track $index) {
             <div class="deb-option-row">
               <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                <mat-label>Source (linked record)</mat-label>
+                <mat-label>{{ ui.text('sourceLinkedRecord') }}</mat-label>
                 <input
                   matInput
                   [ngModel]="mapping.source"
@@ -162,7 +163,7 @@ import { BuilderStore } from '../builder-store.service';
                 />
               </mat-form-field>
               <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                <mat-label>Target field</mat-label>
+                <mat-label>{{ ui.text('targetField') }}</mat-label>
                 <mat-select
                   data-testid="auto-patch-target"
                   [ngModel]="mapping.target"
@@ -179,7 +180,7 @@ import { BuilderStore } from '../builder-store.service';
                 mat-icon-button
                 type="button"
                 color="warn"
-                matTooltip="Remove mapping"
+                [matTooltip]="ui.text('removeMapping')"
                 (click)="store.removeAutoPatchMapping(store.keyOf(f), $index)"
               >
                 <mat-icon>delete</mat-icon>
@@ -188,7 +189,7 @@ import { BuilderStore } from '../builder-store.service';
           }
         } @else {
           <p class="deb-hint">
-            No auto-patch configured — selecting a reference will not copy any values.
+            {{ ui.text('noAutoPatch') }}
           </p>
         }
       </div>
@@ -227,6 +228,8 @@ import { BuilderStore } from '../builder-store.service';
   ],
 })
 export class EntityReferenceConfigComponent {
+  /** Builder chrome, overridable via BUILDER_TEXT. */
+  protected readonly ui = inject(BuilderTextService);
   protected readonly store = inject(BuilderStore);
 
   protected readonly field = this.store.selectedField;

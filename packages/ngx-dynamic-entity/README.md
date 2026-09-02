@@ -26,6 +26,7 @@ No Angular Material required. This package has no dependency on Material or the 
 - **Reactive rules** — real-time condition evaluation driving field/tab visibility, validation errors and warnings, and info banners.
 - **Entity references & cascades** — consumer-registered loaders, parent→child dropdown filtering, and `autoPatch` record copying.
 - **21 field types** — each a standalone component, registered explicitly so unused types are never bundled.
+- **Fully translatable** — config text is `LocalizedText`; the library's own buttons and empty states resolve through `uiText`.
 
 ---
 
@@ -65,6 +66,31 @@ Some field types take an optional collaborator. A `markdown` field renders its s
 text until you register a renderer — see
 [Markdown](../../EXTENDING.md#markdown) for `MARKDOWN_RENDERER`, which is any function from
 source to HTML.
+
+---
+
+## 🌍 Translating the library's own text
+
+Labels, placeholders and options come from your config as `LocalizedText` and already follow
+the `language` input. The chrome around them — Save, Reset, "No rows yet." — is the
+library's, and resolves through `uiText`:
+
+```typescript
+import { provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+
+export const providers = provideNgxDynamicEntity({
+  uiText: {
+    save: { en: 'Save', de: 'Speichern' },
+    reset: { en: 'Reset', de: 'Zurücksetzen' },
+  },
+});
+```
+
+Values may be `LocalizedText`, a flat string, or — for an app that already has ngx-translate,
+Transloco or `$localize` — a resolver `(key, defaultText, language) => string` provided
+through `UI_TEXT`. Resolution is per key: anything you leave out keeps its English default.
+`DEFAULT_UI_TEXT` exports every key with its English source string, so a translation file can
+be generated from it. See [i18n](../../EXTENDING.md#validation-messages-and-i18n).
 
 ---
 

@@ -1,4 +1,19 @@
-import { ChangeDetectionStrategy, Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, signal, computed, inject, afterNextRender, ElementRef, Injector, ViewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  Input,
+  Output,
+  EventEmitter,
+  OnChanges,
+  SimpleChanges,
+  signal,
+  computed,
+  inject,
+  afterNextRender,
+  ElementRef,
+  Injector,
+  ViewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
@@ -7,6 +22,7 @@ import { DynamicFormComponent } from './dynamic-form.component';
 import { DynamicFieldComponent } from './dynamic-field/dynamic-field.component';
 import { RulesEvaluationService } from '../services/rules-evaluation.service';
 import { RbacService } from '../services/rbac.service';
+import { UiTextService } from '../services/ui-text.service';
 
 /**
  * Distinguishes "no tab holds this field" from "the field holds undefined", so the tab walk
@@ -216,6 +232,8 @@ const FIELD_NOT_FOUND = Symbol('field-not-found');
   ],
 })
 export class DynamicRecordFormComponent implements OnChanges {
+  /** Library chrome, overridable via UI_TEXT. */
+  protected readonly ui = inject(UiTextService);
   @Input() config!: EntityFormConfig;
   @Input() rules?: FormRule[];
   @Input() initialData?: Record<string, any>;
@@ -509,8 +527,7 @@ export class DynamicRecordFormComponent implements OnChanges {
     }
 
     const scoped = this.rulesEvaluation.filterForTab(this.rules, tabId, this.config);
-    const ruleErrors = this.rulesEvaluation.evaluate(scoped, form.formValues(), this.originalBaseline())
-      .validationErrors;
+    const ruleErrors = this.rulesEvaluation.evaluate(scoped, form.formValues(), this.originalBaseline()).validationErrors;
     Object.assign(errors, ruleErrors);
 
     if (Object.keys(errors).length > 0) {
@@ -690,6 +707,12 @@ export class DynamicRecordFormComponent implements OnChanges {
     return resolveLabel(field.label, this.language);
   }
 
+  /** "Add <field> row" / "Edit <field> row" — one key each, because word order moves. */
+  rowDrawerTitle(field: NestedFieldConfig): string {
+    const key = this.inlineRowIndex() === null ? 'addRowTitle' : 'editRowTitle';
+    return this.ui.text(key, this.language, { field: this.formatFieldLabel(field) });
+  }
+
   /** Summary values render through the shared core formatter, not a local stringifier. */
   formatFieldValue(field: NestedFieldConfig): string {
     return formatDisplayValue(field.type, field.options, this.fieldValue(field.id), this.language);
@@ -742,9 +765,9 @@ export class DynamicRecordFormComponent implements OnChanges {
         // escaping to get wrong, and no need for `CSS.escape`, which jsdom and older
         // browsers do not provide and whose absence throws silently inside a render hook.
         const wanted = `field-container-${fieldId}`;
-        const el = Array.from(
-          this.host.nativeElement.querySelectorAll<HTMLElement>('[id^="field-container-"]'),
-        ).find(slot => slot.id === wanted);
+        const el = Array.from(this.host.nativeElement.querySelectorAll<HTMLElement>('[id^="field-container-"]')).find(
+          slot => slot.id === wanted,
+        );
         if (!el) return;
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         // The slot carries tabindex="-1" so this actually moves focus. Without it the jump

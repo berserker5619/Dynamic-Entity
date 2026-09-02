@@ -1,6 +1,5 @@
 @if (canView) {
   <form [formGroup]="form" (ngSubmit)="submit()" class="ngx-form" novalidate>
-
     <!-- Error message banner -->
     @if (error) {
       <div class="ngx-form__error-banner" role="alert" data-testid="form-error">{{ error }}</div>
@@ -28,11 +27,7 @@
     <!-- Deferred VALUE_CHANGED notice for criticalField edits (vs session baseline) -->
     @if (changedCriticalFields().length > 0) {
       <div class="ngx-form__warning-banner" role="status" data-testid="critical-change-banner">
-        🔒 Critical field changed:
-        @for (field of changedCriticalFields(); track field.id) {
-          <span>{{ resolveFieldLabel(field) }}{{ $last ? '' : ', ' }}</span>
-        }
-        — this differs from the value at the start of this session.
+        {{ ui.text('criticalFieldChanged', language, { fields: changedCriticalFieldLabels() }) }}
       </div>
     }
 
@@ -57,16 +52,21 @@
 
     <!-- Sub-tab bar — only if active tab has sub-tabs -->
     @if (visibleSubTabs.length > 0) {
-      <div class="ngx-form__tabs ngx-form__tabs--sub" role="tablist" data-testid="subtab-strip" style="margin-top: -12px; margin-bottom: 12px; font-size: 13px;">
+      <div
+        class="ngx-form__tabs ngx-form__tabs--sub"
+        role="tablist"
+        data-testid="subtab-strip"
+        style="margin-top: -12px; margin-bottom: 12px; font-size: 13px"
+      >
         @for (subTab of visibleSubTabs; track subTab.id) {
           <button
             type="button"
             class="ngx-form__tab ngx-form__tab--sub"
             [attr.data-testid]="'subtab-' + subTab.id"
-            [class.ngx-form__tab--active]="(activeSubTabConfig?.id) === subTab.id"
+            [class.ngx-form__tab--active]="activeSubTabConfig?.id === subTab.id"
             (click)="setActiveSubTab(subTab.id)"
             role="tab"
-            [attr.aria-selected]="(activeSubTabConfig?.id) === subTab.id"
+            [attr.aria-selected]="activeSubTabConfig?.id === subTab.id"
           >
             {{ resolveTabLabel(subTab) }}
           </button>
@@ -79,107 +79,95 @@
       module tab is still a tab — putting the panel semantics on only the fields branch left
       a module tab with nowhere for focus to land.
     -->
-    <div
-      role="tabpanel"
-      tabindex="-1"
-      #formPanel
-      class="ngx-form__tabpanel"
-      [attr.aria-label]="activeTabLabel"
-    >
-    @if (activeTabModuleComponent) {
-      <div class="ngx-form__module-panel" data-testid="module-panel">
-        <ng-container *ngComponentOutlet="activeTabModuleComponent; inputs: (activeSubTabConfig || activeTabConfig)?.moduleInputs"></ng-container>
-      </div>
-    } @else {
-      <!-- Fields for active tab (Responsive 12-column grid) -->
-      <div class="ngx-form__panel" data-testid="form-panel">
-        @for (field of fieldsForActiveTab; track field.id) {
-          <div
-            class="ngx-form__field-slot"
-            [style.gridColumn]="getFieldSpan(field)"
-            [attr.id]="'field-container-' + field.id"
-            tabindex="-1"
-          >
-            <ngx-dynamic-field
-              [field]="field"
-              [control]="getControl(field.id, (activeSubTabConfig || activeTabConfig)?.id)!"
-              [config]="config"
-              [currentTabId]="(activeSubTabConfig || activeTabConfig)?.id"
-              [language]="language"
-              [readonly]="isFieldReadonly(field)"
-              [userRoles]="userRoles"
-            />
-            @if (field.hasDrift) {
-              <!--
+    <div role="tabpanel" tabindex="-1" #formPanel class="ngx-form__tabpanel" [attr.aria-label]="activeTabLabel">
+      @if (activeTabModuleComponent) {
+        <div class="ngx-form__module-panel" data-testid="module-panel">
+          <ng-container
+            *ngComponentOutlet="activeTabModuleComponent; inputs: (activeSubTabConfig || activeTabConfig)?.moduleInputs"
+          ></ng-container>
+        </div>
+      } @else {
+        <!-- Fields for active tab (Responsive 12-column grid) -->
+        <div class="ngx-form__panel" data-testid="form-panel">
+          @for (field of fieldsForActiveTab; track field.id) {
+            <div
+              class="ngx-form__field-slot"
+              [style.gridColumn]="getFieldSpan(field)"
+              [attr.id]="'field-container-' + field.id"
+              tabindex="-1"
+            >
+              <ngx-dynamic-field
+                [field]="field"
+                [control]="getControl(field.id, (activeSubTabConfig || activeTabConfig)?.id)!"
+                [config]="config"
+                [currentTabId]="(activeSubTabConfig || activeTabConfig)?.id"
+                [language]="language"
+                [readonly]="isFieldReadonly(field)"
+                [userRoles]="userRoles"
+              />
+              @if (field.hasDrift) {
+                <!--
                 Drift was previously visible only in the builder, so a referenced field whose
                 source had changed looked completely normal to the person filling the form in.
                 role="status" rather than "alert": it is information, not an error.
               -->
-              <span
-                class="ngx-field__drift"
-                role="status"
-                [attr.data-testid]="'field-' + field.id + '-drift'"
-                [title]="driftHint(field)"
-              >⚠ {{ driftHint(field) }}</span>
-            }
-            @if (field.criticalField && !readonly) {
-              <button
-                type="button"
-                class="ngx-form__lock"
-                [attr.data-testid]="'lock-' + field.id"
-                [attr.aria-pressed]="!isFieldLocked(field)"
-                [attr.aria-label]="
-                  (isFieldLocked(field) ? 'Unlock ' : 'Lock ') + resolveFieldLabel(field)
-                "
-                [title]="
-                  isFieldLocked(field)
-                    ? 'Critical field — click to unlock for editing'
-                    : 'Critical field — click to lock'
-                "
-                (click)="toggleFieldLock(field)"
-              >
-                {{ isFieldLocked(field) ? '🔒' : '🔓' }}
-              </button>
-            }
-          </div>
-        }
-      </div>
-    }
+                <span
+                  class="ngx-field__drift"
+                  role="status"
+                  [attr.data-testid]="'field-' + field.id + '-drift'"
+                  [title]="driftHint(field)"
+                  >⚠ {{ driftHint(field) }}</span
+                >
+              }
+              @if (field.criticalField && !readonly) {
+                <button
+                  type="button"
+                  class="ngx-form__lock"
+                  [attr.data-testid]="'lock-' + field.id"
+                  [attr.aria-pressed]="!isFieldLocked(field)"
+                  [attr.aria-label]="
+                    ui.text(isFieldLocked(field) ? 'unlockField' : 'lockField', language, {
+                      field: resolveFieldLabel(field),
+                    })
+                  "
+                  [title]="ui.text(isFieldLocked(field) ? 'criticalFieldUnlockHint' : 'criticalFieldLockHint', language)"
+                  (click)="toggleFieldLock(field)"
+                >
+                  {{ isFieldLocked(field) ? '🔒' : '🔓' }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
     </div>
 
     <!-- Submit button — gated by RBAC and isSaving lock -->
     @if (!readonly && permissions.canEdit) {
       <div class="ngx-form__actions" data-testid="form-actions">
-        <button
-          type="button"
-          class="ngx-form__reset"
-          data-testid="form-reset"
-          (click)="reset()"
-          [disabled]="isSaving()"
-        >
-          Reset
+        <button type="button" class="ngx-form__reset" data-testid="form-reset" (click)="reset()" [disabled]="isSaving()">
+          {{ ui.text('reset', language) }}
         </button>
         <button
           type="submit"
           class="ngx-form__submit"
           data-testid="form-submit"
           [disabled]="submitBlocked"
-          title="Shortcut: Ctrl+S"
+          [title]="ui.text('saveShortcutHint', language)"
         >
           @if (isSaving() || loading) {
-            Saving…
+            {{ ui.text('saving', language) }}
           } @else {
-            Save
+            {{ ui.text('save', language) }}
           }
         </button>
       </div>
     }
-
   </form>
 } @else {
   <!-- permissions.view denied: render nothing of the record.
        Presentational only — the server must not send data this user may not see. -->
   <div class="ngx-form__denied" role="status" data-testid="form-access-denied">
-    You do not have permission to view this record.
+    {{ ui.text('accessDenied', language) }}
   </div>
 }

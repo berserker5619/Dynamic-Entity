@@ -7,6 +7,73 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **The libraries' own text is translatable.** Field labels, placeholders and options
+  were `LocalizedText` and already followed `language`; the chrome _around_ them —
+  Save, Reset, "No rows yet.", every tooltip and panel heading in the builder — was
+  English literals in the templates. An application in German rendered German labels
+  around English buttons, and there was no way to change that short of forking a
+  component.
+
+  The libraries do no translating. They publish the keys they render and resolve
+  whatever the host hands back, per key: 49 keys in the renderer (`UI_TEXT`,
+  `provideNgxDynamicEntity({ uiText })`) and 149 in the builder (`BUILDER_TEXT`, plus
+  a `uiLanguage` input on `EntityBuilderComponent`). A value may be `LocalizedText` —
+  the same shape a field label uses, resolved against the same `language` — a flat
+  string, or a resolver `(key, defaultText, language) => string` for a host that
+  already has ngx-translate, Transloco or `$localize`.
+
+  `DEFAULT_UI_TEXT` and `DEFAULT_BUILDER_TEXT` are exported with their English source
+  strings, so a translation file can be generated rather than transcribed. Anything
+  left out keeps its English default, so an unconfigured install renders exactly what
+  it rendered before.
+
+  The vocabularies are deliberately separate: an app that ships only the renderer
+  should not see the builder's keys in completion. What they share is `resolveUiText`.
+
+  `uiLanguage` is **not** `languages`. `languages` is the vocabulary a label is
+  authored in; `uiLanguage` is the language of the builder's own interface. Tying the
+  chrome to the authoring language would flip the whole panel every time an author
+  switched the label language they were editing.
+
+- **The masked placeholder is configurable.** `MASKED_PLACEHOLDER` replaces the
+  `XXXXXXXXX` literal that was repeated across twenty-one templates. Bullets read as a
+  redaction, a word reads as a permission, and English reads as neither if the app is
+  not in English. Defaults to `XXXXXXXXX`.
+
+- **Date display is configurable.** `setDateFormatters({ date, datetime, time })` in
+  `@dynamic-entity/core`. The default remains the browser's locale rather than the
+  form's `language`: `language` selects which `LocalizedText` key to read, which is a
+  different question from how to punctuate a date, and tying them would silently
+  change the format on upgrade for every consumer whose browser is set to something
+  else. A partial object overrides one kind; `setDateFormatters()` restores the
+  defaults.
+
+### Fixed
+
+- **Configured validation messages now reach every field type.** They reached three of
+  fifteen. The other twelve rendered a fixed "This field has an error", so a consumer
+  who configured `validationMessages` saw it on text, number and dropdown and the
+  generic string everywhere else — a documented feature working on a fifth of its
+  surface. Four field types had no error UI at all. A sweep spec walks the real field
+  registry, so a type added later is covered the day it is registered.
+
+- **`core` reports a collection that is present but is not an array.** `tabs: {}` or
+  `fields: 'x'` was silently ignored rather than reported, which read as an empty
+  entity instead of a malformed one.
+
+### Notes
+
+Only `noRows` and the field-list wording in the critical-field banner changed shape
+internally; rendered text is identical. `<strong>Add field</strong>` in the builder's
+canvas empty state lost its bold — an emphasis span embedded mid-sentence cannot
+survive translation, so the sentence is now one key.
+
+---
+
 ## [1.8.1] — 2026-09-01
 
 Hardening, almost all of it found by adding property-based fuzzing over `core` and

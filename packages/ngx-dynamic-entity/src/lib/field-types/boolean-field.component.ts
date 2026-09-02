@@ -1,9 +1,10 @@
-import { Component, Input, ChangeDetectionStrategy, inject} from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, inject } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
+import { UiTextService } from '../services/ui-text.service';
 
 /**
  * Boolean field: a slide-toggle style switch (true/false).
@@ -16,14 +17,23 @@ import { resolveLabel } from '@dynamic-entity/core';
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <div class="ngx-field ngx-field--boolean"
-      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div
+      class="ngx-field ngx-field--boolean"
+      [attr.data-testid]="'field-' + field.id"
+      [attr.data-field-type]="field.type"
+      [class.ngx-field--readonly]="readonly"
+      [class.ngx-field--masked]="masked"
+    >
       @if (masked) {
         <label class="ngx-field__label">{{ label }}</label>
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
+          maskedText
+        }}</span>
       } @else if (readonly) {
         <label class="ngx-field__label">{{ label }}</label>
-        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ control.value ? 'Yes' : 'No' }}</span>
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{
+          control.value ? ui.text('yes', language) : ui.text('no', language)
+        }}</span>
       } @else {
         <div class="ngx-field__toggle-wrap">
           <label class="ngx-field__toggle-label">{{ label }}</label>
@@ -39,17 +49,23 @@ import { resolveLabel } from '@dynamic-entity/core';
             <span class="ngx-field__toggle-track">
               <span class="ngx-field__toggle-thumb"></span>
             </span>
-            <span class="ngx-field__toggle-text">{{ control.value ? 'Yes' : 'No' }}</span>
+            <span class="ngx-field__toggle-text">{{
+              control.value ? ui.text('yes', language) : ui.text('no', language)
+            }}</span>
           </label>
         </div>
         @if (errorMessage) {
-          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" role="alert">{{ errorMessage }}</span>
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" role="alert">{{
+            errorMessage
+          }}</span>
         }
       }
     </div>
   `,
 })
 export class BooleanFieldComponent {
+  /** Library chrome, overridable via UI_TEXT. */
+  protected readonly ui = inject(UiTextService);
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
@@ -72,5 +88,4 @@ export class BooleanFieldComponent {
     if (!this.control?.errors || !this.control.touched) return '';
     return this.messages.resolve(this.control.errors, this.language, ['required', 'pattern']);
   }
-
 }

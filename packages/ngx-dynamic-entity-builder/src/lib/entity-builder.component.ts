@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, effect, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  HostListener,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+  effect,
+  inject,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -11,18 +22,14 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import {
-  COMMON_MODULES,
-  type CommonModuleEntry,
-  type EntityFormConfig,
-  type EntityPermissions,
-} from '@dynamic-entity/core';
+import { COMMON_MODULES, type CommonModuleEntry, type EntityFormConfig, type EntityPermissions } from '@dynamic-entity/core';
 import { ConfigSourceService } from 'ngx-dynamic-entity';
 import { BuilderStore } from './builder-store.service';
 import { FieldInspectorComponent } from './components/field-inspector.component';
 import { FieldPaletteComponent } from './components/field-palette.component';
 import { TabManagerComponent } from './components/tab-manager.component';
 import { EntityBuilderCanvasComponent } from './components/entity-builder-canvas.component';
+import { BuilderTextService } from './builder-text';
 
 /** RBAC actions surfaced in the settings panel. */
 const RBAC_ACTIONS: (keyof EntityPermissions)[] = ['view', 'edit', 'delete'];
@@ -60,6 +67,8 @@ const EMPTY_ROLES: readonly string[] = Object.freeze([]);
   styleUrl: './entity-builder.component.css',
 })
 export class EntityBuilderComponent implements OnChanges {
+  /** Builder chrome, overridable via BUILDER_TEXT. */
+  protected readonly ui = inject(BuilderTextService);
   protected readonly store = inject(BuilderStore);
   /**
    * Optional: only apps that registered a CONFIG_SOURCE have one. Used to drop the cached
@@ -71,6 +80,16 @@ export class EntityBuilderComponent implements OnChanges {
   @Input() config?: EntityFormConfig;
   /** Languages available for label/placeholder editing. First entry is the default. */
   @Input() languages: string[] = ['en'];
+  /**
+   * Language for the builder's **own** chrome, resolved through `BUILDER_TEXT`.
+   *
+   * Deliberately separate from `languages` and `store.activeLanguage()`, which choose the
+   * `LocalizedText` entry being authored: switching the label language you are editing
+   * should not translate the interface around it.
+   */
+  @Input() set uiLanguage(value: string) {
+    this.ui.language.set(value || 'en');
+  }
   /** Optional role list — enables multi-select role pickers for RBAC instead of free text. */
   @Input() availableRoles: string[] = [];
   /**
