@@ -5,6 +5,7 @@ import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
 import { UiTextService } from '../services/ui-text.service';
+import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -30,9 +31,9 @@ import { UiTextService } from '../services/ui-text.service';
           control.value ? ui.text('yes', language) : ui.text('no', language)
         }}</span>
       } @else {
-        <label class="ngx-field__label" [attr.for]="field.id">
+        <label class="ngx-field__label" [attr.for]="domId()">
           <input
-            [id]="field.id"
+            [id]="domId()"
             class="ngx-field__input"
             [attr.data-testid]="'field-' + field.id + '-input'"
             type="checkbox"
@@ -51,6 +52,15 @@ import { UiTextService } from '../services/ui-text.service';
   `,
 })
 export class CheckboxFieldComponent {
+  /**
+   * Unique to this component instance: an `array` renders the same field once per row, and a
+   * DOM id may not repeat. See `field-dom-id.ts`.
+   */
+  private readonly instanceId = nextFieldInstanceId();
+  protected domId(suffix = ''): string {
+    return fieldDomId(this.field, this.instanceId, suffix);
+  }
+
   /** Library chrome, overridable via UI_TEXT. */
   protected readonly ui = inject(UiTextService);
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */

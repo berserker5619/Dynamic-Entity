@@ -22,13 +22,7 @@
  */
 
 import { test, expect, type Page, type Locator } from '@playwright/test';
-import {
-  builderFieldRows,
-  builderRowId,
-  builderTabInputs,
-  gotoDemo,
-  safeClick,
-} from './test-helpers';
+import { builderFieldRows, builderRowId, builderTabInputs, fieldPart, gotoDemo, safeClick } from './test-helpers';
 
 // ─── Builder UI helpers ──────────────────────────────────────────────────────
 
@@ -41,7 +35,10 @@ import {
  */
 async function addField(page: Page, label: string): Promise<void> {
   // Use exact text match to avoid partial-match confusion in 2-column grid
-  const btn = page.locator('[data-testid^="palette-"]').filter({ hasText: new RegExp(`^${label}$`) }).first();
+  const btn = page
+    .locator('[data-testid^="palette-"]')
+    .filter({ hasText: new RegExp(`^${label}$`) })
+    .first();
   // Fallback: contains match if exact fails (mat-icon text included in textContent)
   const btnFallback = page.locator('[data-testid^="palette-"]').filter({ hasText: label }).first();
   const target = (await btn.count()) ? btn : btnFallback;
@@ -54,7 +51,10 @@ async function addField(page: Page, label: string): Promise<void> {
  * It's the mat-form-field whose mat-label contains "Label".
  */
 async function setFieldLabel(page: Page, label: string): Promise<void> {
-  const field = page.locator('ngx-field-inspector mat-form-field').filter({ hasText: /Label.*en/ }).first();
+  const field = page
+    .locator('ngx-field-inspector mat-form-field')
+    .filter({ hasText: /Label.*en/ })
+    .first();
   const input = field.locator('input');
   await expect(input).toBeVisible({ timeout: 5000 });
   await input.fill(label);
@@ -245,7 +245,12 @@ test.describe('Form Builder UI — recreate visitNotes from test_data.json', () 
     await selectLastField(page);
     await setFieldLabel(page, 'Client Condition Today');
     await setRequired(page, true);
-    for (const [val, lbl] of [['baseline', 'Baseline'], ['improved', 'Improved'], ['worse', 'Worse'], ['new_issue', 'New Issue']] as [string, string][]) {
+    for (const [val, lbl] of [
+      ['baseline', 'Baseline'],
+      ['improved', 'Improved'],
+      ['worse', 'Worse'],
+      ['new_issue', 'New Issue'],
+    ] as [string, string][]) {
       await addOption(page, val, lbl);
     }
     await expect(builderRowId(page, 'clientConditionToday')).toBeVisible();
@@ -335,15 +340,15 @@ test.describe('Form Builder UI — recreate visitNotes from test_data.json', () 
     // Tab 1 "Basic Information" is active by default — all 12 fields land here
     // because store.addField() always routes to tabs[0] in the builder UI.
     // Verify the key required fields from the visitNotes entity.
-    await expect(page.locator('#caregiverName')).toBeVisible();
-    await expect(page.locator('#visitDate')).toBeVisible();
-    await expect(page.locator('#startTime')).toBeVisible();
-    await expect(page.locator('#endTime')).toBeVisible();
+    await expect(fieldPart(page, 'caregiverName', 'input')).toBeVisible();
+    await expect(fieldPart(page, 'visitDate', 'input')).toBeVisible();
+    await expect(fieldPart(page, 'startTime', 'input')).toBeVisible();
+    await expect(fieldPart(page, 'endTime', 'input')).toBeVisible();
 
     // Scroll to find the multiselect (may be below fold)
-    await page.locator('#tasksCompleted').scrollIntoViewIfNeeded();
-    await expect(page.locator('#tasksCompleted')).toBeVisible();
-    await expect(page.locator('#clientConditionToday')).toBeVisible();
+    await fieldPart(page, 'tasksCompleted', 'input').scrollIntoViewIfNeeded();
+    await expect(fieldPart(page, 'tasksCompleted', 'input')).toBeVisible();
+    await expect(fieldPart(page, 'clientConditionToday', 'input')).toBeVisible();
 
     // Tab 2 "Care Activities" is structurally correct (empty by builder UI design:
     // the palette always targets tabs[0], which is expected behaviour)

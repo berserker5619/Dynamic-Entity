@@ -39,12 +39,7 @@ describe('choice fields with a value that matches no option', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [
-        DropdownFieldComponent,
-        RadioFieldComponent,
-        MultiSelectFieldComponent,
-        ReactiveFormsModule,
-      ],
+      imports: [DropdownFieldComponent, RadioFieldComponent, MultiSelectFieldComponent, ReactiveFormsModule],
     }).compileComponents();
   });
 
@@ -76,8 +71,11 @@ describe('choice fields with a value that matches no option', () => {
 
     it('builds a stable input id even for an option with no value', () => {
       const fixture = make(RadioFieldComponent, null, { type: 'radio' });
-      // Ids feed a label's `for`, so an option with nothing to name it still needs one.
-      expect(fixture.componentInstance.getRadioId(null as never)).toBe('colour-opt');
+      // Ids feed a label's `for`, so an option with nothing to name it still needs one. The
+      // middle segment is this component instance — two rows of an array render the same
+      // option list, and the ids must not collide.
+      expect(fixture.componentInstance.getRadioId(null as never)).toMatch(/^colour-de\d+-opt$/);
+      expect(fixture.componentInstance.optionSlug(null as never)).toBe('opt');
     });
   });
 

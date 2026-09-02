@@ -35,6 +35,12 @@ import type { NestedFieldConfig } from '@dynamic-entity/core';
  * - `masked` means the value must not be displayed. Render a placeholder rather than the
  *   control's value. This is presentational: the real value stays in the control and is
  *   included in the submitted record, so it is not an access-control boundary.
+ * - If you emit a DOM `id` — for a `<label for>`, or an `aria-describedby` — do not build it
+ *   from `field.id` alone. An `array` renders the same field once per row, so `field.id` is
+ *   unique in a config and not in a document, and `for` resolves to the first match on the
+ *   page. `nextFieldInstanceId()` and `fieldDomId()` are what the built-in types use; a
+ *   counter of your own does just as well. Address controls in tests through `data-testid`
+ *   or their label, never through these ids.
  */
 export interface DynamicFieldComponentContract {
   /** The field's schema entry: id, type, label, validators, options, and so on. */

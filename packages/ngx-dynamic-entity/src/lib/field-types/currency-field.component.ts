@@ -4,6 +4,7 @@ import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
+import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
 
 /** Currency field: number input with locale-aware currency symbol prefix. */
 @Component({
@@ -19,7 +20,7 @@ import { resolveLabel } from '@dynamic-entity/core';
       [class.ngx-field--readonly]="readonly"
       [class.ngx-field--masked]="masked"
     >
-      <label class="ngx-field__label" [attr.for]="field.id">{{ label }}</label>
+      <label class="ngx-field__label" [attr.for]="domId()">{{ label }}</label>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
           maskedText
@@ -32,7 +33,7 @@ import { resolveLabel } from '@dynamic-entity/core';
         <div class="ngx-field__currency-wrap">
           <span class="ngx-field__currency-symbol">{{ symbol }}</span>
           <input
-            [id]="field.id"
+            [id]="domId()"
             class="ngx-field__input ngx-field__input--currency"
             [attr.data-testid]="'field-' + field.id + '-input'"
             type="number"
@@ -50,6 +51,15 @@ import { resolveLabel } from '@dynamic-entity/core';
   `,
 })
 export class CurrencyFieldComponent {
+  /**
+   * Unique to this component instance: an `array` renders the same field once per row, and a
+   * DOM id may not repeat. See `field-dom-id.ts`.
+   */
+  private readonly instanceId = nextFieldInstanceId();
+  protected domId(suffix = ''): string {
+    return fieldDomId(this.field, this.instanceId, suffix);
+  }
+
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);

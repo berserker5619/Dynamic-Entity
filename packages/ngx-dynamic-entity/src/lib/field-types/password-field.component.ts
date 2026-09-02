@@ -5,6 +5,7 @@ import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { UiTextService } from '../services/ui-text.service';
 import { resolveLabel } from '@dynamic-entity/core';
+import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
 
 /** Password field: masked input with show/hide eye toggle. */
 @Component({
@@ -20,7 +21,7 @@ import { resolveLabel } from '@dynamic-entity/core';
       [class.ngx-field--readonly]="readonly"
       [class.ngx-field--masked]="masked"
     >
-      <label class="ngx-field__label" [attr.for]="field.id">{{ label }}</label>
+      <label class="ngx-field__label" [attr.for]="domId()">{{ label }}</label>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
           maskedText
@@ -30,7 +31,7 @@ import { resolveLabel } from '@dynamic-entity/core';
       } @else {
         <div class="ngx-field__password-wrap">
           <input
-            [id]="field.id"
+            [id]="domId()"
             class="ngx-field__input"
             [attr.data-testid]="'field-' + field.id + '-input'"
             [type]="visible() ? 'text' : 'password'"
@@ -56,6 +57,15 @@ import { resolveLabel } from '@dynamic-entity/core';
   `,
 })
 export class PasswordFieldComponent {
+  /**
+   * Unique to this component instance: an `array` renders the same field once per row, and a
+   * DOM id may not repeat. See `field-dom-id.ts`.
+   */
+  private readonly instanceId = nextFieldInstanceId();
+  protected domId(suffix = ''): string {
+    return fieldDomId(this.field, this.instanceId, suffix);
+  }
+
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);

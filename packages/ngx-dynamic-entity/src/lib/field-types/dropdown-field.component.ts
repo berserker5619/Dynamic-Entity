@@ -6,6 +6,7 @@ import { getOptionStoredValue, resolveLabel, resolveOptionLabel, valuesMatch } f
 import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-registry.service';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { UiTextService } from '../services/ui-text.service';
+import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -21,7 +22,7 @@ import { UiTextService } from '../services/ui-text.service';
       [class.ngx-field--masked]="masked"
       [class.ngx-field--invalid]="control && control.invalid && control.touched"
     >
-      <label class="ngx-field__label" [attr.for]="field.id">
+      <label class="ngx-field__label" [attr.for]="domId()">
         {{ label }}
         @if (field.validators?.required) {
           <span class="ngx-field__req">*</span>
@@ -37,14 +38,14 @@ import { UiTextService } from '../services/ui-text.service';
         }}</span>
       } @else {
         <select
-          [id]="field.id"
+          [id]="domId()"
           class="ngx-field__input"
           [attr.data-testid]="'field-' + field.id + '-input'"
           [formControl]="$any(control)"
           [compareWith]="compareFn"
           [attr.disabled]="field.disabled ? true : null"
           [attr.aria-invalid]="control.invalid && control.touched"
-          [attr.aria-describedby]="errorMessage ? field.id + '-error' : null"
+          [attr.aria-describedby]="errorMessage ? domId('-error') : null"
         >
           <option [value]="''">{{ placeholder || ui.text('selectPlaceholder', language) }}</option>
           @for (option of options(); track getOptLabel(option)) {
@@ -59,7 +60,7 @@ import { UiTextService } from '../services/ui-text.service';
           <span
             class="ngx-field__error"
             [attr.data-testid]="'field-' + field.id + '-error'"
-            [id]="field.id + '-error'"
+            [id]="domId('-error')"
             role="alert"
             >{{ errorMessage }}</span
           >
@@ -69,6 +70,15 @@ import { UiTextService } from '../services/ui-text.service';
   `,
 })
 export class DropdownFieldComponent {
+  /**
+   * Unique to this component instance: an `array` renders the same field once per row, and a
+   * DOM id may not repeat. See `field-dom-id.ts`.
+   */
+  private readonly instanceId = nextFieldInstanceId();
+  protected domId(suffix = ''): string {
+    return fieldDomId(this.field, this.instanceId, suffix);
+  }
+
   /** Library chrome, overridable via UI_TEXT. */
   protected readonly ui = inject(UiTextService);
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */

@@ -30,6 +30,8 @@ export * from './lib/form/dynamic-field/dynamic-field.component';
 // Previously this existed only as a code comment and an ADR that is gitignored, so a
 // consumer had no interface to implement against.
 export * from './lib/field-types/field-component.contract';
+// Unique DOM ids, for a custom field type that renders a `<label for>` — see the contract.
+export * from './lib/field-types/field-dom-id';
 
 // Field type components — every one, individually importable.
 //

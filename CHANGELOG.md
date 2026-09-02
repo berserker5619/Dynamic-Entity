@@ -66,6 +66,20 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   field type added later is covered the day it is registered rather than the day
   someone points an axe run at a page that happens to contain it.
 
+- **A field rendered twice put duplicate ids on the page.** A control's DOM id came
+  straight from `field.id`, which is unique in a config and not in a document: an
+  `array` renders the same child fields once per row, so a two-row Contacts array
+  produced two `#name` inputs. `<label for>` resolves to the first match in document
+  order, so the second row's label focused the first row's input and announced the
+  same association twice — and duplicate ids on focusable elements are a WCAG failure
+  in their own right.
+
+  Ids now carry a per-instance token: `email-de7`. They were never a public contract
+  — address a control through its `data-testid` or its label — and the e2e suite,
+  which had been reaching for `#fullName`, now does what its own helper file says it
+  should. `radio` also gained a `data-testid` per option, which it had no stable hook
+  for at all.
+
 - **A common module registered by selector took its tab down.** `CommonModuleEntry`
   typed `component` as a string, the token's own example showed one, and
   `COMMON_MODULES` — the catalogue the builder's picker offers — is made of them. The
@@ -97,7 +111,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Internal
 
-**1,521 unit tests and 148 E2E**, up from 1,337 and 124 at 1.8.1. What is new is the
+**1,550 unit tests and 148 E2E**, up from 1,337 and 124 at 1.8.1. What is new is the
 *kind*: two source sweeps that assert the published key lists and the templates agree
 in both directions; two rendering sweeps that mount every field type and the whole
 builder with every key overridden and assert no English default survives in the

@@ -53,14 +53,14 @@ describe('every rendered control has an accessible name', () => {
    */
   function accessibleName(host: HTMLElement, control: Element): string {
     const id = control.getAttribute('id');
-    if (id && host.querySelector(`label[for="${id}"]`)) return 'label[for]';
+    const labels = Array.from(host.querySelectorAll('label'));
+    if (id && labels.some(label => label.getAttribute('for') === id)) return 'label[for]';
     if (control.closest('label')) return 'wrapping label';
     if (control.getAttribute('aria-label')) return 'aria-label';
 
     const labelledBy = control.getAttribute('aria-labelledby');
-    if (labelledBy && labelledBy.split(/\s+/).some(ref => host.querySelector(`#${CSS.escape(ref)}`))) {
-      return 'aria-labelledby';
-    }
+    const ids = new Set(Array.from(host.querySelectorAll('[id]')).map(el => el.id));
+    if (labelledBy && labelledBy.split(/\s+/).some(ref => ids.has(ref))) return 'aria-labelledby';
 
     // A radio group names itself with a fieldset legend rather than per-input labels.
     const fieldset = control.closest('fieldset');

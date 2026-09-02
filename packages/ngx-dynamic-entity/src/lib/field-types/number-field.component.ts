@@ -5,6 +5,7 @@ import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { resolveLabel } from '@dynamic-entity/core';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 
+import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-number-field',
@@ -13,38 +14,59 @@ import { ValidationMessagesService } from '../services/validation-messages.servi
   template: `
     <div
       class="ngx-field ngx-field--number"
-      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type"
+      [attr.data-testid]="'field-' + field.id"
+      [attr.data-field-type]="field.type"
       [class.ngx-field--readonly]="readonly"
       [class.ngx-field--masked]="masked"
       [class.ngx-field--invalid]="control && control.invalid && control.touched"
     >
-      <label class="ngx-field__label" [attr.for]="field.id">
+      <label class="ngx-field__label" [attr.for]="domId()">
         {{ label }}
-        @if (field.validators?.required) { <span class="ngx-field__req">*</span> }
+        @if (field.validators?.required) {
+          <span class="ngx-field__req">*</span>
+        }
       </label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
+          maskedText
+        }}</span>
       } @else if (readonly) {
         <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ control.value ?? '—' }}</span>
       } @else {
         <input
-          [id]="field.id"
+          [id]="domId()"
           type="number"
-          class="ngx-field__input" [attr.data-testid]="'field-' + field.id + '-input'"
+          class="ngx-field__input"
+          [attr.data-testid]="'field-' + field.id + '-input'"
           [formControl]="$any(control)"
           [placeholder]="placeholder"
           [attr.disabled]="field.disabled ? true : null"
           [attr.aria-invalid]="control.invalid && control.touched"
-          [attr.aria-describedby]="errorMessage ? field.id + '-error' : null"
+          [attr.aria-describedby]="errorMessage ? domId('-error') : null"
         />
         @if (errorMessage) {
-          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" [id]="field.id + '-error'" role="alert">{{ errorMessage }}</span>
+          <span
+            class="ngx-field__error"
+            [attr.data-testid]="'field-' + field.id + '-error'"
+            [id]="domId('-error')"
+            role="alert"
+            >{{ errorMessage }}</span
+          >
         }
       }
     </div>
   `,
 })
 export class NumberFieldComponent {
+  /**
+   * Unique to this component instance: an `array` renders the same field once per row, and a
+   * DOM id may not repeat. See `field-dom-id.ts`.
+   */
+  private readonly instanceId = nextFieldInstanceId();
+  protected domId(suffix = ''): string {
+    return fieldDomId(this.field, this.instanceId, suffix);
+  }
+
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
@@ -65,11 +87,6 @@ export class NumberFieldComponent {
 
   get errorMessage(): string {
     if (!this.control || !this.control.errors || !this.control.touched) return '';
-    return this.messages.resolve(
-      this.control.errors,
-      this.language,
-      ['required', 'min', 'max'],
-      'invalidNumber',
-    );
+    return this.messages.resolve(this.control.errors, this.language, ['required', 'min', 'max'], 'invalidNumber');
   }
 }

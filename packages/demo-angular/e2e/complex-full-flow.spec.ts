@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoDemo, safeClick, safeSelect } from './test-helpers';
+import { fieldPart, gotoDemo, safeClick, safeSelect } from './test-helpers';
 
 test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Types & Multi-Tab Configuration)', () => {
   const COMPLEX_CONFIG = {
@@ -60,7 +60,13 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
           },
           { id: 'avatar', type: 'image', label: { en: 'Profile Avatar' }, colSpan: 6 },
           { id: 'attachment', type: 'file', label: { en: 'Contract Document' }, colSpan: 6 },
-          { id: 'primaryRef', type: 'entityReference', label: { en: 'Primary Contact Ref' }, refEntity: 'individuals', colSpan: 12 },
+          {
+            id: 'primaryRef',
+            type: 'entityReference',
+            label: { en: 'Primary Contact Ref' },
+            refEntity: 'individuals',
+            colSpan: 12,
+          },
         ],
       },
       {
@@ -82,7 +88,9 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
     ],
   };
 
-  test('executes full end-to-end flow: saves complex multi-tab config with all field types, enters data, submits, and verifies persistence', async ({ page }) => {
+  test('executes full end-to-end flow: saves complex multi-tab config with all field types, enters data, submits, and verifies persistence', async ({
+    page,
+  }) => {
     test.setTimeout(60000);
     // Listen for JS errors
     const jsErrors: string[] = [];
@@ -115,10 +123,10 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
     // Tabs are rendered as <button role="tab"> — must use getByRole('tab') not getByRole('button')
     await expect(page.getByRole('tab', { name: 'Basic Information' })).toBeVisible();
 
-    await page.locator('#fullName').fill('Dr. Marcus Vance');
-    await page.locator('#annualBudget').fill('500000');
-    await safeSelect(page.locator('#industry'), 'Healthcare');
-    await page.locator('#startDate').fill('2026-08-07');
+    await fieldPart(page, 'fullName', 'input').fill('Dr. Marcus Vance');
+    await fieldPart(page, 'annualBudget', 'input').fill('500000');
+    await safeSelect(fieldPart(page, 'industry', 'input'), 'Healthcare');
+    await fieldPart(page, 'startDate', 'input').fill('2026-08-07');
 
     // monthYear renders as two separate selects (no id) inside field-container-contractMonth
     const monthYearContainer = page.locator('#field-container-contractMonth');
@@ -130,20 +138,20 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
     // ─── Step 5: Fill Tab 2 (Advanced Profile) ──────────────────────────────
     await safeClick(page.getByRole('tab', { name: 'Advanced Profile' }));
 
-    const bioTextarea = page.locator('#biography');
+    const bioTextarea = fieldPart(page, 'biography', 'input');
     await bioTextarea.fill('Senior Staff UI/UX Systems Architect with 15 years experience across enterprise systems.');
 
-    const newsletterCheckbox = page.locator('#subscribeNewsletter');
+    const newsletterCheckbox = fieldPart(page, 'subscribeNewsletter', 'input');
     await newsletterCheckbox.check();
 
-    const emailRadio = page.locator('#contactMethod-email');
+    const emailRadio = page.getByTestId('field-contactMethod-option-email');
     if (await emailRadio.isVisible()) {
       await emailRadio.check();
     }
 
     // MultiSelect rendered as <select multiple>. Angular [value] sets DOM property not HTML attribute,
     // so we must select by label text instead of value.
-    const servicesSelect = page.locator('#services');
+    const servicesSelect = fieldPart(page, 'services', 'input');
     if (await servicesSelect.isVisible()) {
       await servicesSelect.selectOption([{ label: 'Cloud Storage' }, { label: 'Dedicated Support' }]);
     }
@@ -151,12 +159,12 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
     // ─── Step 6: Fill Tab 3 (Nested Data & Groups) ──────────────────────────
     await safeClick(page.getByRole('tab', { name: 'Nested Data & Groups' }));
 
-    const compNameInput = page.locator('#companyName');
+    const compNameInput = fieldPart(page, 'companyName', 'input');
     if (await compNameInput.isVisible()) {
       await compNameInput.fill('Akshya IT Enterprise Systems');
     }
 
-    const taxIdInput = page.locator('#taxId');
+    const taxIdInput = fieldPart(page, 'taxId', 'input');
     if (await taxIdInput.isVisible()) {
       await taxIdInput.fill('DE-TAX-998822');
     }
@@ -178,15 +186,17 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
     await expect(page.getByRole('heading', { level: 2, name: /Edit Record \(complex_enterprise_crm\)/i })).toBeVisible();
 
     // Verify Tab 1 data retained
-    await expect(page.locator('#fullName')).toHaveValue('Dr. Marcus Vance');
-    await expect(page.locator('#annualBudget')).toHaveValue('500000');
-    await expect(page.locator('#industry').locator('option:checked')).toHaveText('Healthcare');
-    await expect(page.locator('#startDate')).toHaveValue('2026-08-07');
+    await expect(fieldPart(page, 'fullName', 'input')).toHaveValue('Dr. Marcus Vance');
+    await expect(fieldPart(page, 'annualBudget', 'input')).toHaveValue('500000');
+    await expect(fieldPart(page, 'industry', 'input').locator('option:checked')).toHaveText('Healthcare');
+    await expect(fieldPart(page, 'startDate', 'input')).toHaveValue('2026-08-07');
 
     // Verify Tab 2 data retained
     await safeClick(page.getByRole('tab', { name: 'Advanced Profile' }));
-    await expect(page.locator('#biography')).toHaveValue('Senior Staff UI/UX Systems Architect with 15 years experience across enterprise systems.');
-    await expect(page.locator('#subscribeNewsletter')).toBeChecked();
+    await expect(fieldPart(page, 'biography', 'input')).toHaveValue(
+      'Senior Staff UI/UX Systems Architect with 15 years experience across enterprise systems.',
+    );
+    await expect(fieldPart(page, 'subscribeNewsletter', 'input')).toBeChecked();
 
     // Verify no JS errors occurred during full workflow execution
     expect(jsErrors).toEqual([]);

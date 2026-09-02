@@ -11,10 +11,7 @@ describe('RadioFieldComponent', () => {
     id: 'size',
     type: 'radio',
     label: { en: 'Size' },
-    options: [
-      { en: 'Small' },
-      { en: 'Large' },
-    ],
+    options: [{ en: 'Small' }, { en: 'Large' }],
   };
 
   beforeEach(async () => {
@@ -30,11 +27,11 @@ describe('RadioFieldComponent', () => {
   });
 
   it('renders one radio per option with unique ids', () => {
-    const inputs: HTMLInputElement[] = Array.from(
-      fixture.nativeElement.querySelectorAll('input[type="radio"]'),
-    );
+    const inputs: HTMLInputElement[] = Array.from(fixture.nativeElement.querySelectorAll('input[type="radio"]'));
     expect(inputs.length).toBe(2);
-    expect(inputs.map(i => i.id)).toEqual(['size-small', 'size-large']);
+    // The option is named in the id, with this instance between: `size-de4-small`.
+    expect(inputs.map(i => i.id.replace(/-de\d+-/, '-'))).toEqual(['size-small', 'size-large']);
+    expect(new Set(inputs.map(i => i.id)).size).toBe(2);
   });
 
   it('resolves the selected option label when readonly', () => {
@@ -84,14 +81,17 @@ describe('RadioFieldComponent', () => {
   it('re-resolves labels when the language changes', () => {
     component.field = {
       ...mockField,
-      options: [{ en: 'Small', de: 'Klein' }, { en: 'Large', de: 'Groß' }],
+      options: [
+        { en: 'Small', de: 'Klein' },
+        { en: 'Large', de: 'Groß' },
+      ],
     };
     fixture.componentRef.setInput('language', 'de');
     fixture.detectChanges();
 
-    const labels = Array.from(
-      fixture.nativeElement.querySelectorAll('.ngx-field__radio-label'),
-    ).map((el: any) => el.textContent.trim());
+    const labels = Array.from(fixture.nativeElement.querySelectorAll('.ngx-field__radio-label')).map((el: any) =>
+      el.textContent.trim(),
+    );
     expect(labels).toEqual(['Klein', 'Groß']);
   });
 
@@ -105,7 +105,7 @@ describe('RadioFieldComponent', () => {
     fixture.detectChanges();
 
     const input = fixture.nativeElement.querySelector('input[type="radio"]') as HTMLInputElement;
-    expect(input.id).toBe('size-on_leave');
+    expect(input.id).toMatch(/^size-de\d+-on_leave$/);
     expect(fixture.nativeElement.querySelector('label').getAttribute('for')).toBe(input.id);
   });
 
@@ -113,9 +113,7 @@ describe('RadioFieldComponent', () => {
     fixture.componentRef.setInput('field', { ...mockField, disabled: true });
     fixture.detectChanges();
 
-    const inputs: HTMLInputElement[] = Array.from(
-      fixture.nativeElement.querySelectorAll('input[type="radio"]'),
-    );
+    const inputs: HTMLInputElement[] = Array.from(fixture.nativeElement.querySelectorAll('input[type="radio"]'));
     expect(inputs.every(i => i.disabled)).toBe(true);
   });
 });

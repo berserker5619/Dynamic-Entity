@@ -8,6 +8,7 @@ import { resolveLabel } from '@dynamic-entity/core';
 import { CascadeDataService } from '../services/cascade-data.service';
 import { EntityRefSelectionService } from '../services/entity-ref-selection.service';
 import { UiTextService } from '../services/ui-text.service';
+import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
 
 /**
  * EntityRefFieldComponent — a select populated from a consumer-registered loader.
@@ -30,7 +31,7 @@ import { UiTextService } from '../services/ui-text.service';
       [class.ngx-field--readonly]="readonly"
       [class.ngx-field--masked]="masked"
     >
-      <label class="ngx-field__label" [attr.for]="'field-' + field.id">{{ label }}</label>
+      <label class="ngx-field__label" [attr.for]="domId()">{{ label }}</label>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
           maskedText
@@ -48,7 +49,7 @@ import { UiTextService } from '../services/ui-text.service';
           <select
             class="ngx-field__input"
             [attr.data-testid]="'field-' + field.id + '-input'"
-            [id]="'field-' + field.id"
+            [id]="domId()"
             [formControl]="$any(control)"
             [attr.disabled]="field.disabled ? true : null"
           >
@@ -71,6 +72,15 @@ import { UiTextService } from '../services/ui-text.service';
   `,
 })
 export class EntityRefFieldComponent implements OnInit {
+  /**
+   * Unique to this component instance: an `array` renders the same field once per row, and a
+   * DOM id may not repeat. See `field-dom-id.ts`.
+   */
+  private readonly instanceId = nextFieldInstanceId();
+  protected domId(suffix = ''): string {
+    return fieldDomId(this.field, this.instanceId, suffix);
+  }
+
   /** Library chrome, overridable via UI_TEXT. */
   protected readonly ui = inject(UiTextService);
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */

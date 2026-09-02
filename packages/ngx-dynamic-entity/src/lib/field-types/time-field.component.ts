@@ -1,10 +1,11 @@
-import { Component, Input, ChangeDetectionStrategy, inject} from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, inject } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { formatDisplayValue, resolveLabel } from '@dynamic-entity/core';
 
+import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
 /**
  * Time field: a bare time of day, with no date and no zone attached.
  *
@@ -19,17 +20,27 @@ import { formatDisplayValue, resolveLabel } from '@dynamic-entity/core';
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <div class="ngx-field ngx-field--time"
-      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
-      <label class="ngx-field__label" [attr.for]="field.id">{{ label }}</label>
+    <div
+      class="ngx-field ngx-field--time"
+      [attr.data-testid]="'field-' + field.id"
+      [attr.data-field-type]="field.type"
+      [class.ngx-field--readonly]="readonly"
+      [class.ngx-field--masked]="masked"
+    >
+      <label class="ngx-field__label" [attr.for]="domId()">{{ label }}</label>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
+          maskedText
+        }}</span>
       } @else if (readonly) {
-        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ formatTime(control.value) }}</span>
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{
+          formatTime(control.value)
+        }}</span>
       } @else {
         <input
-          [id]="field.id"
-          class="ngx-field__input" [attr.data-testid]="'field-' + field.id + '-input'"
+          [id]="domId()"
+          class="ngx-field__input"
+          [attr.data-testid]="'field-' + field.id + '-input'"
           type="time"
           [formControl]="$any(control)"
           [attr.disabled]="field.disabled ? true : null"
@@ -42,6 +53,15 @@ import { formatDisplayValue, resolveLabel } from '@dynamic-entity/core';
   `,
 })
 export class TimeFieldComponent {
+  /**
+   * Unique to this component instance: an `array` renders the same field once per row, and a
+   * DOM id may not repeat. See `field-dom-id.ts`.
+   */
+  private readonly instanceId = nextFieldInstanceId();
+  protected domId(suffix = ''): string {
+    return fieldDomId(this.field, this.instanceId, suffix);
+  }
+
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
@@ -81,5 +101,4 @@ export class TimeFieldComponent {
       'pattern',
     ]);
   }
-
 }

@@ -5,6 +5,7 @@ import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { getOptionStoredValue, resolveLabel, resolveOptionLabel, valuesMatch } from '@dynamic-entity/core';
 import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-registry.service';
+import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -19,7 +20,7 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
       [class.ngx-field--readonly]="readonly"
       [class.ngx-field--masked]="masked"
     >
-      <label class="ngx-field__label" [attr.for]="field.id">{{ label }}</label>
+      <label class="ngx-field__label" [attr.for]="domId()">{{ label }}</label>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
           maskedText
@@ -30,7 +31,7 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
         }}</span>
       } @else {
         <select
-          [id]="field.id"
+          [id]="domId()"
           class="ngx-field__input"
           [attr.data-testid]="'field-' + field.id + '-input'"
           [formControl]="$any(control)"
@@ -55,6 +56,15 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
   `,
 })
 export class MultiSelectFieldComponent {
+  /**
+   * Unique to this component instance: an `array` renders the same field once per row, and a
+   * DOM id may not repeat. See `field-dom-id.ts`.
+   */
+  private readonly instanceId = nextFieldInstanceId();
+  protected domId(suffix = ''): string {
+    return fieldDomId(this.field, this.instanceId, suffix);
+  }
+
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);

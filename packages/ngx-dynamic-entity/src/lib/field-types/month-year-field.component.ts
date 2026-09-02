@@ -5,6 +5,7 @@ import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
 import { UiTextService } from '../services/ui-text.service';
+import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
 
 const MONTH_NAMES = [
   'January',
@@ -47,7 +48,7 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
         clicked. Each select then carries its own name below, because "Billing Cycle" alone
         does not say which half of the pair the screen reader has landed on.
       -->
-      <label class="ngx-field__label" [attr.for]="field.id + '-month'">{{ label }}</label>
+      <label class="ngx-field__label" [attr.for]="domId('-month')">{{ label }}</label>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
           maskedText
@@ -59,7 +60,7 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
       } @else {
         <div class="ngx-field__month-year-wrap">
           <select
-            [id]="field.id + '-month'"
+            [id]="domId('-month')"
             class="ngx-field__input ngx-field__input--month"
             [attr.aria-label]="label + ' ' + ui.text('month', language)"
             [attr.data-testid]="'field-' + field.id + '-month'"
@@ -73,7 +74,7 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
             }
           </select>
           <select
-            [id]="field.id + '-year'"
+            [id]="domId('-year')"
             class="ngx-field__input ngx-field__input--year"
             [attr.aria-label]="label + ' ' + ui.text('year', language)"
             [attr.data-testid]="'field-' + field.id + '-year'"
@@ -95,6 +96,15 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
   `,
 })
 export class MonthYearFieldComponent {
+  /**
+   * Unique to this component instance: an `array` renders the same field once per row, and a
+   * DOM id may not repeat. See `field-dom-id.ts`.
+   */
+  private readonly instanceId = nextFieldInstanceId();
+  protected domId(suffix = ''): string {
+    return fieldDomId(this.field, this.instanceId, suffix);
+  }
+
   /** Library chrome, overridable via UI_TEXT. */
   protected readonly ui = inject(UiTextService);
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */

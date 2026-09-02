@@ -6,6 +6,7 @@ import { ValidationMessagesService } from '../services/validation-messages.servi
 import { fileRefName, resolveLabel } from '@dynamic-entity/core';
 import { FileUploadService } from '../services/file-upload.service';
 import { UiTextService } from '../services/ui-text.service';
+import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
 
 /**
  * File field: file input with filename display and download link.
@@ -24,7 +25,7 @@ import { UiTextService } from '../services/ui-text.service';
       [class.ngx-field--readonly]="readonly"
       [class.ngx-field--masked]="masked"
     >
-      <label class="ngx-field__label" [attr.for]="'field-' + field.id">{{ label }}</label>
+      <label class="ngx-field__label" [attr.for]="domId()">{{ label }}</label>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
           maskedText
@@ -60,7 +61,7 @@ import { UiTextService } from '../services/ui-text.service';
               <input
                 type="file"
                 class="ngx-field__file-input"
-                [id]="'field-' + field.id"
+                [id]="domId()"
                 [disabled]="field.disabled || uploading()"
                 (change)="onFileSelect($any($event.target).files[0])"
               />
@@ -80,6 +81,15 @@ import { UiTextService } from '../services/ui-text.service';
   `,
 })
 export class FileFieldComponent {
+  /**
+   * Unique to this component instance: an `array` renders the same field once per row, and a
+   * DOM id may not repeat. See `field-dom-id.ts`.
+   */
+  private readonly instanceId = nextFieldInstanceId();
+  protected domId(suffix = ''): string {
+    return fieldDomId(this.field, this.instanceId, suffix);
+  }
+
   /** Library chrome, overridable via UI_TEXT. */
   protected readonly ui = inject(UiTextService);
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */

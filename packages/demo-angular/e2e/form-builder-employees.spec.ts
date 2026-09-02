@@ -27,12 +27,7 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import {
-  builderFieldRows,
-  builderTabInputs,
-  gotoDemo,
-  safeClick,
-} from './test-helpers';
+import { builderFieldRows, builderTabInputs, fieldPart, gotoDemo, safeClick } from './test-helpers';
 
 // ─── Reusable builder action helpers ─────────────────────────────────────────
 
@@ -50,7 +45,10 @@ async function selectLastField(page: Page): Promise<void> {
 
 /** Fill the Label (en) in the inspector. */
 async function setFieldLabel(page: Page, label: string): Promise<void> {
-  const field = page.locator('ngx-field-inspector mat-form-field').filter({ hasText: /Label.*en/ }).first();
+  const field = page
+    .locator('ngx-field-inspector mat-form-field')
+    .filter({ hasText: /Label.*en/ })
+    .first();
   await field.locator('input').fill(label);
 }
 
@@ -131,35 +129,83 @@ type FieldDef = [string, string, string, boolean, [string, string][]?];
 const PRIMARY_DETAILS_FIELDS: FieldDef[] = [
   // [type, id, label, required, options?]
   ['Text', 'individual', 'Individual #', false],
-  ['Dropdown', 'salutation', 'Salutation', false, [
-    ['mr', 'Mr'], ['ms', 'Ms'], ['mrs', 'Mrs'], ['dr', 'Dr'], ['prof', 'Prof'],
-  ]],
+  [
+    'Dropdown',
+    'salutation',
+    'Salutation',
+    false,
+    [
+      ['mr', 'Mr'],
+      ['ms', 'Ms'],
+      ['mrs', 'Mrs'],
+      ['dr', 'Dr'],
+      ['prof', 'Prof'],
+    ],
+  ],
   ['Text', 'firstName', 'First Name', true],
   ['Text', 'middleName', 'Middle Name', false],
   ['Text', 'lastName', 'Last Name', true],
   ['Text', 'preferredName', 'Preferred Name', false],
-  ['Dropdown', 'status', 'Status', true, [
-    ['prospect', 'Prospect'], ['active', 'Active'], ['inactive', 'Inactive'],
-    ['on_leave', 'On Leave'], ['terminated', 'Terminated'],
-  ]],
-  ['Dropdown', 'jobTitle', 'Job Title', false, [
-    ['manager', 'Manager'], ['supervisor', 'Supervisor'], ['team_lead', 'Team Lead'],
-    ['software_engineer', 'Software Engineer'], ['senior_software_engineer', 'Senior Software Engineer'],
-    ['product_manager', 'Product Manager'], ['hr_manager', 'HR Manager'],
-    ['sales_representative', 'Sales Representative'], ['accountant', 'Accountant'],
-    ['administrator', 'Administrator'],
-  ]],
+  [
+    'Dropdown',
+    'status',
+    'Status',
+    true,
+    [
+      ['prospect', 'Prospect'],
+      ['active', 'Active'],
+      ['inactive', 'Inactive'],
+      ['on_leave', 'On Leave'],
+      ['terminated', 'Terminated'],
+    ],
+  ],
+  [
+    'Dropdown',
+    'jobTitle',
+    'Job Title',
+    false,
+    [
+      ['manager', 'Manager'],
+      ['supervisor', 'Supervisor'],
+      ['team_lead', 'Team Lead'],
+      ['software_engineer', 'Software Engineer'],
+      ['senior_software_engineer', 'Senior Software Engineer'],
+      ['product_manager', 'Product Manager'],
+      ['hr_manager', 'HR Manager'],
+      ['sales_representative', 'Sales Representative'],
+      ['accountant', 'Accountant'],
+      ['administrator', 'Administrator'],
+    ],
+  ],
   ['Dropdown', 'company', 'Company', false],
   ['Text', 'companyName', 'Company Name', false],
-  ['Dropdown', 'roleName', 'Role Name', false, [
-    ['admin', 'Admin'], ['manager', 'Manager'], ['supervisor', 'Supervisor'],
-    ['team_lead', 'Team Lead'], ['user', 'User'],
-  ]],
+  [
+    'Dropdown',
+    'roleName',
+    'Role Name',
+    false,
+    [
+      ['admin', 'Admin'],
+      ['manager', 'Manager'],
+      ['supervisor', 'Supervisor'],
+      ['team_lead', 'Team Lead'],
+      ['user', 'User'],
+    ],
+  ],
   ['Image Upload', 'profileImage', 'Profile Image', false],
-  ['Dropdown', 'source', 'Source', false, [
-    ['direct', 'Direct'], ['referral', 'Referral'], ['online', 'Online'],
-    ['advertisement', 'Advertisement'], ['other', 'Other'],
-  ]],
+  [
+    'Dropdown',
+    'source',
+    'Source',
+    false,
+    [
+      ['direct', 'Direct'],
+      ['referral', 'Referral'],
+      ['online', 'Online'],
+      ['advertisement', 'Advertisement'],
+      ['other', 'Other'],
+    ],
+  ],
 ];
 
 /** Tab 2 — Work Details (workDetails) — key representative fields */
@@ -173,9 +219,18 @@ const WORK_DETAILS_FIELDS: FieldDef[] = [
   ['Text', 'reportingManager', 'Reporting Manager', false],
   ['Text', 'reportingManagerId', 'Reporting Manager Id', false],
   ['Text', 'employeeNumber', 'Employee Number', false],
-  ['Dropdown', 'region', 'Region', false, [
-    ['north', 'North'], ['south', 'South'], ['east', 'East'], ['west', 'West'],
-  ]],
+  [
+    'Dropdown',
+    'region',
+    'Region',
+    false,
+    [
+      ['north', 'North'],
+      ['south', 'South'],
+      ['east', 'East'],
+      ['west', 'West'],
+    ],
+  ],
   ['Text', 'taxId', 'Tax ID', false],
   ['Number', 'numberOfVacation', 'Number of Vacation', false],
   ['Number', 'numberOfSickLeave', 'Number of Sick Leave', false],
@@ -183,14 +238,30 @@ const WORK_DETAILS_FIELDS: FieldDef[] = [
   ['Number', 'availableSickLeaves', 'Available Sick Leaves', false],
   ['Number', 'availableMaternityLeave', 'Available Maternity Leave', false],
   ['Text', 'employeeFinanceCode', 'Employee Finance Code', false],
-  ['Dropdown', 'employeeType', 'Employee Type', false, [
-    ['full_time', 'Full Time'], ['part_time', 'Part Time'],
-    ['contractor', 'Contractor'], ['intern', 'Intern'],
-  ]],
+  [
+    'Dropdown',
+    'employeeType',
+    'Employee Type',
+    false,
+    [
+      ['full_time', 'Full Time'],
+      ['part_time', 'Part Time'],
+      ['contractor', 'Contractor'],
+      ['intern', 'Intern'],
+    ],
+  ],
   ['Text', 'employeeCostCenter', 'Employee Cost Center', false],
-  ['Dropdown', 'parentalLeaveType', 'Parental Leave Type', false, [
-    ['maternity', 'Maternity'], ['paternity', 'Paternity'], ['shared', 'Shared'],
-  ]],
+  [
+    'Dropdown',
+    'parentalLeaveType',
+    'Parental Leave Type',
+    false,
+    [
+      ['maternity', 'Maternity'],
+      ['paternity', 'Paternity'],
+      ['shared', 'Shared'],
+    ],
+  ],
   ['Boolean Toggle', 'maternityLeaveEligibility', 'Maternity Leave Eligibility', false],
   ['Number', 'maternityLeave', 'Maternity Leave', false],
   ['Number', 'availablePaternityLeave', 'Available Paternity Leave', false],
@@ -201,17 +272,34 @@ const WORK_DETAILS_FIELDS: FieldDef[] = [
   ['Boolean Toggle', 'trackOvertime', 'Track Overtime', false],
   ['Number', 'maxOvertimeAllowed', 'Max Overtime Allowed', false],
   ['Number', 'minimumGuaranteedHours', 'Minimum Guaranteed Hours', false],
-  ['Dropdown', 'employeeRegion', 'Employee Region', false, [
-    ['north', 'North'], ['south', 'South'], ['east', 'East'], ['west', 'West'],
-  ]],
+  [
+    'Dropdown',
+    'employeeRegion',
+    'Employee Region',
+    false,
+    [
+      ['north', 'North'],
+      ['south', 'South'],
+      ['east', 'East'],
+      ['west', 'West'],
+    ],
+  ],
   ['Text', 'humanResourceManager', 'Human Resource Manager', false],
   ['Text', 'humanResourceManagerId', 'Human Resource Manager Id', false],
   ['Text', 'employeeDepartment', 'Employee Department', false],
   ['Text', 'workLocation', 'Work Location', false],
-  ['Dropdown', 'legalWorkingStatus', 'Legal Working Status', false, [
-    ['citizen', 'Citizen'], ['permanent_resident', 'Permanent Resident'],
-    ['work_visa', 'Work Visa'], ['student_visa', 'Student Visa'],
-  ]],
+  [
+    'Dropdown',
+    'legalWorkingStatus',
+    'Legal Working Status',
+    false,
+    [
+      ['citizen', 'Citizen'],
+      ['permanent_resident', 'Permanent Resident'],
+      ['work_visa', 'Work Visa'],
+      ['student_visa', 'Student Visa'],
+    ],
+  ],
   ['Text', 'thirdPartyProvider', 'Third Party Provider', false],
   ['Number', 'penaltyPoints', 'Penalty Points', false],
 ];
@@ -219,10 +307,19 @@ const WORK_DETAILS_FIELDS: FieldDef[] = [
 /** Tab 3 — Relieving Details (relievingDetails) — 4 fields */
 const RELIEVING_DETAILS_FIELDS: FieldDef[] = [
   ['Date', 'relievingDate', 'Relieving Date', false],
-  ['Dropdown', 'reason', 'Reason', false, [
-    ['resignation', 'Resignation'], ['termination', 'Termination'],
-    ['retirement', 'Retirement'], ['contract_end', 'Contract End'], ['other', 'Other'],
-  ]],
+  [
+    'Dropdown',
+    'reason',
+    'Reason',
+    false,
+    [
+      ['resignation', 'Resignation'],
+      ['termination', 'Termination'],
+      ['retirement', 'Retirement'],
+      ['contract_end', 'Contract End'],
+      ['other', 'Other'],
+    ],
+  ],
   ['Number', 'finalSettlement', 'Final Settlement', false],
   ['Text Area', 'note', 'Note', false],
 ];
@@ -262,8 +359,13 @@ test.describe('Form Builder UI — employees entity (production-grade, from test
     }
     // Label tabs 1..7
     const tabLabels = [
-      'Work Details', 'Professional', 'Payroll',
-      'Performance Review', 'Documents', 'Relieving Details', 'Audit Log',
+      'Work Details',
+      'Professional',
+      'Payroll',
+      'Performance Review',
+      'Documents',
+      'Relieving Details',
+      'Audit Log',
     ];
     for (let i = 0; i < tabLabels.length; i++) {
       await setTabLabel(page, i + 1, tabLabels[i]);
@@ -300,7 +402,7 @@ test.describe('Form Builder UI — employees entity (production-grade, from test
     await jsonPanel.click();
     const jsonPre = jsonPanel.locator('pre.deb-json');
     await expect(jsonPre).toBeVisible({ timeout: 5000 });
-    const jsonText = await jsonPre.textContent() ?? '';
+    const jsonText = (await jsonPre.textContent()) ?? '';
 
     // Entity and tab structure
     expect(jsonText).toContain('"entity": "employees"');
@@ -355,21 +457,37 @@ test.describe('Form Builder UI — employees entity (production-grade, from test
 
     // All 8 tab labels render in the form
     for (const label of [
-      'Primary Details', 'Work Details', 'Professional', 'Payroll',
-      'Performance Review', 'Documents', 'Relieving Details', 'Audit Log',
+      'Primary Details',
+      'Work Details',
+      'Professional',
+      'Payroll',
+      'Performance Review',
+      'Documents',
+      'Relieving Details',
+      'Audit Log',
     ]) {
-      await expect(page.getByRole('tab', { name: label }), `Tab "${label}" should be visible`).toBeVisible({ timeout: 5000 });
+      await expect(page.getByRole('tab', { name: label }), `Tab "${label}" should be visible`).toBeVisible({
+        timeout: 5000,
+      });
     }
 
     // Tab 1 "Primary Details" is active by default — all fields land here (builder routes to tabs[0]).
     // Only check fields visible on-screen without scrolling (budget exhausted by builder UI work).
-    await expect(page.locator('#firstName')).toBeVisible();
-    await expect(page.locator('#lastName')).toBeVisible();
-    await expect(page.locator('#status')).toBeVisible();
-    await expect(page.locator('#salutation')).toBeVisible();
+    await expect(fieldPart(page, 'firstName', 'input')).toBeVisible();
+    await expect(fieldPart(page, 'lastName', 'input')).toBeVisible();
+    await expect(fieldPart(page, 'status', 'input')).toBeVisible();
+    await expect(fieldPart(page, 'salutation', 'input')).toBeVisible();
 
     // Confirm each additional tab renders and is selectable
-    for (const tabName of ['Work Details', 'Professional', 'Payroll', 'Performance Review', 'Documents', 'Relieving Details', 'Audit Log']) {
+    for (const tabName of [
+      'Work Details',
+      'Professional',
+      'Payroll',
+      'Performance Review',
+      'Documents',
+      'Relieving Details',
+      'Audit Log',
+    ]) {
       await safeClick(page.getByRole('tab', { name: tabName }));
       await expect(page.getByRole('tab', { name: tabName })).toHaveAttribute('aria-selected', 'true');
     }

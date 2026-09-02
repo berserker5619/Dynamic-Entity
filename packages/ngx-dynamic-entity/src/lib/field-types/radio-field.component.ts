@@ -12,6 +12,7 @@ import {
 } from '@dynamic-entity/core';
 import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-registry.service';
 
+import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
 /** Radio field: a group of radio buttons built from field.options. */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -19,12 +20,19 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <div class="ngx-field ngx-field--radio"
-      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
+    <div
+      class="ngx-field ngx-field--radio"
+      [attr.data-testid]="'field-' + field.id"
+      [attr.data-field-type]="field.type"
+      [class.ngx-field--readonly]="readonly"
+      [class.ngx-field--masked]="masked"
+    >
       <fieldset class="ngx-field__fieldset">
         <legend class="ngx-field__label">{{ label }}</legend>
         @if (masked) {
-          <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
+          <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
+            maskedText
+          }}</span>
         } @else if (readonly) {
           <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ getSelectedLabel() }}</span>
         } @else {
@@ -33,6 +41,7 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
               <label class="ngx-field__radio-option" [attr.for]="getRadioId(option)">
                 <input
                   [id]="getRadioId(option)"
+                  [attr.data-testid]="'field-' + field.id + '-option-' + optionSlug(option)"
                   type="radio"
                   class="ngx-field__radio-input"
                   [formControl]="$any(control)"
@@ -52,6 +61,15 @@ import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-
   `,
 })
 export class RadioFieldComponent {
+  /**
+   * Unique to this component instance: an `array` renders the same field once per row, and a
+   * DOM id may not repeat. See `field-dom-id.ts`.
+   */
+  private readonly instanceId = nextFieldInstanceId();
+  protected domId(suffix = ''): string {
+    return fieldDomId(this.field, this.instanceId, suffix);
+  }
+
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
@@ -98,12 +116,20 @@ export class RadioFieldComponent {
    * into an id attribute.
    */
   getRadioId(option: DropdownOption): string {
-    // `??` cannot fire here: `resolveOptionValue` returns '' for an empty option, not null,
-    // so every valueless option produced the same id — and duplicate ids break the `for`
-    // that ties each label to its input.
+    return this.domId(`-${this.optionSlug(option)}`);
+  }
+
+  /**
+   * The option's part of an id or a test hook.
+   *
+   * `??` cannot fire here: `resolveOptionValue` returns '' for an empty option, not null, so
+   * every valueless option produced the same slug — and two radios sharing an id break the
+   * `for` that ties each label to its input.
+   */
+  optionSlug(option: DropdownOption): string {
     const raw = String(this.getOptVal(option) ?? '').trim();
     const text = raw || 'opt';
-    return `${this.field.id}-${text.trim().replace(/\s+/g, '_').toLowerCase()}`;
+    return text.trim().replace(/\s+/g, '_').toLowerCase();
   }
 
   getOptVal(option: DropdownOption): string | number | boolean {
@@ -144,5 +170,4 @@ export class RadioFieldComponent {
       'pattern',
     ]);
   }
-
 }

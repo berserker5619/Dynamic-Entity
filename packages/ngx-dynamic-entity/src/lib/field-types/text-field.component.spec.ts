@@ -27,7 +27,10 @@ describe('TextFieldComponent', () => {
 
   it('should render label', () => {
     const label = fixture.nativeElement.querySelector('label');
-    expect(label.textContent).toBe('Full Name');
+    // Trimmed: the required marker sits in an `@if` on its own line, so the label's text
+    // carries the template's indentation. What matters is the words, not the whitespace
+    // between them and a conditional asterisk.
+    expect(label.textContent.trim()).toBe('Full Name');
   });
 
   it('should render input when not masked or readonly', () => {
