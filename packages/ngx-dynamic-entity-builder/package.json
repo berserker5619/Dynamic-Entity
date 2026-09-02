@@ -1,6 +1,6 @@
 {
   "name": "ngx-dynamic-entity-builder",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "description": "Angular standalone visual builder for authoring dynamic-entity EntityConfig (fields, tabs, validators, RBAC).",
   "//typings": "Local workspace resolution only: ng-packagr 21 writes types/ngx-dynamic-entity-builder.d.ts into dist/package.json. Do NOT add a 'main' field here — ng-packagr does not generate one, so it would be copied verbatim and resolve wrongly in the published package.",
   "typings": "./dist/types/ngx-dynamic-entity-builder.d.ts",
@@ -16,8 +16,8 @@
     "@angular/core": "^17.0.0 || ^18.0.0 || ^19.0.0 || ^20.0.0 || ^21.0.0 || ^22.0.0",
     "@angular/forms": "^17.0.0 || ^18.0.0 || ^19.0.0 || ^20.0.0 || ^21.0.0 || ^22.0.0",
     "@angular/material": "^17.0.0 || ^18.0.0 || ^19.0.0 || ^20.0.0 || ^21.0.0 || ^22.0.0",
-    "@dynamic-entity/core": "^1.8.1",
-    "ngx-dynamic-entity": "^1.8.1",
+    "@dynamic-entity/core": "^1.9.0",
+    "ngx-dynamic-entity": "^1.9.0",
     "rxjs": "^7.0.0"
   },
   "devDependencies": {

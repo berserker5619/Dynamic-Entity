@@ -7,7 +7,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Unreleased]
+## [1.9.0] — 2026-09-02
+
+Every word the libraries render themselves is now translatable, and every
+rendered control has a name and an id of its own. Work since 1.8.1.
 
 ### Added
 
@@ -131,6 +134,18 @@ Only `noRows` and the field-list wording in the critical-field banner changed sh
 internally; rendered text is identical. `<strong>Add field</strong>` in the builder's
 canvas empty state lost its bold — an emphasis span embedded mid-sentence cannot
 survive translation, so the sentence is now one key.
+
+### Upgrading
+
+Control DOM ids are no longer `field.id`. An `array` row repeats the same child
+ids, so two `#name` inputs were on the page and the second row's label focused
+the first. Ids now look like `email-de7`. Address a control through its
+`data-testid` or its label; `#fullName` is not a contract.
+
+`MASKED_PLACEHOLDER`, `setDateFormatters`, `UI_TEXT` /
+`provideNgxDynamicEntity({ uiText })` and `BUILDER_TEXT` / `uiLanguage` are
+additive. An unconfigured install renders what it rendered in 1.8.1, including
+the English chrome.
 
 ---
 
