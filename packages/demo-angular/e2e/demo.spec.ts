@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import {
+  DEMO_MASK,
   builderFieldRows,
   builderPaletteButton,
   fieldByLabel,
@@ -51,7 +52,7 @@ test.describe('Dynamic Entity Demo E2E Tests', () => {
     await safeClick(recordButton(page, 'Acme Corp'));
 
     await expect(page.getByRole('heading', { level: 2, name: 'Edit Client' })).toBeVisible();
-    await expect(fieldByLabel(page, 'Salary').locator('[data-testid$="-masked"]')).toHaveText('XXXXXXXXX');
+    await expect(fieldByLabel(page, 'Salary').locator('[data-testid$="-masked"]')).toHaveText(DEMO_MASK);
 
     await safeClick(page.getByRole('button', { name: /Back to List/i }));
     await safeClick(page.getByRole('button', { name: 'Admin' }));

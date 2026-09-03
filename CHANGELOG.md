@@ -7,6 +7,60 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.10.0] — 2026-09-03
+
+Two seams that were configurable in principle and partly ignored in practice: date
+formatting reached some surfaces and not others, and a `beforeSave` veto could be
+walked around and could not be observed. Found while wiring the demo to exercise
+every documented extension point, which is what made both visible.
+
+### Added
+
+- **`saveRejected` on `ngx-dynamic-record-form`.** The record editor embeds
+  `ngx-dynamic-form`, so a whole-record save always did run `beforeSave` and always
+  did refuse when the hook said no — but nothing carried that refusal out to a host
+  binding the record editor. The veto worked and was indistinguishable from a Save
+  button that did nothing, which is the exact failure `saveRejected` was added to
+  prevent in 1.8.x, one layer up.
+
+### Fixed
+
+- **`saveSection` no longer bypasses `beforeSave`.** The record editor saves one tab
+  at a time, and that button emitted `sectionSave` without consulting the hook. The
+  payload is `extractRecord()` — the *whole* record, the same object the Save button
+  sends — so identical data reached persistence by two routes, only one of which
+  could be vetoed. A hook registered to refuse a save is a data-integrity mechanism;
+  a second way around it made it advisory. A refused section save now emits
+  `saveRejected` and leaves the section open, so the refused values are still in
+  front of the user.
+
+  `sectionSave` still fires **synchronously** when no hook is registered. Awaiting an
+  already-resolved promise would have deferred the emit by a microtask for every
+  consumer, to no purpose; only the hook path defers.
+
+- **`setDateFormatters` now reaches `date` and `datetime` fields.** Both formatted
+  with their own `toLocaleDateString()` / `toLocaleString()` calls rather than
+  through core's `formatDisplayValue`, so a host that configured formatters got them
+  in the record summary and on `time` fields, and silently did not get them on the
+  two field types most likely to be the reason it configured formatters at all. Both
+  now go through the shared formatter, and are handed the form's `language`.
+
+  No visual change without configuration: the default formatters are the same
+  `toLocale*` calls these fields made directly. An unparseable stored value is still
+  shown verbatim and never reaches a formatter — records outlive schemas.
+
+  `monthYear` is deliberately unchanged. It renders a month *name*, not a formatted
+  date, and routing it through `formatters.date` would print a day component the
+  field does not have.
+
+### Notes
+
+No API removed or renamed. `DynamicRecordFormComponent.saveSection()` now returns
+`Promise<void>` rather than `void`; callers that ignored the return value are
+unaffected.
+
+---
+
 ## [1.9.1] — 2026-09-02
 
 The npm README pages now document `MASKED_PLACEHOLDER` and `setDateFormatters`.

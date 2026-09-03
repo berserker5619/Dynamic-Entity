@@ -31,6 +31,12 @@ test.describe('Dynamic Entity E2E - UI/UX Redesign & Ergonomics Upgrade', () => 
 
     const errorMsg = fieldPart(page, 'name', 'error');
     await expect(errorMsg).toBeVisible();
+    // This is no longer the library's built-in English message: `app.config.ts` registers a
+    // `validationMessages.required` override, and its English wording is deliberately
+    // identical so this assertion still reads correctly. What it covers is the *override*
+    // reaching a text field. The library's own default is pinned by
+    // `validation-messages.service.spec.ts` in the renderer package, and the German half of
+    // this override is asserted in `extension-points.spec.ts`.
     await expect(errorMsg).toHaveText('This field is required.');
   });
 

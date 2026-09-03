@@ -59,8 +59,11 @@ test.describe('Dynamic Entity E2E - Validation, Roles, and Config Manager', () =
     await safeClick(page.getByRole('button', { name: 'Entity Manager' }));
 
     await expect(page.getByRole('heading', { level: 2, name: 'Manage Entities' })).toBeVisible();
-    // configs from test_data.json + the seeded `orders` demo entity.
-    await expect(page.locator('tbody tr')).toHaveCount(entityConfigs.length + 1);
+    // The seven configs from test_data.json, plus the two entities the demo seeds itself:
+    // `orders` (entity-ref loaders and autoPatch) and `extensions` (the extension points
+    // that need schema support). Counted rather than listed so a config added to
+    // test_data.json is picked up here without an edit.
+    await expect(page.locator('tbody tr')).toHaveCount(entityConfigs.length + 2);
 
     await page.locator('tr').filter({ hasText: 'clients' }).getByRole('button', { name: /Edit Metadata/i }).click();
     await expect(page.getByRole('heading', { level: 3, name: /Edit Config: clients/i })).toBeVisible();

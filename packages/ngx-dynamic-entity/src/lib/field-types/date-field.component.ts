@@ -3,7 +3,7 @@ import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
-import { resolveLabel } from '@dynamic-entity/core';
+import { formatDisplayValue, resolveLabel } from '@dynamic-entity/core';
 
 import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
 @Component({
@@ -67,15 +67,28 @@ export class DateFieldComponent {
     return resolveLabel(this.field?.label, this.language);
   }
 
-  /** ISO 8601 date → locale display string (ONEHERMES convention: always UTC, display in user locale) */
+  /**
+   * ISO 8601 date → display string, through the formatter the host configured.
+   *
+   * This used to call `toLocaleDateString()` directly, which meant `setDateFormatters` — the
+   * one seam for choosing how a date is rendered — reached the record summary and the `time`
+   * field but not this one. A host that configured formatters got them almost everywhere,
+   * and silently did not get them on the field type most likely to be the reason they
+   * configured formatters at all.
+   *
+   * The default formatter is `toLocaleDateString()` with no locale, so an application that
+   * has not called `setDateFormatters` renders exactly what it rendered before.
+   */
   formatDate(value: string | null): string {
     if (!value) return '—';
     // `new Date('nonsense')` does not throw and `toLocaleDateString()` returns the *string*
     // "Invalid Date", so the try/catch this replaced never fired and readers saw that text
     // instead of their data. Records outlive schemas — a field retyped from text to date can
-    // hold anything — so an unparseable value is shown as stored.
+    // hold anything — so an unparseable value is shown as stored, and never reaches the
+    // formatter.
     const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString();
+    if (Number.isNaN(parsed.getTime())) return value;
+    return formatDisplayValue('date', undefined, value, this.language);
   }
   /**
    * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({

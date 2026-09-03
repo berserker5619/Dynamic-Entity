@@ -1,5 +1,15 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
+/**
+ * The mask the demo renders, imported rather than repeated.
+ *
+ * `demo-mask.ts` has no imports of its own precisely so this line is safe: the value these
+ * assertions expect and the value the application provides to `MASKED_PLACEHOLDER` cannot
+ * drift apart. `XXXXXXXXX` is still the *library* default, and
+ * `masked-placeholder-reaches-every-field.spec.ts` in the renderer package is what pins it.
+ */
+export { DEMO_MASK } from '../src/app/mock/demo-mask';
+
 export async function gotoDemo(page: Page): Promise<void> {
   await page.addInitScript(() => {
     Object.keys(window.localStorage)

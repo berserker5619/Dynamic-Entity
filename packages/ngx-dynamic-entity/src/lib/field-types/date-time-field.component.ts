@@ -3,7 +3,7 @@ import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
-import { resolveLabel } from '@dynamic-entity/core';
+import { formatDisplayValue, resolveLabel } from '@dynamic-entity/core';
 
 import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
 /**
@@ -119,13 +119,22 @@ export class DateTimeFieldComponent {
   }
 
   /**
-   * Displays date *and* time. `DateFieldComponent` used `toLocaleDateString()` here, so a
-   * datetime read back through the field showed no time while the same value in the record
-   * summary — which goes through core's `formatDisplayValue` — showed it.
+   * Displays date *and* time, through the formatter the host configured.
+   *
+   * Two rounds of the same fault. First this called `toLocaleDateString()`, so a datetime
+   * read back through the field showed no time while the record summary showed it. Then it
+   * called `toLocaleString()` directly, which fixed the time but kept the field outside
+   * `setDateFormatters` — so a host that configured formatters still saw them apply to the
+   * summary and not to the field. Going through `formatDisplayValue` is what makes the two
+   * paths agree by construction rather than by matching literals.
+   *
+   * `parseStored` accepts shapes `new Date(raw)` alone does not, so the *parsed* instant is
+   * handed on as ISO rather than the raw value.
    */
   formatDateTime(value: unknown): string {
     const d = parseStored(value);
-    return d ? d.toLocaleString() : '—';
+    if (!d) return '—';
+    return formatDisplayValue('datetime', undefined, d.toISOString(), this.language);
   }
   /**
    * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({

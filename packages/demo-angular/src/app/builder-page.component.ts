@@ -49,6 +49,7 @@ import { LocalStore } from './mock/local-store.service';
       [languages]="['en', 'de']"
       [uiLanguage]="uiLanguage"
       [availableRoles]="['admin', 'manager', 'IT_SUPPORT', 'viewer']"
+      [userRoles]="userRoles"
       [commonModules]="commonModules"
       (configChange)="draft.set($event)"
       (save)="onSave($event)"
@@ -109,6 +110,16 @@ export class BuilderPageComponent {
    * so the builder keeps the two apart and so does this host.
    */
   @Input() uiLanguage = 'en';
+
+  /**
+   * Roles of the person *using* the builder, passed straight through.
+   *
+   * Distinct from `availableRoles`, which is the vocabulary a schema's own permissions may
+   * refer to. This is who is holding the mouse, and it is the only input the
+   * `SYSTEM_DEFAULT_CAN_EDIT` predicate ever sees — the builder had no other way to know,
+   * so a predicate that inspected roles previously answered for an empty array.
+   */
+  @Input() userRoles: string[] = ['admin'];
 
   readonly commonModules = COMMON_MODULES;
 

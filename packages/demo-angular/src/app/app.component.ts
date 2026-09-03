@@ -67,6 +67,15 @@ export class AppComponent implements OnInit {
   readonly sortField = signal<string>('');
   readonly sortDir = signal<'asc' | 'desc'>('desc');
   readonly searchTerm = signal<string>('');
+  /**
+   * Why the last save was refused, or `null`.
+   *
+   * `(saveRejected)` is the other half of a `beforeSave` hook that can abort. The library
+   * emits it, and until this was bound nothing in the demo listened — so a vetoed save
+   * looked exactly like a Save button that did nothing, which is the failure the abort
+   * support was added to fix, reintroduced one layer up.
+   */
+  readonly saveRejection = signal<string | null>(null);
 
   // ─── Computed ─────────────────────────────────────────────────────────────
   readonly currentRole = computed(() => this.userRoles()[0]);
@@ -152,7 +161,8 @@ export class AppComponent implements OnInit {
   }
 
   onRowClick(record: VersionedRecord) {
-    // List rows may be a masked copy (`XXXXXXXXX` in place of real values). The form must
+    this.saveRejection.set(null);
+    // List rows may be a masked copy (`DEMO_MASK` in place of real values). The form must
     // open the stored record — masking is a render concern, not a data one.
     const id = record['_id'] as string | undefined;
     const stored = id
@@ -163,11 +173,43 @@ export class AppComponent implements OnInit {
   }
 
   onCreateNew() {
+    this.saveRejection.set(null);
     this.selectedRecord.set(null);
     this.view.set('form');
   }
 
+  /**
+   * A `beforeSave` hook returned `false` or threw. The record was not written.
+   *
+   * Bound on both components. The record editor has two ways out — the whole-record Save and
+   * the per-tab "Save section" — and the hook governs both, so a host that only listened on
+   * `ngx-dynamic-form` would see a veto from one route and not the other.
+   */
+  onSaveRejected(event: { reason: string; error?: unknown }) {
+    this.saveRejection.set(event.reason);
+  }
+
+  /**
+   * One tab section was saved from the record editor.
+   *
+   * A distinct emission from `formSubmit`, carrying the whole record plus the tab that was
+   * edited. The view stays open — the point of section editing is to keep working — so this
+   * persists and refreshes the list without navigating away.
+   */
+  onSectionSave(event: { tabId: string; record: Record<string, unknown> }) {
+    this.saveRejection.set(null);
+    const entity = this.selectedEntity();
+    const current = this.selectedRecord();
+    if (current) {
+      this.store.updateRecord(entity, current['_id'] as string, event.record);
+    } else {
+      this.selectedRecord.set(this.store.createRecord(entity, event.record) as VersionedRecord);
+    }
+    this.loadRecords();
+  }
+
   onFormSubmit(data: any) {
+    this.saveRejection.set(null);
     const entity = this.selectedEntity();
     if (this.selectedRecord()) {
       this.store.updateRecord(entity, this.selectedRecord()!['_id'] as string, data);
@@ -196,6 +238,7 @@ export class AppComponent implements OnInit {
   }
 
   onCancel() {
+    this.saveRejection.set(null);
     this.view.set('list');
   }
 

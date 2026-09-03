@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { fieldById, fieldPart, gotoDemo, safeClick, safeSelect } from './test-helpers';
+import { DEMO_MASK, fieldById, fieldPart, gotoDemo, safeClick, safeSelect } from './test-helpers';
 import { INSURANCE_CLAIMS_RECORDS } from '../src/app/mock/seed-records';
 
 /**
@@ -296,9 +296,9 @@ test.describe('insuranceClaims — hostile edge cases', () => {
     await safeClick(page.getByRole('button', { name: 'IT Support (Masked Salary)' }));
     await safeClick(page.getByRole('button', { name: /CLM-EDGE-4/i }).first());
     await expect(page.getByTestId('form-actions')).toHaveCount(0);
-    await expect(fieldPart(page, 'nationalId', 'masked')).toHaveText('XXXXXXXXX');
+    await expect(fieldPart(page, 'nationalId', 'masked')).toHaveText(DEMO_MASK);
     await safeClick(tab(page, 'Settlement'));
-    await expect(fieldPart(page, 'auditorPin', 'masked')).toHaveText('XXXXXXXXX');
+    await expect(fieldPart(page, 'auditorPin', 'masked')).toHaveText(DEMO_MASK);
 
     await safeClick(page.getByRole('button', { name: /Back to List/i }));
     await safeClick(page.getByRole('button', { name: 'Manager', exact: true }));

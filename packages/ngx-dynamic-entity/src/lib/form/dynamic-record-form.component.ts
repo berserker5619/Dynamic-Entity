@@ -20,6 +20,7 @@ import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } f
 import { findTab, formatDisplayValue, getTabData, resolveLabel } from '@dynamic-entity/core';
 import { DynamicFormComponent } from './dynamic-form.component';
 import { DynamicFieldComponent } from './dynamic-field/dynamic-field.component';
+import { HookRegistryService } from '../services/hook-registry.service';
 import { RulesEvaluationService } from '../services/rules-evaluation.service';
 import { RbacService } from '../services/rbac.service';
 import { UiTextService } from '../services/ui-text.service';
@@ -260,11 +261,21 @@ export class DynamicRecordFormComponent implements OnChanges {
   @Output() formReset = new EventEmitter<void>();
   /** One tab section was saved. Carries the whole record, plus which tab was edited. */
   @Output() sectionSave = new EventEmitter<{ tabId: string; record: Record<string, any> }>();
+  /**
+   * A `beforeSave` hook aborted the save — by returning false or throwing.
+   *
+   * Re-exposed from the embedded `ngx-dynamic-form`, and emitted by `saveSection` too. The
+   * inner form already ran the hook and already refused the save, but nothing carried that
+   * out to a host binding this component: the veto worked and looked exactly like a Save
+   * button that did nothing, which is the failure `saveRejected` exists to prevent.
+   */
+  @Output() saveRejected = new EventEmitter<{ reason: string; error?: unknown }>();
 
   @ViewChild(DynamicFormComponent) dynamicFormComp?: DynamicFormComponent;
 
   private readonly rulesEvaluation = inject(RulesEvaluationService);
   private readonly rbacService = inject(RbacService);
+  private readonly hookRegistry = inject(HookRegistryService);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly injector = inject(Injector);
 
@@ -510,7 +521,7 @@ export class DynamicRecordFormComponent implements OnChanges {
    * validity of the tab's own controls, and rules filtered to this tab — a rule targeting
    * a hidden tab must not block the save (the reference's OV0-968 fix).
    */
-  saveSection(): void {
+  async saveSection(): Promise<void> {
     const tabId = this.editingTabId();
     const form = this.dynamicFormComp;
     if (!tabId || !form) return;
@@ -536,11 +547,52 @@ export class DynamicRecordFormComponent implements OnChanges {
     }
 
     this.sectionErrors.set({});
-    this.editingTabId.set(null);
 
     const record = form.extractRecord();
-    this.currentData.set(record);
-    this.sectionSave.emit({ tabId, record });
+
+    // Only await when there is something to await. An async function runs synchronously up
+    // to its first `await`, so this keeps `sectionSave` firing in the same tick for the
+    // hosts that register no hook — which is how it has always behaved, and which a host
+    // may well depend on. Awaiting an already-resolved promise would defer the emit by a
+    // microtask for everybody, to no purpose.
+    const hookKey = `${this.config?.entity}:beforeSave`;
+    const reviewed = this.hookRegistry.has(hookKey) ? await this.runBeforeSave(record) : record;
+    // Vetoed: the section stays open, exactly as the whole-record form stays open, so the
+    // user is looking at the values the hook refused rather than at a closed section.
+    if (reviewed === null) return;
+
+    this.editingTabId.set(null);
+    this.currentData.set(reviewed);
+    this.sectionSave.emit({ tabId, record: reviewed });
+  }
+
+  /**
+   * Put a record to the entity's `beforeSave` hook.
+   *
+   * `sectionSave` carries the *whole* record — `extractRecord()`, not the tab's slice — so
+   * the same payload reached persistence through two buttons, one of which asked the hook
+   * and one of which did not. A hook registered to veto a save is a data-integrity
+   * mechanism; having a second route around it made it advisory.
+   *
+   * @returns the record to emit, or `null` when the hook aborted (already reported).
+   */
+  private async runBeforeSave(record: Record<string, any>): Promise<Record<string, any> | null> {
+    const hookKey = `${this.config?.entity}:beforeSave`;
+    // Defensive: `saveSection` checks this before awaiting, but a later caller may not.
+    if (!this.hookRegistry.has(hookKey)) return record;
+
+    try {
+      const result = await this.hookRegistry.run(hookKey, record);
+      if (result === false) {
+        this.saveRejected.emit({ reason: 'beforeSave returned false' });
+        return null;
+      }
+      // Anything else is the payload to save; `undefined`/`true` mean "unchanged".
+      return result === undefined || result === true ? record : (result as Record<string, any>);
+    } catch (err) {
+      this.saveRejected.emit({ reason: err instanceof Error ? err.message : String(err), error: err });
+      return null;
+    }
   }
 
   /**

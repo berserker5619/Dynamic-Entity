@@ -123,7 +123,9 @@ setDateFormatters({
 });
 ```
 
-A partial object overrides one kind; `setDateFormatters()` restores the defaults.
+A partial object overrides one kind; `setDateFormatters()` restores the defaults. Every
+read-only `date`, `datetime` and `time` field goes through it, as does the record view's
+summary panel, so one value cannot render two ways depending on where you look.
 
 ---
 
@@ -201,7 +203,12 @@ that do not want the section flow.
 | Output | Payload |
 |---|---|
 | `formSubmit` / `formChange` / `formReset` | As the form component. |
-| `sectionSave` | `{ tabId, record }` — one tab was saved. |
+| `sectionSave` | `{ tabId, record }` — one tab was saved. Carries the **whole** record, not the tab's slice. |
+| `saveRejected` | `{ reason, error? }` — a `beforeSave` hook aborted the save. |
+
+A `beforeSave` hook governs **both** ways out of this component — the whole-record Save and
+"Save section" — and `saveRejected` fires for either. Bind it: an aborted save with nothing
+listening is indistinguishable from a button that does nothing.
 
 **RBAC applies on top of all three.** Roles outside `permissions.edit` get a read-only
 record whichever presentation you choose — see [Security](#-security), because that is a

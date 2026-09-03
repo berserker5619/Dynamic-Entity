@@ -11,6 +11,8 @@ import {
   ORDERS_RECORDS,
   TEST_DATA_CONFIGS,
 } from './sample-data';
+import { DEMO_MASK } from './demo-mask';
+import { EXTENSIONS_CONFIG, EXTENSIONS_RECORDS } from './extensions-entity';
 import {
   COMPLEX_FULL_TEST_RECORDS,
   INSURANCE_CLAIMS_RECORDS,
@@ -21,7 +23,14 @@ import {
 
 const CONFIGS_KEY = 'de_demo_configs';
 const recordsKey = (entity: string) => `de_demo_records_${entity}`;
-const MASK = 'XXXXXXXXX';
+/**
+ * What a withheld value looks like in a list row.
+ *
+ * Shared with the renderer's `MASKED_PLACEHOLDER` (see `DEMO_MASK`) on purpose: this is a
+ * mock server declining to send a value, that is a form declining to display one, and the
+ * two rendering differently would suggest they are the same mechanism.
+ */
+const MASK = DEMO_MASK;
 
 export interface RecordQuery {
   page?: number;
@@ -201,6 +210,11 @@ export class LocalStore {
     mergedMap.set(CLIENTS_CONFIG.entity, CLIENTS_CONFIG);
     mergedMap.set(EMPLOYEES_CONFIG.entity, EMPLOYEES_CONFIG);
     mergedMap.set(ORDERS_CONFIG.entity, ORDERS_CONFIG);
+    // The entity that exercises the extension points nothing else here reaches — custom
+    // validators, a custom field type, hooks, migrations, uploads. Adding it is four edits
+    // in this file; editing test_data.json instead would put the eight existing entities and
+    // every spec that asserts on them at risk for nothing.
+    mergedMap.set(EXTENSIONS_CONFIG.entity, EXTENSIONS_CONFIG);
 
     // User modifications take precedence
     for (const ex of existing) {
@@ -223,6 +237,7 @@ export class LocalStore {
       ['people', PEOPLE_RECORDS],
       ['complexFullTest', COMPLEX_FULL_TEST_RECORDS],
       ['insuranceClaims', INSURANCE_CLAIMS_RECORDS],
+      ['extensions', EXTENSIONS_RECORDS],
     ];
     for (const [entity, records] of seeds) {
       if (!localStorage.getItem(recordsKey(entity))) this.write(recordsKey(entity), records);

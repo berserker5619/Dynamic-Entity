@@ -491,6 +491,14 @@ no argument restores the defaults. It is module-level rather than an injection t
 `formatDisplayValue` is a pure function in a framework-agnostic package — the renderer, the
 builder and the CLI all call it, and only one of those has an injector.
 
+What it reaches: every read-only `date`, `datetime` and `time` field, and the record view's
+summary panel. Until 1.10.0 the `date` and `datetime` *fields* formatted themselves, so
+configuring formatters changed the summary and not the field — the two surfaces disagreed
+about the same value.
+
+`monthYear` is not covered, deliberately: it renders a month name and a year, and has no day
+component to format.
+
 ---
 
 ## Markdown
@@ -574,6 +582,22 @@ provideNgxDynamicEntity({
 Returning `false` or throwing aborts the save: `formSubmit` does not fire, and
 `(saveRejected)` emits `{ reason, error? }` instead. Returning `undefined` means "unchanged";
 anything else becomes the submitted payload.
+
+The hook governs **both** ways out of `ngx-dynamic-record-form` — the whole-record Save and
+the per-tab "Save section" — and that component emits `(saveRejected)` for either. Bind it:
+an aborted save with nothing listening looks exactly like a button that does nothing.
+
+```html
+<ngx-dynamic-record-form
+  [config]="config"
+  (formSubmit)="save($event)"
+  (sectionSave)="saveSection($event)"
+  (saveRejected)="explain($event.reason)"
+/>
+```
+
+`sectionSave` carries the whole record plus the tab that was edited, so it is the same
+payload `formSubmit` would have sent — which is why it is put to the same hook.
 
 ---
 

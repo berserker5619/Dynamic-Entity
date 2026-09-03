@@ -104,6 +104,9 @@ setDateFormatters({
 });
 ```
 
+Every caller of `formatDisplayValue` honours it — which, in the renderer, means every
+read-only `date`, `datetime` and `time` field as well as the record summary.
+
 A partial object overrides one kind and leaves the rest. `setDateFormatters()` with no
 argument restores the defaults. It is module-level rather than an injection token because
 `formatDisplayValue` is a pure function — the renderer, the builder and the CLI all call it,

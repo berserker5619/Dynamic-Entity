@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { fieldById, fieldPart, gotoDemo, safeClick, safeSelect } from './test-helpers';
+import { DEMO_MASK, fieldById, fieldPart, gotoDemo, safeClick, safeSelect } from './test-helpers';
 
 /**
  * The `insuranceClaims` config is the most demanding one in the dataset: five tabs including
@@ -215,7 +215,7 @@ test.describe('insuranceClaims — a complex config end to end', () => {
 
     await safeClick(page.getByRole('button', { name: 'IT Support (Masked Salary)' }));
     await safeClick(page.getByRole('button', { name: /CLM-MASK-1/i }).first());
-    await expect(fieldPart(page, 'nationalId', 'masked')).toHaveText('XXXXXXXXX');
+    await expect(fieldPart(page, 'nationalId', 'masked')).toHaveText(DEMO_MASK);
 
     await safeClick(page.getByRole('button', { name: /Back to List/i }));
     await safeClick(page.getByRole('button', { name: 'Admin' }));

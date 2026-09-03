@@ -111,17 +111,37 @@
         <button class="nav-link" data-testid="mode-data" [class.nav-link--active]="formMode() === 'data'"
           [attr.aria-pressed]="formMode() === 'data'" (click)="formMode.set('data')">Data only</button>
       </div>
+      <!--
+        A `beforeSave` hook may veto a save by returning false or throwing. The library says
+        so through `(saveRejected)`; a host that does not listen shows the user nothing at
+        all, and a refused save is indistinguishable from a broken button.
+      -->
+      @if (saveRejection(); as reason) {
+        <div class="ngx-form__error-banner" role="alert" data-testid="save-rejected">
+          Save refused: {{ reason }}
+        </div>
+      }
       @if (formMode() === 'form') {
         <ngx-dynamic-form [config]="config()!" [initialData]="selectedRecord() || {}" [userRoles]="userRoles()"
           [language]="language()" [loading]="loading()" (formSubmit)="onFormSubmit($event)"
+          (saveRejected)="onSaveRejected($event)"
           (formReset)="onCancel()"></ngx-dynamic-form>
       } @else {
         <!-- `isReadOnly` is what makes 'data' different from 'record': it drops the per-tab
              Edit section, so the record is values and nothing else for every role. -->
+        <!--
+          `(sectionSave)` is the record editor's own save — one tab at a time — and it is a
+          separate emission from `(formSubmit)`. A host that binds only the latter silently
+          drops every section save. `(saveRejected)` covers both: a `beforeSave` hook governs
+          the section save as well as the whole-record one.
+        -->
         <ngx-dynamic-record-form [config]="config()!" [initialData]="selectedRecord() || {}"
           [userRoles]="userRoles()" [language]="language()" [loading]="loading()"
           [isReadOnly]="formMode() === 'data'"
-          (formSubmit)="onFormSubmit($event)" (formReset)="onCancel()"></ngx-dynamic-record-form>
+          (formSubmit)="onFormSubmit($event)"
+          (sectionSave)="onSectionSave($event)"
+          (saveRejected)="onSaveRejected($event)"
+          (formReset)="onCancel()"></ngx-dynamic-record-form>
       }
     </div>
     }
@@ -172,7 +192,13 @@
     }
 
     @if (view() === 'builder') {
-    <app-builder-page [uiLanguage]="language()" (entitySaved)="onBuilderSave($event)"></app-builder-page>
+    <!--
+      `[userRoles]` is what the SYSTEM_DEFAULT_CAN_EDIT predicate receives. Without it the
+      builder passes an empty array to a predicate that inspects roles, and every
+      system-default tab locks for everyone.
+    -->
+    <app-builder-page [uiLanguage]="language()" [userRoles]="userRoles()"
+      (entitySaved)="onBuilderSave($event)"></app-builder-page>
     }
   </main>
 </div>

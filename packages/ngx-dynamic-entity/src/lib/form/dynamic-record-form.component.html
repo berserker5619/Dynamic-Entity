@@ -206,6 +206,7 @@
     [error]="error"
     (formChange)="onFormChange($event)"
     (formSubmit)="onFormSubmit($event)"
+    (saveRejected)="saveRejected.emit($event)"
     (formReset)="onFormReset()"
     (activeTabChange)="onActiveTabChange($event)"
   />

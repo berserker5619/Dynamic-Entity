@@ -31,7 +31,7 @@ All three share a version and are released together.
 - **Reactive rules engine** — three action types (`visibility` to show/hide a field or tab, `validation` to attach an error or warning, `info` to raise a banner) driven by 18 condition operators including `EQUAL`, `CONTAINS`, `IN`, `DATE_BEFORE`, `HAS_ITEMS` and `VALUE_CHANGED`. Conditions within a rule are ANDed; rules apply in `priority` order.
 - **Role-based field visibility & masking** — per-entity `view`/`edit`/`delete` role lists, plus `maskData` to render a field as `XXXXXXXXX` for configured roles (override the text with `MASKED_PLACEHOLDER`). **This is presentational only — see [Security](#-security).**
 - **Cross-entity referenced fields** — link a field to a source entity, snapshot what was copied, and detect drift when the source changes. Drift is surfaced in the builder.
-- **Sync and async validation** — built-in validators, your own by name, and async checks against a server. A form cannot be submitted while an async check is pending, and a `beforeSave` hook can abort the save outright.
+- **Sync and async validation** — built-in validators, your own by name, and async checks against a server. A form cannot be submitted while an async check is pending, and a `beforeSave` hook can abort the save outright — from the whole-record Save and the record view's per-tab save alike, with `(saveRejected)` saying why.
 - **Named lookup lists** — sync or async master lists resolved by name, with localized labels, fallbacks, and an integrity report for values that no longer match any option.
 - **Visual builder** — click-to-add palette, drag-and-drop reordering, and a recursive tree editor for tabs, sub-tabs, groups, and arrays.
 - **Localizable end to end** — config labels, placeholders and options are `LocalizedText` keyed by language; the libraries' own chrome (Save, Reset, "No rows yet.", every builder panel) resolves through `uiText` / `BUILDER_TEXT`, either as `LocalizedText` per key or through a resolver into an existing i18n layer.
@@ -281,7 +281,9 @@ setDateFormatters({
 ```
 
 A partial object overrides one kind; `setDateFormatters()` with no argument restores the
-defaults. Full notes: [Presentation defaults](EXTENDING.md#presentation-defaults).
+defaults. It reaches every read-only `date`, `datetime` and `time` field and the record
+view's summary panel — the same value never punctuates two ways on two surfaces. Full
+notes: [Presentation defaults](EXTENDING.md#presentation-defaults).
 
 ---
 
@@ -317,7 +319,8 @@ zonelessly on Angular 20.
 ```bash
 npm test          # unit tests across all workspace packages
 npm run build     # build every package
-npm run lint      # type-check every package
+npm run lint      # type-check every package, and check that the demo still
+                  # wires every extension point (scripts/check-demo-coverage.mjs)
 
 # Playwright E2E (from the demo app)
 cd packages/demo-angular && npx playwright test
