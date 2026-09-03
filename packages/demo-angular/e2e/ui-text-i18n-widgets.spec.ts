@@ -41,14 +41,31 @@ test.describe('interface language, inside the widgets', () => {
 
   const openRichForm = (page: Page, language: 'en' | 'de') => openForm(page, RICH, language);
 
-  /** Markup from every tab, since a widget only renders while its own tab is active. */
+  /**
+   * Markup from every tab, since a widget only renders while its own tab is active.
+   *
+   * The wait after each click is on **that tab** reporting `aria-selected="true"`, not on a
+   * panel being visible. The outgoing tab's panel is still on screen the instant the click
+   * lands, so "a form panel is visible" is already true and waits for nothing — the sweep
+   * would then read the previous tab's markup, or a half-rendered new one, and the strings
+   * that live only on the tab being visited would simply be absent.
+   *
+   * That is not hypothetical: it failed in CI having found four of the eight strings, and
+   * reproduces locally in roughly one run in thirty. `aria-selected` flips in the same change
+   * detection pass that renders the panel, so it is the signal that the DOM being sampled is
+   * the one that was asked for.
+   */
   async function sweepTabs(page: Page): Promise<string> {
     const tabs = page.locator('[data-testid="tab-strip"] button');
     const count = await tabs.count();
     const seen: string[] = [];
 
     for (let i = 0; i < Math.max(count, 1); i++) {
-      if (count > 0) await safeClick(tabs.nth(i));
+      if (count > 0) {
+        const tab = tabs.nth(i);
+        await safeClick(tab);
+        await expect(tab).toHaveAttribute('aria-selected', 'true');
+      }
       await expect(page.getByTestId('form-panel').or(page.getByTestId('module-panel')).first()).toBeVisible();
       // innerHTML rather than text: half the chrome is a title or an aria-label.
       seen.push(await page.locator('form').first().innerHTML());
