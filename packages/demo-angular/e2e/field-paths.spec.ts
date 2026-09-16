@@ -21,13 +21,33 @@ test.describe('two fields sharing an id', () => {
   const tab = (page: import('@playwright/test').Page, name: string) =>
     page.getByRole('tab', { name: new RegExp(name, 'i') });
 
+  /**
+   * Click a tab and wait for *that tab* to report itself selected.
+   *
+   * `safeClick` returns once the click is dispatched, and the assertions below read
+   * "whichever `address` input is currently in the DOM". The outgoing tab's panel is still on
+   * screen the instant the click lands, so a click that had not yet swapped the panel was read
+   * as the other tab's value rather than as a wait that needed to be longer — the assertion
+   * then retried against a locator that resolved to the same stale input every time.
+   *
+   * This is the failure `sweepTabs` in `ui-text-i18n-widgets.spec.ts` documents: `aria-selected`
+   * flips in the same change-detection pass that renders the panel, so it is the signal that
+   * the DOM being sampled is the one that was asked for. It went green for eleven consecutive
+   * runs and then failed in CI here, on a machine slow enough to separate the two.
+   */
+  async function selectTab(page: import('@playwright/test').Page, name: string): Promise<void> {
+    const target = tab(page, name);
+    await safeClick(target);
+    await expect(target).toHaveAttribute('aria-selected', 'true');
+  }
+
   test('each address keeps its own value across a save and reload', async ({ page }) => {
     await openPeople(page);
 
     await safeFill(fieldPart(page, 'fullName', 'input'), 'Ada Lovelace');
     await safeFill(fieldPart(page, 'address', 'input'), 'Home Street 1');
 
-    await safeClick(tab(page, 'Work Details'));
+    await selectTab(page, 'Work Details');
     await safeFill(fieldPart(page, 'address', 'input'), 'Office Road 2');
 
     await safeClick(page.getByRole('button', { name: /^Save$/i }));
@@ -41,9 +61,9 @@ test.describe('two fields sharing an id', () => {
     // *which tab the form reopens on* as well — and that is a separate question, covered by
     // the unit specs on `activeTab`. Under CI load this test failed on that incidental
     // coupling rather than on the values it exists to check.
-    await safeClick(tab(page, 'Personal Details'));
+    await selectTab(page, 'Personal Details');
     await expect(fieldPart(page, 'address', 'input')).toHaveValue('Home Street 1');
-    await safeClick(tab(page, 'Work Details'));
+    await selectTab(page, 'Work Details');
     await expect(fieldPart(page, 'address', 'input')).toHaveValue('Office Road 2');
   });
 
@@ -51,7 +71,7 @@ test.describe('two fields sharing an id', () => {
     await openPeople(page);
 
     await expect(fieldById(page, 'address')).toHaveCount(1);
-    await safeClick(tab(page, 'Work Details'));
+    await selectTab(page, 'Work Details');
     await expect(fieldById(page, 'address')).toHaveCount(1);
   });
 
@@ -64,7 +84,7 @@ test.describe('two fields sharing an id', () => {
 
     // Typing HQ into the *personal* address must not reveal the desk number.
     await safeFill(fieldPart(page, 'address', 'input'), 'HQ');
-    await safeClick(tab(page, 'Work Details'));
+    await selectTab(page, 'Work Details');
     await expect(fieldById(page, 'deskNumber')).toHaveCount(0);
 
     await safeFill(fieldPart(page, 'address', 'input'), 'HQ');
