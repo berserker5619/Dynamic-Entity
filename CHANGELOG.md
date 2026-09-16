@@ -68,6 +68,11 @@ button no light-mode check could see.
 
 ### Notes
 
+- **`ngx-dynamic-entity-builder` now requires Angular >= 17.2** (was >= 17.0). The two-way
+  bindable sidebar inputs use `model()`, which Angular added in 17.2.0 — `export declare const
+  model` is absent from 17.1.3 and present in 17.2.0. The range is narrowed rather than left
+  to fail at a consumer's build: `^17.0.0` would have installed happily on 17.0 and 17.1 and
+  then not compiled. The renderer and core are unaffected and still support `^17.0.0`.
 - New `contrast-aa.spec.ts` computes composited contrast ratios in **both** colour schemes
   across five views. The dark pass is the point: the Save defect above passed every
   light-mode check, and axe alone would not have caught a pairing between two stylesheets.
