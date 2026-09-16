@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   EventEmitter,
   HostListener,
   Input,
@@ -10,6 +11,7 @@ import {
   ViewEncapsulation,
   effect,
   inject,
+  model,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -101,6 +103,8 @@ export class EntityBuilderComponent implements OnChanges {
    * copy of a config the moment it is edited — see `doSave`.
    */
   private readonly configSource = inject(ConfigSourceService, { optional: true });
+  /** Scopes the focus lookup below to this builder, not the first match in the document. */
+  private readonly hostRef = inject(ElementRef);
 
   /** Existing config to edit. When omitted, the builder starts blank. */
   @Input() config?: EntityFormConfig;
@@ -133,6 +137,61 @@ export class EntityBuilderComponent implements OnChanges {
   @Output() save = new EventEmitter<EntityFormConfig>();
 
   protected readonly rbacActions = RBAC_ACTIONS;
+
+  /*
+   * Two-way bindable, so the host decides whether a collapsed rail survives a reload.
+   *
+   * `model()` rather than a plain signal: these stay ordinary writable signals to everything
+   * inside the component, and gain `[(leftSidebarOpen)]` for anyone outside it. The library
+   * deliberately persists nothing itself — no package here touches `localStorage`, which is
+   * what keeps it safe to render on a server; the demo wires these to storage to show how.
+   */
+  readonly leftSidebarOpen = model(true);
+  readonly rightSidebarOpen = model(true);
+
+  toggleLeftSidebar(): void {
+    this.leftSidebarOpen.update(open => !open);
+  }
+
+  toggleRightSidebar(): void {
+    this.rightSidebarOpen.update(open => !open);
+  }
+
+  /*
+   * Collapsing from inside a panel destroys the button that was just pressed, and expanding
+   * from a rail destroys the rail. Either way the browser drops focus onto `<body>`, which
+   * for a keyboard user means starting the tab sequence again from the top of the document.
+   * Each of these hands focus to whichever control now stands in for the panel.
+   *
+   * The toolbar toggles need none of this: they stay put and keep their focus.
+   */
+  protected collapseLeft(): void {
+    this.leftSidebarOpen.set(false);
+    this.focusAfterRender('expand-left-sidebar');
+  }
+
+  protected expandLeft(): void {
+    this.leftSidebarOpen.set(true);
+    this.focusAfterRender('collapse-left-sidebar');
+  }
+
+  protected collapseRight(): void {
+    this.rightSidebarOpen.set(false);
+    this.focusAfterRender('expand-right-sidebar');
+  }
+
+  protected expandRight(): void {
+    this.rightSidebarOpen.set(true);
+    this.focusAfterRender('collapse-right-sidebar');
+  }
+
+  /** The replacement control does not exist until the template has caught up with the signal. */
+  private focusAfterRender(testId: string): void {
+    setTimeout(() => {
+      const host = this.hostRef.nativeElement as HTMLElement;
+      host.querySelector<HTMLElement>(`[data-testid="${testId}"]`)?.focus();
+    });
+  }
 
   /**
    * Select the field an issue is about, so reading the message and acting on it are one step.

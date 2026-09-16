@@ -24,6 +24,17 @@ export const DEFAULT_BUILDER_TEXT = {
   save: 'Save',
   saveBlockedTooltip: 'Fix the errors in the issue list before saving.',
 
+  /*
+   * The side panels collapse, so each control is named in both directions — and a collapsed
+   * panel leaves a rail whose label is the only word left standing for it.
+   */
+  collapsePalette: 'Collapse the palette',
+  expandPalette: 'Expand the palette',
+  collapseInspector: 'Collapse the inspector',
+  expandInspector: 'Expand the inspector',
+  paletteRailLabel: 'Add fields',
+  inspectorRailLabel: 'Properties',
+
   // Entity settings panel
   entityName: 'Entity name',
   entityNamePlaceholder: 'e.g. clients',

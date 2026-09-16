@@ -21,7 +21,13 @@ import { BuilderTextService } from '../builder-text';
       <mat-card-content>
         @if (store.fields().length === 0) {
           <div class="deb-empty">
-            <mat-icon>widgets</mat-icon>
+            <!--
+              Decoration, and marked as such. The sentence below says everything this glyph
+              says, so a reader hearing "widgets" before it learns nothing; and a faint
+              illustration cannot meet a text contrast ratio without ceasing to be faint.
+              Hidden from the accessibility tree, it is neither announced nor measured.
+            -->
+            <mat-icon aria-hidden="true">widgets</mat-icon>
             <p>{{ ui.text('canvasEmpty') }}</p>
           </div>
         }

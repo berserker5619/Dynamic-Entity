@@ -115,7 +115,6 @@
         <mat-icon class="deb-inspector__chevron">expand_more</mat-icon>
       </summary>
       <div class="deb-inspector__body">
-        <span class="deb-section-title">{{ ui.text('width') }}</span>
         <div class="deb-span-picker" role="group" [attr.aria-label]="ui.text('width')">
           @for (choice of spanChoices; track choice.span) {
             <button
@@ -147,26 +146,32 @@
             <mat-icon class="deb-inspector__chevron">expand_more</mat-icon>
           </summary>
           <div class="deb-inspector__body">
-            <div class="deb-toggles">
-              @for (v of m.flagValidators; track v) {
-                <mat-checkbox
-                  color="primary"
-                  [ngModel]="store.hasFlagValidator(f, v)"
-                  (ngModelChange)="store.toggleFlagValidator(store.keyOf(f), v, $event)"
-                  >{{ v }}</mat-checkbox
-                >
-              }
-            </div>
-            @for (v of m.paramValidators; track v) {
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-                <mat-label>{{ v }}</mat-label>
-                <input
-                  matInput
-                  type="number"
-                  [ngModel]="store.getParamValidator(f, v)"
-                  (ngModelChange)="store.setParamValidator(store.keyOf(f), v, toNum($event))"
-                />
-              </mat-form-field>
+            @if (m.flagValidators.length) {
+              <div class="deb-flags-row">
+                @for (v of m.flagValidators; track v) {
+                  <mat-checkbox
+                    color="primary"
+                    [ngModel]="store.hasFlagValidator(f, v)"
+                    (ngModelChange)="store.toggleFlagValidator(store.keyOf(f), v, $event)"
+                    >{{ v }}</mat-checkbox
+                  >
+                }
+              </div>
+            }
+            @if (m.paramValidators.length) {
+              <div class="deb-param-validators-grid">
+                @for (v of m.paramValidators; track v) {
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+                    <mat-label>{{ v }}</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      [ngModel]="store.getParamValidator(f, v)"
+                      (ngModelChange)="store.setParamValidator(store.keyOf(f), v, toNum($event))"
+                    />
+                  </mat-form-field>
+                }
+              </div>
             }
           </div>
         </details>
@@ -268,8 +273,7 @@
         <mat-icon class="deb-inspector__chevron">expand_more</mat-icon>
       </summary>
       <div class="deb-inspector__body">
-        <span class="deb-section-title">{{ ui.text('display') }}</span>
-        <div class="deb-toggles">
+        <div class="deb-toggles" role="group" [attr.aria-label]="ui.text('display')">
           <mat-slide-toggle
             color="primary"
             [ngModel]="f.visibility ?? true"

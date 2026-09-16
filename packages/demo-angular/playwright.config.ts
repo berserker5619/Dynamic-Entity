@@ -35,6 +35,30 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    /*
+     * A second engine, opt-in: `PLAYWRIGHT_ALL_BROWSERS=1 npx playwright test`.
+     *
+     * Off by default because CI installs chromium alone (see e2e.yml) and a project it cannot
+     * launch fails the run. It is worth reaching for when a change is mostly CSS — the builder
+     * layout is grid, sticky and custom-property arithmetic, and those are where engines
+     * disagree. The sidebar specs were last run green on Firefox this way.
+     *
+     * WebKit has no entry at all: it will not launch on a Windows host (missing system
+     * libraries), so adding one would only produce failures nobody can act on locally.
+     */
+    ...(env['PLAYWRIGHT_ALL_BROWSERS']
+      ? [
+          {
+            name: 'firefox',
+            use: { ...devices['Desktop Firefox'] },
+            testMatch: [
+              /builder-sidebar-collapse.spec.ts/,
+              /contrast-aa.spec.ts/,
+              /ui-ux-enhancements.spec.ts/,
+            ],
+          },
+        ]
+      : []),
     /**
      * A narrow viewport, because the layout genuinely changes there.
      *

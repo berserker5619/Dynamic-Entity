@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SimpleChange } from '@angular/core';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -36,6 +38,85 @@ describe('EntityBuilderComponent', () => {
     Array.from(row.querySelectorAll('button')).find(
       b => b.querySelector('mat-icon')?.textContent?.trim() === icon,
     ) as HTMLButtonElement;
+
+  describe('sidebar collapse', () => {
+    const byTestId = <T extends HTMLElement>(id: string): T | null =>
+      host.querySelector(`[data-testid="${id}"]`);
+    const leftCol = () => host.querySelector('.deb-col--left') as HTMLElement;
+    const rightCol = () => host.querySelector('.deb-col--right') as HTMLElement;
+
+    function click(el: HTMLElement | null): void {
+      el!.click();
+      fixture.detectChanges();
+    }
+
+    it('starts with both sidebars open and no rails showing', () => {
+      expect(leftCol().hasAttribute('hidden')).toBe(false);
+      expect(rightCol().hasAttribute('hidden')).toBe(false);
+      expect(byTestId('expand-left-sidebar')).toBeNull();
+      expect(byTestId('expand-right-sidebar')).toBeNull();
+    });
+
+    it('collapses the palette from the toolbar and restores it from the rail', () => {
+      click(byTestId('toggle-left-sidebar'));
+      expect(leftCol().hasAttribute('hidden')).toBe(true);
+      // The inspector is untouched, so the two sides collapse independently.
+      expect(rightCol().hasAttribute('hidden')).toBe(false);
+
+      click(byTestId('expand-left-sidebar'));
+      expect(leftCol().hasAttribute('hidden')).toBe(false);
+      expect(byTestId('expand-left-sidebar')).toBeNull();
+    });
+
+    it('collapses the inspector from the toolbar and restores it from the rail', () => {
+      click(byTestId('toggle-right-sidebar'));
+      expect(rightCol().hasAttribute('hidden')).toBe(true);
+      expect(leftCol().hasAttribute('hidden')).toBe(false);
+
+      click(byTestId('expand-right-sidebar'));
+      expect(rightCol().hasAttribute('hidden')).toBe(false);
+      expect(byTestId('expand-right-sidebar')).toBeNull();
+    });
+
+    it('collapses from the button inside each card header', () => {
+      const collapseButtons = Array.from(
+        host.querySelectorAll<HTMLButtonElement>('.deb-card__collapse-btn'),
+      );
+      expect(collapseButtons).toHaveLength(2);
+      collapseButtons.forEach(b => b.click());
+      fixture.detectChanges();
+
+      expect(leftCol().hasAttribute('hidden')).toBe(true);
+      expect(rightCol().hasAttribute('hidden')).toBe(true);
+    });
+
+    it('keeps the body a three-track grid so a collapsed side cannot reflow the rest', () => {
+      click(byTestId('toggle-left-sidebar'));
+      click(byTestId('toggle-right-sidebar'));
+
+      const body = host.querySelector('.deb-body')!;
+      expect(body.classList).toContain('deb-body--left-collapsed');
+      expect(body.classList).toContain('deb-body--right-collapsed');
+
+      // Both rails are present and both columns are out of flow: three grid items, three tracks.
+      const items = Array.from(body.children).filter(
+        el => !(el instanceof HTMLElement && el.hasAttribute('hidden')),
+      );
+      expect(items).toHaveLength(3);
+    });
+
+    /*
+     * `[hidden]` takes its `display: none` from the user-agent sheet, which loses to any
+     * author rule setting `display` on the same element — and `.deb-col` sets `display: flex`.
+     * Without this override the sidebars stay fully visible when "collapsed", something no
+     * DOM assertion above can see because jsdom does not model stylesheet origin.
+     */
+    it('overrides [hidden] in the stylesheet, which .deb-col would otherwise defeat', () => {
+      // Read from source: the component's own sheet is not injected under jsdom.
+      const css = readFileSync(join(__dirname, 'entity-builder.component.css'), 'utf8');
+      expect(css).toMatch(/\.deb-col\[hidden\]\s*\{\s*display:\s*none/);
+    });
+  });
 
   describe('undo / redo keyboard shortcuts', () => {
     function press(key: string, init: Partial<KeyboardEventInit> & { target?: Element } = {}): void {

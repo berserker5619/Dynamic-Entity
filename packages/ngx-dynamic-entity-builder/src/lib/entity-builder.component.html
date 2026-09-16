@@ -1,4 +1,19 @@
 <mat-toolbar class="deb-toolbar">
+  <button
+    mat-icon-button
+    type="button"
+    data-testid="toggle-left-sidebar"
+    class="deb-sidebar-toggle-btn"
+    [class.deb-sidebar-toggle-btn--active]="leftSidebarOpen()"
+    [attr.aria-expanded]="leftSidebarOpen()"
+    aria-controls="deb-left-sidebar"
+    (click)="toggleLeftSidebar()"
+    [matTooltip]="leftSidebarOpen() ? ui.text('collapsePalette') : ui.text('expandPalette')"
+    [attr.aria-label]="leftSidebarOpen() ? ui.text('collapsePalette') : ui.text('expandPalette')"
+  >
+    <mat-icon>{{ leftSidebarOpen() ? 'menu_open' : 'menu' }}</mat-icon>
+  </button>
+
   <mat-icon class="deb-toolbar__mark">dashboard_customize</mat-icon>
   <span class="deb-toolbar__title">{{ ui.text('builderTitle') }}</span>
   <span class="deb-toolbar__entity" data-testid="builder-toolbar-entity">{{ store.config().entity || '—' }}</span>
@@ -65,7 +80,33 @@
     <mat-icon>redo</mat-icon>
   </button>
 
-  <button mat-button type="button" (click)="copyJson()"><mat-icon>content_copy</mat-icon> {{ ui.text('copyJson') }}</button>
+  <button
+    mat-button
+    type="button"
+    (click)="copyJson()"
+    [matTooltip]="ui.text('copyJson')"
+    [attr.aria-label]="ui.text('copyJson')"
+  >
+    <mat-icon>content_copy</mat-icon>
+    <!-- The label goes on a narrow screen; the tooltip and aria-label above carry the name. -->
+    <span class="deb-toolbar__btn-label">{{ ui.text('copyJson') }}</span>
+  </button>
+
+  <button
+    mat-icon-button
+    type="button"
+    data-testid="toggle-right-sidebar"
+    class="deb-sidebar-toggle-btn"
+    [class.deb-sidebar-toggle-btn--active]="rightSidebarOpen()"
+    [attr.aria-expanded]="rightSidebarOpen()"
+    aria-controls="deb-right-sidebar"
+    (click)="toggleRightSidebar()"
+    [matTooltip]="rightSidebarOpen() ? ui.text('collapseInspector') : ui.text('expandInspector')"
+    [attr.aria-label]="rightSidebarOpen() ? ui.text('collapseInspector') : ui.text('expandInspector')"
+  >
+    <mat-icon>{{ rightSidebarOpen() ? 'vertical_split' : 'tune' }}</mat-icon>
+  </button>
+
   <!--
     The tooltip sits on a wrapper, not on the button.
 
@@ -83,23 +124,87 @@
   </span>
 </mat-toolbar>
 
-<div class="deb-body">
-  <!-- ─── Left: settings, palette, tabs ─── -->
-  <div class="deb-col deb-col--left">
-    <mat-card>
-      <mat-card-content>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-          <mat-label>{{ ui.text('entityName') }}</mat-label>
-          <input
-            matInput
-            [ngModel]="store.config().entity"
-            (ngModelChange)="store.setEntityName($event)"
-            [placeholder]="ui.text('entityNamePlaceholder')"
-          />
-        </mat-form-field>
+<div
+  class="deb-body"
+  [class.deb-body--left-collapsed]="!leftSidebarOpen()"
+  [class.deb-body--right-collapsed]="!rightSidebarOpen()"
+>
+  <!-- Collapsed left sidebar: the rail that brings it back. -->
+  @if (!leftSidebarOpen()) {
+    <button
+      type="button"
+      class="deb-dock-btn deb-dock-btn--left"
+      data-testid="expand-left-sidebar"
+      aria-expanded="false"
+      aria-controls="deb-left-sidebar"
+      (click)="expandLeft()"
+      [matTooltip]="ui.text('expandPalette')"
+      [attr.aria-label]="ui.text('expandPalette')"
+    >
+      <!--
+        The card's own icon, not its name turned on its side. A 44px rail can only hold a
+        label by rotating it, and a rotated word is one you have to tilt your head to read —
+        worse in German, where "Eigenschaften" is half a screen tall. The tooltip and the
+        accessible name carry the words; the label below returns when the rail lies flat.
+      -->
+      <mat-icon class="deb-dock-btn__icon">add_circle_outline</mat-icon>
+      <span class="deb-dock-btn__label">{{ ui.text('paletteRailLabel') }}</span>
+      <mat-icon class="deb-dock-btn__chevron">chevron_right</mat-icon>
+    </button>
+  }
 
-        <div class="deb-row">
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-grow">
+  <!-- ─── Left: settings, palette, tabs ─── -->
+  <div
+    id="deb-left-sidebar"
+    class="deb-col deb-col--left"
+    data-testid="builder-left-sidebar"
+    [hidden]="!leftSidebarOpen()"
+  >
+    <mat-card class="deb-card deb-card--palette">
+      <mat-card-header>
+        <mat-card-title class="deb-card__title">
+          <mat-icon class="deb-card__icon">add_circle_outline</mat-icon>
+          {{ ui.text('addField') }}
+        </mat-card-title>
+        <button
+          mat-icon-button
+          type="button"
+          class="deb-card__collapse-btn"
+          data-testid="collapse-left-sidebar"
+          aria-expanded="true"
+          aria-controls="deb-left-sidebar"
+          (click)="collapseLeft()"
+          [matTooltip]="ui.text('collapsePalette')"
+          [attr.aria-label]="ui.text('collapsePalette')"
+        >
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+      </mat-card-header>
+      <mat-card-content>
+        <ngx-field-palette (pick)="store.addField($event)"></ngx-field-palette>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="deb-card deb-card--settings">
+      <mat-card-header>
+        <mat-card-title class="deb-card__title">
+          <mat-icon class="deb-card__icon">tune</mat-icon>
+          {{ store.config().entity || ui.text('entityName') }}
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="deb-settings-grid">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+            <mat-label>{{ ui.text('entityName') }}</mat-label>
+            <input
+              matInput
+              [ngModel]="store.config().entity"
+              (ngModelChange)="store.setEntityName($event)"
+              [placeholder]="ui.text('entityNamePlaceholder')"
+            />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
             <mat-label>{{ ui.text('editingLanguage') }}</mat-label>
             <mat-select
               data-testid="builder-editing-language"
@@ -113,12 +218,14 @@
           </mat-form-field>
         </div>
 
-        <mat-slide-toggle
-          color="primary"
-          [ngModel]="store.config().maskData ?? false"
-          (ngModelChange)="store.setMaskData($event)"
-          >{{ ui.text('maskEntity') }}</mat-slide-toggle
-        >
+        <div class="deb-mask-row">
+          <mat-slide-toggle
+            color="primary"
+            [ngModel]="store.config().maskData ?? false"
+            (ngModelChange)="store.setMaskData($event)"
+            >{{ ui.text('maskEntity') }}</mat-slide-toggle
+          >
+        </div>
 
         <mat-expansion-panel class="deb-rbac">
           <mat-expansion-panel-header>
@@ -146,16 +253,7 @@
       </mat-card-content>
     </mat-card>
 
-    <mat-card>
-      <mat-card-header
-        ><mat-card-title>{{ ui.text('addField') }}</mat-card-title></mat-card-header
-      >
-      <mat-card-content>
-        <ngx-field-palette (pick)="store.addField($event)"></ngx-field-palette>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card>
+    <mat-card class="deb-card deb-card--tabs">
       <mat-card-content>
         <ngx-tab-manager></ngx-tab-manager>
       </mat-card-content>
@@ -163,7 +261,7 @@
   </div>
 
   <!-- ─── Center: field canvas, then what it renders as ─── -->
-  <div class="deb-col deb-col--center">
+  <div class="deb-col deb-col--center" data-testid="builder-canvas-column">
     <ngx-entity-builder-canvas />
 
     <!--
@@ -178,12 +276,51 @@
     </div>
   </div>
 
+  <!-- Collapsed right sidebar: the rail that brings it back. -->
+  @if (!rightSidebarOpen()) {
+    <button
+      type="button"
+      class="deb-dock-btn deb-dock-btn--right"
+      data-testid="expand-right-sidebar"
+      aria-expanded="false"
+      aria-controls="deb-right-sidebar"
+      (click)="expandRight()"
+      [matTooltip]="ui.text('expandInspector')"
+      [attr.aria-label]="ui.text('expandInspector')"
+    >
+      <mat-icon class="deb-dock-btn__icon">tune</mat-icon>
+      <span class="deb-dock-btn__label">{{ ui.text('inspectorRailLabel') }}</span>
+      <mat-icon class="deb-dock-btn__chevron">chevron_left</mat-icon>
+    </button>
+  }
+
   <!-- ─── Right: inspector ─── -->
-  <div class="deb-col deb-col--right">
-    <mat-card>
-      <mat-card-header
-        ><mat-card-title>{{ ui.text('fieldProperties') }}</mat-card-title></mat-card-header
-      >
+  <div
+    id="deb-right-sidebar"
+    class="deb-col deb-col--right"
+    data-testid="builder-right-sidebar"
+    [hidden]="!rightSidebarOpen()"
+  >
+    <mat-card class="deb-card deb-card--inspector">
+      <mat-card-header>
+        <mat-card-title class="deb-card__title">
+          <mat-icon class="deb-card__icon">tune</mat-icon>
+          {{ ui.text('fieldProperties') }}
+        </mat-card-title>
+        <button
+          mat-icon-button
+          type="button"
+          class="deb-card__collapse-btn"
+          data-testid="collapse-right-sidebar"
+          aria-expanded="true"
+          aria-controls="deb-right-sidebar"
+          (click)="collapseRight()"
+          [matTooltip]="ui.text('collapseInspector')"
+          [attr.aria-label]="ui.text('collapseInspector')"
+        >
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </mat-card-header>
       <mat-card-content>
         <ngx-field-inspector></ngx-field-inspector>
       </mat-card-content>

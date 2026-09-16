@@ -2,10 +2,40 @@
 ngx-entity-builder {
   --deb-accent: #6366f1;
   --deb-accent-hover: #4f46e5;
+  /*
+   * The accent when it is *ink* — text or an icon glyph — rather than a fill or a border.
+   *
+   * #6366f1 on white measures 4.47:1, three hundredths under AA, so whether it passed came
+   * down to how a given run happened to rasterise: axe cleared it locally and failed it in
+   * the suite on the same commit. A border only owes 3:1 and can stay on --deb-accent; ink
+   * owes 4.5:1 and gets a colour with room to spare.
+   */
+  --deb-accent-ink: #4f46e5;
   --deb-accent-soft: #eef2ff;
   --deb-border: #e2e8f0;
   --deb-muted: #64748b;
   --deb-surface: #ffffff;
+  /* Width of a collapsed sidebar's rail — wide enough for the expand button. */
+  --deb-rail: 44px;
+  /*
+   * The side tracks, and the rule that keeps the canvas still.
+   *
+   * The palette and tabs column is the cramped one: tab cards hold a name field, four
+   * checkboxes and a module input, and at 320px the names truncated to "Persona". It scales
+   * with the viewport now, and the canvas gives up the difference — a field row needs about
+   * 350px and everything past that was empty gutter between a label and its badges.
+   *
+   * `--deb-left-wide` is what the left column becomes when the inspector is collapsed, and
+   * it is computed rather than chosen: left + right - rail hands the left column exactly
+   * what the inspector gave up, so the canvas is the same width either way instead of
+   * lurching wider every time the inspector is put away.
+   */
+  --deb-left: clamp(320px, 26vw, 460px);
+  --deb-right: 380px;
+  --deb-left-wide: calc(var(--deb-left) + var(--deb-right) - var(--deb-rail));
+  --deb-toolbar-h: 56px;
+  /* What a sticky column clears: the toolbar above it, plus the body's own top padding. */
+  --deb-sticky-top: calc(var(--deb-toolbar-h) + 20px);
   display: block;
 }
 
@@ -21,10 +51,33 @@ ngx-entity-builder {
   color: #0f172a;
   border-bottom: 1px solid var(--deb-border);
   gap: 4px;
-  height: 56px;
+  height: var(--deb-toolbar-h);
+  /*
+   * Sticky, because the sidebar toggles live here and the canvas is long. Reopening a panel
+   * used to mean scrolling back to the top to find the only control that could do it.
+   */
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  /*
+   * The row does not fit a phone, and a toolbar that cannot fit its controls should grow a
+   * line rather than push the whole page sideways — which is what it did, by 70px at 560px.
+   */
+  flex-wrap: wrap;
+  padding-block: 4px;
+}
+/*
+ * The element selector is doing real work: Material pins the bar with
+ * `.mat-toolbar-single-row { height: 56px }`, which ties with a bare `.deb-toolbar` on
+ * specificity and wins on order. Wrapping without this makes the extra rows spill out over
+ * the page below instead of making the bar taller.
+ */
+mat-toolbar.deb-toolbar {
+  height: auto;
+  min-height: var(--deb-toolbar-h);
 }
 .deb-toolbar__mark {
-  color: var(--deb-accent);
+  color: var(--deb-accent-ink);
 }
 .deb-toolbar__title {
   margin-left: 8px;
@@ -129,36 +182,257 @@ ngx-entity-builder {
  */
 .deb-body {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr) 360px;
-  gap: 20px;
-  padding: 20px;
+  grid-template-columns: var(--deb-left) minmax(0, 1fr) var(--deb-right);
+  gap: 24px;
+  padding: 24px;
   align-items: start;
+  transition: grid-template-columns 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/*
+ * A collapsed side keeps its grid track, narrowed to a rail that holds the expand button.
+ *
+ * Dropping the track instead would leave the grid with fewer columns than it has children —
+ * the rail button is a child of .deb-body too — and the inspector would wrap onto a second
+ * row the moment either side was collapsed.
+ */
+.deb-body.deb-body--left-collapsed {
+  grid-template-columns: var(--deb-rail) minmax(0, 1fr) var(--deb-right);
+}
+
+/* The inspector's width goes to the palette column, not to the canvas. */
+.deb-body.deb-body--right-collapsed {
+  grid-template-columns: var(--deb-left-wide) minmax(0, 1fr) var(--deb-rail);
+}
+
+.deb-body.deb-body--left-collapsed.deb-body--right-collapsed {
+  grid-template-columns: var(--deb-rail) minmax(0, 1fr) var(--deb-rail);
+}
+
 .deb-col {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   min-width: 0;
+}
+/*
+ * Load-bearing. `[hidden]` gets its `display: none` from the user-agent sheet, and any
+ * author rule that sets `display` on the same element beats it whatever the specificity —
+ * so `.deb-col` above would otherwise keep a "collapsed" sidebar fully visible.
+ */
+.deb-col[hidden] {
+  display: none;
+}
+
+/*
+ * A side card is sized by its content, never squeezed to fit the column.
+ *
+ * The column is capped at the viewport and scrolls, which works only while its cards refuse
+ * to shrink. `.deb-card` sets `overflow: hidden` for its rounded corners, and that zeroes a
+ * flex item's automatic minimum size — so instead of overflowing the column and handing it
+ * something to scroll, the cards shrank and clipped what they held: most of the palette, and
+ * two thirds of the inspector, unreachable with no scrollbar anywhere to say so.
+ */
+.deb-col > .deb-card {
+  flex: 0 0 auto;
+}
+
+/*
+ * Someone who has asked their system for less motion gets the collapse without the slide.
+ * The layout still changes — only the animation between the two states is dropped.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .deb-body,
+  .deb-col--left,
+  .deb-col--right,
+  .deb-dock-btn,
+  .deb-card {
+    transition: none !important;
+  }
 }
 .deb-col--left,
 .deb-col--right {
   position: sticky;
-  top: 20px;
-  max-height: calc(100vh - 40px);
+  top: var(--deb-sticky-top);
+  max-height: calc(100vh - var(--deb-sticky-top) - 20px);
   overflow-y: auto;
   /* Room for the scrollbar, so a card's focus ring is not clipped by it. */
   padding-right: 4px;
+  transition: opacity 0.2s ease;
+}
+
+/* ─── Modern Card Container ─── */
+.deb-card {
+  border-radius: 12px !important;
+  border: 1px solid var(--deb-border, #e2e8f0) !important;
+  background: var(--deb-surface, #ffffff) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease !important;
+  overflow: hidden;
+}
+.deb-card:hover {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05) !important;
+}
+.deb-card mat-card-header {
+  padding: 14px 16px 10px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+.deb-card mat-card-content {
+  padding: 0 16px 16px !important;
+}
+.deb-card__title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-family: var(--font-heading, sans-serif) !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  margin: 0 !important;
+}
+.deb-card__icon {
+  color: var(--deb-accent-ink, #4f46e5) !important;
+  font-size: 18px !important;
+  width: 18px !important;
+  height: 18px !important;
+  flex: none !important;
+}
+.deb-card__collapse-btn {
+  margin-left: auto !important;
+  width: 32px !important;
+  height: 32px !important;
+  color: var(--deb-muted, #64748b) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.deb-card__collapse-btn:hover {
+  color: #0f172a !important;
+  background: #f1f5f9 !important;
+}
+
+/* ─── Sidebar Toggle & Dock Buttons ─── */
+.deb-sidebar-toggle-btn {
+  color: var(--deb-muted, #64748b);
+  transition: all 0.15s ease;
+}
+.deb-sidebar-toggle-btn:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+.deb-sidebar-toggle-btn--active {
+  color: var(--deb-accent-ink, #4f46e5) !important;
+  background: var(--deb-accent-soft, #eef2ff) !important;
+}
+
+/*
+ * The expand button for a collapsed sidebar. It *is* the rail — the sole grid item in that
+ * narrowed track — so it stands vertically and sticks to the top while the page scrolls,
+ * which keeps the way back visible however far down the canvas the author has gone.
+ */
+.deb-dock-btn {
+  position: sticky;
+  top: var(--deb-sticky-top);
+  align-self: start;
+  justify-self: center;
+  z-index: 10;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 36px;
+  padding: 12px 0;
+  border-radius: 9999px;
+  border: 1px solid #c7d2fe;
+  background: #ffffff;
+  color: var(--deb-accent-hover, #4f46e5);
+  font-family: var(--font-heading, sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.15);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.deb-dock-btn:hover {
+  background: var(--deb-accent-soft, #eef2ff);
+  border-color: var(--deb-accent, #6366f1);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.25);
+}
+.deb-dock-btn mat-icon {
+  flex: none;
+}
+/* The card's icon — the thing that says *which* panel this rail brings back. */
+.deb-dock-btn__icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: var(--deb-accent-ink, #4f46e5);
+}
+/* The direction it will open in, quieter than the icon above it. */
+.deb-dock-btn__chevron {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  opacity: 0.75;
+}
+/*
+ * Hidden while the rail stands on end: a 44px track can only fit a word by rotating it, and
+ * rotated words are read by tilting your head. It comes back at the narrow breakpoint below,
+ * where the rail lies flat and there is room to read it the normal way round.
+ */
+.deb-dock-btn__label {
+  display: none;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.deb-settings-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.deb-mask-row {
+  padding: 4px 0 8px;
 }
 
 .deb-preview-slot:empty {
   display: none;
 }
 
-@media (max-width: 1240px) {
-  .deb-body {
-    grid-template-columns: 280px minmax(0, 1fr);
+@media (max-width: 1300px) {
+  /*
+   * Each collapsed combination is restated rather than relying on a single `.deb-body` rule:
+   * the layouts above are two and three classes deep, so a one-class rule here would lose to
+   * them on specificity however much later in the sheet it sits.
+   *
+   * What drops below the canvas here is the *expanded* inspector, which wants 380px there is
+   * no room for. A collapsed one wants 44px, so it keeps its column and stays in sight — the
+   * rail used to follow the inspector down and land under the live preview, a long scroll
+   * away from the canvas whose space it had just been given.
+   */
+  ngx-entity-builder {
+    --deb-left: clamp(280px, 28vw, 340px);
   }
-  /* The inspector follows the canvas rather than being squeezed into a third column. */
+  .deb-body {
+    grid-template-columns: var(--deb-left) minmax(0, 1fr);
+  }
+  /*
+   * No transfer here: at this width the expanded inspector is already below the canvas, so
+   * collapsing it frees nothing horizontal for the left column to take.
+   */
+  .deb-body.deb-body--right-collapsed {
+    grid-template-columns: var(--deb-left) minmax(0, 1fr) var(--deb-rail);
+  }
+  .deb-body.deb-body--left-collapsed {
+    grid-template-columns: var(--deb-rail) minmax(0, 1fr);
+  }
+  .deb-body.deb-body--left-collapsed.deb-body--right-collapsed {
+    grid-template-columns: var(--deb-rail) minmax(0, 1fr) var(--deb-rail);
+  }
+  /* Only the expanded inspector follows the canvas down. */
   .deb-col--right {
     grid-column: 2;
     position: static;
@@ -168,15 +442,65 @@ ngx-entity-builder {
 }
 
 @media (max-width: 900px) {
+  ngx-entity-builder {
+    --deb-rail: 36px;
+  }
   .deb-body {
-    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /*
+   * Everything stacks, collapsed rails included — the canvas needs every pixel here, and a
+   * field row already wants more width than a phone has. Reaching a collapsed panel does not
+   * depend on its rail being in view: the toolbar is sticky, so its toggles are on screen at
+   * any scroll position and at any width.
+   */
+  .deb-body.deb-body--left-collapsed,
+  .deb-body.deb-body--right-collapsed,
+  .deb-body.deb-body--left-collapsed.deb-body--right-collapsed {
+    grid-template-columns: minmax(0, 1fr);
   }
   .deb-col--left,
-  .deb-col--right {
+  .deb-col--right,
+  .deb-dock-btn--left,
+  .deb-dock-btn--right {
     grid-column: 1;
     position: static;
     max-height: none;
     overflow: visible;
+  }
+  /* One column wide, a rail lies flat rather than standing in a track of its own. */
+  .deb-dock-btn--left,
+  .deb-dock-btn--right {
+    flex-direction: row;
+    justify-content: center;
+    width: auto;
+    justify-self: stretch;
+    padding: 10px 16px;
+  }
+  .deb-dock-btn__label {
+    display: inline;
+  }
+}
+
+/*
+ * The toolbar sheds its labelling before it sheds a control.
+ *
+ * Sticky is what keeps the sidebar toggles reachable at any scroll position, and that is only
+ * a gift while the bar is thin: wrapping every control onto three rows took 19% of a 412px
+ * screen and kept it. The builder's own title and mark say nothing the surrounding page does
+ * not already say, and Copy JSON keeps its meaning through tooltip and accessible name.
+ */
+@media (max-width: 900px) {
+  .deb-toolbar__title,
+  .deb-toolbar__mark {
+    display: none;
+  }
+}
+@media (max-width: 560px) {
+  .deb-toolbar__btn-label {
+    display: none;
   }
 }
 
@@ -259,6 +583,26 @@ ngx-entity-builder {
   }
 }
 
+/*
+ * On a phone the row gives its controls a line of their own.
+ *
+ * A row carries a handle, a type icon, a name, a type badge, a width badge and four 40px
+ * buttons — about 380px of things that will not shrink, in a canvas 308px wide. The buttons
+ * are the bulk of it, and on touch they are always visible (no hover to reveal them), so the
+ * name was being squeezed to nothing and the row overflowed its own card by ~40px. Wrapping
+ * costs a line and keeps every control; hiding the buttons would cost the reordering.
+ */
+@media (max-width: 560px) {
+  .deb-field-row {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  /* Still hard right, now on the second line. */
+  .deb-field-row__actions {
+    margin-left: auto;
+  }
+}
+
 .deb-type-badge {
   font-size: 10px;
   font-weight: 700;
@@ -277,21 +621,23 @@ ngx-entity-builder {
   padding: 2px 7px;
   border-radius: 6px;
   background: #f1f5f9;
-  color: var(--deb-muted);
+  /* Slate-600, not the muted slate-500: on this tint that measured 4.34:1, just under AA. */
+  color: #475569;
   font-family: ui-monospace, SFMono-Regular, monospace;
   flex: none;
 }
 .deb-drag-handle {
   cursor: grab;
-  color: #94a3b8;
+  /* Darkened from #94a3b8, which missed the 3:1 a non-text graphic needs. */
+  color: #7d8a9c;
   transition: color 0.15s;
   flex: none;
 }
 .deb-drag-handle:hover {
-  color: var(--deb-accent);
+  color: var(--deb-accent-ink);
 }
 .deb-field-type {
-  color: var(--deb-accent);
+  color: var(--deb-accent-ink);
   flex: none;
 }
 .deb-field-meta {
@@ -315,7 +661,8 @@ ngx-entity-builder {
   font-family: ui-monospace, SFMono-Regular, monospace;
 }
 .deb-req {
-  color: #ef4444;
+  /* The error red the rest of the app uses. #ef4444 measured 3.76:1 on white — under AA. */
+  color: #dc2626;
   font-weight: 700;
   flex: none;
 }
@@ -421,7 +768,8 @@ ngx-entity-builder {
 .deb-inspector__chevron {
   margin-left: auto;
   transition: transform 0.18s ease;
-  color: #94a3b8;
+  /* Darkened from #94a3b8, which missed the 3:1 a non-text graphic needs. */
+  color: #7d8a9c;
   font-size: 20px;
   width: 20px;
   height: 20px;
@@ -496,10 +844,35 @@ ngx-entity-builder {
   align-items: center;
   gap: 8px;
 }
-.deb-toggles {
+.deb-flags-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 2px 0 6px;
+}
+.deb-param-validators-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px 12px;
+  gap: 8px;
+}
+.deb-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.deb-toggles mat-slide-toggle {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  transition: all 0.15s ease;
+}
+.deb-toggles mat-slide-toggle:hover {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
 }
 
 @media (prefers-reduced-motion: reduce) {

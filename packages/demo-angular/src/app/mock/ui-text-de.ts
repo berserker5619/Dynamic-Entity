@@ -78,6 +78,14 @@ export const DEMO_BUILDER_TEXT: BuilderTextOverrides = {
   permissions: { en: 'Permissions', de: 'Berechtigungen' },
   addField: { en: 'Add field', de: 'Feld hinzufügen' },
   fieldProperties: { en: 'Field properties', de: 'Feldeigenschaften' },
+
+  // The collapsing side panels: the toggles, and the label each collapsed rail is left with.
+  collapsePalette: { en: 'Collapse the palette', de: 'Palette einklappen' },
+  expandPalette: { en: 'Expand the palette', de: 'Palette ausklappen' },
+  collapseInspector: { en: 'Collapse the inspector', de: 'Inspektor einklappen' },
+  expandInspector: { en: 'Expand the inspector', de: 'Inspektor ausklappen' },
+  paletteRailLabel: { en: 'Add fields', de: 'Felder' },
+  inspectorRailLabel: { en: 'Properties', de: 'Eigenschaften' },
   configJson: { en: 'Config JSON', de: 'Konfigurations-JSON' },
   fieldsHeading: { en: 'Fields ({count})', de: '{count} Felder' },
   canvasEmpty: {

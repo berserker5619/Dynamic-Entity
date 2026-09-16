@@ -77,7 +77,24 @@
   --ngx-color-surface: var(--surface);
   --ngx-color-surface-alt: #f8fafc;
   --ngx-color-accent: var(--primary-600);
+  /*
+   * Pinned, not inherited — and the reason is worth the line.
+   *
+   * The library re-declares its whole palette under `prefers-color-scheme: dark`, on these
+   * very selectors, at this very specificity. This block wins only for the tokens it names;
+   * any it leaves out keep the library's *dark* value while everything around them keeps
+   * this app's light one. Leaving `accent-text` out paired near-black `#08121c` with the
+   * indigo above it and put Save at 3:1 on any machine set to dark — the one combination a
+   * reader would describe as black text on a blue button.
+   *
+   * This demo is a light-only app, so it pins every token the dark block touches. Supporting
+   * dark properly would mean a `prefers-color-scheme` block of its own, not a partial one.
+   */
+  --ngx-color-accent-text: #ffffff;
   --ngx-color-accent-soft: var(--primary-50);
+  --ngx-color-success: #1c6b52;
+  --ngx-color-disabled-bg: #eef1f4;
+  --ngx-shadow-sm: 0 1px 2px rgba(15, 25, 35, 0.06);
   --ngx-color-error: #dc2626;
   --ngx-color-error-soft: #fef2f2;
   --ngx-color-warning: #b45309;
@@ -143,6 +160,11 @@ h6 {
   max-width: 1320px;
   margin: 0 auto;
   animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: max-width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.demo-container--builder {
+  max-width: 1640px;
 }
 
 @keyframes fadeIn {

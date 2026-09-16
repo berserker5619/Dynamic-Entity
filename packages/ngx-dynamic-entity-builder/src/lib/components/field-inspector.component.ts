@@ -82,15 +82,6 @@ import { BuilderTextService } from '../builder-text';
         gap: 6px;
         align-items: center;
       }
-      .deb-chip {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 12px;
-        background: var(--deb-accent-soft, #eef2ff);
-        color: var(--deb-accent, #6366f1);
-        font-size: 12px;
-        font-weight: 600;
-      }
     `,
   ],
 })
