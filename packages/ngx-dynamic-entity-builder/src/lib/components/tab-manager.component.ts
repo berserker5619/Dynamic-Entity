@@ -102,6 +102,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
           <!-- Tab settings row -->
           <div class="deb-tab-settings">
             <mat-checkbox
+              color="primary"
               [disabled]="!canEditTab(tab)"
               [ngModel]="tab.flatData"
               (ngModelChange)="store.updateTab(tab.id, { flatData: $event })"
@@ -109,6 +110,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
               {{ ui.text('flatData') }}
             </mat-checkbox>
             <mat-checkbox
+              color="primary"
               [disabled]="!canEditTab(tab)"
               [ngModel]="tab.isPrimaryTab"
               (ngModelChange)="$event ? store.setPrimaryTab(tab.id) : store.updateTab(tab.id, { isPrimaryTab: false })"
@@ -116,6 +118,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
               {{ ui.text('primaryTab') }}
             </mat-checkbox>
             <mat-checkbox
+              color="primary"
               [disabled]="!canEditTab(tab)"
               [ngModel]="tab.maskData"
               (ngModelChange)="store.updateTab(tab.id, { maskData: $event })"
@@ -123,6 +126,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
               {{ ui.text('maskTabData') }}
             </mat-checkbox>
             <mat-checkbox
+              color="primary"
               [disabled]="!canEditTab(tab)"
               [ngModel]="tab.systemDefault"
               (ngModelChange)="store.updateTab(tab.id, { systemDefault: $event })"

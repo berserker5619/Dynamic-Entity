@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { builderPaletteButton, gotoDemo, safeClick } from './test-helpers';
+import { builderPaletteButton, gotoDemo, openInspectorSection, safeClick } from './test-helpers';
 
 /**
  * Options inside the open CDK overlay.
@@ -7,8 +7,7 @@ import { builderPaletteButton, gotoDemo, safeClick } from './test-helpers';
  * `getByRole('option')` on its own also matches every native `<select>` on the page — the
  * entity pickers among them — so it counted far more than the picker under test.
  */
-const openOptions = (page: import('@playwright/test').Page) =>
-  page.locator('.cdk-overlay-pane').getByRole('option');
+const openOptions = (page: import('@playwright/test').Page) => page.locator('.cdk-overlay-pane').getByRole('option');
 
 /**
  * Every place the builder names a field used to be a text box, which is the one way left to
@@ -30,6 +29,7 @@ test.describe('the builder names fields by picking them', () => {
   test('the showWhen watched field is a picker, seeded with a real field', async ({ page }) => {
     await openBuilderWithTwoFields(page);
 
+    await openInspectorSection(page, 'Visibility');
     await safeClick(page.getByTestId('add-show-when'));
 
     // A picker, not an input — and seeded with a path rather than the literal string "field",
@@ -43,6 +43,7 @@ test.describe('the builder names fields by picking them', () => {
 
   test('the showWhen picker offers every field, by path', async ({ page }) => {
     await openBuilderWithTwoFields(page);
+    await openInspectorSection(page, 'Visibility');
     await safeClick(page.getByTestId('add-show-when'));
 
     await safeClick(page.getByTestId('show-when-field'));
@@ -54,6 +55,7 @@ test.describe('the builder names fields by picking them', () => {
   test('a rule names its trigger and its targets by path', async ({ page }) => {
     await openBuilderWithTwoFields(page);
 
+    await openInspectorSection(page, 'Rules');
     await safeClick(page.getByTestId('add-rule'));
 
     // Both were free text. The trigger is a single select; the targets are a multi-select,
@@ -68,6 +70,7 @@ test.describe('the builder names fields by picking them', () => {
 
   test('a rule can be applied to more than one field', async ({ page }) => {
     await openBuilderWithTwoFields(page);
+    await openInspectorSection(page, 'Rules');
     await safeClick(page.getByTestId('add-rule'));
 
     await safeClick(page.getByTestId('rule-targets'));

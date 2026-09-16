@@ -8,7 +8,7 @@ describe('NumberFieldComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [NumberFieldComponent, ReactiveFormsModule]
+      imports: [NumberFieldComponent, ReactiveFormsModule],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NumberFieldComponent);

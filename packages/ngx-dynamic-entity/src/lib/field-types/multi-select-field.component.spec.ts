@@ -8,17 +8,14 @@ describe('MultiSelectFieldComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [MultiSelectFieldComponent, ReactiveFormsModule]
+      imports: [MultiSelectFieldComponent, ReactiveFormsModule],
     }).compileComponents();
 
     fixture = TestBed.createComponent(MultiSelectFieldComponent);
     component = fixture.componentInstance;
-    component.field = { 
+    component.field = {
       label: { en: 'Tags' },
-      options: [
-        { en: 'One' },
-        { en: 'Two' }
-      ]
+      options: [{ en: 'One' }, { en: 'Two' }],
     } as any;
     fixture.componentRef.setInput('control', new FormControl([{ en: 'One' }, { en: 'Two' }]));
     fixture.detectChanges();
@@ -99,7 +96,10 @@ describe('MultiSelectFieldComponent — language and unresolved values', () => {
       id: 'tags',
       type: 'multiSelect',
       label: { en: 'Tags', de: 'Schlagworte' },
-      options: [{ en: 'One', de: 'Eins' }, { en: 'Two', de: 'Zwei' }],
+      options: [
+        { en: 'One', de: 'Eins' },
+        { en: 'Two', de: 'Zwei' },
+      ],
     } as never;
     fixture.componentRef.setInput('control', new FormControl([]));
     fixture.detectChanges();

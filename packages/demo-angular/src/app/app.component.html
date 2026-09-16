@@ -72,34 +72,32 @@
     @if (view() === 'list' || view() === 'form') {
     @if (config()) {
     @if (view() === 'list') {
-    <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+    <div class="list-toolbar">
       <input class="ngx-field__input" style="max-width: 340px; box-shadow: var(--shadow-sm);" placeholder="Search clients…"
         [value]="searchTerm()" (input)="onSearchChange($any($event.target).value)" />
-      <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">
+      <span class="list-toolbar__count">
         Showing {{ records().length }} of {{ totalRecords() }} records
       </span>
     </div>
 
-    <div style="display: flex; flex-direction: column; gap: 10px; max-width: 680px;">
+    <!--
+      A grid rather than the single 680px column this used to be: the list is one line per
+      record, and stacking them cost a screen and a half to show what fits on half of one.
+    -->
+    <div class="record-list">
       @for (rec of records(); track rec['_id']) {
-      <button type="button" (click)="onRowClick(rec)"
-        style="text-align: left; padding: 14px 18px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm); transition: var(--transition-fast);"
-        onmouseover="this.style.borderColor='var(--primary-500)'; this.style.transform='translateY(-1px)'; this.style.boxShadow='var(--shadow-md)';"
-        onmouseout="this.style.borderColor='var(--border)'; this.style.transform='none'; this.style.boxShadow='var(--shadow-sm)';"
-      >
-        <span style="font-family: var(--font-heading); font-weight: 600; color: var(--text); font-size: 14px;">
-          {{ getRecordLabel(rec) }}
-        </span>
-        <span style="font-size: 12px; color: var(--primary-600); font-weight: 600;">Edit →</span>
+      <button type="button" class="record-card" (click)="onRowClick(rec)">
+        <span class="record-card__name">{{ getRecordLabel(rec) }}</span>
+        <span class="record-card__cta">Edit →</span>
       </button>
       } @empty {
-      <div style="padding: 24px; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius-sm); text-align: center;">
-        <p style="color: var(--text-muted); margin: 0; font-size: 14px;">No records found for <strong>{{ selectedEntity() }}</strong>. Click <strong>+ Add {{ selectedEntity() === 'clients' ? 'Client' : 'Record' }}</strong> to create one!</p>
+      <div class="record-list__empty">
+        No records found for <strong>{{ selectedEntity() }}</strong>. Click <strong>+ Add {{ selectedEntity() === 'clients' ? 'Client' : 'Record' }}</strong> to create one!
       </div>
       }
     </div>
     } @else {
-    <div class="form-wrapper">
+    <div class="form-wrapper ngx-form-sticky-actions">
       <h2>{{ selectedRecord() ? (selectedEntity() === 'clients' ? 'Edit Client' : 'Edit Record (' + selectedEntity() + ')') : (selectedEntity() === 'clients' ? 'New Client' : 'New Record (' + selectedEntity() + ')') }}</h2>
       <div class="mode-switch" role="group" aria-label="Record presentation">
         <button class="nav-link" data-testid="mode-form" [class.nav-link--active]="formMode() === 'form'"
@@ -121,9 +119,15 @@
           Save refused: {{ reason }}
         </div>
       }
+      <!--
+        `layout="auto"` is the renderer's type-aware sizing: a field with no `colSpan` of its
+        own is sized by what it holds rather than given all twelve columns. Without it a form
+        of eight short text fields renders as an eight-row ladder two thirds empty, which is
+        what this demo showed for every entity that had not hand-authored its spans.
+      -->
       @if (formMode() === 'form') {
         <ngx-dynamic-form [config]="config()!" [initialData]="selectedRecord() || {}" [userRoles]="userRoles()"
-          [language]="language()" [loading]="loading()" (formSubmit)="onFormSubmit($event)"
+          [language]="language()" [loading]="loading()" layout="auto" (formSubmit)="onFormSubmit($event)"
           (saveRejected)="onSaveRejected($event)"
           (formReset)="onCancel()"></ngx-dynamic-form>
       } @else {
@@ -137,7 +141,7 @@
         -->
         <ngx-dynamic-record-form [config]="config()!" [initialData]="selectedRecord() || {}"
           [userRoles]="userRoles()" [language]="language()" [loading]="loading()"
-          [isReadOnly]="formMode() === 'data'"
+          [isReadOnly]="formMode() === 'data'" layout="auto"
           (formSubmit)="onFormSubmit($event)"
           (sectionSave)="onSectionSave($event)"
           (saveRejected)="onSaveRejected($event)"

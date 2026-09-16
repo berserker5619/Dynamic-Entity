@@ -85,9 +85,7 @@ describe('FieldInspectorComponent', () => {
     store.addField('dropdown');
     fixture.detectChanges();
 
-    const optionBtn = Array.from(host.querySelectorAll('button')).find(b =>
-      (b.textContent || '').includes('Option'),
-    ) as HTMLButtonElement;
+    const optionBtn = host.querySelector('[data-testid="add-option"]') as HTMLButtonElement;
     expect(optionBtn).toBeTruthy();
 
     optionBtn.click();

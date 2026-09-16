@@ -32,6 +32,7 @@ import { BuilderTextService } from '../builder-text';
         <div class="deb-row" style="justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <span class="deb-section-title" style="margin:0;">{{ ui.text('referencedField') }}</span>
           <mat-slide-toggle
+            color="primary"
             data-testid="toggle-referenced"
             [ngModel]="f.isReferenced ?? false"
             (ngModelChange)="toggleReferenced(f, $event)"

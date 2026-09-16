@@ -7,6 +7,125 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.11.0] — 2026-09-16
+
+A UI/UX pass over the two things a person actually uses: the form that gets rendered, and
+the builder that authors it. Most of what follows is not new capability — it is capability
+that existed in the schema and had no way to reach the screen.
+
+### Added
+
+- **`hint` on a field — help text, as an info icon beside the label.** Available on every
+  field type, follows `language` like any other authored string, and is authored in the
+  builder's inspector beside the label. The text appears on hovering the icon *and* for as
+  long as the field has focus — which is what makes it usable by keyboard and on touch, and
+  what keeps it on screen while the field is actually being filled in. It is also named by
+  the control's `aria-describedby`, so a screen reader is read it without hovering anything.
+
+  Deliberately not the same thing as `placeholder`: a placeholder is an example of the value
+  and disappears at the first keystroke, so a format, a rule, or "where to find the number we
+  are asking for" cannot live there — which has not stopped authors putting it there, because
+  it was the only box on offer.
+- **The error summary says what is wrong, not just where.** Each entry now carries the
+  field's name *and* the message the field itself shows — "Email — Invalid format." — so a
+  refused save can usually be fixed without visiting each field to ask it what it wanted.
+- **`layout` on `ngx-dynamic-form` and `ngx-dynamic-record-form`.** `colSpan` has been in
+  the model since the 12-column grid existed, and a field that did not set one took the
+  full row — so a form of eight short text fields rendered as an eight-row ladder two
+  thirds empty. `layout="auto"` sizes an unset field by its type instead: a date is a third
+  of a row, a text field is half, a textarea or a nested group still takes all twelve. An
+  authored `colSpan` always wins, and the default stays `stack`, so no existing config
+  renders differently unless it asks to.
+- **A Width control in the builder's field inspector.** The same `colSpan`, which the
+  visual builder had no control for at all: every form authored there came out a
+  single-column ladder, and the only way to put two fields on one row was to hand-edit the
+  JSON. Five steps — ¼, ⅓, ½, ⅔, full — and the canvas row shows the width when it is not
+  the default.
+- **An error summary and per-tab error counts when a save is refused.** Pressing Save on an
+  invalid form used to mark every control touched and stop, which on a tabbed form is
+  indistinguishable from a broken button: the errors appear on whichever tabs hold them and
+  the user is looking at a different one. A refused save now names the count, lists each
+  field as a link that jumps to it, badges every tab with how many of its fields are at
+  fault, and moves focus to the first. New `uiText` keys: `errorSummaryTitle`,
+  `tabErrorCount`.
+- **A filter and grouping in the builder's field palette.** Twenty-two buttons in a flat
+  two-column grid, with the labels clipped mid-word — "Boolean Toggl", "Entity Referen",
+  "File Attachmen" — so a third of the palette could not be read. Labels now wrap, the
+  types are filed under Basic / Choice / Date & time / Rich & files / Structure, and the
+  filter matches descriptions as well as labels, so "money" finds Currency.
+- **The builder's issue list is now a list.** The toolbar showed a count whose tooltip said
+  to "hover items in the list" — a list that existed nowhere in the builder. The count
+  opens the problems themselves, and an entry that names a field selects it.
+- **`ngx-form-sticky-actions`.** An opt-in class that keeps Save and Reset in view down a
+  long form. Opt-in because `position: sticky` resolves against the nearest scrolling
+  ancestor: a form embedded mid-page would detach its bar and float it over whatever is
+  below, which is exactly what the builder's live preview does.
+
+### Changed
+
+- **Save stays available while a form is invalid.** It was disabled, and a disabled button
+  is the worst possible answer to "why can't I save?" — it cannot be clicked, so the form
+  never gets a moment to say which field is at fault or which tab it is on. The save is
+  still refused; what changed is that refusing it now produces an explanation instead of
+  silence. Save is still withheld for what a retry cannot fix: a save in flight, and an
+  async validator whose answer has not come back. Ctrl+S behaves the same way, where it
+  previously did nothing at all on an incomplete form. `submitBlocked` keeps its meaning as
+  the submit guard; the button reads the new `submitDisabled`.
+- **The record editor's header names the record.** It showed the entity twice — "clients",
+  with "Entity: clients" underneath — so the one question a record header exists to answer
+  was the one thing it did not say. The heading is now the record's own name, taken from a
+  `showOnMinimize` field or else the first text/email field with a value, falling back to
+  the entity label as before. `recordTitle` is unchanged and still the entity; the new
+  `recordHeading` is the record.
+- **The base stylesheet is a starting point you can ship.** `ngx-dynamic-entity/styles.css`
+  gained a dark palette that follows `prefers-color-scheme`, visible focus rings, an
+  invalid state, larger touch targets on radios and toggles, a consistent select arrow
+  across browsers, and a read-only record that lays its values out as a table rather than
+  one per row. Everything is still driven by the custom properties, and the token names did
+  not change.
+- **The builder's three columns no longer fight each other.** Both side rails scroll within
+  the viewport instead of setting the page height, so a 1200px-tall palette no longer sits
+  beside a 140px canvas. The live preview moved out of the footer — it was below a collapsed
+  JSON accordion, roughly 1500px under the canvas — to directly beneath the field list, so a
+  change and its effect can be seen in one glance. The inspector's fifteen divider-separated
+  blocks are now collapsible sections that report what they hold when closed.
+
+### Fixed
+
+- **Sixteen field types never announced their error message.** Only `text`, `number` and
+  `dropdown` set `aria-describedby`; on every other type the message was on screen and
+  invisible to a screen reader. All nineteen leaf types now point at whatever is describing
+  them — the hint, the error, or both, in that order — and
+  `hint-reaches-every-field.spec.ts` walks the real registry to check each id resolves, so a
+  type added later cannot quietly skip it.
+- **One table of validation keys instead of nineteen copies.** Each field component carried
+  its own near-identical list of which error to report first. That was survivable while the
+  field was the only thing rendering a message; it stopped being survivable when the summary
+  started rendering one too, because a `dropdown` would have said "This field is required"
+  in the summary and "Please select an option" under the control.
+  `ValidationMessagesService.resolveForField` is now the single source both read.
+- **The builder's shared styles now reach the components that use them.**
+  `.deb-field-row`, `.deb-section-title`, `.deb-hint`, `.deb-chip` and `.deb-empty` are
+  written in seven child components' templates and defined only in the builder's own
+  stylesheet — and under emulated encapsulation a parent's rules never reach a child, so the
+  field rows, the inspector's section titles and the canvas's empty state have been
+  rendering unstyled since they were split out. `.cdk-drag-preview` was the same fault seen
+  from the other end: the CDK attaches a drag preview to `document.body`, outside the
+  component entirely. The stylesheet is no longer scoped, and the duplicate `.deb-row` /
+  `.deb-option-row` blocks somebody had copied into `entity-reference-config` to work around
+  it are gone.
+- **`--primary-50` / `--deb-accent-soft` were not colours.** Both were `#eeef2` — five hex
+  digits, which no browser parses — so every surface tinted with them (the builder's type
+  badges and chips, the demo's hover states) silently fell back to transparent. Now
+  `#eef2ff`, the indigo-50 they were meant to be.
+- **The demo stops re-implementing the published stylesheet.** Every `.ngx-field__input`,
+  `.ngx-form__tab` and banner rule existed both in the demo and in the library, and the two
+  had drifted — the demo grew focus states and a tab treatment the shipped stylesheet never
+  got, so what we demonstrated looked nothing like what we published. The demo imports it
+  and overrides the tokens, which is what a consumer does.
+
+---
+
 ## [1.10.0] — 2026-09-03
 
 Two seams that were configurable in principle and partly ignored in practice: date

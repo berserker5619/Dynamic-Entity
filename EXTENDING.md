@@ -256,8 +256,9 @@ validators: { required: true, customAsync: ['uniqueEmail'] }
 
 A separate key from `custom` because Angular treats them differently: async validators run
 only once the synchronous ones pass, and hold the control in `pending` while they do. The
-form cannot be submitted while anything is pending — `submitBlocked` and `isValidating` both
-reflect it — so there is no window in which a half-checked record can be saved.
+form cannot be submitted while anything is pending — `submitBlocked`, `submitDisabled` and
+`isValidating` all reflect it — so there is no window in which a half-checked record can be
+saved, and Save is genuinely unavailable for that window rather than merely refusing.
 
 ---
 
@@ -622,7 +623,10 @@ export class HostComponent {
     this.form.canView;                     // permissions.view for the current roles
     this.form.canDelete;                   // for gating your own delete affordance
     this.form.submitBlocked;               // form invalid, or a validation rule is failing
+    this.form.submitDisabled;              // what the Save button binds: saving, or pending
     this.form.ruleValidationErrors;        // those rule errors, keyed by target id
+    this.form.invalidFields();             // each invalid field, its message, and its tab
+    this.form.jumpToField('email');        // switch to its tab, scroll to it, focus it
   }
 }
 ```
@@ -655,12 +659,29 @@ It is driven by custom properties scoped to `.ngx-form` / `.ngx-record-editor`, 
 usually means redefining a few variables rather than overriding rules:
 
 ```css
-.ngx-form {
+.ngx-form,
+.ngx-record-editor {
   --ngx-color-accent: #6d28d9;
   --ngx-radius: 10px;
   --ngx-control-height: 44px;
 }
 ```
+
+Declare them on both selectors, not on `:root`: the stylesheet scopes its own tokens to those
+two, which is what keeps importing it from leaking into the rest of your app — and also means
+a `:root` override never wins.
+
+Dark mode follows `prefers-color-scheme` out of the box; redeclare the palette under your own
+selector to pin it either way.
+
+Two behaviours are opt-in:
+
+- **`ngx-form-sticky-actions`** on a wrapper keeps the Save/Reset bar in view down a long
+  form. It is opt-in because `position: sticky` resolves against the nearest scrolling
+  ancestor — a form embedded in the middle of a longer page would detach its bar and float it
+  over whatever is below. Add the class when the form owns the scroll.
+- **`layout="auto"`** on the component sizes a field with no `colSpan` of its own by its type
+  rather than giving it the full row. An authored `colSpan` still wins.
 
 The renderer has no Angular Material dependency. **The builder does**, and also needs
 `provideAnimations()`.

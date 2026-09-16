@@ -52,6 +52,7 @@ import { BuilderTextService } from '../builder-text';
           </div>
           <div class="deb-rule-item__actions">
             <mat-slide-toggle
+              color="primary"
               [checked]="rule.enabled"
               [matTooltip]="ui.text('toggleRule')"
               (change)="store.toggleRule(rule.id!, $event.checked)"

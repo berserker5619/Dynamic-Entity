@@ -9,9 +9,6 @@ import {
   signal,
   computed,
   inject,
-  afterNextRender,
-  ElementRef,
-  Injector,
   ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -42,77 +39,105 @@ const FIELD_NOT_FOUND = Symbol('field-not-found');
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, DynamicFormComponent, DynamicFieldComponent],
   templateUrl: './dynamic-record-form.component.html',
+  /*
+   * The record editor's own baseline, for a consumer who imports no stylesheet.
+   *
+   * Every value reads the token `ngx-dynamic-entity/styles.css` sets, with the previous
+   * hard-coded literal as its fallback — so importing that file re-skins this component
+   * instead of fighting it. It used to be literals all the way down, and because a component
+   * stylesheet is injected after a global one and carries an attribute selector, the
+   * stylesheet's whole `.ngx-record-editor__*` section lost every tie and did nothing at all.
+   */
   styles: [
     `
       .ngx-record-editor {
         display: flex;
         flex-direction: column;
-        gap: 16px;
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
+        gap: var(--ngx-gap, 16px);
+        background: var(--ngx-color-surface, #ffffff);
+        border: 1px solid var(--ngx-color-border, #e5e7eb);
+        border-radius: var(--ngx-radius, 12px);
         padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
       }
       .ngx-record-editor__header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding-bottom: 16px;
-        border-bottom: 1px solid #f3f4f6;
+        gap: 14px;
+        padding-bottom: var(--ngx-gap-sm, 16px);
+        border-bottom: 1px solid var(--ngx-color-border, #f3f4f6);
       }
       .ngx-record-editor__title-group {
         display: flex;
         align-items: center;
         gap: 12px;
+        min-width: 0;
       }
       .ngx-record-editor__avatar {
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
         object-fit: cover;
-        background: #e0e7ff;
-        color: #4f46e5;
+        background: var(--ngx-color-accent-soft, #e0e7ff);
+        color: var(--ngx-color-accent, #4f46e5);
+        border: 1px solid var(--ngx-color-border, transparent);
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 18px;
+        font-size: 17px;
+        flex: none;
       }
       .ngx-record-editor__title {
-        font-size: 20px;
+        font-size: 19px;
         font-weight: 700;
-        color: #111827;
+        color: var(--ngx-color-text, #111827);
         margin: 0;
+        letter-spacing: -0.01em;
       }
       .ngx-record-editor__subtitle {
-        font-size: 13px;
-        color: #6b7280;
+        font-size: var(--ngx-hint-size, 13px);
+        color: var(--ngx-color-muted, #6b7280);
       }
       .ngx-record-editor__header-toggle {
         display: flex;
         align-items: center;
         gap: 8px;
-        font-size: 13px;
-        color: #374151;
+        font-size: var(--ngx-label-size, 13px);
+        font-weight: var(--ngx-label-weight, 600);
+        color: var(--ngx-color-text, #374151);
       }
       .ngx-record-editor__header-toggle-text {
         font-weight: 600;
       }
       .ngx-record-editor__banner {
-        padding: 10px 14px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 500;
+        padding: 11px 14px;
+        border-radius: var(--ngx-radius-sm, 8px);
+        font-size: var(--ngx-font-size, 13px);
+        border: 1px solid transparent;
+        border-left-width: 3px;
       }
       .ngx-record-editor__banner--info {
-        background: #eff6ff;
-        border: 1px solid #dbeafe;
-        color: #1d4ed8;
+        background: var(--ngx-color-info-soft, #eff6ff);
+        border-color: var(--ngx-color-border, #dbeafe);
+        border-left-color: var(--ngx-color-info, #1d4ed8);
+        color: var(--ngx-color-info, #1d4ed8);
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 12px;
+      }
+      .ngx-record-editor__banner--error {
+        background: var(--ngx-color-error-soft, #fef2f2);
+        border-color: var(--ngx-color-border, #fecaca);
+        border-left-color: var(--ngx-color-error, #b91c1c);
+        color: var(--ngx-color-error, #b91c1c);
+      }
+      .ngx-record-editor__banner--warning {
+        background: var(--ngx-color-warning-soft, #fffbeb);
+        border-color: var(--ngx-color-border, #fef3c7);
+        border-left-color: var(--ngx-color-warning, #b45309);
+        color: var(--ngx-color-warning, #b45309);
       }
       .ngx-record-editor__banner-dismiss {
         background: none;
@@ -127,30 +152,21 @@ const FIELD_NOT_FOUND = Symbol('field-not-found');
       .ngx-record-editor__banner-dismiss:hover {
         background: rgba(0, 0, 0, 0.06);
       }
-      .ngx-record-editor__banner--error {
-        background: #fef2f2;
-        border: 1px solid #fecaca;
-        color: #b91c1c;
-      }
       .ngx-record-editor__section-bar {
         display: flex;
         align-items: center;
         justify-content: flex-end;
+        flex-wrap: wrap;
         gap: 8px;
       }
       .ngx-record-editor__section-hint {
         margin-right: auto;
-        font-size: 12px;
-        color: #6b7280;
-      }
-      .ngx-record-editor__banner--warning {
-        background: #fffbeb;
-        border: 1px solid #fef3c7;
-        color: #b45309;
+        font-size: var(--ngx-hint-size, 12px);
+        color: var(--ngx-color-muted, #6b7280);
       }
       .ngx-record-editor__rows {
-        border: 1px solid #f3f4f6;
-        border-radius: 8px;
+        border: 1px solid var(--ngx-color-border, #f3f4f6);
+        border-radius: var(--ngx-radius-sm, 8px);
         padding: 12px 14px;
         display: flex;
         flex-direction: column;
@@ -166,68 +182,87 @@ const FIELD_NOT_FOUND = Symbol('field-not-found');
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 8px;
-        border-radius: 6px;
-        background: #f9fafb;
+        padding: 8px 10px;
+        border-radius: var(--ngx-radius-sm, 6px);
+        background: var(--ngx-color-surface-alt, #f9fafb);
       }
       .ngx-record-editor__row-text {
         flex: 1;
-        font-size: 13px;
+        font-size: var(--ngx-font-size, 13px);
         overflow-wrap: anywhere;
       }
       .ngx-record-editor__row-btn {
-        background: none;
-        border: 1px solid #e5e7eb;
-        border-radius: 6px;
+        background: var(--ngx-color-surface, none);
+        border: 1px solid var(--ngx-color-border, #e5e7eb);
+        border-radius: var(--ngx-radius-sm, 6px);
         cursor: pointer;
-        font-size: 12px;
-        padding: 2px 8px;
+        font: inherit;
+        font-size: var(--ngx-hint-size, 12px);
+        font-weight: var(--ngx-label-weight, 600);
+        color: inherit;
+        padding: 4px 10px;
+      }
+      .ngx-record-editor__row-btn:hover {
+        border-color: var(--ngx-color-accent, #e5e7eb);
+        color: var(--ngx-color-accent, inherit);
       }
       .ngx-record-editor__row-empty {
-        font-size: 12px;
-        color: #6b7280;
+        font-size: var(--ngx-hint-size, 12px);
+        color: var(--ngx-color-muted, #6b7280);
         margin: 0;
       }
       .ngx-record-editor__drawer {
-        border: 1px solid #dbeafe;
-        background: #f8fafc;
-        border-radius: 8px;
-        padding: 14px;
+        border: 1px solid var(--ngx-color-border, #dbeafe);
+        background: var(--ngx-color-surface-alt, #f8fafc);
+        border-radius: var(--ngx-radius, 8px);
+        padding: 16px;
         display: flex;
         flex-direction: column;
         gap: 12px;
       }
+      /*
+       * Label/value pairs, laid out as pairs. Stacked one per row this cost a full screen to
+       * show six values that fit comfortably in two; auto-fit is what packs them, at whatever
+       * width the panel happens to have.
+       */
       .ngx-record-editor__summary-panel {
-        background: #f9fafb;
-        border: 1px solid #f3f4f6;
-        border-radius: 8px;
+        background: var(--ngx-color-surface-alt, #f9fafb);
+        border: 1px solid var(--ngx-color-border, #f3f4f6);
+        border-radius: var(--ngx-radius, 8px);
         padding: 12px 16px;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 4px var(--ngx-gap, 12px);
       }
       .ngx-record-editor__summary-item {
         display: flex;
         flex-direction: column;
         cursor: pointer;
         padding: 6px 10px;
-        border-radius: 6px;
+        border-radius: var(--ngx-radius-sm, 6px);
+        min-width: 0;
         transition: background 0.15s;
       }
       .ngx-record-editor__summary-item:hover {
-        background: #eff6ff;
+        background: var(--ngx-color-accent-soft, #eff6ff);
       }
       .ngx-record-editor__summary-label {
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        color: #6b7280;
+        color: var(--ngx-color-muted, #6b7280);
         font-weight: 600;
       }
       .ngx-record-editor__summary-val {
-        font-size: 14px;
+        font-size: var(--ngx-font-size, 14px);
         font-weight: 600;
-        color: #1f2937;
+        color: var(--ngx-color-text, #1f2937);
+        overflow-wrap: anywhere;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .ngx-record-editor__summary-item {
+          transition: none;
+        }
       }
     `,
   ],
@@ -247,6 +282,8 @@ export class DynamicRecordFormComponent implements OnChanges {
   @Input() isReadOnly: boolean = false;
   /** Specific field ids forced read-only while the rest of the record stays editable. */
   @Input() readOnlyFields: string[] = [];
+  /** Forwarded verbatim to the hosted form — see `DynamicFormComponent.layout`. */
+  @Input() layout: 'stack' | 'auto' = 'stack';
   /**
    * Open the record read-only, with a per-tab "Edit section" flow — one tab is edited and
    * validated at a time. This is the framework's `EntityRecordComponent` model and the
@@ -276,8 +313,6 @@ export class DynamicRecordFormComponent implements OnChanges {
   private readonly rulesEvaluation = inject(RulesEvaluationService);
   private readonly rbacService = inject(RbacService);
   private readonly hookRegistry = inject(HookRegistryService);
-  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
-  private readonly injector = inject(Injector);
 
   readonly currentData = signal<Record<string, any>>({});
   readonly originalBaseline = signal<Record<string, any>>({});
@@ -620,8 +655,54 @@ export class DynamicRecordFormComponent implements OnChanges {
     return this.config.name ? resolveLabel(this.config.name, this.language) : this.config.entity;
   }
 
+  /**
+   * What this record is called, as opposed to what kind of thing it is.
+   *
+   * The header used to show the entity's name twice — "clients", with "Entity: clients"
+   * underneath — so the one question a record header exists to answer, *which* record am I
+   * looking at, was the one thing it did not say. The entity keeps the subtitle; this takes
+   * the heading.
+   *
+   * The order is deliberate. `showOnMinimize` is the author saying "this is what identifies a
+   * record" — it is what the summary panel and the collapsed view already show — so it is
+   * asked first. A text or email field is the fallback because those are what a name is
+   * stored in; a number or a date is a property of the record, not its identity, and would
+   * give a header reading "42". When neither exists there is nothing to name it with and the
+   * entity label stands in, which is the behaviour this replaced.
+   *
+   * A masked field is never a candidate. Masking is presentational (see SECURITY.md), but
+   * that is exactly why: the whole point is that this role does not get to read the value, and
+   * promoting it into the page heading would print in full what every field renders as
+   * `XXXXXXXXX`. A record whose only text field is masked keeps the entity label.
+   *
+   * One pass rather than two filtered ones: this is a getter the header reads on every change
+   * detection, and the preferred candidate is usually the first field it meets.
+   */
+  get recordHeading(): string {
+    const named = (field: NestedFieldConfig): string | null => {
+      const value = this.fieldValue(field.id);
+      if (typeof value !== 'string' && typeof value !== 'number') return null;
+      const text = String(value).trim();
+      return text.length ? text : null;
+    };
+
+    let fallback: string | null = null;
+    for (const field of this.allFields()) {
+      if (field.visibility === false) continue;
+      if (this.rbacService.shouldMaskField(field, undefined, this.config, this.userRoles)) continue;
+
+      if (field.showOnMinimize) {
+        const preferred = named(field);
+        if (preferred) return preferred;
+      } else if (!fallback && (field.type === 'text' || field.type === 'email')) {
+        fallback = named(field);
+      }
+    }
+    return fallback ?? this.recordTitle;
+  }
+
   get avatarLetter(): string {
-    return (this.recordTitle || 'R').charAt(0).toUpperCase();
+    return (this.recordHeading || 'R').charAt(0).toUpperCase();
   }
 
   // ─── Header fields (isProfileImage / isHeaderToggle) ────────────────────────
@@ -775,58 +856,17 @@ export class DynamicRecordFormComponent implements OnChanges {
    * field. The walk used to check top-level `fields` only, so every field in a sub-tab was
    * simply not found and the jump did nothing at all.
    */
-  private locateField(fieldId: string): { tabId: string; subTabId?: string } | null {
-    for (const tab of this.config?.tabs || []) {
-      if ((tab.fields || []).some(f => f.id === fieldId)) return { tabId: tab.id };
-      for (const child of tab.children || []) {
-        if ((child.fields || []).some(f => f.id === fieldId)) {
-          return { tabId: tab.id, subTabId: child.id };
-        }
-      }
-    }
-    return null;
-  }
 
   /**
    * Switches to the tab holding `fieldId`, then scrolls it into view and moves focus to it.
    *
-   * The wait for the new tab to render used to be a 50 ms `setTimeout`, which was wrong three
-   * ways: `document` is undefined on a server render, 50 ms is a guess that a large tab can
-   * outrun, and nothing cancelled the timer if the component went away first.
-   * `afterNextRender` fixes all three — it never runs on the server, it runs when the panel
-   * has actually rendered rather than when a guess expires, and it is tied to the injector so
-   * destroying the component cancels it. The query is scoped to this component's own element,
-   * so the library no longer reaches for the global `document` at all.
+   * Delegated rather than implemented twice. The hosted form grew the same jump when a
+   * refused save had to be able to take the user to the first invalid field, and the form is
+   * where it belongs: it owns the tab state, the panel that renders the field, and the
+   * element the jump is looking for. This is kept as the record editor's public entry point
+   * because the summary panel's quick-jump calls it and a host may too.
    */
   jumpToField(fieldId: string): void {
-    const location = this.locateField(fieldId);
-    if (!location) return;
-
-    // The panel must not take the focus back: this jump is going to focus the field itself.
-    this.dynamicFormComp?.setActiveTab(location.tabId, { focusPanel: false });
-    // `setActiveTab` resets to a tab's first child, so the sub-tab has to be selected after
-    // it, not before. Without this the walk found sub-tab fields and then rendered the wrong
-    // panel, so the element the callback below looks for never existed.
-    if (location.subTabId) {
-      this.dynamicFormComp?.setActiveSubTab(location.subTabId, { focusPanel: false });
-    }
-
-    afterNextRender(
-      () => {
-        // The field id comes from config, so it never goes into a selector string: no
-        // escaping to get wrong, and no need for `CSS.escape`, which jsdom and older
-        // browsers do not provide and whose absence throws silently inside a render hook.
-        const wanted = `field-container-${fieldId}`;
-        const el = Array.from(this.host.nativeElement.querySelectorAll<HTMLElement>('[id^="field-container-"]')).find(
-          slot => slot.id === wanted,
-        );
-        if (!el) return;
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // The slot carries tabindex="-1" so this actually moves focus. Without it the jump
-        // scrolled the field into view and left focus behind on the link.
-        el.focus();
-      },
-      { injector: this.injector },
-    );
+    this.dynamicFormComp?.jumpToField(fieldId);
   }
 }

@@ -46,6 +46,16 @@ export const DEMO_UI_TEXT: UiTextOverrides = {
     en: 'You do not have permission to view this record.',
     de: 'Sie haben keine Berechtigung, diesen Datensatz zu sehen.',
   },
+  // Why a save was refused. `{count}` sits in a different place in each language, which is
+  // why the whole sentence is one key rather than fragments a template joins.
+  errorSummaryTitle: {
+    en: '{count} field(s) need attention before this can be saved.',
+    de: '{count} Feld(er) müssen korrigiert werden, bevor gespeichert werden kann.',
+  },
+  tabErrorCount: {
+    en: '{count} field(s) need attention on this tab',
+    de: '{count} Feld(er) auf dieser Registerkarte benötigen Aufmerksamkeit',
+  },
 };
 
 /**
@@ -85,6 +95,27 @@ export const DEMO_BUILDER_TEXT: BuilderTextOverrides = {
   },
   fieldId: { en: 'Field id', de: 'Feld-ID' },
   tab: { en: 'Tab', de: 'Registerkarte' },
-  validation: { en: 'Validation', de: 'Validierung' },
   options: { en: 'Options', de: 'Optionen' },
+
+  // The inspector's collapsible sections, and the palette's filter and groups.
+  sectionBasics: { en: 'Basics', de: 'Grundlagen' },
+  hintInLanguage: { en: 'Help text ({language})', de: 'Hilfetext ({language})' },
+  hintHint: {
+    en: 'An info icon beside the label, shown on hover and while the field has focus. Read out with the field.',
+    de: 'Ein Info-Symbol neben der Beschriftung — bei Mouseover und solange das Feld fokussiert ist. Wird mit vorgelesen.',
+  },
+  sectionLayout: { en: 'Layout', de: 'Layout' },
+  sectionValidation: { en: 'Validation', de: 'Validierung' },
+  sectionOptions: { en: 'Options', de: 'Optionen' },
+  sectionDisplay: { en: 'Display', de: 'Anzeige' },
+  sectionVisibility: { en: 'Visibility', de: 'Sichtbarkeit' },
+  sectionRules: { en: 'Rules', de: 'Regeln' },
+  width: { en: 'Width', de: 'Breite' },
+  widthFull: { en: 'Full', de: 'Ganz' },
+  paletteSearchPlaceholder: { en: 'Filter field types…', de: 'Feldtypen filtern…' },
+  paletteGroupBasic: { en: 'Basic', de: 'Einfach' },
+  paletteGroupChoice: { en: 'Choice', de: 'Auswahl' },
+  paletteGroupDateTime: { en: 'Date & time', de: 'Datum & Uhrzeit' },
+  paletteGroupRich: { en: 'Rich & files', de: 'Medien & Dateien' },
+  paletteGroupStructure: { en: 'Structure', de: 'Struktur' },
 };

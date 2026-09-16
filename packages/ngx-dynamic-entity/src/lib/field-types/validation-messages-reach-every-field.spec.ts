@@ -60,9 +60,7 @@ describe('configured validation messages reach every field type', () => {
       fixture.componentRef.setInput('control', control);
       fixture.detectChanges();
 
-      const error = (fixture.nativeElement as HTMLElement).querySelector(
-        '[data-testid="field-probe-error"]',
-      );
+      const error = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="field-probe-error"]');
       expect(error).toBeTruthy();
       expect(error!.textContent).toContain(CUSTOM);
     });

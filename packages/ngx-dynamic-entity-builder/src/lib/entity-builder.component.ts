@@ -7,6 +7,7 @@ import {
   OnChanges,
   Output,
   SimpleChanges,
+  ViewEncapsulation,
   effect,
   inject,
 } from '@angular/core';
@@ -18,21 +19,24 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { COMMON_MODULES, type CommonModuleEntry, type EntityFormConfig, type EntityPermissions } from '@dynamic-entity/core';
+import { COMMON_MODULES, type CommonModuleEntry, type EntityFormConfig } from '@dynamic-entity/core';
 import { ConfigSourceService } from 'ngx-dynamic-entity';
-import { BuilderStore } from './builder-store.service';
+import { BuilderStore, type BuilderProblem } from './builder-store.service';
 import { FieldInspectorComponent } from './components/field-inspector.component';
 import { FieldPaletteComponent } from './components/field-palette.component';
 import { TabManagerComponent } from './components/tab-manager.component';
 import { EntityBuilderCanvasComponent } from './components/entity-builder-canvas.component';
 import { BuilderTextService } from './builder-text';
 
+type RbacAction = 'view' | 'edit' | 'delete';
+
 /** RBAC actions surfaced in the settings panel. */
-const RBAC_ACTIONS: (keyof EntityPermissions)[] = ['view', 'edit', 'delete'];
+const RBAC_ACTIONS: readonly RbacAction[] = ['view', 'edit', 'delete'];
 
 /** Shared stable empty array — never allocate a fresh [] per change-detection (mat-select loops). */
 const EMPTY_ROLES: readonly string[] = Object.freeze([]);
@@ -54,6 +58,7 @@ const EMPTY_ROLES: readonly string[] = Object.freeze([]);
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatMenuModule,
     MatSelectModule,
     MatSlideToggleModule,
     MatToolbarModule,
@@ -65,6 +70,27 @@ const EMPTY_ROLES: readonly string[] = Object.freeze([]);
   ],
   templateUrl: './entity-builder.component.html',
   styleUrl: './entity-builder.component.css',
+  /*
+   * This stylesheet is the builder's design system, not one component's styles.
+   *
+   * `.deb-field-row`, `.deb-section-title`, `.deb-hint`, `.deb-chip`, `.deb-empty` and the
+   * rest are written in seven child components' templates and defined only here — and under
+   * emulated encapsulation a parent's rules carry this component's `_ngcontent` attribute, so
+   * none of them ever reached a child. The field rows, the inspector's section titles and the
+   * canvas's empty state have been rendering unstyled since they were split out; the
+   * duplicate `.deb-row` / `.deb-option-row` blocks inside `entity-reference-config` are
+   * somebody working around the same thing one panel at a time.
+   *
+   * `.cdk-drag-preview` says the same thing from the other direction: the CDK attaches a drag
+   * preview to `document.body`, outside this component entirely, so that rule could never
+   * have applied while scoped.
+   *
+   * What makes lifting the scope safe is that every selector in the file is `deb-`-prefixed —
+   * the CDK rules included, which are qualified with `.deb-field-row` so a host's own drop
+   * list does not inherit the builder's drag styling. `:host` is spelled `ngx-entity-builder`
+   * for the same reason: there is no host scope left to write it in.
+   */
+  encapsulation: ViewEncapsulation.None,
 })
 export class EntityBuilderComponent implements OnChanges {
   /** Builder chrome, overridable via BUILDER_TEXT. */
@@ -107,6 +133,17 @@ export class EntityBuilderComponent implements OnChanges {
   @Output() save = new EventEmitter<EntityFormConfig>();
 
   protected readonly rbacActions = RBAC_ACTIONS;
+
+  /**
+   * Select the field an issue is about, so reading the message and acting on it are one step.
+   *
+   * A problem without a `fieldId` is about the entity itself — no tabs, a bad entity name —
+   * and there is nothing to select; the template disables those entries rather than silently
+   * doing nothing when one is clicked.
+   */
+  protected selectProblemField(problem: BuilderProblem): void {
+    if (problem.fieldId) this.store.selectField(problem.fieldId);
+  }
 
   constructor() {
     effect(() => this.configChange.emit(this.store.config()), { allowSignalWrites: true });
@@ -171,18 +208,18 @@ export class EntityBuilderComponent implements OnChanges {
 
   // ─── RBAC settings ────────────────────────────────────────────────────────
 
-  protected rolesFor(action: keyof EntityPermissions): readonly string[] {
+  protected rolesFor(action: RbacAction): readonly string[] {
     // Return the stored array (stable ref between mutations) or a shared empty — NOT a fresh [],
     // which would make the bound mat-select re-evaluate every CD and loop forever.
     return this.store.config().permissions?.[action] ?? EMPTY_ROLES;
   }
 
-  protected setRoles(action: keyof EntityPermissions, roles: string[]): void {
+  protected setRoles(action: RbacAction, roles: string[]): void {
     this.store.setPermission(action, roles);
   }
 
   /** Parse a comma-separated role string into a trimmed, de-duplicated array. */
-  protected setRolesFromText(action: keyof EntityPermissions, text: string): void {
+  protected setRolesFromText(action: RbacAction, text: string): void {
     const roles = Array.from(
       new Set(
         text

@@ -57,49 +57,65 @@ import { BuilderTextService } from '../builder-text';
       @if (field.validators?.required) {
         <span class="deb-req" [title]="ui.text('required')">*</span>
       }
+      <!--
+        The grid width this field was given, when it is not the default.
+        Layout is now authored in the inspector, and a list that does not show it makes the
+        author open every field in turn to find the one that is half a row wide.
+      -->
+      @if (field.colSpan && field.colSpan !== 12) {
+        <span class="deb-span-badge" [attr.data-testid]="'row-span-' + field.id" [title]="ui.text('width')"
+          >{{ field.colSpan }}/12</span
+        >
+      }
 
-      <button
-        mat-icon-button
-        type="button"
-        [disabled]="index === 0"
-        [attr.data-testid]="'row-up-' + field.id"
-        [attr.aria-label]="ui.text('moveFieldUp', { field: fieldLabel(field) })"
-        (click)="store.moveField(store.keyOf(field), -1); $event.stopPropagation()"
-        [matTooltip]="ui.text('moveUp')"
-      >
-        <mat-icon>arrow_upward</mat-icon>
-      </button>
-      <button
-        mat-icon-button
-        type="button"
-        [disabled]="index === totalCount - 1"
-        [attr.data-testid]="'row-down-' + field.id"
-        [attr.aria-label]="ui.text('moveFieldDown', { field: fieldLabel(field) })"
-        (click)="store.moveField(store.keyOf(field), 1); $event.stopPropagation()"
-        [matTooltip]="ui.text('moveDown')"
-      >
-        <mat-icon>arrow_downward</mat-icon>
-      </button>
-      <button
-        mat-icon-button
-        type="button"
-        [attr.data-testid]="'row-duplicate-' + field.id"
-        [attr.aria-label]="ui.text('duplicateField', { field: fieldLabel(field) })"
-        (click)="store.duplicateField(store.keyOf(field)); $event.stopPropagation()"
-        [matTooltip]="ui.text('duplicate')"
-      >
-        <mat-icon>content_copy</mat-icon>
-      </button>
-      <button
-        mat-icon-button
-        type="button"
-        color="warn"
-        [attr.data-testid]="'row-delete-' + field.id"
-        (click)="store.removeField(store.keyOf(field)); $event.stopPropagation()"
-        [matTooltip]="ui.text('delete')"
-      >
-        <mat-icon>delete</mat-icon>
-      </button>
+      <!--
+        Grouped so the row can reveal them together on hover, focus and selection. Four icon
+        buttons on every row put more ink into the controls than into the field names.
+      -->
+      <div class="deb-field-row__actions">
+        <button
+          mat-icon-button
+          type="button"
+          [disabled]="index === 0"
+          [attr.data-testid]="'row-up-' + field.id"
+          [attr.aria-label]="ui.text('moveFieldUp', { field: fieldLabel(field) })"
+          (click)="store.moveField(store.keyOf(field), -1); $event.stopPropagation()"
+          [matTooltip]="ui.text('moveUp')"
+        >
+          <mat-icon>arrow_upward</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          [disabled]="index === totalCount - 1"
+          [attr.data-testid]="'row-down-' + field.id"
+          [attr.aria-label]="ui.text('moveFieldDown', { field: fieldLabel(field) })"
+          (click)="store.moveField(store.keyOf(field), 1); $event.stopPropagation()"
+          [matTooltip]="ui.text('moveDown')"
+        >
+          <mat-icon>arrow_downward</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          [attr.data-testid]="'row-duplicate-' + field.id"
+          [attr.aria-label]="ui.text('duplicateField', { field: fieldLabel(field) })"
+          (click)="store.duplicateField(store.keyOf(field)); $event.stopPropagation()"
+          [matTooltip]="ui.text('duplicate')"
+        >
+          <mat-icon>content_copy</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          color="warn"
+          [attr.data-testid]="'row-delete-' + field.id"
+          (click)="store.removeField(store.keyOf(field)); $event.stopPropagation()"
+          [matTooltip]="ui.text('delete')"
+        >
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
     </div>
 
     @if (field.children && field.children.length > 0) {

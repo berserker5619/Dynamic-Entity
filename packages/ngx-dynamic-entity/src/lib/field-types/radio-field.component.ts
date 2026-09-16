@@ -12,7 +12,7 @@ import {
 } from '@dynamic-entity/core';
 import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-registry.service';
 
-import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
+import { fieldDescribedBy, fieldDomId, nextFieldInstanceId } from './field-dom-id';
 /** Radio field: a group of radio buttons built from field.options. */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,7 +28,25 @@ import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
       [class.ngx-field--masked]="masked"
     >
       <fieldset class="ngx-field__fieldset">
-        <legend class="ngx-field__label">{{ label }}</legend>
+        <legend class="ngx-field__label">
+          {{ label }}
+          @if (hint) {
+            <!--
+              Inside the legend rather than beside it: a fieldset allows exactly one legend
+              and it must be the first child, so a sibling row would be invalid here.
+            -->
+            <span class="ngx-field__hint-wrap">
+              <span class="ngx-field__hint-icon" aria-hidden="true">i</span>
+              <span
+                class="ngx-field__hint"
+                role="tooltip"
+                [attr.data-testid]="'field-' + field.id + '-hint'"
+                [id]="domId('-hint')"
+                >{{ hint }}</span
+              >
+            </span>
+          }
+        </legend>
         @if (masked) {
           <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
             maskedText
@@ -45,6 +63,7 @@ import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
                   type="radio"
                   class="ngx-field__radio-input"
                   [formControl]="$any(control)"
+                  [attr.aria-describedby]="describedBy()"
                   [value]="getOptStoredVal(option)"
                   [attr.disabled]="field.disabled ? true : null"
                 />
@@ -53,7 +72,9 @@ import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
             }
           </div>
           @if (errorMessage) {
-            <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">{{ errorMessage }}</span>
+            <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" [id]="domId('-error')">{{
+              errorMessage
+            }}</span>
           }
         }
       </fieldset>
@@ -158,16 +179,18 @@ export class RadioFieldComponent {
    * "This field has an error", which made a documented, configurable feature work on three
    * of fifteen field types.
    */
+  /** Author help text, shown under the control and named by `aria-describedby`. */
+  get hint(): string {
+    return resolveLabel(this.field?.hint, this.language);
+  }
+
+  /** The ids of whatever is describing this control right now. */
+  protected describedBy(): string | null {
+    return fieldDescribedBy(s => this.domId(s), { hint: !!this.hint, error: !!this.errorMessage });
+  }
+
   get errorMessage(): string {
     if (!this.control?.errors || !this.control.touched) return '';
-    return this.messages.resolve(this.control.errors, this.language, [
-      'required',
-      'email',
-      'min',
-      'max',
-      'minlength',
-      'maxlength',
-      'pattern',
-    ]);
+    return this.messages.resolveForField(this.control.errors, this.language, this.field.type);
   }
 }

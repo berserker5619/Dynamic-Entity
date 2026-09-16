@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { EntityFormConfig, FormRule } from '@dynamic-entity/core';
 import { provideBuiltInFieldTypes } from '../providers/provide-field-types';
 import { DynamicRecordFormComponent } from './dynamic-record-form.component';
+import { MASKED_ROLES } from '../tokens/injection-tokens';
 
 const config: EntityFormConfig = {
   entity: 'clients',
@@ -127,7 +128,68 @@ describe('DynamicRecordFormComponent', () => {
       expect(fixture.componentInstance.recordTitle).toBe('Record');
     });
 
-    it('derives the avatar letter from the title', () => {
+    /**
+     * The heading names the record; the title names the entity.
+     *
+     * Both used to be the entity — "clients", with "Entity: clients" underneath — so the one
+     * question a record header exists to answer was the one thing it did not say.
+     */
+    describe('the heading names the record', () => {
+      it('prefers a showOnMinimize field, which is the author saying "this identifies it"', () => {
+        build({ general: { name: 'Acme Corp', notes: 'Key account' } });
+        expect(component.recordHeading).toBe('Acme Corp');
+        expect(component.recordTitle).toBe('Client');
+      });
+
+      it('falls back to the entity label when nothing names the record', () => {
+        build();
+        expect(component.recordHeading).toBe('Client');
+      });
+
+      /**
+       * Masking is presentational, which is exactly why the heading must not defeat it: every
+       * field renders the value as `XXXXXXXXX`, and promoting it into the page heading would
+       * print in full the one thing this role is not meant to read.
+       *
+       * Its own TestBed because the masked role list comes from `MASKED_ROLES`, and the
+       * suite's shared one deliberately provides none.
+       */
+      it('never promotes a masked value into the heading', async () => {
+        const masked: EntityFormConfig = {
+          entity: 'clients',
+          name: { en: 'Client' },
+          tabs: [
+            {
+              id: 'general',
+              label: { en: 'General' },
+              fields: [{ id: 'name', type: 'text', label: { en: 'Name' }, showOnMinimize: true, maskData: true }],
+            },
+          ],
+        };
+
+        TestBed.resetTestingModule();
+        await TestBed.configureTestingModule({
+          imports: [DynamicRecordFormComponent],
+          providers: [provideBuiltInFieldTypes(), { provide: MASKED_ROLES, useValue: ['IT_SUPPORT'] }],
+        }).compileComponents();
+
+        const local = TestBed.createComponent(DynamicRecordFormComponent);
+        local.componentInstance.config = masked;
+        local.componentInstance.userRoles = ['IT_SUPPORT'];
+        local.componentInstance.initialData = { general: { name: 'Acme Corp' } };
+        local.componentInstance.ngOnChanges({ config: new SimpleChange(undefined, masked, true) });
+        local.detectChanges();
+
+        expect(local.componentInstance.recordHeading).toBe('Client');
+      });
+
+      it('derives the avatar letter from the heading', () => {
+        build({ general: { name: 'Acme Corp' } });
+        expect(component.avatarLetter).toBe('A');
+      });
+    });
+
+    it('derives the avatar letter from the entity when the record has no name', () => {
       build();
       expect(component.avatarLetter).toBe('C');
     });

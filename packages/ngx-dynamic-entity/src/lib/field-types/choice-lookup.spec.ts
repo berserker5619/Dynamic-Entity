@@ -25,12 +25,7 @@ const STATUS_LIST = [
 
 function configure(lists: Record<string, LookupListSource> = { employeeStatus: STATUS_LIST }): void {
   TestBed.configureTestingModule({
-    imports: [
-      DropdownFieldComponent,
-      RadioFieldComponent,
-      MultiSelectFieldComponent,
-      ReactiveFormsModule,
-    ],
+    imports: [DropdownFieldComponent, RadioFieldComponent, MultiSelectFieldComponent, ReactiveFormsModule],
     providers: [{ provide: LOOKUP_REGISTRY, useValue: new Map(Object.entries(lists)) }],
   });
 }
@@ -68,11 +63,7 @@ describe('choice fields — named lookup lists', () => {
       const options = fixture.nativeElement.querySelectorAll('option');
       // +1 for the placeholder.
       expect(options.length).toBe(3);
-      expect([...options].map((o: HTMLOptionElement) => o.textContent)).toEqual([
-        'Select...',
-        'Active',
-        'On Leave',
-      ]);
+      expect([...options].map((o: HTMLOptionElement) => o.textContent)).toEqual(['Select...', 'Active', 'On Leave']);
     });
 
     it('honours the list order, not the incoming order', async () => {
@@ -87,11 +78,7 @@ describe('choice fields — named lookup lists', () => {
       fixture.detectChanges();
 
       const options = [...fixture.nativeElement.querySelectorAll('option')];
-      expect(options.map((o: HTMLOptionElement) => o.textContent)).toEqual([
-        'Select...',
-        'First',
-        'Second',
-      ]);
+      expect(options.map((o: HTMLOptionElement) => o.textContent)).toEqual(['Select...', 'First', 'Second']);
     });
 
     it('inline options win over a named list, and never trigger a load', async () => {
@@ -115,12 +102,7 @@ describe('choice fields — named lookup lists', () => {
       // Another field on the page loaded this list first — the common case.
       await TestBed.inject(LookupRegistryService).load('employeeStatus', 'en');
 
-      const fixture = mount(
-        DropdownFieldComponent,
-        { listName: 'employeeStatus' },
-        { en: 'Active', de: 'Aktiv' },
-        true,
-      );
+      const fixture = mount(DropdownFieldComponent, { listName: 'employeeStatus' }, { en: 'Active', de: 'Aktiv' }, true);
 
       // No await: the read-only path must not need one.
       expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toBe('Active');
@@ -137,12 +119,7 @@ describe('choice fields — named lookup lists', () => {
 
     it('falls back to the stored text on a cold list rather than an em dash', () => {
       configure();
-      const fixture = mount(
-        DropdownFieldComponent,
-        { listName: 'employeeStatus' },
-        { en: 'Active' },
-        true,
-      );
+      const fixture = mount(DropdownFieldComponent, { listName: 'employeeStatus' }, { en: 'Active' }, true);
 
       expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toBe('Active');
     });
@@ -195,12 +172,7 @@ describe('choice fields — named lookup lists', () => {
       configure();
       await TestBed.inject(LookupRegistryService).load('employeeStatus', 'en');
 
-      const fixture = mount(
-        RadioFieldComponent,
-        { type: 'radio', listName: 'employeeStatus' },
-        'Aktiv',
-        true,
-      );
+      const fixture = mount(RadioFieldComponent, { type: 'radio', listName: 'employeeStatus' }, 'Aktiv', true);
 
       expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toBe('Active');
     });
@@ -232,9 +204,7 @@ describe('choice fields — named lookup lists', () => {
         true,
       );
 
-      expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toBe(
-        'Active, On Leave',
-      );
+      expect(fixture.nativeElement.querySelector('.ngx-field__value').textContent).toBe('Active, On Leave');
     });
   });
 

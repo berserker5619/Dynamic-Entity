@@ -1,19 +1,45 @@
-<mat-toolbar class="deb-toolbar" color="primary">
-  <mat-icon>dashboard_customize</mat-icon>
+<mat-toolbar class="deb-toolbar">
+  <mat-icon class="deb-toolbar__mark">dashboard_customize</mat-icon>
   <span class="deb-toolbar__title">{{ ui.text('builderTitle') }}</span>
+  <span class="deb-toolbar__entity" data-testid="builder-toolbar-entity">{{ store.config().entity || '—' }}</span>
   <span class="deb-spacer"></span>
 
+  <!--
+    The issue count, and the issues.
+    It used to be a button labelled "0 / 1" whose tooltip said to hover the items in the list
+    — a list that did not exist anywhere in the builder. The count now opens the problems
+    themselves, and an entry that names a field selects it, which is the action the person
+    reading the message wants to take next.
+  -->
   @if (store.problems().length) {
     <button
       mat-button
       type="button"
       class="deb-problems"
+      data-testid="builder-problems"
       [class.deb-problems--error]="!store.isValid()"
+      [matMenuTriggerFor]="problemsMenu"
       [matTooltip]="ui.text('issuesTooltip', { count: store.problems().length })"
     >
       <mat-icon>{{ store.isValid() ? 'warning' : 'error' }}</mat-icon>
-      {{ store.errors().length }} / {{ store.problems().length }}
+      {{ ui.text('issuesCount', { errors: store.errors().length, total: store.problems().length }) }}
     </button>
+    <mat-menu #problemsMenu="matMenu" class="deb-problems-menu">
+      @for (problem of store.problems(); track $index) {
+        <button
+          mat-menu-item
+          type="button"
+          data-testid="builder-problem"
+          [disabled]="!problem.fieldId"
+          (click)="selectProblemField(problem)"
+        >
+          <mat-icon [class.deb-problems--error]="problem.level === 'error'">{{
+            problem.level === 'error' ? 'error' : 'warning'
+          }}</mat-icon>
+          <span class="deb-problems-menu__text">{{ problem.message }}</span>
+        </button>
+      }
+    </mat-menu>
   }
 
   <button
@@ -40,10 +66,21 @@
   </button>
 
   <button mat-button type="button" (click)="copyJson()"><mat-icon>content_copy</mat-icon> {{ ui.text('copyJson') }}</button>
-  <!-- primary, not accent: white on Material's default pink accent is 3.33:1, below AA. -->
-  <button mat-flat-button color="primary" type="button" [disabled]="!store.isValid()" (click)="doSave()">
-    <mat-icon>save</mat-icon> {{ ui.text('save') }}
-  </button>
+  <!--
+    The tooltip sits on a wrapper, not on the button.
+
+    A disabled button receives no pointer events, so a tooltip bound to it never fires — which
+    is the one state where the explanation is worth having. Saving stays disabled here (unlike
+    the renderer's Save, which refuses instead): an invalid *schema* is not something the
+    author can be shown their way out of one field at a time, and the issue list beside this
+    button is where that conversation happens.
+  -->
+  <span [matTooltip]="store.isValid() ? '' : ui.text('saveBlockedTooltip')" [matTooltipDisabled]="store.isValid()">
+    <!-- primary, not accent: white on Material's default pink accent is 3.33:1, below AA. -->
+    <button mat-flat-button color="primary" type="button" [disabled]="!store.isValid()" (click)="doSave()">
+      <mat-icon>save</mat-icon> {{ ui.text('save') }}
+    </button>
+  </span>
 </mat-toolbar>
 
 <div class="deb-body">
@@ -76,9 +113,12 @@
           </mat-form-field>
         </div>
 
-        <mat-slide-toggle [ngModel]="store.config().maskData ?? false" (ngModelChange)="store.setMaskData($event)">{{
-          ui.text('maskEntity')
-        }}</mat-slide-toggle>
+        <mat-slide-toggle
+          color="primary"
+          [ngModel]="store.config().maskData ?? false"
+          (ngModelChange)="store.setMaskData($event)"
+          >{{ ui.text('maskEntity') }}</mat-slide-toggle
+        >
 
         <mat-expansion-panel class="deb-rbac">
           <mat-expansion-panel-header>
@@ -122,9 +162,20 @@
     </mat-card>
   </div>
 
-  <!-- ─── Center: field canvas ─── -->
+  <!-- ─── Center: field canvas, then what it renders as ─── -->
   <div class="deb-col deb-col--center">
     <ngx-entity-builder-canvas />
+
+    <!--
+      The live preview, moved up from the footer.
+      It used to sit below a collapsed JSON accordion at the very bottom of the page — around
+      1500px under the canvas on a fresh builder — so the one thing that tells an author what
+      they are building was never on screen while they built it. Directly under the field list
+      is where a change and its effect can be seen in the same glance.
+    -->
+    <div class="deb-preview-slot">
+      <ng-content select="[ngxBuilderPreview]"></ng-content>
+    </div>
   </div>
 
   <!-- ─── Right: inspector ─── -->
@@ -140,7 +191,7 @@
   </div>
 </div>
 
-<!-- ─── Footer: JSON + optional live preview ─── -->
+<!-- ─── Footer: the exported JSON ─── -->
 <div class="deb-footer">
   <mat-expansion-panel>
     <mat-expansion-panel-header>
@@ -148,8 +199,4 @@
     </mat-expansion-panel-header>
     <pre class="deb-json">{{ json }}</pre>
   </mat-expansion-panel>
-
-  <div class="deb-preview-slot">
-    <ng-content select="[ngxBuilderPreview]"></ng-content>
-  </div>
 </div>

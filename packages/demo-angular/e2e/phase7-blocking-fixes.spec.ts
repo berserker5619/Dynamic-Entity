@@ -46,10 +46,10 @@ test.describe('Dynamic Entity E2E - Phase 7.0 Fixes & Edge Cases', () => {
     await selectMatOption(page, 'data-source', 'Authored here');
 
     await expect(page.getByTestId('list-name')).toHaveCount(0);
-    await expect(inspector.getByRole('button', { name: 'Option' })).toBeVisible();
+    await expect(inspector.getByTestId('add-option')).toBeVisible();
 
     // Adding an option confirms it is in manual mode
-    await safeClick(inspector.getByRole('button', { name: 'Option' }));
+    await safeClick(inspector.getByTestId('add-option'));
     await expect(inspector.locator('[data-testid="option-row"]')).toHaveCount(1);
   });
 

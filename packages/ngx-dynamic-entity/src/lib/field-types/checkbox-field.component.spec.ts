@@ -7,7 +7,7 @@ describe('CheckboxFieldComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [CheckboxFieldComponent, ReactiveFormsModule]
+      imports: [CheckboxFieldComponent, ReactiveFormsModule],
     }).compileComponents();
 
     fixture = TestBed.createComponent(CheckboxFieldComponent);
@@ -27,7 +27,7 @@ describe('CheckboxFieldComponent', () => {
     fixture.detectChanges();
     const val = fixture.nativeElement.querySelector('.ngx-field__value');
     expect(val.textContent).toBe('Yes');
-    
+
     fixture.componentRef.setInput('control', new FormControl(false));
     fixture.detectChanges();
     expect(val.textContent).toBe('No');

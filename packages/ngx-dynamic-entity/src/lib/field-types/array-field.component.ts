@@ -22,7 +22,18 @@ import { UiTextService } from '../services/ui-text.service';
       [class.ngx-field--masked]="masked"
     >
       <div class="ngx-field__array-header">
-        <label class="ngx-field__label">{{ label }}</label>
+        <label class="ngx-field__label">
+          {{ label }}
+          @if (hint) {
+            <!-- Explains the set of rows, so it hangs off their name rather than any one row. -->
+            <span class="ngx-field__hint-wrap">
+              <span class="ngx-field__hint-icon" aria-hidden="true">i</span>
+              <span class="ngx-field__hint" role="tooltip" [attr.data-testid]="'field-' + field.id + '-hint'">{{
+                hint
+              }}</span>
+            </span>
+          }
+        </label>
         @if (!readonly && !masked) {
           <button
             type="button"
@@ -34,7 +45,6 @@ import { UiTextService } from '../services/ui-text.service';
           </button>
         }
       </div>
-
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
           maskedText
@@ -170,6 +180,11 @@ export class ArrayFieldComponent {
 
   private readonly fb = inject(FormBuilder);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
+
+  /** Author help text for the section as a whole. */
+  get hint(): string {
+    return resolveLabel(this.field?.hint, this.language);
+  }
 
   get label(): string {
     return resolveLabel(this.field?.label, this.language);

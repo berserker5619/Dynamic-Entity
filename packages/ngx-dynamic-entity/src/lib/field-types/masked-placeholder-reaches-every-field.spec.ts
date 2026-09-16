@@ -62,8 +62,6 @@ describe('the masked placeholder reaches every maskable field type', () => {
     // Changing what an unconfigured install prints would be a silent visual change on
     // upgrade for everyone already masking a field.
     const host = render('text', false);
-    expect(host.querySelector('[data-testid="field-probe-masked"]')!.textContent).toContain(
-      'XXXXXXXXX',
-    );
+    expect(host.querySelector('[data-testid="field-probe-masked"]')!.textContent).toContain('XXXXXXXXX');
   });
 });

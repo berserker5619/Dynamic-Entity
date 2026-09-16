@@ -56,16 +56,18 @@ import { BuilderTextService } from '../builder-text';
       .deb-full {
         width: 100%;
       }
-      .deb-row {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-      }
       .deb-row > * {
         flex: 1;
       }
-      .deb-row--split {
-        justify-content: space-between;
+      /*
+       * The type chip is a label, not a field.
+       *
+       * The rule above gave it an equal share of the identity row, so the chip took half the
+       * inspector's width and squeezed the field id into a column narrow enough to wrap its
+       * hint over three lines.
+       */
+      .deb-row > .deb-chip {
+        flex: 0 0 auto;
       }
       .deb-row--split > * {
         flex: 0 0 auto;
@@ -103,8 +105,58 @@ export class FieldInspectorComponent {
     return f ? getFieldTypeMeta(f.type) : undefined;
   });
 
+  /**
+   * The offered widths, as fractions of the 12-column row.
+   *
+   * Five steps rather than all twelve: a free 1–12 spinner is a layout system, and what an
+   * author actually wants is "these two side by side" or "this one across the row". The
+   * fractions that divide twelve evenly cover that, and anything finer stays authorable in
+   * the JSON for the rare case that needs it.
+   */
+  protected readonly spanChoices = [
+    { span: 3, textKey: 'widthQuarter' },
+    { span: 4, textKey: 'widthThird' },
+    { span: 6, textKey: 'widthHalf' },
+    { span: 8, textKey: 'widthTwoThirds' },
+    { span: 12, textKey: 'widthFull' },
+  ] as const;
+
   protected lang(): string {
     return this.store.activeLanguage();
+  }
+
+  /**
+   * How many validators this field actually has, for the section's badge.
+   *
+   * `false` and an empty `custom: []` are both "not set" written the long way — a toggle
+   * switched off leaves the key behind — so neither counts. `0` does: `minLength: 0` is a
+   * value somebody typed.
+   */
+  protected validatorCount(field: NestedFieldConfig): number {
+    return Object.values(field.validators ?? {}).filter(value => {
+      if (value === undefined || value === null || value === false) return false;
+      return Array.isArray(value) ? value.length > 0 : true;
+    }).length;
+  }
+
+  /**
+   * How many display flags are set away from their default.
+   *
+   * `visibility` counts when it is *false* and the rest when they are true, because the badge
+   * is meant to say "something here is not the default" — counting `visibility: true` would
+   * put a 1 on every field in the config and tell the author nothing.
+   */
+  protected displayFlagCount(field: NestedFieldConfig): number {
+    const flags = [
+      field.visibility === false,
+      field.table?.visible === true,
+      field.readonly === true,
+      field.disabled === true,
+      field.maskData === true,
+      field.criticalField === true,
+      field.showOnMinimize === true,
+    ];
+    return flags.filter(Boolean).length;
   }
 
   protected toNum(value: unknown): number | null {
@@ -119,6 +171,10 @@ export class FieldInspectorComponent {
 
   protected placeholderValue(field: NestedFieldConfig): string {
     return resolveLabel(field.placeholder, this.lang());
+  }
+
+  protected hintValue(field: NestedFieldConfig): string {
+    return resolveLabel(field.hint, this.lang());
   }
 
   protected optionLabel(option: DropdownOption): string {

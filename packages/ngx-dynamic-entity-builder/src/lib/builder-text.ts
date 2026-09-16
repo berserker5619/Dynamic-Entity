@@ -18,9 +18,11 @@ export const DEFAULT_BUILDER_TEXT = {
   undoTooltip: 'Undo (Ctrl+Z)',
   redo: 'Redo',
   redoTooltip: 'Redo (Ctrl+Shift+Z)',
-  issuesTooltip: '{count} issue(s) — hover items in the list',
+  issuesTooltip: '{count} issue(s) — open the list to see them',
+  issuesCount: '{errors} / {total}',
   copyJson: 'Copy JSON',
   save: 'Save',
+  saveBlockedTooltip: 'Fix the errors in the issue list before saving.',
 
   // Entity settings panel
   entityName: 'Entity name',
@@ -34,6 +36,18 @@ export const DEFAULT_BUILDER_TEXT = {
   addField: 'Add field',
   fieldProperties: 'Field properties',
   configJson: 'Config JSON',
+
+  // Field palette
+  paletteSearchPlaceholder: 'Filter field types…',
+  paletteSearchLabel: 'Filter field types',
+  paletteSearchClear: 'Clear the filter',
+  paletteNoMatch: 'No field type matches "{query}".',
+  paletteGroupBasic: 'Basic',
+  paletteGroupChoice: 'Choice',
+  paletteGroupDateTime: 'Date & time',
+  paletteGroupRich: 'Rich & files',
+  paletteGroupStructure: 'Structure',
+  paletteGroupOther: 'Other',
 
   // Canvas
   fieldsHeading: 'Fields ({count})',
@@ -62,8 +76,30 @@ export const DEFAULT_BUILDER_TEXT = {
   tabMoveHint: 'Moving the field rewrites its path and repoints the rules that named it.',
   labelInLanguage: 'Label ({language})',
   placeholderInLanguage: 'Placeholder ({language})',
+  hintInLanguage: 'Help text ({language})',
+  hintHint: 'An info icon beside the label, shown on hover and while the field has focus. Read out with the field.',
   defaultValue: 'Default value',
-  validation: 'Validation',
+
+  // Field inspector — section headings and the layout control.
+  // `validation` used to be the heading above the validator checkboxes; the inspector's
+  // sections now own their headings, so `sectionValidation` replaces it.
+  sectionBasics: 'Basics',
+  sectionLayout: 'Layout',
+  sectionValidation: 'Validation',
+  sectionOptions: 'Options',
+  sectionDisplay: 'Display',
+  sectionVisibility: 'Visibility',
+  sectionAutomation: 'Automation',
+  sectionRules: 'Rules',
+  sectionReference: 'Reference',
+  width: 'Width',
+  widthQuarter: '¼',
+  widthThird: '⅓',
+  widthHalf: '½',
+  widthTwoThirds: '⅔',
+  widthFull: 'Full',
+  widthHint: 'How much of the 12-column row this field takes. Fields sharing a row sit side by side.',
+  widthOf: '{span} of 12 columns',
 
   // Field inspector — options
   dataSource: 'Data source',

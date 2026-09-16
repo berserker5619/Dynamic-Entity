@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  Injector,
   Input,
   Output,
   EventEmitter,
@@ -10,6 +11,7 @@ import {
   OnInit,
   SimpleChange,
   SimpleChanges,
+  afterNextRender,
   signal,
   computed,
   inject,
@@ -54,6 +56,48 @@ import { RbacService } from '../services/rbac.service';
 import { RulesEvaluationService } from '../services/rules-evaluation.service';
 import { EntityRefSelectionService } from '../services/entity-ref-selection.service';
 import { UiTextService } from '../services/ui-text.service';
+import { ValidationMessagesService } from '../services/validation-messages.service';
+
+/**
+ * Grid width per field type, used only under `layout="auto"` and only where the field itself
+ * names no `colSpan`.
+ *
+ * The rule behind the numbers is how much *content* the control holds, not how much room it
+ * would happily fill: a date is eight characters and a currency amount is rarely more, so
+ * giving either a full row buys nothing but scrolling. Anything that holds a paragraph, a
+ * picture, or a form of its own keeps all twelve.
+ *
+ * A type missing from this table falls back to twelve, which is what an unrecognised custom
+ * field type should get: the layout is conservative about controls it knows nothing about.
+ */
+const AUTO_COL_SPAN: Readonly<Record<string, number>> = {
+  text: 6,
+  email: 6,
+  password: 6,
+  number: 4,
+  currency: 4,
+  date: 4,
+  datetime: 4,
+  time: 4,
+  monthYear: 4,
+  dropdown: 6,
+  radio: 6,
+  multiSelect: 6,
+  boolean: 4,
+  checkbox: 4,
+  'entity-ref': 6,
+  // Left at the full width deliberately — textarea, markdown, image, file, group and array
+  // each hold something a half-row would crop.
+};
+
+/** A field the form will not save, with what is wrong and where to find it. */
+export interface InvalidField {
+  field: NestedFieldConfig;
+  /** The same message the field renders under itself. */
+  message: string;
+  tabId: string;
+  subTabId?: string;
+}
 
 /**
  * DynamicFormComponent — the main form component.
@@ -69,13 +113,41 @@ import { UiTextService } from '../services/ui-text.service';
   // Scoped per form instance: entity-ref selections must not leak between concurrent forms.
   providers: [EntityRefSelectionService],
   templateUrl: './dynamic-form.component.html',
+  /*
+   * The grid is structural, so it lives here rather than in the optional stylesheet.
+   *
+   * `getFieldSpan` writes `grid-column` inline on every slot, and a consumer who never
+   * imports `ngx-dynamic-entity/styles.css` still has to get a laid-out form rather than a
+   * column of unpositioned divs. That makes this the authoritative copy, and the reason the
+   * stylesheet deliberately does not restate it: a component stylesheet is injected after a
+   * global one and carries an attribute selector, so a duplicate there would lose every tie
+   * and sit in the file looking authoritative while doing nothing.
+   *
+   * Every value that a design might want to move is read from the same tokens the stylesheet
+   * sets, with a fallback for the consumer who imports nothing.
+   */
   styles: [
     `
       .ngx-form__panel {
         display: grid;
         grid-template-columns: repeat(12, minmax(0, 1fr));
-        gap: 16px 20px;
+        gap: var(--ngx-gap, 18px);
         align-items: start;
+      }
+      /*
+       * A read-only record is a table of values, not a form.
+       *
+       * With every field at its authored span the record view spent a screen on six values —
+       * and no control is being sized here, so the width a text input needs is not the width
+       * a value needs. auto-fit packs them, and a long note still takes its own row when the
+       * content demands one.
+       */
+      .ngx-form--readonly .ngx-form__panel {
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 2px var(--ngx-gap, 18px);
+      }
+      .ngx-form--readonly .ngx-form__field-slot {
+        grid-column: auto;
       }
       .ngx-form__field-slot {
         display: flex;
@@ -92,22 +164,24 @@ import { UiTextService } from '../services/ui-text.service';
         margin-top: 22px;
         background: none;
         border: 1px solid transparent;
-        border-radius: 6px;
+        border-radius: var(--ngx-radius-sm, 6px);
         cursor: pointer;
         font-size: 14px;
         line-height: 1;
         padding: 4px 6px;
       }
       .ngx-form__lock:hover {
-        border-color: #d1d5db;
-        background: #f9fafb;
+        border-color: var(--ngx-color-border, #d1d5db);
+        background: var(--ngx-color-surface-alt, #f9fafb);
       }
-      @media (max-width: 768px) {
-        .ngx-form__panel {
-          grid-template-columns: 1fr;
+      /* Matches the stylesheet's own breakpoint — a 12-column grid is unreadable below it. */
+      @media (max-width: 640px) {
+        .ngx-form__panel,
+        .ngx-form--readonly .ngx-form__panel {
+          grid-template-columns: minmax(0, 1fr);
         }
         .ngx-form__field-slot {
-          grid-column: span 12 !important;
+          grid-column: 1 / -1 !important;
         }
       }
     `,
@@ -165,6 +239,19 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
    * disable the form. Used by the builder's live preview.
    */
   @Input() preview: boolean = false;
+  /**
+   * How a field with no `colSpan` of its own is sized in the 12-column grid.
+   *
+   * `stack` — the historic behaviour — gives every such field the full twelve, so a form of
+   * eight short text fields renders as an eight-row ladder with two thirds of its width
+   * empty. `auto` sizes them by field type instead: a date or a number is half a row, a
+   * textarea or a nested group still takes all twelve.
+   *
+   * An explicit `colSpan` always wins in both modes, so turning `auto` on cannot override a
+   * layout somebody authored. The default stays `stack` because changing how existing configs
+   * render is not this input's business — opting in is.
+   */
+  @Input() layout: 'stack' | 'auto' = 'stack';
 
   // ─── Outputs ──────────────────────────────────────────────────────────────
   @Output() formSubmit = new EventEmitter<Record<string, any>>();
@@ -185,9 +272,15 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   private readonly hookRegistry = inject(HookRegistryService);
   private readonly rbacService = inject(RbacService);
   private readonly rulesEvaluation = inject(RulesEvaluationService);
+  /** Resolves what is wrong with a field, for the error summary — see `resolveForField`. */
+  private readonly messages = inject(ValidationMessagesService);
   private readonly entityRefSelection = inject(EntityRefSelectionService);
   private readonly commonModulesRegistry = inject(COMMON_MODULES_REGISTRY, { optional: true });
   private readonly migrations = inject(RECORD_MIGRATIONS, { optional: true }) ?? [];
+  /** Scopes the field-slot lookup a jump does, so the library never touches global `document`. */
+  private readonly host = inject(ElementRef) as ElementRef<HTMLElement>;
+  /** Ties `afterNextRender` to this component, so destroying it cancels a pending jump. */
+  private readonly injector = inject(Injector);
 
   protected readonly Object = Object;
 
@@ -221,9 +314,11 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   handleKeyboardEvent(event: KeyboardEvent): void {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
       event.preventDefault();
-      if (!this.readonly && this.canSubmit && this.form?.valid) {
-        this.submit();
-      }
+      // No `form.valid` check: the shortcut is the Save button, and pressing Save on an
+      // invalid form is what produces the error summary. Guarding here instead meant Ctrl+S
+      // on an incomplete form did nothing at all — and unlike the button, a shortcut cannot
+      // even look disabled.
+      if (!this.readonly && this.canSubmit) this.submit();
     }
   }
 
@@ -389,9 +484,35 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     return this.form.pending;
   }
 
-  /** Single source of truth for both the submit guard and the button's disabled state. */
+  /**
+   * Whether a submit would be refused. The guard `submit()` checks — not the button's state.
+   *
+   * See `submitDisabled` for why those are no longer the same question.
+   */
   get submitBlocked(): boolean {
     return this.form.invalid || this.form.pending || this.hasRuleErrors;
+  }
+
+  /**
+   * Whether the Save button is unavailable.
+   *
+   * This used to be `submitBlocked`, so an invalid form greyed Save out — and a greyed button
+   * is the worst possible answer to "why can't I save?". It cannot be clicked, so there is no
+   * moment at which the form gets to say which field is at fault or which tab it is on; the
+   * user is left comparing a disabled button against a form that looks, to them, filled in.
+   * On a tabbed form the offending field is usually not even on screen.
+   *
+   * Save now stays available while the form is merely invalid. Clicking it still saves
+   * nothing — `submit()` checks `submitBlocked` and refuses — but the refusal is where the
+   * error summary, the tab badges and the jump to the first bad field come from, so pressing
+   * Save produces an explanation instead of silence.
+   *
+   * What is still disabled is what a *retry cannot fix*: a save already in flight, and an
+   * async validator whose answer has not come back. Those are moments where the right answer
+   * is genuinely "wait", and a button that accepts a click would be lying.
+   */
+  get submitDisabled(): boolean {
+    return this.isSaving() || this.loading || this.form.pending;
   }
 
   ngOnInit(): void {
@@ -498,8 +619,120 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   getFieldSpan(field: NestedFieldConfig): string {
-    const span = field.colSpan ?? 12;
+    const span = field.colSpan ?? (this.layout === 'auto' ? (AUTO_COL_SPAN[field.type] ?? 12) : 12);
     return `span ${Math.min(12, Math.max(1, span))}`;
+  }
+
+  // ─── Validation recovery ──────────────────────────────────────────────────
+
+  /**
+   * Set by a submit that validation refused, cleared by one that went through.
+   *
+   * Gates the error summary rather than `form.invalid` doing it: a form opened on an empty
+   * required field is invalid from the first render, and leading with a block of red before
+   * the user has typed anything is an accusation, not help. The summary is the answer to
+   * "why did Save do nothing", so it appears when Save does nothing.
+   */
+  readonly submitAttempted = signal(false);
+
+  /**
+   * Every rendered field whose control is currently invalid, with the tab it lives on.
+   *
+   * Read by the tab badges, the error summary and the jump, so all three agree on what
+   * counts. Hidden fields are excluded because `syncHiddenFieldState` disables them and a
+   * disabled control is not part of validity — pointing the user at one would send them to a
+   * field that is not on screen, or worse, switch tabs to show them nothing.
+   *
+   * Cached per change-detection pass. The walk calls `getControl` once per field and that
+   * falls back to a recursive search of the whole form; the template reads this three times
+   * for the summary and once per tab for the badges, so recomputing it each time turns one
+   * traversal into a dozen on every keystroke. `form.statusChanges` is the only thing that
+   * can alter the answer, and it already runs `markForCheck` — dropping the cache there keeps
+   * it honest without a second subscription.
+   */
+  invalidFields(): InvalidField[] {
+    if (this.invalidFieldsCache) return this.invalidFieldsCache;
+
+    const out: InvalidField[] = [];
+    const collect = (tab: NestedTabConfig, parentId?: string) => {
+      for (const field of tab.fields ?? []) {
+        const control = this.getControl(field.id, tab.id);
+        if (!control || control.disabled || control.valid || control.pending) continue;
+        // The same message the field renders under itself — see `resolveForField`. Saying
+        // only *which* field is wrong leaves the user to go and look at each one; saying what
+        // is wrong with it is usually enough to fix it without leaving the summary.
+        const message = this.messages.resolveForField(control.errors, this.language, field.type);
+        out.push(
+          parentId
+            ? { field, message, tabId: parentId, subTabId: tab.id }
+            : { field, message, tabId: tab.id },
+        );
+      }
+      for (const child of tab.children ?? []) collect(child, parentId ?? tab.id);
+    };
+    for (const tab of this.visibleTabs) collect(tab);
+
+    return (this.invalidFieldsCache = out);
+  }
+
+  private invalidFieldsCache?: InvalidField[];
+
+  /** How many invalid fields sit on a tab — its own and its sub-tabs'. */
+  tabErrorCount(tab: NestedTabConfig): number {
+    if (!this.submitAttempted()) return 0;
+    return this.invalidFields().filter(entry => entry.tabId === tab.id).length;
+  }
+
+  /** The same count for a sub-tab, which is addressed by its own id rather than its parent's. */
+  subTabErrorCount(subTab: NestedTabConfig): number {
+    if (!this.submitAttempted()) return 0;
+    return this.invalidFields().filter(entry => entry.subTabId === subTab.id).length;
+  }
+
+  /**
+   * Switch to the tab holding `fieldId`, scroll it into view, and move focus onto it.
+   *
+   * `afterNextRender` rather than a timer: the panel the field lives in is rendered by the
+   * change detection this call is part of, so the element does not exist yet — and a timeout
+   * is both a guess at how long that takes and something that keeps running after the
+   * component is destroyed. The query is scoped to this component's own element, so the
+   * library never reaches for the global `document`.
+   */
+  jumpToField(fieldId: string): void {
+    const location = this.invalidFields().find(entry => entry.field.id === fieldId) ?? this.locateField(fieldId);
+    if (!location) return;
+
+    // The panel must not take focus back — this jump is going to focus the field itself.
+    this.setActiveTab(location.tabId, { focusPanel: false });
+    // `setActiveTab` resets to a tab's first child, so the sub-tab is selected after it.
+    if (location.subTabId) this.setActiveSubTab(location.subTabId, { focusPanel: false });
+
+    afterNextRender(
+      () => {
+        // The id comes from config, so it never goes into a selector string: no escaping to
+        // get wrong, and no need for `CSS.escape`, which jsdom does not provide.
+        const wanted = `field-container-${fieldId}`;
+        const el = Array.from(this.host.nativeElement.querySelectorAll<HTMLElement>('[id^="field-container-"]')).find(
+          slot => slot.id === wanted,
+        );
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // The slot carries tabindex="-1", so this actually moves focus rather than only
+        // scrolling and leaving focus behind on the link that was clicked.
+        el.focus();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  private locateField(fieldId: string): { tabId: string; subTabId?: string } | null {
+    for (const tab of this.tabs) {
+      if ((tab.fields ?? []).some(f => f.id === fieldId)) return { tabId: tab.id };
+      for (const child of tab.children ?? []) {
+        if ((child.fields ?? []).some(f => f.id === fieldId)) return { tabId: tab.id, subTabId: child.id };
+      }
+    }
+    return null;
   }
 
   // ─── criticalField locking ────────────────────────────────────────────────
@@ -537,8 +770,15 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     this.unlockedFields.set(next);
   }
 
+  /**
+   * A field's label in the form's language, falling back to its id.
+   *
+   * The fallback matters wherever the label stands alone rather than beside its control: an
+   * error-summary chip or a critical-change banner naming a field with no label for this
+   * language would otherwise be blank, and a blank chip is worse than a raw id.
+   */
   resolveFieldLabel(field: NestedFieldConfig): string {
-    return resolveLabel(field.label, this.language);
+    return resolveLabel(field.label, this.language) || field.id;
   }
 
   /**
@@ -612,7 +852,13 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     // never re-enable. submitBlocked reads form.pending and form.invalid, so this is what
     // keeps it honest.
     this.statusSub?.unsubscribe();
-    this.statusSub = this.form.statusChanges.subscribe(() => this.cdr.markForCheck());
+    // A rebuild replaces every control, so anything cached against the old ones is stale.
+    this.invalidFieldsCache = undefined;
+    this.statusSub = this.form.statusChanges.subscribe(() => {
+      // The only thing that can change which fields are invalid — see `invalidFields`.
+      this.invalidFieldsCache = undefined;
+      this.cdr.markForCheck();
+    });
 
     this.valueSub = changes$.subscribe(() => {
       const flattened = this.flattenFormValues();
@@ -1153,9 +1399,23 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
 
   async submit(): Promise<void> {
     if (!this.canSubmit || this.submitBlocked) {
+      /*
+       * A refused save used to mark every control touched and stop there.
+       *
+       * On a tabbed form that is indistinguishable from a broken button: the errors appear on
+       * whichever tabs hold them, the user is looking at a different one, and nothing on
+       * screen changes. Three things fix it, and all three are needed — the summary says how
+       * many and which, the tab badges say where, and this jump takes the user to the first.
+       */
       this.markAllTouched();
+      this.submitAttempted.set(true);
+      const first = this.invalidFields()[0];
+      if (first) this.jumpToField(first.field.id);
       return;
     }
+
+    // Whatever the last attempt complained about is settled, so the summary goes away.
+    this.submitAttempted.set(false);
 
     const rawData = this.extractRecord();
     let processedData = rawData;
@@ -1193,6 +1453,8 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     this.formValues.set(values);
     this.previousValues = { ...values };
     this.unlockedFields.set(new Set<string>());
+    // Nothing has been attempted against the restored values, so the old complaint is stale.
+    this.submitAttempted.set(false);
     this.formReset.emit();
   }
 }

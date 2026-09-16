@@ -7,7 +7,7 @@ describe('TextareaFieldComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TextareaFieldComponent, ReactiveFormsModule]
+      imports: [TextareaFieldComponent, ReactiveFormsModule],
     }).compileComponents();
 
     fixture = TestBed.createComponent(TextareaFieldComponent);

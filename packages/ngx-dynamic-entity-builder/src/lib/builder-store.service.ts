@@ -13,13 +13,7 @@ import type {
 } from '@dynamic-entity/core';
 import { findTab, labelToId, normalizeConfigOptions, computeFieldDrift, createFieldSnapshot } from '@dynamic-entity/core';
 import { assignFieldRefs, collectFieldScopes, fieldRefFor, parseFieldRef, toRefToken } from '@dynamic-entity/core';
-import {
-  createFieldConfig,
-  getFieldTypeMeta,
-  humanizeId,
-  type FlagValidator,
-  type ParamValidator,
-} from './field-catalog';
+import { createFieldConfig, getFieldTypeMeta, humanizeId, type FlagValidator, type ParamValidator } from './field-catalog';
 import { deepClone } from './clone';
 
 export interface BuilderProblem {
@@ -240,9 +234,7 @@ export class BuilderStore {
    * It deliberately does not descend into a field's own `children`: `group` and `array`
    * children are rendered by the row that owns them, not as rows of their own.
    */
-  readonly fields = computed<NestedFieldConfig[]>(() =>
-    this.getAllFields(this._config().tabs ?? []),
-  );
+  readonly fields = computed<NestedFieldConfig[]>(() => this.getAllFields(this._config().tabs ?? []));
 
   /**
    * The same fields, kept in their owning tab.
@@ -265,9 +257,7 @@ export class BuilderStore {
   });
 
   readonly problems = computed<BuilderProblem[]>(() => this.validate(this._config()));
-  readonly errors = computed<BuilderProblem[]>(() =>
-    this.problems().filter(p => p.level === 'error'),
-  );
+  readonly errors = computed<BuilderProblem[]>(() => this.problems().filter(p => p.level === 'error'));
   readonly isValid = computed<boolean>(() => this.errors().length === 0);
 
   // ─── Initialisation ─────────────────────────────────────────────────────────
@@ -434,10 +424,7 @@ export class BuilderStore {
     return this.findFieldBy(tabs, f => f.refererField === key) ?? this.findFieldBy(tabs, f => f.id === key);
   }
 
-  private findFieldBy(
-    tabs: NestedTabConfig[] = [],
-    match: (f: NestedFieldConfig) => boolean,
-  ): NestedFieldConfig | null {
+  private findFieldBy(tabs: NestedTabConfig[] = [], match: (f: NestedFieldConfig) => boolean): NestedFieldConfig | null {
     for (const t of tabs) {
       const found = t.fields?.find(match);
       if (found) return found;
@@ -487,9 +474,7 @@ export class BuilderStore {
 
     this.mutate(draft => {
       const field = createFieldConfig(type, id, draft.defaultLanguage ?? 'en');
-      const targetTab = targetTabId
-        ? this.flattenTabs(draft.tabs).find(t => t.id === targetTabId)
-        : draft.tabs[0];
+      const targetTab = targetTabId ? this.flattenTabs(draft.tabs).find(t => t.id === targetTabId) : draft.tabs[0];
       if (targetTab) {
         targetTab.fields = targetTab.fields ?? [];
         targetTab.fields.push(field);
@@ -551,9 +536,7 @@ export class BuilderStore {
     // fields the two keys resolve to instead.
     const selectedKey = this._selectedFieldId();
     const tabsNow = this._config().tabs;
-    const wasSelected =
-      !!selectedKey &&
-      this.findFieldInTabs(tabsNow, selectedKey) === this.findFieldInTabs(tabsNow, key);
+    const wasSelected = !!selectedKey && this.findFieldInTabs(tabsNow, selectedKey) === this.findFieldInTabs(tabsNow, key);
 
     this.mutate(draft => {
       const field = this.findFieldInTabs(draft.tabs, key);
@@ -577,9 +560,7 @@ export class BuilderStore {
             // `source` names a field on the *linked* record, not this config — leave it.
             f.autoPatch = {
               ...f.autoPatch,
-              mappings: f.autoPatch.mappings.map(m =>
-                m.target === oldId ? { ...m, target: newId } : m,
-              ),
+              mappings: f.autoPatch.mappings.map(m => (m.target === oldId ? { ...m, target: newId } : m)),
             };
           }
           if (f.patchOnTrue) {
@@ -604,9 +585,7 @@ export class BuilderStore {
       rules.map(rule => ({
         ...rule,
         fieldId: rule.fieldId === oldId ? newId : rule.fieldId,
-        targets: rule.targets.map(t =>
-          t.type === 'field' && t.id === oldId ? { ...t, id: newId } : t,
-        ),
+        targets: rule.targets.map(t => (t.type === 'field' && t.id === oldId ? { ...t, id: newId } : t)),
       })),
     );
 
@@ -737,16 +716,9 @@ export class BuilderStore {
   /** Safe reorder for drag & drop within active tab or flat list */
   reorderField(fromIndex: number, toIndex: number, tabId?: string): void {
     this.mutate(draft => {
-      const targetTab = tabId
-        ? this.flattenTabs(draft.tabs).find(t => t.id === tabId)
-        : draft.tabs[0];
+      const targetTab = tabId ? this.flattenTabs(draft.tabs).find(t => t.id === tabId) : draft.tabs[0];
       const fields = targetTab?.fields ?? [];
-      if (
-        fromIndex < 0 ||
-        toIndex < 0 ||
-        fromIndex >= fields.length ||
-        toIndex >= fields.length
-      ) {
+      if (fromIndex < 0 || toIndex < 0 || fromIndex >= fields.length || toIndex >= fields.length) {
         return;
       }
       const [item] = fields.splice(fromIndex, 1);
@@ -808,6 +780,22 @@ export class BuilderStore {
       const field = this.findFieldInTabs(draft.tabs, id);
       if (!field) return;
       field.placeholder = { ...(field.placeholder ?? {}), [language]: value };
+    });
+  }
+
+  /**
+   * Help text shown under the control, per language.
+   *
+   * Separate from the placeholder for the reason the schema keeps them separate: a
+   * placeholder vanishes the moment the user types, so anything they need *while* filling the
+   * field in cannot live there. An author with only a placeholder box to write in tends to
+   * put it there anyway.
+   */
+  setFieldHint(id: string, language: string, value: string): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, id);
+      if (!field) return;
+      field.hint = { ...(field.hint ?? {}), [language]: value };
     });
   }
 
@@ -1156,9 +1144,7 @@ export class BuilderStore {
     const names = new Set<string>([id]);
     const ref = this.selectedField()?.refererField;
     if (ref) names.add(toRefToken(ref));
-    return this._rules().filter(
-      r => names.has(r.fieldId) || r.targets.some(t => names.has(t.id)),
-    );
+    return this._rules().filter(r => names.has(r.fieldId) || r.targets.some(t => names.has(t.id)));
   });
 
   loadRules(rules: FormRule[]): void {
@@ -1362,10 +1348,7 @@ export class BuilderStore {
    * sharing an id where one moved — is left alone rather than guessed at, because rewriting
    * the wrong rule is worse than leaving one to be repointed by hand.
    */
-  private repointRulesForMovedFields(
-    before: Map<string, string[]>,
-    after: Map<string, string[]>,
-  ): void {
+  private repointRulesForMovedFields(before: Map<string, string[]>, after: Map<string, string[]>): void {
     const moves = new Map<string, string>();
     for (const [id, oldRefs] of before) {
       const newRefs = after.get(id) ?? [];
@@ -1387,9 +1370,7 @@ export class BuilderStore {
       rules.map(rule => ({
         ...rule,
         fieldId: repoint(rule.fieldId) ?? rule.fieldId,
-        conditions: rule.conditions.map(c =>
-          c.compareToField ? { ...c, compareToField: repoint(c.compareToField) } : c,
-        ),
+        conditions: rule.conditions.map(c => (c.compareToField ? { ...c, compareToField: repoint(c.compareToField) } : c)),
         targets: rule.targets.map(t => ({ ...t, id: repoint(t.id) ?? t.id })),
       })),
     );
@@ -1489,8 +1470,7 @@ export class BuilderStore {
     } else if (!ID_PATTERN.test(config.entity)) {
       problems.push({
         level: 'error',
-        message:
-          'Entity name must start with a letter or underscore and contain only letters, digits, and underscores.',
+        message: 'Entity name must start with a letter or underscore and contain only letters, digits, and underscores.',
       });
     }
 

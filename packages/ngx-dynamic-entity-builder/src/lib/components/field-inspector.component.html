@@ -1,327 +1,481 @@
 @if (field(); as f) {
+  <!--
+    The inspector, in collapsible sections.
+
+    It used to be one flat scroll of fifteen divider-separated blocks, so renaming a field
+    meant scrolling past every advanced setting a field has, and finding the rules list meant
+    scrolling past all of them.
+
+    What is open by default is what an author sets when they add a field — name it, size it,
+    mark it required, give a choice field its options. The advanced half starts closed, but
+    opens itself as soon as *this* field uses it: a field with two rules is not a field whose
+    rules are advanced, and hiding what is already configured is how a setting gets forgotten
+    about. A closed section still reports itself through the count in its heading.
+
+    `<details>` rather than mat-expansion-panel: the inspector already sits inside a card in a
+    scrolling rail, and a third level of Material elevation inside that read as noise.
+  -->
   <div class="deb-inspector">
-    <!-- Identity -->
-    <div class="deb-row">
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>{{ ui.text('fieldId') }}</mat-label>
-        <input matInput data-testid="field-id" [value]="f.id" disabled />
-        @if (store.hasManualId(f.id)) {
-          <mat-hint>{{ ui.text('fieldIdFixedHint') }}</mat-hint>
-        } @else {
-          <mat-hint>{{ ui.text('fieldIdDerivedHint') }}</mat-hint>
+    <details class="deb-inspector__section" open>
+      <summary class="deb-inspector__summary">
+        {{ ui.text('sectionBasics') }}
+        <mat-icon class="deb-inspector__chevron">expand_more</mat-icon>
+      </summary>
+      <div class="deb-inspector__body">
+        <!-- Identity -->
+        <div class="deb-row">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ ui.text('fieldId') }}</mat-label>
+            <input matInput data-testid="field-id" [value]="f.id" disabled />
+            @if (store.hasManualId(f.id)) {
+              <mat-hint>{{ ui.text('fieldIdFixedHint') }}</mat-hint>
+            } @else {
+              <mat-hint>{{ ui.text('fieldIdDerivedHint') }}</mat-hint>
+            }
+          </mat-form-field>
+          <span class="deb-chip">{{ meta()?.label || f.type }}</span>
+        </div>
+
+        @if (tabOptions().length > 1) {
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+            <mat-label>{{ ui.text('tab') }}</mat-label>
+            <mat-select data-testid="field-tab" [ngModel]="currentTabId(f)" (ngModelChange)="moveToTab(f, $event)">
+              @for (tab of tabOptions(); track tab.id) {
+                <mat-option [value]="tab.id">{{ tab.label }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>{{ ui.text('tabMoveHint') }}</mat-hint>
+          </mat-form-field>
         }
-      </mat-form-field>
-      <span class="deb-chip">{{ meta()?.label || f.type }}</span>
-    </div>
 
-    @if (tabOptions().length > 1) {
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-        <mat-label>{{ ui.text('tab') }}</mat-label>
-        <mat-select data-testid="field-tab" [ngModel]="currentTabId(f)" (ngModelChange)="moveToTab(f, $event)">
-          @for (tab of tabOptions(); track tab.id) {
-            <mat-option [value]="tab.id">{{ tab.label }}</mat-option>
+        <!-- Localised text (active language) -->
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+          <mat-label>{{ ui.text('labelInLanguage', { language: lang() }) }}</mat-label>
+          <input
+            matInput
+            data-testid="field-label"
+            [ngModel]="labelValue(f)"
+            (ngModelChange)="store.setFieldLabel(store.keyOf(f), lang(), $event)"
+          />
+        </mat-form-field>
+
+        @if (meta()?.supportsPlaceholder) {
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+            <mat-label>{{ ui.text('placeholderInLanguage', { language: lang() }) }}</mat-label>
+            <input
+              matInput
+              [ngModel]="placeholderValue(f)"
+              (ngModelChange)="store.setFieldPlaceholder(store.keyOf(f), lang(), $event)"
+            />
+          </mat-form-field>
+        }
+
+        <!--
+          Help text, offered on every field type — including the ones with no placeholder,
+          which are exactly the ones most likely to need explaining. Its hint says what it is
+          *for*, because the box above it is the one authors reach for by habit and a
+          placeholder is gone the moment somebody types.
+        -->
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+          <mat-label>{{ ui.text('hintInLanguage', { language: lang() }) }}</mat-label>
+          <input
+            matInput
+            data-testid="field-hint"
+            [ngModel]="hintValue(f)"
+            (ngModelChange)="store.setFieldHint(store.keyOf(f), lang(), $event)"
+          />
+          <mat-hint>{{ ui.text('hintHint') }}</mat-hint>
+        </mat-form-field>
+
+        @if (meta()?.supportsDefaultValue) {
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+            <mat-label>{{ ui.text('defaultValue') }}</mat-label>
+            <input
+              matInput
+              [ngModel]="f.defaultValue ?? ''"
+              (ngModelChange)="store.updateField(store.keyOf(f), { defaultValue: $event })"
+            />
+          </mat-form-field>
+        }
+      </div>
+    </details>
+
+    <!--
+      Width.
+
+      `colSpan` has been in the schema and honoured by the renderer since the 12-column grid
+      existed, and the builder had no control for it — so every form authored here came out a
+      single-column ladder, and the only way to put two fields on one row was to hand-edit the
+      JSON. This is that control.
+    -->
+    <details class="deb-inspector__section" open>
+      <summary class="deb-inspector__summary">
+        {{ ui.text('sectionLayout') }}
+        <span class="deb-inspector__count" data-testid="layout-count">{{ f.colSpan ?? 12 }}/12</span>
+        <mat-icon class="deb-inspector__chevron">expand_more</mat-icon>
+      </summary>
+      <div class="deb-inspector__body">
+        <span class="deb-section-title">{{ ui.text('width') }}</span>
+        <div class="deb-span-picker" role="group" [attr.aria-label]="ui.text('width')">
+          @for (choice of spanChoices; track choice.span) {
+            <button
+              type="button"
+              class="deb-span-picker__btn"
+              [class.deb-span-picker__btn--active]="(f.colSpan ?? 12) === choice.span"
+              [attr.data-testid]="'field-span-' + choice.span"
+              [attr.aria-pressed]="(f.colSpan ?? 12) === choice.span"
+              [matTooltip]="ui.text('widthOf', { span: choice.span })"
+              (click)="store.updateField(store.keyOf(f), { colSpan: choice.span })"
+            >
+              {{ ui.text(choice.textKey) }}
+            </button>
           }
-        </mat-select>
-        <mat-hint>{{ ui.text('tabMoveHint') }}</mat-hint>
-      </mat-form-field>
-    }
-
-    <!-- Localised text (active language) -->
-    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-      <mat-label>{{ ui.text('labelInLanguage', { language: lang() }) }}</mat-label>
-      <input
-        matInput
-        data-testid="field-label"
-        [ngModel]="labelValue(f)"
-        (ngModelChange)="store.setFieldLabel(store.keyOf(f), lang(), $event)"
-      />
-    </mat-form-field>
-
-    @if (meta()?.supportsPlaceholder) {
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-        <mat-label>{{ ui.text('placeholderInLanguage', { language: lang() }) }}</mat-label>
-        <input
-          matInput
-          [ngModel]="placeholderValue(f)"
-          (ngModelChange)="store.setFieldPlaceholder(store.keyOf(f), lang(), $event)"
-        />
-      </mat-form-field>
-    }
-
-    @if (meta()?.supportsDefaultValue) {
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-        <mat-label>{{ ui.text('defaultValue') }}</mat-label>
-        <input
-          matInput
-          [ngModel]="f.defaultValue ?? ''"
-          (ngModelChange)="store.updateField(store.keyOf(f), { defaultValue: $event })"
-        />
-      </mat-form-field>
-    }
-
-    <!-- Entity reference, cascade, and autoPatch -->
-    @if (meta()?.isEntityRef) {
-      <mat-divider></mat-divider>
-      <ngx-entity-reference-config />
-    }
-
-    <mat-divider></mat-divider>
+        </div>
+        <p class="deb-hint">{{ ui.text('widthHint') }}</p>
+      </div>
+    </details>
 
     <!-- Validators -->
     @if (meta(); as m) {
       @if (m.flagValidators.length || m.paramValidators.length) {
-        <span class="deb-section-title">{{ ui.text('validation') }}</span>
-        <div class="deb-toggles">
-          @for (v of m.flagValidators; track v) {
-            <mat-checkbox
-              [ngModel]="store.hasFlagValidator(f, v)"
-              (ngModelChange)="store.toggleFlagValidator(store.keyOf(f), v, $event)"
-              >{{ v }}</mat-checkbox
-            >
-          }
-        </div>
-        @for (v of m.paramValidators; track v) {
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-            <mat-label>{{ v }}</mat-label>
-            <input
-              matInput
-              type="number"
-              [ngModel]="store.getParamValidator(f, v)"
-              (ngModelChange)="store.setParamValidator(store.keyOf(f), v, toNum($event))"
-            />
-          </mat-form-field>
-        }
+        <details class="deb-inspector__section" open>
+          <summary class="deb-inspector__summary">
+            {{ ui.text('sectionValidation') }}
+            @if (validatorCount(f); as count) {
+              <span class="deb-inspector__count" data-testid="validation-count">{{ count }}</span>
+            }
+            <mat-icon class="deb-inspector__chevron">expand_more</mat-icon>
+          </summary>
+          <div class="deb-inspector__body">
+            <div class="deb-toggles">
+              @for (v of m.flagValidators; track v) {
+                <mat-checkbox
+                  color="primary"
+                  [ngModel]="store.hasFlagValidator(f, v)"
+                  (ngModelChange)="store.toggleFlagValidator(store.keyOf(f), v, $event)"
+                  >{{ v }}</mat-checkbox
+                >
+              }
+            </div>
+            @for (v of m.paramValidators; track v) {
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+                <mat-label>{{ v }}</mat-label>
+                <input
+                  matInput
+                  type="number"
+                  [ngModel]="store.getParamValidator(f, v)"
+                  (ngModelChange)="store.setParamValidator(store.keyOf(f), v, toNum($event))"
+                />
+              </mat-form-field>
+            }
+          </div>
+        </details>
       }
     }
 
     <!-- Options (dropdown / radio / multiSelect) -->
     @if (meta()?.hasOptions) {
-      <mat-divider></mat-divider>
-      <span class="deb-section-title">{{ ui.text('dataSource') }}</span>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-        <mat-label>{{ ui.text('optionsComeFrom') }}</mat-label>
-        <mat-select
-          data-testid="data-source"
-          [ngModel]="store.fieldDataSource(f)"
-          (ngModelChange)="store.setFieldDataSource(store.keyOf(f), $event)"
-        >
-          <mat-option value="none">{{ ui.text('optionsSourceNone') }}</mat-option>
-          <mat-option value="manual">{{ ui.text('optionsSourceInline') }}</mat-option>
-          <mat-option value="lookup">{{ ui.text('optionsSourceList') }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-    }
-
-    <!-- Named lookup list -->
-    @if (meta()?.hasOptions && store.fieldDataSource(f) === 'lookup') {
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-        <mat-label>{{ ui.text('listName') }}</mat-label>
-        <input
-          matInput
-          data-testid="list-name"
-          [ngModel]="f.listName ?? ''"
-          (ngModelChange)="store.setListName(store.keyOf(f), $event)"
-        />
-      </mat-form-field>
-      <p class="deb-hint">
-        {{ ui.text('listNameHint') }}
-      </p>
-    }
-
-    <!-- Inline options -->
-    @if (meta()?.hasOptions && store.fieldDataSource(f) !== 'lookup') {
-      <div class="deb-row" style="justify-content: space-between">
-        <span class="deb-section-title">{{ ui.text('options') }}</span>
-        <button mat-stroked-button type="button" (click)="store.addOption(store.keyOf(f))">
-          <mat-icon>add</mat-icon> {{ ui.text('option') }}
-        </button>
-      </div>
-      @for (opt of f.options ?? []; track $index) {
-        <div class="deb-option-row" data-testid="option-row">
-          <!-- One input: the displayed text is the stored value. -->
+      <details class="deb-inspector__section" open>
+        <summary class="deb-inspector__summary">
+          {{ ui.text('sectionOptions') }}
+          @if ((f.options ?? []).length; as count) {
+            <span class="deb-inspector__count" data-testid="options-count">{{ count }}</span>
+          }
+          <mat-icon class="deb-inspector__chevron">expand_more</mat-icon>
+        </summary>
+        <div class="deb-inspector__body">
+          <span class="deb-section-title">{{ ui.text('dataSource') }}</span>
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
-            <mat-label>{{ ui.text('optionInLanguage', { language: lang() }) }}</mat-label>
-            <input
-              matInput
-              [attr.data-testid]="'option-' + $index"
-              [ngModel]="optionLabel(opt)"
-              (ngModelChange)="store.setOptionLabel(store.keyOf(f), $index, lang(), $event)"
-            />
+            <mat-label>{{ ui.text('optionsComeFrom') }}</mat-label>
+            <mat-select
+              data-testid="data-source"
+              [ngModel]="store.fieldDataSource(f)"
+              (ngModelChange)="store.setFieldDataSource(store.keyOf(f), $event)"
+            >
+              <mat-option value="none">{{ ui.text('optionsSourceNone') }}</mat-option>
+              <mat-option value="manual">{{ ui.text('optionsSourceInline') }}</mat-option>
+              <mat-option value="lookup">{{ ui.text('optionsSourceList') }}</mat-option>
+            </mat-select>
           </mat-form-field>
-          <button
-            mat-icon-button
-            type="button"
-            color="warn"
-            (click)="store.removeOption(store.keyOf(f), $index)"
-            [matTooltip]="ui.text('removeOption')"
-          >
-            <mat-icon>delete</mat-icon>
-          </button>
-        </div>
-      }
-      @if (!(f.options ?? []).length) {
-        <p class="deb-hint">{{ ui.text('noOptionsYet') }}</p>
-      }
-    }
 
-    <mat-divider></mat-divider>
+          <!-- Named lookup list -->
+          @if (store.fieldDataSource(f) === 'lookup') {
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+              <mat-label>{{ ui.text('listName') }}</mat-label>
+              <input
+                matInput
+                data-testid="list-name"
+                [ngModel]="f.listName ?? ''"
+                (ngModelChange)="store.setListName(store.keyOf(f), $event)"
+              />
+            </mat-form-field>
+            <p class="deb-hint">
+              {{ ui.text('listNameHint') }}
+            </p>
+          }
+
+          <!-- Inline options -->
+          @if (store.fieldDataSource(f) !== 'lookup') {
+            <div class="deb-row deb-row--split">
+              <span class="deb-section-title">{{ ui.text('options') }}</span>
+              <button
+                mat-stroked-button
+                type="button"
+                data-testid="add-option"
+                (click)="store.addOption(store.keyOf(f))"
+              >
+                <mat-icon>add</mat-icon> {{ ui.text('option') }}
+              </button>
+            </div>
+            @for (opt of f.options ?? []; track $index) {
+              <div class="deb-option-row" data-testid="option-row">
+                <!-- One input: the displayed text is the stored value. -->
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+                  <mat-label>{{ ui.text('optionInLanguage', { language: lang() }) }}</mat-label>
+                  <input
+                    matInput
+                    [attr.data-testid]="'option-' + $index"
+                    [ngModel]="optionLabel(opt)"
+                    (ngModelChange)="store.setOptionLabel(store.keyOf(f), $index, lang(), $event)"
+                  />
+                </mat-form-field>
+                <button
+                  mat-icon-button
+                  type="button"
+                  color="warn"
+                  (click)="store.removeOption(store.keyOf(f), $index)"
+                  [matTooltip]="ui.text('removeOption')"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            }
+            @if (!(f.options ?? []).length) {
+              <p class="deb-hint">{{ ui.text('noOptionsYet') }}</p>
+            }
+          }
+        </div>
+      </details>
+    }
 
     <!-- Flags -->
-    <span class="deb-section-title">{{ ui.text('display') }}</span>
-    <div class="deb-toggles">
-      <mat-slide-toggle
-        [ngModel]="f.visibility ?? true"
-        (ngModelChange)="store.updateField(store.keyOf(f), { visibility: $event })"
-        >{{ ui.text('visible') }}</mat-slide-toggle
-      >
-      <mat-slide-toggle
-        [ngModel]="f.table?.visible ?? false"
-        (ngModelChange)="store.updateField(store.keyOf(f), { table: { visible: $event } })"
-        >{{ ui.text('tableColumn') }}</mat-slide-toggle
-      >
-      <mat-slide-toggle
-        [ngModel]="f.readonly ?? false"
-        (ngModelChange)="store.updateField(store.keyOf(f), { readonly: $event })"
-        >{{ ui.text('readOnly') }}</mat-slide-toggle
-      >
-      <mat-slide-toggle
-        [ngModel]="f.disabled ?? false"
-        (ngModelChange)="store.updateField(store.keyOf(f), { disabled: $event })"
-        >{{ ui.text('disabled') }}</mat-slide-toggle
-      >
-      <mat-slide-toggle
-        [ngModel]="f.maskData ?? false"
-        (ngModelChange)="store.updateField(store.keyOf(f), { maskData: $event })"
-        >{{ ui.text('maskData') }}</mat-slide-toggle
-      >
-      <mat-slide-toggle
-        data-testid="toggle-critical"
-        [ngModel]="f.criticalField ?? false"
-        (ngModelChange)="store.updateField(store.keyOf(f), { criticalField: $event })"
-        [matTooltip]="ui.text('criticalFieldTooltip')"
-        >{{ ui.text('criticalField') }}</mat-slide-toggle
-      >
-      <mat-slide-toggle
-        [ngModel]="f.showOnMinimize ?? false"
-        (ngModelChange)="store.updateField(store.keyOf(f), { showOnMinimize: $event })"
-        [matTooltip]="ui.text('showInSummaryTooltip')"
-        >{{ ui.text('showInSummary') }}</mat-slide-toggle
-      >
-    </div>
-
-    <mat-divider></mat-divider>
+    <details class="deb-inspector__section" [attr.open]="displayFlagCount(f) ? '' : null">
+      <summary class="deb-inspector__summary">
+        {{ ui.text('sectionDisplay') }}
+        @if (displayFlagCount(f); as count) {
+          <span class="deb-inspector__count" data-testid="display-count">{{ count }}</span>
+        }
+        <mat-icon class="deb-inspector__chevron">expand_more</mat-icon>
+      </summary>
+      <div class="deb-inspector__body">
+        <span class="deb-section-title">{{ ui.text('display') }}</span>
+        <div class="deb-toggles">
+          <mat-slide-toggle
+            color="primary"
+            [ngModel]="f.visibility ?? true"
+            (ngModelChange)="store.updateField(store.keyOf(f), { visibility: $event })"
+            >{{ ui.text('visible') }}</mat-slide-toggle
+          >
+          <mat-slide-toggle
+            color="primary"
+            [ngModel]="f.table?.visible ?? false"
+            (ngModelChange)="store.updateField(store.keyOf(f), { table: { visible: $event } })"
+            >{{ ui.text('tableColumn') }}</mat-slide-toggle
+          >
+          <mat-slide-toggle
+            color="primary"
+            [ngModel]="f.readonly ?? false"
+            (ngModelChange)="store.updateField(store.keyOf(f), { readonly: $event })"
+            >{{ ui.text('readOnly') }}</mat-slide-toggle
+          >
+          <mat-slide-toggle
+            color="primary"
+            [ngModel]="f.disabled ?? false"
+            (ngModelChange)="store.updateField(store.keyOf(f), { disabled: $event })"
+            >{{ ui.text('disabled') }}</mat-slide-toggle
+          >
+          <mat-slide-toggle
+            color="primary"
+            [ngModel]="f.maskData ?? false"
+            (ngModelChange)="store.updateField(store.keyOf(f), { maskData: $event })"
+            >{{ ui.text('maskData') }}</mat-slide-toggle
+          >
+          <mat-slide-toggle
+            color="primary"
+            data-testid="toggle-critical"
+            [ngModel]="f.criticalField ?? false"
+            (ngModelChange)="store.updateField(store.keyOf(f), { criticalField: $event })"
+            [matTooltip]="ui.text('criticalFieldTooltip')"
+            >{{ ui.text('criticalField') }}</mat-slide-toggle
+          >
+          <mat-slide-toggle
+            color="primary"
+            [ngModel]="f.showOnMinimize ?? false"
+            (ngModelChange)="store.updateField(store.keyOf(f), { showOnMinimize: $event })"
+            [matTooltip]="ui.text('showInSummaryTooltip')"
+            >{{ ui.text('showInSummary') }}</mat-slide-toggle
+          >
+        </div>
+      </div>
+    </details>
 
     <!-- Conditional visibility (static showWhen) -->
-    <div class="deb-row deb-row--split">
-      <span class="deb-section-title">{{ ui.text('showWhen') }}</span>
-      <button mat-stroked-button type="button" data-testid="add-show-when" (click)="addShowWhen(f)">
-        <mat-icon>add</mat-icon> {{ ui.text('condition') }}
-      </button>
-    </div>
-    @for (entry of showWhenEntries(f); track entry.key) {
-      <div class="deb-option-row" data-testid="option-row">
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>{{ ui.text('watchedField') }}</mat-label>
-          <mat-select
-            data-testid="show-when-field"
-            [ngModel]="entry.key"
-            (ngModelChange)="renameShowWhen(f, entry.key, $event)"
-          >
-            @for (option of optionsWith(entry.key); track option.value) {
-              <mat-option [value]="option.value">
-                {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
-              </mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>{{ ui.text('equals') }}</mat-label>
-          <input matInput [ngModel]="entry.display" (ngModelChange)="setShowWhenValue(f, entry.key, $event)" />
-        </mat-form-field>
-        <button
-          mat-icon-button
-          type="button"
-          color="warn"
-          [matTooltip]="ui.text('removeCondition')"
-          (click)="removeShowWhen(f, entry.key)"
-        >
-          <mat-icon>delete</mat-icon>
-        </button>
-      </div>
-    }
-    @if (!showWhenEntries(f).length) {
-      <p class="deb-hint">{{ ui.text('alwaysVisibleHint') }}</p>
-    }
-
-    <!-- patchOnTrue (boolean/checkbox only) -->
-    @if (f.type === 'boolean' || f.type === 'checkbox') {
-      <mat-divider></mat-divider>
-      <div class="deb-row deb-row--split">
-        <span class="deb-section-title">{{ ui.text('copyOnTrue') }}</span>
-        <button
-          mat-stroked-button
-          type="button"
-          data-testid="add-patch-on-true"
-          (click)="store.addPatchOnTrueMapping(store.keyOf(f))"
-        >
-          <mat-icon>add</mat-icon> {{ ui.text('mapping') }}
-        </button>
-      </div>
-      @for (mapping of f.patchOnTrue ?? []; track $index) {
-        <div class="deb-option-row" data-testid="option-row">
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>{{ ui.text('fromField') }}</mat-label>
-            <mat-select
-              data-testid="patch-on-true-from"
-              [ngModel]="mapping.from"
-              (ngModelChange)="store.updatePatchOnTrueMapping(store.keyOf(f), $index, { from: $event })"
-            >
-              @for (option of optionsWith(mapping.from); track option.value) {
-                <mat-option [value]="option.value">
-                  {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
-                </mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>{{ ui.text('toField') }}</mat-label>
-            <mat-select
-              data-testid="patch-on-true-to"
-              [ngModel]="mapping.to"
-              (ngModelChange)="store.updatePatchOnTrueMapping(store.keyOf(f), $index, { to: $event })"
-            >
-              @for (option of optionsWith(mapping.to); track option.value) {
-                <mat-option [value]="option.value">
-                  {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
-                </mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-          <button
-            mat-icon-button
-            type="button"
-            color="warn"
-            [matTooltip]="ui.text('removeMapping')"
-            (click)="store.removePatchOnTrueMapping(store.keyOf(f), $index)"
-          >
-            <mat-icon>delete</mat-icon>
+    <details class="deb-inspector__section" [attr.open]="showWhenEntries(f).length ? '' : null">
+      <summary class="deb-inspector__summary">
+        {{ ui.text('sectionVisibility') }}
+        @if (showWhenEntries(f).length; as count) {
+          <span class="deb-inspector__count" data-testid="visibility-count">{{ count }}</span>
+        }
+        <mat-icon class="deb-inspector__chevron">expand_more</mat-icon>
+      </summary>
+      <div class="deb-inspector__body">
+        <div class="deb-row deb-row--split">
+          <span class="deb-section-title">{{ ui.text('showWhen') }}</span>
+          <button mat-stroked-button type="button" data-testid="add-show-when" (click)="addShowWhen(f)">
+            <mat-icon>add</mat-icon> {{ ui.text('condition') }}
           </button>
         </div>
-      }
-      @if (!(f.patchOnTrue ?? []).length) {
-        <p class="deb-hint">{{ ui.text('copyOnTrueHint') }}</p>
-      }
+        @for (entry of showWhenEntries(f); track entry.key) {
+          <div class="deb-option-row" data-testid="option-row">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>{{ ui.text('watchedField') }}</mat-label>
+              <mat-select
+                data-testid="show-when-field"
+                [ngModel]="entry.key"
+                (ngModelChange)="renameShowWhen(f, entry.key, $event)"
+              >
+                @for (option of optionsWith(entry.key); track option.value) {
+                  <mat-option [value]="option.value">
+                    {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
+                  </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>{{ ui.text('equals') }}</mat-label>
+              <input matInput [ngModel]="entry.display" (ngModelChange)="setShowWhenValue(f, entry.key, $event)" />
+            </mat-form-field>
+            <button
+              mat-icon-button
+              type="button"
+              color="warn"
+              [matTooltip]="ui.text('removeCondition')"
+              (click)="removeShowWhen(f, entry.key)"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        }
+        @if (!showWhenEntries(f).length) {
+          <p class="deb-hint">{{ ui.text('alwaysVisibleHint') }}</p>
+        }
+      </div>
+    </details>
+
+    <!-- Entity reference, cascade, autoPatch, and patchOnTrue -->
+    @if (meta()?.isEntityRef || f.type === 'boolean' || f.type === 'checkbox') {
+      <details class="deb-inspector__section" [attr.open]="meta()?.isEntityRef || (f.patchOnTrue ?? []).length ? '' : null">
+        <summary class="deb-inspector__summary">
+          {{ ui.text('sectionAutomation') }}
+          @if ((f.patchOnTrue ?? []).length; as count) {
+            <span class="deb-inspector__count" data-testid="automation-count">{{ count }}</span>
+          }
+          <mat-icon class="deb-inspector__chevron">expand_more</mat-icon>
+        </summary>
+        <div class="deb-inspector__body">
+          @if (meta()?.isEntityRef) {
+            <ngx-entity-reference-config />
+          }
+
+          <!-- patchOnTrue (boolean/checkbox only) -->
+          @if (f.type === 'boolean' || f.type === 'checkbox') {
+            <div class="deb-row deb-row--split">
+              <span class="deb-section-title">{{ ui.text('copyOnTrue') }}</span>
+              <button
+                mat-stroked-button
+                type="button"
+                data-testid="add-patch-on-true"
+                (click)="store.addPatchOnTrueMapping(store.keyOf(f))"
+              >
+                <mat-icon>add</mat-icon> {{ ui.text('mapping') }}
+              </button>
+            </div>
+            @for (mapping of f.patchOnTrue ?? []; track $index) {
+              <div class="deb-option-row" data-testid="option-row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ ui.text('fromField') }}</mat-label>
+                  <mat-select
+                    data-testid="patch-on-true-from"
+                    [ngModel]="mapping.from"
+                    (ngModelChange)="store.updatePatchOnTrueMapping(store.keyOf(f), $index, { from: $event })"
+                  >
+                    @for (option of optionsWith(mapping.from); track option.value) {
+                      <mat-option [value]="option.value">
+                        {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ ui.text('toField') }}</mat-label>
+                  <mat-select
+                    data-testid="patch-on-true-to"
+                    [ngModel]="mapping.to"
+                    (ngModelChange)="store.updatePatchOnTrueMapping(store.keyOf(f), $index, { to: $event })"
+                  >
+                    @for (option of optionsWith(mapping.to); track option.value) {
+                      <mat-option [value]="option.value">
+                        {{ option.label }} <span class="deb-path-hint">{{ option.path }}</span>
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <button
+                  mat-icon-button
+                  type="button"
+                  color="warn"
+                  [matTooltip]="ui.text('removeMapping')"
+                  (click)="store.removePatchOnTrueMapping(store.keyOf(f), $index)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            }
+            @if (!(f.patchOnTrue ?? []).length) {
+              <p class="deb-hint">{{ ui.text('copyOnTrueHint') }}</p>
+            }
+          }
+        </div>
+      </details>
     }
 
-    <mat-divider></mat-divider>
-
     <!-- Rules attached to this field -->
-    <ngx-field-rules-list />
+    <details class="deb-inspector__section" [attr.open]="store.rulesForSelectedField().length ? '' : null">
+      <summary class="deb-inspector__summary">
+        {{ ui.text('sectionRules') }}
+        @if (store.rulesForSelectedField().length; as count) {
+          <span class="deb-inspector__count" data-testid="rules-count">{{ count }}</span>
+        }
+        <mat-icon class="deb-inspector__chevron">expand_more</mat-icon>
+      </summary>
+      <div class="deb-inspector__body">
+        <ngx-field-rules-list />
+      </div>
+    </details>
 
-    <mat-divider></mat-divider>
-
-    <!-- Cross-entity field reference & drift management (Phase 8) -->
-    <ngx-referenced-field-config />
+    <!-- Cross-entity field reference & drift management -->
+    <details class="deb-inspector__section" [attr.open]="f.isReferenced || f.hasDrift ? '' : null">
+      <summary class="deb-inspector__summary">
+        {{ ui.text('sectionReference') }}
+        @if (f.isReferenced) {
+          <span class="deb-inspector__count" data-testid="reference-count">{{ f.referencedEntityKey }}</span>
+        }
+        <mat-icon class="deb-inspector__chevron">expand_more</mat-icon>
+      </summary>
+      <div class="deb-inspector__body">
+        <ngx-referenced-field-config />
+      </div>
+    </details>
   </div>
 } @else {
   <div class="deb-inspector__empty">

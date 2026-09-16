@@ -6,69 +6,119 @@
  * default for a library, but it meant a consumer's first render was unstyled browser HTML
  * with no starting point.
  *
- * This file is that starting point. Import it and the forms are legible; override the custom
- * properties below and they match your product. It is deliberately plain — no shadows, no
- * brand colour, no opinion about type — because it exists to be built on, not shipped as-is.
+ * This file is that starting point, and it is meant to be good enough to ship. Import it and
+ * the forms are legible, dense and accessible; override the custom properties below and they
+ * match your product.
  *
  *   // angular.json → styles, or a global stylesheet
  *   @import 'ngx-dynamic-entity/styles.css';
  *
- * Everything is driven by the custom properties in the :root block, which are scoped under
- * .ngx-form / .ngx-record-editor so importing this cannot affect the rest of your app.
- * Colours use `color-mix` sparingly and always with a plain fallback declared first.
+ * Everything is driven by the custom properties in the token block, which is scoped under
+ * .ngx-form / .ngx-record-editor so importing this cannot affect the rest of your app. One
+ * consequence of that scoping is worth knowing: a token you want to change must be
+ * redeclared on the same selectors (or on a wrapper of your own), not on `:root`.
+ *
+ * Dark mode follows `prefers-color-scheme`. Pin it either way by redeclaring the palette.
  */
+
+/* ─── Tokens ──────────────────────────────────────────────────────────────── */
 
 .ngx-form,
 .ngx-record-editor {
-  /* Palette */
-  --ngx-color-text: #16202a;
-  --ngx-color-muted: #65788a;
-  --ngx-color-border: #cfd8e0;
+  /* Palette — light */
+  --ngx-color-text: #17212b;
+  --ngx-color-muted: #5b6b7c;
+  --ngx-color-border: #d9e0e7;
+  --ngx-color-border-strong: #b6c2ce;
   --ngx-color-surface: #ffffff;
-  --ngx-color-surface-alt: #f5f8fa;
-  --ngx-color-accent: #0b5d8a;
-  --ngx-color-error: #9e2a2b;
+  --ngx-color-surface-alt: #f5f7fa;
+  --ngx-color-accent: #2563a8;
+  --ngx-color-accent-text: #ffffff;
+  --ngx-color-accent-soft: #eaf1f9;
+  --ngx-color-error: #b3261e;
+  --ngx-color-error-soft: #fdeceb;
   --ngx-color-warning: #8a5a12;
+  --ngx-color-warning-soft: #fdf4e3;
   --ngx-color-success: #1c6b52;
+  --ngx-color-info: var(--ngx-color-accent);
+  --ngx-color-info-soft: var(--ngx-color-accent-soft);
   --ngx-color-disabled-bg: #eef1f4;
 
   /* Metrics */
-  --ngx-radius: 4px;
-  --ngx-gap: 16px;
+  --ngx-radius: 8px;
+  --ngx-radius-sm: 6px;
+  --ngx-radius-pill: 999px;
+  --ngx-gap: 18px;
+  --ngx-gap-sm: 10px;
   --ngx-field-gap: 6px;
-  --ngx-control-height: 38px;
-  --ngx-control-padding: 8px 10px;
+  --ngx-control-height: 40px;
+  --ngx-control-padding: 9px 12px;
+  --ngx-focus-width: 2px;
 
   /* Type */
   --ngx-font: inherit;
   --ngx-font-size: 14px;
   --ngx-label-size: 13px;
   --ngx-hint-size: 12px;
+  --ngx-label-weight: 600;
+  --ngx-line: 1.5;
+
+  /* Elevation — deliberately restrained; a form is not a card deck. */
+  --ngx-shadow-sm: 0 1px 2px rgba(15, 25, 35, 0.06);
+  --ngx-ring: 0 0 0 3px color-mix(in srgb, var(--ngx-color-accent) 22%, transparent);
 
   color: var(--ngx-color-text);
   font-family: var(--ngx-font);
   font-size: var(--ngx-font-size);
+  line-height: var(--ngx-line);
+}
+
+/*
+ * Dark palette.
+ *
+ * Only the colour tokens are redeclared — metrics and type are scheme-independent, and
+ * duplicating them here is how the two halves drift apart.
+ */
+@media (prefers-color-scheme: dark) {
+  .ngx-form,
+  .ngx-record-editor {
+    --ngx-color-text: #e6edf3;
+    --ngx-color-muted: #9bb0c4;
+    --ngx-color-border: #2c3a48;
+    --ngx-color-border-strong: #3f5063;
+    --ngx-color-surface: #131b24;
+    --ngx-color-surface-alt: #1a2430;
+    --ngx-color-accent: #6aa8e8;
+    --ngx-color-accent-text: #08121c;
+    --ngx-color-accent-soft: #17293c;
+    --ngx-color-error: #f0857d;
+    --ngx-color-error-soft: #33191a;
+    --ngx-color-warning: #e0b063;
+    --ngx-color-warning-soft: #2f2517;
+    --ngx-color-success: #6fc9a8;
+    --ngx-color-disabled-bg: #1c2631;
+    --ngx-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  }
 }
 
 /* ─── Layout ──────────────────────────────────────────────────────────────── */
 
-.ngx-form__panel {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--ngx-gap);
-  align-items: start;
-}
-
-/* colSpan is applied inline by the renderer; this is the fallback for fields without one. */
-.ngx-form__field-slot {
-  grid-column: span 12;
-  min-width: 0; /* lets long values shrink instead of forcing the grid wider */
-  position: relative;
-}
+/*
+ * The 12-column grid, the field slot and the lock button are NOT declared here.
+ *
+ * They are structural rather than decorative: `getFieldSpan` writes `grid-column` inline, so
+ * a consumer who never imports this file still needs the grid to exist, and it lives in
+ * `DynamicFormComponent`'s own `styles`. Declaring it in both places is how the two disagree
+ * — a component stylesheet is injected after a global one and carries an attribute selector,
+ * so the copy here would lose every tie and the rules that looked authoritative would be
+ * dead. What this file does instead is set the tokens the component's grid reads
+ * (`--ngx-gap`), which is the seam that was there all along.
+ */
 
 .ngx-form__tabpanel:focus-visible {
-  outline: 2px solid var(--ngx-color-accent);
-  outline-offset: 2px;
+  outline: var(--ngx-focus-width) solid var(--ngx-color-accent);
+  outline-offset: 3px;
+  border-radius: var(--ngx-radius-sm);
 }
 
 .ngx-form__module-panel {
@@ -77,12 +127,25 @@
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
 
+/*
+ * The strip scrolls sideways rather than wrapping.
+ *
+ * A wrapped strip changes height as tabs move between rows, which shifts everything below it
+ * — including the panel the user is reading. Scrolling keeps the strip one row tall at every
+ * width, and the hidden scrollbar keeps it from looking like a scroll region on desktop,
+ * where it never needs to be one.
+ */
 .ngx-form__tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  gap: 2px;
   border-bottom: 1px solid var(--ngx-color-border);
   margin-bottom: var(--ngx-gap);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ngx-form__tabs::-webkit-scrollbar {
+  height: 0;
 }
 
 .ngx-form__tab {
@@ -90,14 +153,24 @@
   background: none;
   border: 0;
   border-bottom: 2px solid transparent;
-  padding: 8px 12px;
+  padding: 10px 14px;
   font: inherit;
+  font-weight: var(--ngx-label-weight);
   color: var(--ngx-color-muted);
   cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: var(--ngx-radius-sm) var(--ngx-radius-sm) 0 0;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 .ngx-form__tab:hover {
   color: var(--ngx-color-text);
+  background: var(--ngx-color-surface-alt);
 }
 
 .ngx-form__tab--active {
@@ -105,13 +178,43 @@
   border-bottom-color: var(--ngx-color-accent);
 }
 
+/*
+ * The count of invalid fields on a tab.
+ *
+ * A tabbed form can fail validation entirely out of sight: the user presses Save, the button
+ * does nothing, and the field at fault is two tabs away with no indication of which. This is
+ * that indication, and the error summary above the form is the other half of it.
+ */
+.ngx-form__tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--ngx-radius-pill);
+  background: var(--ngx-color-error);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .ngx-form__tabs--sub {
   border-bottom: 0;
+  margin-top: calc(var(--ngx-gap) * -0.6);
 }
 
 .ngx-form__tab--sub {
   font-size: var(--ngx-hint-size);
-  padding: 4px 10px;
+  padding: 5px 12px;
+  border-bottom: 0;
+  border-radius: var(--ngx-radius-pill);
+}
+
+.ngx-form__tab--sub.ngx-form__tab--active {
+  background: var(--ngx-color-accent-soft);
+  color: var(--ngx-color-accent);
 }
 
 /* ─── Fields ──────────────────────────────────────────────────────────────── */
@@ -120,16 +223,20 @@
   display: flex;
   flex-direction: column;
   gap: var(--ngx-field-gap);
+  min-width: 0;
 }
 
 .ngx-field__label {
   font-size: var(--ngx-label-size);
-  color: var(--ngx-color-muted);
+  font-weight: var(--ngx-label-weight);
+  color: var(--ngx-color-text);
+  line-height: 1.35;
 }
 
 .ngx-field__req {
   color: var(--ngx-color-error);
   margin-left: 2px;
+  font-weight: 700;
 }
 
 .ngx-field__input,
@@ -141,19 +248,69 @@
   color: inherit;
   background: var(--ngx-color-surface);
   border: 1px solid var(--ngx-color-border);
-  border-radius: var(--ngx-radius);
+  border-radius: var(--ngx-radius-sm);
   box-sizing: border-box;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.ngx-field__input:hover:not(:disabled):not([disabled]) {
+  border-color: var(--ngx-color-border-strong);
+}
+
+/*
+ * A native select keeps its platform arrow, which sits at a different inset per browser and
+ * reads as a different control from every other field in the form. Drawing our own puts the
+ * affordance in one place everywhere; it is a background image, so no field component has to
+ * change its markup to get it.
+ */
+select.ngx-field__input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 17px) calc(50% + 1px),
+    calc(100% - 12px) calc(50% + 1px);
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+}
+
+/* A multiple-select is a list box, not a dropdown — it has no arrow to draw. */
+select.ngx-field__input[multiple] {
+  background-image: none;
+  padding-right: 12px;
 }
 
 textarea.ngx-field__input {
-  min-height: calc(var(--ngx-control-height) * 2);
+  min-height: calc(var(--ngx-control-height) * 2.4);
   resize: vertical;
+  line-height: var(--ngx-line);
 }
 
 .ngx-field__input:focus-visible {
-  outline: 2px solid var(--ngx-color-accent);
-  outline-offset: 1px;
+  outline: none;
   border-color: var(--ngx-color-accent);
+  box-shadow: var(--ngx-ring);
+}
+
+/*
+ * Kept alongside `:focus-visible` for the two controls where the browsers disagree.
+ *
+ * A `<select>` opened with the mouse is focused but not focus-visible in Chrome, so the field
+ * lost its ring at the moment the option list appeared — the one time the user most needs to
+ * see which field they are editing.
+ */
+select.ngx-field__input:focus,
+textarea.ngx-field__input:focus {
+  outline: none;
+  border-color: var(--ngx-color-accent);
+  box-shadow: var(--ngx-ring);
 }
 
 .ngx-field__input:disabled,
@@ -161,26 +318,194 @@ textarea.ngx-field__input {
   background: var(--ngx-color-disabled-bg);
   color: var(--ngx-color-muted);
   cursor: not-allowed;
+  border-style: dashed;
 }
 
 .ngx-field--invalid .ngx-field__input {
   border-color: var(--ngx-color-error);
+  background: var(--ngx-color-error-soft);
+}
+
+.ngx-field--invalid .ngx-field__input:focus-visible,
+.ngx-field--invalid select.ngx-field__input:focus,
+.ngx-field--invalid textarea.ngx-field__input:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ngx-color-error) 20%, transparent);
 }
 
 .ngx-field__error {
   font-size: var(--ngx-hint-size);
   color: var(--ngx-color-error);
+  font-weight: 500;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+/*
+ * The error marker is decoration, so it is drawn rather than typed: a literal "⚠" in the
+ * markup is announced before every message, and the message already carries the meaning.
+ * Small enough to read as a marker rather than a list bullet.
+ */
+.ngx-field__error::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--ngx-color-error);
 }
 
 /* A referenced field whose source definition has changed since it was linked. */
 .ngx-field__drift {
   font-size: var(--ngx-hint-size);
   color: var(--ngx-color-warning);
+  background: var(--ngx-color-warning-soft);
+  border-radius: var(--ngx-radius-sm);
+  padding: 4px 8px;
+  display: block;
 }
 
-.ngx-field__hint {
-  font-size: var(--ngx-hint-size);
+/*
+ * Author help text, as an "i" beside the label with the text on hover.
+ *
+ * A tooltip is a weak place to put anything essential — it is gone the moment the pointer
+ * moves, and a pointer is not something every visitor has. Three things keep this one honest:
+ * the text is always in the DOM and named by the control's `aria-describedby`, so a screen
+ * reader gets it whether or not anything is hovered; it appears on `:focus-within` too, so it
+ * is on screen for the whole time someone is actually filling the field in, by keyboard or by
+ * touch; and the bubble is itself hoverable, so it can be read rather than chased.
+ * That is WCAG 1.4.13's hoverable and persistent, met by construction.
+ */
+.ngx-field__label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/*
+ * The bubble hangs off the field's own left edge, not off the icon.
+ *
+ * Centring it on the icon is the obvious thing and it is wrong at the edges: a 260px bubble
+ * centred on a field in the left column opens past the edge of the card and the first words
+ * are cut off — which is how the first version of this shipped in a screenshot. Anchoring to
+ * whichever of these boxes contains the icon puts the bubble inside the field's own column by
+ * construction, at any width, with no measuring.
+ *
+ * All three are listed because the icon sits in a different one per field type: beside the
+ * label for most, inside it for a checkbox, inside the legend for a radio group or a group.
+ */
+.ngx-field__label-row,
+.ngx-field__label,
+.ngx-field__legend {
+  position: relative;
+}
+
+.ngx-field__hint-wrap {
+  display: inline-flex;
+  align-items: center;
+  /* Never let the icon be the thing that stretches a label row. */
+  flex: none;
+}
+
+.ngx-field__hint-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1px solid var(--ngx-color-border-strong);
   color: var(--ngx-color-muted);
+  background: var(--ngx-color-surface);
+  font-size: 10px;
+  font-weight: 700;
+  font-style: italic;
+  font-family: Georgia, 'Times New Roman', serif;
+  line-height: 1;
+  cursor: help;
+  user-select: none;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.ngx-field__hint-wrap:hover .ngx-field__hint-icon,
+.ngx-field:focus-within .ngx-field__hint-icon {
+  color: var(--ngx-color-accent);
+  border-color: var(--ngx-color-accent);
+}
+
+/*
+ * Author help text, shown on hover and while the field has focus.
+ *
+ * A tooltip is a weak place to put anything essential — it is gone the moment the pointer
+ * moves, and a pointer is not something every visitor has. Three things keep this one honest:
+ * the text is always in the DOM and named by the control's `aria-describedby`, so a screen
+ * reader has it whether or not anything is hovered; `:focus-within` shows it for the whole
+ * time someone is actually filling the field in, which covers keyboard and touch; and the
+ * bubble is hoverable once open, so a long hint can be read rather than chased. That is
+ * WCAG 1.4.13's hoverable and persistent, met by construction.
+ */
+.ngx-field__hint {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 5;
+  width: max-content;
+  max-width: min(300px, 100%);
+  padding: 7px 10px;
+  border-radius: var(--ngx-radius-sm);
+  background: var(--ngx-color-text);
+  color: var(--ngx-color-surface);
+  font-size: var(--ngx-hint-size);
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+  box-shadow: var(--ngx-shadow-sm);
+  /*
+   * `visibility`, not `display`: the text has to stay in the accessibility tree for the
+   * `aria-describedby` that names it, and a removed node describes nothing. Hidden from the
+   * pointer too, or the invisible bubble would swallow clicks meant for the label beneath it.
+   */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.12s ease,
+    visibility 0.12s ease;
+}
+
+.ngx-field__hint-wrap:hover .ngx-field__hint,
+.ngx-field:focus-within .ngx-field__hint {
+  opacity: 1;
+  visibility: visible;
+  /* Hoverable once shown, so a long hint can be read instead of chased. */
+  pointer-events: auto;
+}
+
+/*
+ * A hint on the first row of a form would open above the top of the card and be clipped, so
+ * near the top edge it flips underneath. `:first-child` on the slot is the cheap proxy for
+ * "the top row" that needs no measurement.
+ */
+.ngx-form__field-slot:first-child .ngx-field__hint {
+  bottom: auto;
+  top: calc(100% + 8px);
+}
+
+/* Nothing is being filled in, so nothing needs explaining while it is done. */
+.ngx-form--readonly .ngx-field__hint-wrap {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ngx-field__hint,
+  .ngx-field__hint-icon {
+    transition: none;
+  }
 }
 
 /* Read-only and masked renderings are text, not controls. */
@@ -189,10 +514,13 @@ textarea.ngx-field__input {
   display: flex;
   align-items: center;
   padding: var(--ngx-control-padding);
-  background: var(--ngx-color-surface-alt);
-  border: 1px solid transparent;
-  border-radius: var(--ngx-radius);
+  padding-left: 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--ngx-color-border);
+  border-radius: 0;
   word-break: break-word;
+  font-variant-numeric: tabular-nums;
 }
 
 .ngx-field__value--masked {
@@ -208,11 +536,12 @@ textarea.ngx-field__input {
 .ngx-field__file-wrap {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .ngx-field__currency-symbol {
   color: var(--ngx-color-muted);
+  font-weight: var(--ngx-label-weight);
 }
 
 .ngx-field__eye-btn,
@@ -223,12 +552,29 @@ textarea.ngx-field__input {
 .ngx-form__lock {
   appearance: none;
   font: inherit;
+  font-size: var(--ngx-hint-size);
+  font-weight: var(--ngx-label-weight);
   cursor: pointer;
   background: var(--ngx-color-surface);
   color: inherit;
   border: 1px solid var(--ngx-color-border);
-  border-radius: var(--ngx-radius);
-  padding: 6px 10px;
+  border-radius: var(--ngx-radius-sm);
+  padding: 7px 12px;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.ngx-field__eye-btn:hover,
+.ngx-field__upload-btn:hover,
+.ngx-field__remove-btn:hover,
+.ngx-field__array-add-btn:hover,
+.ngx-field__array-remove-btn:hover,
+.ngx-form__lock:hover {
+  border-color: var(--ngx-color-accent);
+  color: var(--ngx-color-accent);
+  background: var(--ngx-color-accent-soft);
 }
 
 .ngx-field__eye-btn:focus-visible,
@@ -239,34 +585,82 @@ textarea.ngx-field__input {
 .ngx-form__lock:focus-visible,
 .ngx-form__tab:focus-visible,
 .ngx-form__submit:focus-visible,
-.ngx-form__reset:focus-visible {
-  outline: 2px solid var(--ngx-color-accent);
+.ngx-form__reset:focus-visible,
+.ngx-form__error-summary-link:focus-visible {
+  outline: var(--ngx-focus-width) solid var(--ngx-color-accent);
   outline-offset: 2px;
 }
 
+/*
+ * The lock's appearance only. Where it sits is the component's business — it is a flex item
+ * beside the field, and positioning it from here fought that placement rather than replacing
+ * it, leaving the button both absolutely positioned and pushed down by a margin.
+ */
 .ngx-form__lock {
-  position: absolute;
-  top: 0;
-  right: 0;
   padding: 2px 6px;
   line-height: 1;
+  border-color: transparent;
+  background: none;
 }
 
 /* Radio */
 .ngx-field__radio-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
+  padding-top: 2px;
 }
 
+/*
+ * Each option is a target in its own right, not a label beside a dot.
+ *
+ * The native radio is well under the 24px a touch target wants, and the label around it had
+ * no box of its own — so on a phone the only reliable way to pick an option was to hit the
+ * dot itself.
+ */
 .ngx-field__radio-option {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px 12px 4px 10px;
+  border: 1px solid var(--ngx-color-border);
+  border-radius: var(--ngx-radius-pill);
+  background: var(--ngx-color-surface);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.ngx-field__radio-option:hover {
+  border-color: var(--ngx-color-border-strong);
+  background: var(--ngx-color-surface-alt);
+}
+
+.ngx-field__radio-option:has(input:checked) {
+  border-color: var(--ngx-color-accent);
+  background: var(--ngx-color-accent-soft);
+}
+
+.ngx-field__radio-option:has(input:focus-visible) {
+  box-shadow: var(--ngx-ring);
 }
 
 .ngx-field__radio-label {
   cursor: pointer;
+  font-size: var(--ngx-font-size);
+}
+
+.ngx-field__radio-option input[type='radio'] {
+  accent-color: var(--ngx-color-accent);
+  margin: 0;
+}
+
+/* Checkbox */
+.ngx-field input[type='checkbox'] {
+  accent-color: var(--ngx-color-accent);
+  width: 17px;
+  height: 17px;
 }
 
 /* Boolean switch */
@@ -274,16 +668,17 @@ textarea.ngx-field__input {
 .ngx-field__toggle-label {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
+  min-height: 34px;
 }
 
 .ngx-field__toggle-track {
   position: relative;
-  width: 38px;
-  height: 20px;
-  border-radius: 999px;
-  background: var(--ngx-color-border);
+  width: 40px;
+  height: 22px;
+  border-radius: var(--ngx-radius-pill);
+  background: var(--ngx-color-border-strong);
   transition: background 0.15s ease;
   flex: none;
 }
@@ -292,10 +687,11 @@ textarea.ngx-field__input {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: var(--ngx-color-surface);
+  background: #fff;
+  box-shadow: var(--ngx-shadow-sm);
   transition: transform 0.15s ease;
 }
 
@@ -308,30 +704,44 @@ textarea.ngx-field__input {
 }
 
 .ngx-field__toggle-input:focus-visible + .ngx-field__toggle-track {
-  outline: 2px solid var(--ngx-color-accent);
+  outline: var(--ngx-focus-width) solid var(--ngx-color-accent);
   outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .ngx-form__tab,
+  .ngx-field__input,
+  .ngx-field__radio-option,
   .ngx-field__toggle-track,
   .ngx-field__toggle-thumb {
     transition: none;
   }
 }
 
-/* Group and array containers */
+/* ─── Group and array containers ──────────────────────────────────────────── */
+
+/*
+ * A group or an array is a section of the form, so it reads as one: a tinted block with its
+ * name at the top. The previous hairline fieldset put a nested group at the same visual
+ * weight as the text input beside it, and a form with three of them had no structure the eye
+ * could find.
+ */
 .ngx-field__fieldset {
   border: 1px solid var(--ngx-color-border);
   border-radius: var(--ngx-radius);
-  padding: 12px;
+  padding: 14px 16px 16px;
   margin: 0;
   min-width: 0;
+  background: var(--ngx-color-surface-alt);
 }
 
 .ngx-field__legend {
-  padding: 0 6px;
+  padding: 0 8px;
+  margin-left: -4px;
   font-size: var(--ngx-label-size);
-  color: var(--ngx-color-muted);
+  font-weight: 700;
+  color: var(--ngx-color-text);
+  letter-spacing: 0.01em;
 }
 
 .ngx-field__group-children,
@@ -344,13 +754,14 @@ textarea.ngx-field__input {
 .ngx-field__array-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--ngx-gap-sm);
 }
 
 .ngx-field__array-item {
   border: 1px solid var(--ngx-color-border);
-  border-radius: var(--ngx-radius);
-  padding: 10px;
+  border-radius: var(--ngx-radius-sm);
+  padding: 14px;
+  background: var(--ngx-color-surface);
 }
 
 .ngx-field__array-header,
@@ -358,20 +769,25 @@ textarea.ngx-field__input {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .ngx-field__array-item-title {
   font-size: var(--ngx-label-size);
+  font-weight: var(--ngx-label-weight);
   color: var(--ngx-color-muted);
 }
 
 .ngx-field__array-empty,
-.ngx-field__image-placeholder,
-.ngx-record-editor__row-empty {
+.ngx-field__image-placeholder {
   color: var(--ngx-color-muted);
   font-size: var(--ngx-hint-size);
+  padding: 14px;
+  border: 1px dashed var(--ngx-color-border);
+  border-radius: var(--ngx-radius-sm);
+  text-align: center;
+  margin: 0;
 }
 
 /* Image and file */
@@ -379,14 +795,14 @@ textarea.ngx-field__input {
 .ngx-field__image-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .ngx-field__image-preview {
   max-width: 140px;
   max-height: 140px;
-  border-radius: var(--ngx-radius);
+  border-radius: var(--ngx-radius-sm);
   border: 1px solid var(--ngx-color-border);
 }
 
@@ -407,56 +823,181 @@ textarea.ngx-field__input {
 .ngx-form__error-banner,
 .ngx-form__warning-banner,
 .ngx-form__info-banner,
-.ngx-form__denied,
-.ngx-record-editor__banner {
-  padding: 10px 12px;
-  border-radius: var(--ngx-radius);
+.ngx-form__denied {
+  padding: 11px 14px;
+  border-radius: var(--ngx-radius-sm);
   border: 1px solid var(--ngx-color-border);
+  border-left-width: 3px;
   background: var(--ngx-color-surface-alt);
-  margin-bottom: 10px;
+  margin-bottom: var(--ngx-gap-sm);
+  font-size: var(--ngx-font-size);
 }
 
-.ngx-form__error-banner,
-.ngx-record-editor__banner--error {
+.ngx-form__error-banner {
   color: var(--ngx-color-error);
-  border-color: currentColor;
+  background: var(--ngx-color-error-soft);
+  border-color: color-mix(in srgb, var(--ngx-color-error) 35%, transparent);
+  border-left-color: var(--ngx-color-error);
 }
 
-.ngx-form__warning-banner,
-.ngx-record-editor__banner--warning {
+.ngx-form__warning-banner {
   color: var(--ngx-color-warning);
-  border-color: currentColor;
+  background: var(--ngx-color-warning-soft);
+  border-color: color-mix(in srgb, var(--ngx-color-warning) 35%, transparent);
+  border-left-color: var(--ngx-color-warning);
 }
 
-.ngx-form__info-banner,
-.ngx-record-editor__banner--info {
-  color: var(--ngx-color-accent);
-  border-color: currentColor;
+.ngx-form__info-banner {
+  color: var(--ngx-color-info);
+  background: var(--ngx-color-info-soft);
+  border-color: color-mix(in srgb, var(--ngx-color-info) 35%, transparent);
+  border-left-color: var(--ngx-color-info);
+}
+
+/*
+ * The summary shown when Save is pressed and validation blocks it.
+ *
+ * Marking every control touched is what the form used to do on its own, and on a tabbed form
+ * that is invisible: the errors appear on whichever tabs hold them, and the user is left
+ * looking at a button that did nothing. This names the count and links to each field.
+ */
+.ngx-form__error-summary {
+  margin-bottom: var(--ngx-gap);
+  padding: 13px 16px;
+  border: 1px solid color-mix(in srgb, var(--ngx-color-error) 35%, transparent);
+  border-left: 3px solid var(--ngx-color-error);
+  border-radius: var(--ngx-radius-sm);
+  background: var(--ngx-color-error-soft);
+  color: var(--ngx-color-error);
+}
+
+.ngx-form__error-summary-title {
+  font-weight: 700;
+  font-size: var(--ngx-font-size);
+  margin: 0 0 8px;
+}
+
+/*
+ * A list of rows, not a row of pills.
+ *
+ * Each entry now carries the field's name *and* what is wrong with it, and a pill wide enough
+ * for "Minimum 4 characters required." is not a pill. Rows also read in the order the fields
+ * appear on the form, which a wrapping strip of chips does not.
+ */
+.ngx-form__error-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ngx-form__error-summary-link {
+  appearance: none;
+  font: inherit;
+  font-size: var(--ngx-hint-size);
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-radius: var(--ngx-radius-sm);
+  background: none;
+  color: var(--ngx-color-error);
+  padding: 5px 8px;
+}
+
+.ngx-form__error-summary-link:hover {
+  background: var(--ngx-color-surface);
+}
+
+.ngx-form__error-summary-field {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* The reason is the sentence the field already shows, so it carries no emphasis of its own. */
+.ngx-form__error-summary-reason {
+  font-weight: 400;
 }
 
 .ngx-form__actions {
   display: flex;
-  gap: 10px;
+  gap: var(--ngx-gap-sm);
+  justify-content: flex-end;
+  align-items: center;
   margin-top: var(--ngx-gap);
+  padding: 14px 0 2px;
+  border-top: 1px solid var(--ngx-color-border);
+  background: var(--ngx-color-surface);
+}
+
+/*
+ * Opt in to an action bar that stays in view: add `ngx-form--sticky-actions` to the element
+ * wrapping the form, or to a container above it.
+ *
+ * A long form puts Save below the fold, so the user fills the last field and then goes
+ * looking for the button — and it moves on every tab switch, because each tab is a different
+ * height. That is worth fixing, and it is why this exists.
+ *
+ * It is opt-in rather than the default because `position: sticky` resolves against the
+ * nearest scrolling ancestor, which for a form embedded in the middle of a longer page is the
+ * page itself: the bar then detaches from its form and floats over whatever is below it. The
+ * builder's live preview is exactly that case. A host knows whether its form owns the scroll;
+ * this stylesheet cannot.
+ */
+.ngx-form--sticky-actions .ngx-form__actions,
+.ngx-form-sticky-actions .ngx-form__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
+/* A viewport this short is all action bar, so it stops being worth sticking. */
+@media (max-height: 560px) {
+  .ngx-form--sticky-actions .ngx-form__actions,
+  .ngx-form-sticky-actions .ngx-form__actions {
+    position: static;
+  }
 }
 
 .ngx-form__submit,
 .ngx-form__reset {
   appearance: none;
   font: inherit;
+  font-weight: var(--ngx-label-weight);
   cursor: pointer;
   min-height: var(--ngx-control-height);
-  padding: 0 18px;
-  border-radius: var(--ngx-radius);
+  padding: 0 20px;
+  border-radius: var(--ngx-radius-sm);
   border: 1px solid var(--ngx-color-border);
   background: var(--ngx-color-surface);
   color: inherit;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.ngx-form__reset:hover:not(:disabled) {
+  border-color: var(--ngx-color-border-strong);
+  background: var(--ngx-color-surface-alt);
 }
 
 .ngx-form__submit {
   background: var(--ngx-color-accent);
   border-color: var(--ngx-color-accent);
-  color: #fff;
+  color: var(--ngx-color-accent-text);
+}
+
+.ngx-form__submit:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ngx-color-accent) 86%, #000);
+  border-color: color-mix(in srgb, var(--ngx-color-accent) 86%, #000);
 }
 
 .ngx-form__submit:disabled,
@@ -465,116 +1006,94 @@ textarea.ngx-field__input {
   cursor: not-allowed;
 }
 
+/*
+ * "Won't go yet", as distinct from "can't be pressed".
+ *
+ * `data-blocked` is what the form sets while validation is what is stopping the save. The
+ * button stays operable — pressing it is how the user finds out which field is at fault — so
+ * it keeps its pointer cursor and its full hover response. A `not-allowed` cursor on a button
+ * that does respond to a click would be a lie, and so would `aria-disabled`; see the note on
+ * the button itself.
+ *
+ * Outlined rather than a faded fill. Fading the accent toward the surface is the obvious way
+ * to say "not yet" and it is the wrong one: the label stays white, and a 45% accent behind
+ * white text measured 2.6:1 — axe caught it on the first run. Dropping the fill hands the
+ * label the same accent the border uses, against the surface, which is the contrast the rest
+ * of the stylesheet already relies on.
+ */
+.ngx-form__submit[data-blocked] {
+  background: var(--ngx-color-surface);
+  border-color: var(--ngx-color-accent);
+  color: var(--ngx-color-accent);
+}
+
+.ngx-form__submit[data-blocked]:hover:not(:disabled) {
+  background: var(--ngx-color-accent);
+  border-color: var(--ngx-color-accent);
+  color: var(--ngx-color-accent-text);
+}
+
 /* ─── Record editor ───────────────────────────────────────────────────────── */
 
-.ngx-record-editor__header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: var(--ngx-gap);
-}
-
-.ngx-record-editor__avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--ngx-color-surface-alt);
-  border: 1px solid var(--ngx-color-border);
-  flex: none;
-}
-
-.ngx-record-editor__title {
-  margin: 0;
-  font-size: 18px;
-}
-
-.ngx-record-editor__subtitle,
-.ngx-record-editor__section-hint,
-.ngx-record-editor__summary-label {
-  color: var(--ngx-color-muted);
-  font-size: var(--ngx-hint-size);
-}
-
-.ngx-record-editor__summary-panel,
-.ngx-record-editor__drawer {
-  border: 1px solid var(--ngx-color-border);
-  border-radius: var(--ngx-radius);
-  padding: 12px;
-  background: var(--ngx-color-surface-alt);
-  margin-bottom: var(--ngx-gap);
-}
-
-.ngx-record-editor__summary-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px 0;
-}
-
-.ngx-record-editor__section-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-
-.ngx-record-editor__rows {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ngx-record-editor__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--ngx-color-border);
-  border-radius: var(--ngx-radius);
-}
-
-.ngx-record-editor__row-text {
-  min-width: 0;
-  word-break: break-word;
-}
-
-.ngx-record-editor__banner-dismiss,
-.ngx-record-editor__row-btn,
-.ngx-record-editor__header-toggle {
-  appearance: none;
-  font: inherit;
-  cursor: pointer;
-  background: none;
-  border: 1px solid var(--ngx-color-border);
-  border-radius: var(--ngx-radius);
-  padding: 4px 8px;
-  color: inherit;
-}
+/*
+ * The record editor styles itself from these tokens, in its own component stylesheet.
+ *
+ * Nothing about its appearance is restated here, and that is deliberate: a component
+ * stylesheet is injected after a global one and carries an attribute selector, so a copy in
+ * this file would lose every tie and sit here looking authoritative while doing nothing. The
+ * whole `.ngx-record-editor__*` section used to be exactly that.
+ *
+ * What is left is the part the component has no baseline for — focus rings, which depend on
+ * `--ngx-focus-width` and are only worth drawing once a palette exists — plus the shared
+ * button appearance above, which the row and dismiss buttons already inherit through tokens.
+ */
 
 .ngx-record-editor__banner-dismiss:focus-visible,
 .ngx-record-editor__row-btn:focus-visible,
-.ngx-record-editor__header-toggle:focus-visible {
-  outline: 2px solid var(--ngx-color-accent);
+.ngx-record-editor__header-toggle:focus-visible,
+.ngx-record-editor__summary-item:focus-visible {
+  outline: var(--ngx-focus-width) solid var(--ngx-color-accent);
   outline-offset: 2px;
+}
+
+/*
+ * A read-only record is a table of values, not a form.
+ *
+ * With every field at `span 12` the record view spent a full screen on six values — and no
+ * control is being sized here, so the width a text input needs is not the width a value
+ * needs. `auto-fit` packs them, and a long note still takes its own row when the content
+ * demands one.
+ */
+/*
+ * Nothing is being asked of the reader, so nothing is required of them.
+ *
+ * The matching `.ngx-form--readonly` *grid* rule lives in the component's own styles, next to
+ * the grid it overrides — see the Layout note above.
+ */
+.ngx-form--readonly .ngx-field__req {
+  display: none;
 }
 
 /* ─── Narrow screens ──────────────────────────────────────────────────────── */
 
 @media (max-width: 640px) {
-  /* colSpan is set inline per field; below this width a 12-column grid is unreadable. */
-  .ngx-form__panel,
+  /*
+   * The form panel's own collapse is in the component, with the rest of its grid. These two
+   * are declared here and only here, so this is where they collapse.
+   */
   .ngx-field__group-children,
   .ngx-field__array-item-fields {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .ngx-form__field-slot {
-    grid-column: 1 / -1 !important;
+  /* Reversed so the primary action sits on the right, where the thumb is. */
+  .ngx-form__actions {
+    flex-direction: row-reverse;
+  }
+
+  .ngx-form__actions .ngx-form__submit,
+  .ngx-form__actions .ngx-form__reset {
+    flex: 1;
   }
 }
 
@@ -593,8 +1112,12 @@ textarea.ngx-field__input {
   max-width: 100%;
 }
 
-.ngx-field__markdown > :first-child { margin-top: 0; }
-.ngx-field__markdown > :last-child { margin-bottom: 0; }
+.ngx-field__markdown > :first-child {
+  margin-top: 0;
+}
+.ngx-field__markdown > :last-child {
+  margin-bottom: 0;
+}
 
 .ngx-field__markdown-tabs {
   display: flex;
@@ -604,23 +1127,28 @@ textarea.ngx-field__input {
 
 .ngx-field__markdown-tab {
   font: inherit;
-  padding: 2px 10px;
+  font-size: var(--ngx-hint-size);
+  font-weight: var(--ngx-label-weight);
+  padding: 4px 12px;
   cursor: pointer;
-  border: 1px solid var(--ngx-border, #d1d5db);
-  border-radius: 4px;
-  background: var(--ngx-surface, #fff);
+  border: 1px solid var(--ngx-color-border);
+  border-radius: var(--ngx-radius-pill);
+  background: var(--ngx-color-surface);
+  color: var(--ngx-color-muted);
 }
 
 .ngx-field__markdown-tab[aria-pressed='true'] {
-  background: var(--ngx-accent-soft, #eef2ff);
-  border-color: var(--ngx-accent, #6366f1);
+  background: var(--ngx-color-accent-soft);
+  border-color: var(--ngx-color-accent);
+  color: var(--ngx-color-accent);
 }
 
 /* The preview replaces the textarea, so give it a comparable height — otherwise
    switching tabs makes the whole form jump. */
 .ngx-field__markdown--preview {
   min-height: 8.5rem;
-  padding: 8px 10px;
-  border: 1px solid var(--ngx-border, #d1d5db);
-  border-radius: 4px;
+  padding: 9px 12px;
+  border: 1px solid var(--ngx-color-border);
+  border-radius: var(--ngx-radius-sm);
+  background: var(--ngx-color-surface);
 }

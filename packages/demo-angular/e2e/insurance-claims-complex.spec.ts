@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { fieldById, fieldPart, gotoDemo, safeClick, safeSelect } from './test-helpers';
+import { expectSaveReady, fieldById, fieldPart, gotoDemo, safeClick, safeSelect } from './test-helpers';
 import { INSURANCE_CLAIMS_RECORDS } from '../src/app/mock/seed-records';
 
 /** Claims the demo seeds before this spec creates any of its own. */
@@ -53,9 +53,7 @@ async function fillKitchenSink(page: Page, ref: string): Promise<void> {
   await expect(fieldPart(page, 'insurerVat', 'value')).toHaveText('DE111111');
   await fieldById(page, 'country').locator('select').selectOption({ label: 'Germany' });
   await expect
-    .poll(async () =>
-      (await fieldById(page, 'city').locator('select option').allTextContents()).slice(1),
-    )
+    .poll(async () => (await fieldById(page, 'city').locator('select option').allTextContents()).slice(1))
     .toEqual(['Berlin', 'Munich']);
   await fieldById(page, 'city').locator('select').selectOption({ label: 'Munich' });
   await fieldPart(page, 'sumInsured', 'input').fill('75000');
@@ -162,22 +160,15 @@ async function assertKitchenSink(page: Page, ref: string): Promise<void> {
   // Radio options store LocalizedText objects; native radios compare by identity, so a
   // JSON-revived `{ en: 'High' }` does not stay checked. The control still holds the
   // value — re-selecting would be a false pass. MultiSelect uses compareWith instead.
-  await expect(fieldPart(page, 'damageTypes', 'input').locator('option:checked')).toHaveText([
-    'Fire',
-    'Flood',
-  ]);
-  await expect(fieldPart(page, 'narrative', 'input')).toHaveValue(
-    'Water ingress through the roof after the fire.',
-  );
+  await expect(fieldPart(page, 'damageTypes', 'input').locator('option:checked')).toHaveText(['Fire', 'Flood']);
+  await expect(fieldPart(page, 'narrative', 'input')).toHaveValue('Water ingress through the roof after the fire.');
   await expect(fieldPart(page, 'street', 'input')).toHaveValue('12 Roof Lane');
   await expect(fieldPart(page, 'postcode', 'input')).toHaveValue('10115');
   await expect(fieldPart(page, 'locality', 'input')).toHaveValue('Berlin');
 
   await safeClick(tab(page, 'Settlement'));
   await expect(page.getByTestId('field-lineItems-row')).toHaveCount(2);
-  await expect(lineRow(page, 0).locator('[data-testid="field-itemDescription-input"]')).toHaveValue(
-    'Roof tiles',
-  );
+  await expect(lineRow(page, 0).locator('[data-testid="field-itemDescription-input"]')).toHaveValue('Roof tiles');
   await expect(lineRow(page, 0).locator('[data-testid="field-itemAmount-input"]')).toHaveValue('1200');
   await expect(lineRow(page, 0).locator('[data-testid="field-itemApproved"] input[type="checkbox"]')).toBeChecked();
   await expect(lineRow(page, 1).locator('[data-testid="field-itemDescription-input"]')).toHaveValue('Labour');
@@ -190,9 +181,7 @@ async function assertKitchenSink(page: Page, ref: string): Promise<void> {
 test.describe('insuranceClaims — composed multi-feature flows', () => {
   test.describe.configure({ timeout: 120_000 });
 
-  test('fills every field type, saves with Ctrl+S, reloads, then edits cascade and array', async ({
-    page,
-  }) => {
+  test('fills every field type, saves with Ctrl+S, reloads, then edits cascade and array', async ({ page }) => {
     const warnings: string[] = [];
     page.on('console', m => {
       if (m.type() === 'warning' && m.text().includes('[ngx-dynamic-entity]')) warnings.push(m.text());
@@ -201,7 +190,7 @@ test.describe('insuranceClaims — composed multi-feature flows', () => {
     await openNewClaim(page);
     await fillKitchenSink(page, 'CLM-COMPLEX-1');
 
-    await expect(save(page)).toBeEnabled();
+    await expectSaveReady(page);
     await page.keyboard.press('Control+s');
     await expect(page.getByText('CLM-COMPLEX-1').first()).toBeVisible();
 
@@ -218,9 +207,7 @@ test.describe('insuranceClaims — composed multi-feature flows', () => {
     await fieldById(page, 'country').locator('select').selectOption({ label: 'France' });
     await expect(fieldById(page, 'city').locator('select')).toHaveValue('');
     await expect
-      .poll(async () =>
-        (await fieldById(page, 'city').locator('select option').allTextContents()).slice(1),
-      )
+      .poll(async () => (await fieldById(page, 'city').locator('select option').allTextContents()).slice(1))
       .toEqual(['Paris', 'Lyon']);
     await fieldById(page, 'city').locator('select').selectOption({ label: 'Lyon' });
     await fieldById(page, 'insurer').locator('select').selectOption({ label: 'Globex' });
@@ -248,17 +235,13 @@ test.describe('insuranceClaims — composed multi-feature flows', () => {
 
     await safeClick(tab(page, 'Settlement'));
     await expect(page.getByTestId('field-lineItems-row')).toHaveCount(3);
-    await expect(lineRow(page, 2).locator('[data-testid="field-itemDescription-input"]')).toHaveValue(
-      'Scaffolding',
-    );
+    await expect(lineRow(page, 2).locator('[data-testid="field-itemDescription-input"]')).toHaveValue('Scaffolding');
     await expect(fieldPart(page, 'settlementTotal', 'input')).toHaveValue('2400');
 
     expect(warnings).toEqual([]);
   });
 
-  test('search isolates one of two claims, and switching entity does not drop them', async ({
-    page,
-  }) => {
+  test('search isolates one of two claims, and switching entity does not drop them', async ({ page }) => {
     await openNewClaim(page);
     await unlockClaimRef(page);
     await fieldPart(page, 'claimRef', 'input').fill('CLM-SEARCH-A');
@@ -301,9 +284,7 @@ test.describe('insuranceClaims — composed multi-feature flows', () => {
     await expect(page.getByRole('button', { name: /CLM-SEARCH-B/i })).toBeVisible();
   });
 
-  test('a shown staff id round-trips; hiding it then showing it again keeps the saved value', async ({
-    page,
-  }) => {
+  test('a shown staff id round-trips; hiding it then showing it again keeps the saved value', async ({ page }) => {
     await openNewClaim(page);
     await unlockClaimRef(page);
     await fieldPart(page, 'claimRef', 'input').fill('CLM-STAFF-1');
@@ -321,7 +302,7 @@ test.describe('insuranceClaims — composed multi-feature flows', () => {
 
     await fieldById(page, 'isEmployee').locator('input[type="checkbox"]').uncheck();
     await expect(fieldById(page, 'staffId')).toHaveCount(0);
-    await expect(save(page)).toBeEnabled();
+    await expectSaveReady(page);
     await safeClick(save(page));
 
     await openClaim(page, 'CLM-STAFF-1');

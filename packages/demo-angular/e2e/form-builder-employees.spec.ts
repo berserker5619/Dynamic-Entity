@@ -27,15 +27,22 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { builderFieldRows, builderTabInputs, fieldPart, gotoDemo, safeClick } from './test-helpers';
+import {
+  addInspectorOption,
+  builderFieldRows,
+  builderPaletteButton,
+  builderTabInputs,
+  fieldPart,
+  gotoDemo,
+  safeClick,
+  setInspectorLabel,
+} from './test-helpers';
 
 // ─── Reusable builder action helpers ─────────────────────────────────────────
 
 /** Click a palette button by its exact catalog label. */
 async function addField(page: Page, label: string): Promise<void> {
-  const btn = page.locator('[data-testid^="palette-"]').filter({ hasText: label }).first();
-  await expect(btn).toBeVisible({ timeout: 5000 });
-  await btn.click();
+  await safeClick(builderPaletteButton(page, label));
 }
 
 /** Select the most recently added field row (builder auto-selects it, but we click for certainty). */
@@ -45,11 +52,7 @@ async function selectLastField(page: Page): Promise<void> {
 
 /** Fill the Label (en) in the inspector. */
 async function setFieldLabel(page: Page, label: string): Promise<void> {
-  const field = page
-    .locator('ngx-field-inspector mat-form-field')
-    .filter({ hasText: /Label.*en/ })
-    .first();
-  await field.locator('input').fill(label);
+  await setInspectorLabel(page, label);
 }
 
 /** Toggle the required validator on/off. */
@@ -63,12 +66,9 @@ async function setRequired(page: Page, required: boolean): Promise<void> {
 
 /** Add one option (value + label) to a Dropdown / Multi-select field. */
 async function addOption(page: Page, value: string, label: string): Promise<void> {
-  const addBtn = page.locator('ngx-field-inspector button').filter({ hasText: 'Option' }).first();
-  await expect(addBtn).toBeVisible({ timeout: 5000 });
-  await addBtn.click();
   // One input per option: the displayed text IS the stored value, so `value` is unused.
   void value;
-  await page.getByTestId('option-row').last().locator('input').fill(label);
+  await addInspectorOption(page, label);
 }
 
 /**

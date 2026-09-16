@@ -7,7 +7,7 @@
           class="ngx-record-editor__avatar"
           data-testid="header-profile-image"
           [src]="profileImageUrl"
-          [alt]="recordTitle"
+          [alt]="recordHeading"
         />
       } @else {
         <div class="ngx-record-editor__avatar" data-testid="header-avatar-initial">
@@ -15,10 +15,14 @@
         </div>
       }
       <div>
+        <!--
+          The record's own name, with the entity underneath. These were the other way round —
+          both showing the entity — so the header never said which record was open.
+        -->
         <h2 class="ngx-record-editor__title" data-testid="record-title">
-          {{ recordTitle }}
+          {{ recordHeading }}
         </h2>
-        <span class="ngx-record-editor__subtitle">{{ ui.text('entityLabel', language, { entity: config.entity }) }}</span>
+        <span class="ngx-record-editor__subtitle">{{ ui.text('entityLabel', language, { entity: recordTitle }) }}</span>
       </div>
     </div>
 
@@ -201,6 +205,7 @@
     [language]="language"
     [readonly]="sectionReadOnly"
     [readOnlyFields]="readOnlyFields"
+    [layout]="layout"
     [showInfoBanners]="false"
     [loading]="loading"
     [error]="error"

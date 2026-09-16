@@ -5,6 +5,7 @@ import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
 import { UiTextService } from '../services/ui-text.service';
+import { fieldDescribedBy, fieldDomId, nextFieldInstanceId } from './field-dom-id';
 
 /**
  * Boolean field: a slide-toggle style switch (true/false).
@@ -37,12 +38,25 @@ import { UiTextService } from '../services/ui-text.service';
       } @else {
         <div class="ngx-field__toggle-wrap">
           <label class="ngx-field__toggle-label">{{ label }}</label>
+          @if (hint) {
+            <span class="ngx-field__hint-wrap">
+              <span class="ngx-field__hint-icon" aria-hidden="true">i</span>
+              <span
+                class="ngx-field__hint"
+                role="tooltip"
+                [attr.data-testid]="'field-' + field.id + '-hint'"
+                [id]="domId('-hint')"
+                >{{ hint }}</span
+              >
+            </span>
+          }
           <label class="ngx-field__toggle-switch" [class.ngx-field__toggle-switch--checked]="control.value">
             <input
               class="ngx-field__toggle-input"
               type="checkbox"
               role="switch"
               [formControl]="$any(control)"
+              [attr.aria-describedby]="describedBy()"
               [attr.disabled]="field.disabled ? true : null"
               [attr.aria-checked]="control.value"
             />
@@ -55,15 +69,28 @@ import { UiTextService } from '../services/ui-text.service';
           </label>
         </div>
         @if (errorMessage) {
-          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" role="alert">{{
-            errorMessage
-          }}</span>
+          <span
+            class="ngx-field__error"
+            [attr.data-testid]="'field-' + field.id + '-error'"
+            [id]="domId('-error')"
+            role="alert"
+            >{{ errorMessage }}</span
+          >
         }
       }
     </div>
   `,
 })
 export class BooleanFieldComponent {
+  /**
+   * Unique to this component instance: an `array` renders the same field once per row, and a
+   * DOM id may not repeat. See `field-dom-id.ts`.
+   */
+  private readonly instanceId = nextFieldInstanceId();
+  protected domId(suffix = ''): string {
+    return fieldDomId(this.field, this.instanceId, suffix);
+  }
+
   /** Library chrome, overridable via UI_TEXT. */
   protected readonly ui = inject(UiTextService);
   /** Overridable via MASKED_PLACEHOLDER; the default is the historic literal. */
@@ -84,8 +111,18 @@ export class BooleanFieldComponent {
    * It rendered no error element at all, so a required checkbox left unticked told the user
    * nothing — and `validationMessages` could not reach a field that never displayed one.
    */
+  /** Author help text, shown under the control and named by `aria-describedby`. */
+  get hint(): string {
+    return resolveLabel(this.field?.hint, this.language);
+  }
+
+  /** The ids of whatever is describing this control right now. */
+  protected describedBy(): string | null {
+    return fieldDescribedBy(s => this.domId(s), { hint: !!this.hint, error: !!this.errorMessage });
+  }
+
   get errorMessage(): string {
     if (!this.control?.errors || !this.control.touched) return '';
-    return this.messages.resolve(this.control.errors, this.language, ['required', 'pattern']);
+    return this.messages.resolveForField(this.control.errors, this.language, this.field.type);
   }
 }

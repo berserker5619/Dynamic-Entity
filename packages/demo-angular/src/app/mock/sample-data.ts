@@ -21,16 +21,29 @@ export const CLIENTS_CONFIG: EntityFormConfig = {
       label: { en: 'General' },
       fields: [
         { id: 'name', type: 'text', label: { en: 'Name' }, validators: { required: true }, visibility: true },
-        { id: 'email', type: 'email', label: { en: 'Email' }, validators: { pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$' }, visibility: true },
-        { id: 'company', type: 'text', label: { en: 'Company' }, visibility: true },
+        {
+          id: 'email',
+          type: 'email',
+          label: { en: 'Email' },
+          // `hint`, not `placeholder`: a placeholder disappears the moment somebody types, so
+          // anything they need *while* filling the field in cannot live there. This stays on
+          // screen, and `aria-describedby` reads it out with the field.
+          hint: { en: 'We use this for billing notices — a shared inbox is fine.' },
+          validators: { pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$' },
+          visibility: true,
+        },
+        {
+          id: 'company',
+          type: 'text',
+          label: { en: 'Company' },
+          hint: { en: 'The registered legal name, not the trading name.' },
+          visibility: true,
+        },
         {
           id: 'status',
           type: 'dropdown',
           label: { en: 'Status' },
-          options: [
-            { en: 'Active' },
-            { en: 'Inactive' },
-          ],
+          options: [{ en: 'Active' }, { en: 'Inactive' }],
           visibility: true,
         },
         {
@@ -123,11 +136,7 @@ export const EMPLOYEES_CONFIG: EntityFormConfig = {
           id: 'status',
           type: 'dropdown',
           label: { en: 'Status' },
-          options: [
-            { en: 'Active' },
-            { en: 'Inactive' },
-            { en: 'On Leave' },
-          ],
+          options: [{ en: 'Active' }, { en: 'Inactive' }, { en: 'On Leave' }],
           table: { visible: true },
         },
         {
@@ -150,11 +159,7 @@ export const EMPLOYEES_CONFIG: EntityFormConfig = {
           id: 'department',
           type: 'dropdown',
           label: { en: 'Department' },
-          options: [
-            { en: 'Engineering' },
-            { en: 'Sales' },
-            { en: 'HR' },
-          ],
+          options: [{ en: 'Engineering' }, { en: 'Sales' }, { en: 'HR' }],
           table: { visible: true },
         },
         { id: 'salary', type: 'number', label: { en: 'Salary' }, table: { visible: true } },
@@ -182,12 +187,89 @@ export const EMPLOYEES_CONFIG: EntityFormConfig = {
 };
 
 export const EMPLOYEES_RECORDS: Record<string, unknown>[] = [
-  { _id: 'emp_001', personal: { firstName: 'John', lastName: 'Doe', status: { en: 'Active' }, contact: { email: 'john@x.com', phone: '111-222' } }, department: { en: 'Engineering' }, salary: 82000, joined: '2020-01-15', addressesTab: { addresses: [{ street: '1 Main St', city: 'Berlin', zip: '10115' }, { street: '2 Oak Ave', city: 'Munich', zip: '80331' }] } },
-  { _id: 'emp_002', personal: { firstName: 'Jane', lastName: 'Smith', status: { en: 'Inactive' }, contact: { email: 'jane@x.com', phone: '333-444' } }, department: { en: 'Sales' }, salary: 91000, joined: '2019-06-01', addressesTab: { addresses: [{ street: '9 Elm Rd', city: 'Hamburg', zip: '20095' }] } },
-  { _id: 'emp_003', personal: { firstName: 'Ravi', lastName: 'Kumar', status: { en: 'On Leave' }, contact: { email: 'ravi@x.com', phone: '555-666' } }, department: { en: 'Engineering' }, salary: 78000, joined: '2021-03-22', addressesTab: { addresses: [] } },
-  { _id: 'emp_004', personal: { firstName: 'Mei', lastName: 'Chen', status: { en: 'Active' }, contact: { email: 'mei@x.com', phone: '777-888' } }, department: { en: 'HR' }, salary: 69000, joined: '2022-11-08', addressesTab: { addresses: [{ street: '5 Pine St', city: 'Cologne', zip: '50667' }] } },
-  { _id: 'emp_005', personal: { firstName: 'Omar', lastName: 'Farid', status: { en: 'Active' }, contact: { email: 'omar@x.com', phone: '999-000' } }, department: { en: 'Sales' }, salary: 88000, joined: '2018-09-30', addressesTab: { addresses: [{ street: '7 Birch Ln', city: 'Berlin', zip: '10437' }] } },
-  { _id: 'emp_006', personal: { firstName: 'Sara', lastName: 'Lopez', status: { en: 'Inactive' }, contact: { email: 'sara@x.com', phone: '121-212' } }, department: { en: 'Engineering' }, salary: 95000, joined: '2017-02-14', addressesTab: { addresses: [{ street: '3 Cedar Ct', city: 'Munich', zip: '80333' }] } },
+  {
+    _id: 'emp_001',
+    personal: {
+      firstName: 'John',
+      lastName: 'Doe',
+      status: { en: 'Active' },
+      contact: { email: 'john@x.com', phone: '111-222' },
+    },
+    department: { en: 'Engineering' },
+    salary: 82000,
+    joined: '2020-01-15',
+    addressesTab: {
+      addresses: [
+        { street: '1 Main St', city: 'Berlin', zip: '10115' },
+        { street: '2 Oak Ave', city: 'Munich', zip: '80331' },
+      ],
+    },
+  },
+  {
+    _id: 'emp_002',
+    personal: {
+      firstName: 'Jane',
+      lastName: 'Smith',
+      status: { en: 'Inactive' },
+      contact: { email: 'jane@x.com', phone: '333-444' },
+    },
+    department: { en: 'Sales' },
+    salary: 91000,
+    joined: '2019-06-01',
+    addressesTab: { addresses: [{ street: '9 Elm Rd', city: 'Hamburg', zip: '20095' }] },
+  },
+  {
+    _id: 'emp_003',
+    personal: {
+      firstName: 'Ravi',
+      lastName: 'Kumar',
+      status: { en: 'On Leave' },
+      contact: { email: 'ravi@x.com', phone: '555-666' },
+    },
+    department: { en: 'Engineering' },
+    salary: 78000,
+    joined: '2021-03-22',
+    addressesTab: { addresses: [] },
+  },
+  {
+    _id: 'emp_004',
+    personal: {
+      firstName: 'Mei',
+      lastName: 'Chen',
+      status: { en: 'Active' },
+      contact: { email: 'mei@x.com', phone: '777-888' },
+    },
+    department: { en: 'HR' },
+    salary: 69000,
+    joined: '2022-11-08',
+    addressesTab: { addresses: [{ street: '5 Pine St', city: 'Cologne', zip: '50667' }] },
+  },
+  {
+    _id: 'emp_005',
+    personal: {
+      firstName: 'Omar',
+      lastName: 'Farid',
+      status: { en: 'Active' },
+      contact: { email: 'omar@x.com', phone: '999-000' },
+    },
+    department: { en: 'Sales' },
+    salary: 88000,
+    joined: '2018-09-30',
+    addressesTab: { addresses: [{ street: '7 Birch Ln', city: 'Berlin', zip: '10437' }] },
+  },
+  {
+    _id: 'emp_006',
+    personal: {
+      firstName: 'Sara',
+      lastName: 'Lopez',
+      status: { en: 'Inactive' },
+      contact: { email: 'sara@x.com', phone: '121-212' },
+    },
+    department: { en: 'Engineering' },
+    salary: 95000,
+    joined: '2017-02-14',
+    addressesTab: { addresses: [{ street: '3 Cedar Ct', city: 'Munich', zip: '80333' }] },
+  },
 ];
 
 /**

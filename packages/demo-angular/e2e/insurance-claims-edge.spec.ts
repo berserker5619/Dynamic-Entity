@@ -1,5 +1,14 @@
 import { test, expect, type Page } from '@playwright/test';
-import { DEMO_MASK, fieldById, fieldPart, gotoDemo, safeClick, safeSelect } from './test-helpers';
+import {
+  DEMO_MASK,
+  expectSaveReady,
+  expectSaveWithheld,
+  fieldById,
+  fieldPart,
+  gotoDemo,
+  safeClick,
+  safeSelect,
+} from './test-helpers';
 import { INSURANCE_CLAIMS_RECORDS } from '../src/app/mock/seed-records';
 
 /**
@@ -50,7 +59,7 @@ test.describe('insuranceClaims — hostile edge cases', () => {
   test('rejects invalid input on every validated field, then recovers', async ({ page }) => {
     await openNewClaim(page);
 
-    await expect(save(page)).toBeDisabled();
+    await expectSaveWithheld(page);
 
     // claimRef is locked: there is no input to type into, and Save stays blocked.
     await expect(fieldPart(page, 'claimRef', 'input')).toHaveCount(0);
@@ -60,13 +69,13 @@ test.describe('insuranceClaims — hostile edge cases', () => {
     await fieldPart(page, 'claimRef', 'input').fill('AB');
     await fieldPart(page, 'claimRef', 'input').blur();
     await expect(fieldPart(page, 'claimRef', 'error')).toBeVisible();
-    await expect(save(page)).toBeDisabled();
+    await expectSaveWithheld(page);
 
     // Over maxLength: 24.
     await fieldPart(page, 'claimRef', 'input').fill(`CLM-${'X'.repeat(30)}`);
     await fieldPart(page, 'claimRef', 'input').blur();
     await expect(fieldPart(page, 'claimRef', 'error')).toBeVisible();
-    await expect(save(page)).toBeDisabled();
+    await expectSaveWithheld(page);
 
     await fieldPart(page, 'claimRef', 'input').fill('CLM-EDGE-1');
     await expect(fieldPart(page, 'claimRef', 'error')).toHaveCount(0);
@@ -80,7 +89,7 @@ test.describe('insuranceClaims — hostile edge cases', () => {
     await fieldPart(page, 'claimantEmail', 'input').fill('not-an-email');
     await fieldPart(page, 'claimantEmail', 'input').blur();
     await expect(fieldPart(page, 'claimantEmail', 'error')).toContainText(/valid email/i);
-    await expect(save(page)).toBeDisabled();
+    await expectSaveWithheld(page);
     await fieldPart(page, 'claimantEmail', 'input').fill('edge@example.com');
     await expect(fieldPart(page, 'claimantEmail', 'error')).toHaveCount(0);
 
@@ -96,7 +105,7 @@ test.describe('insuranceClaims — hostile edge cases', () => {
     const staff = fieldById(page, 'isEmployee').locator('input[type="checkbox"]');
     await staff.check();
     await expect(fieldById(page, 'staffId')).toBeVisible();
-    await expect(save(page)).toBeDisabled();
+    await expectSaveWithheld(page);
     await staff.uncheck();
     await expect(fieldById(page, 'staffId')).toHaveCount(0);
 
@@ -105,10 +114,10 @@ test.describe('insuranceClaims — hostile edge cases', () => {
     // Currency bounds: min 0, max 10_000_000. Empty required still blocks.
     await fieldPart(page, 'sumInsured', 'input').fill('-1');
     await fieldPart(page, 'sumInsured', 'input').blur();
-    await expect(save(page)).toBeDisabled();
+    await expectSaveWithheld(page);
     await fieldPart(page, 'sumInsured', 'input').fill('10000001');
     await fieldPart(page, 'sumInsured', 'input').blur();
-    await expect(save(page)).toBeDisabled();
+    await expectSaveWithheld(page);
     await fieldPart(page, 'sumInsured', 'input').fill('48000');
 
     await fieldPart(page, 'excess', 'input').fill('-5');
@@ -118,10 +127,10 @@ test.describe('insuranceClaims — hostile edge cases', () => {
     await expect(fieldPart(page, 'excess', 'error')).toHaveCount(0);
 
     await safeClick(tab(page, 'Incident'));
-    await expect(save(page)).toBeDisabled();
+    await expectSaveWithheld(page);
     await fieldPart(page, 'incidentDate', 'input').fill('2026-04-01');
 
-    await expect(save(page)).toBeEnabled();
+    await expectSaveReady(page);
   });
 
   test('cascade, autoPatch and patchOnTrue refuse the stale and the double-copy', async ({ page }) => {
@@ -157,6 +166,8 @@ test.describe('insuranceClaims — hostile edge cases', () => {
     const cityOptions = async () => (await city.locator('option').allTextContents()).slice(1);
 
     expect(await cityOptions()).toEqual([]);
+    await expect(fieldPart(page, 'city', 'hint')).toHaveText('Select country first.');
+    await city.focus();
     await expect(fieldPart(page, 'city', 'hint')).toBeVisible();
 
     await fieldById(page, 'country').locator('select').selectOption({ label: 'Germany' });
@@ -176,18 +187,13 @@ test.describe('insuranceClaims — hostile edge cases', () => {
     await expect(fieldPart(page, 'city', 'hint')).toBeVisible();
   });
 
-  test('nested tabs, a poisonous array row, Reset, and a round-trip that keeps the survivors', async ({
-    page,
-  }) => {
+  test('nested tabs, a poisonous array row, Reset, and a round-trip that keeps the survivors', async ({ page }) => {
     await openNewClaim(page);
     await fillRequired(page, 'CLM-EDGE-3');
 
     await safeClick(tab(page, 'Incident'));
     await fieldById(page, 'severity').getByLabel('High').check();
-    await fieldPart(page, 'damageTypes', 'input').selectOption([
-      { label: 'Fire' },
-      { label: 'Flood' },
-    ]);
+    await fieldPart(page, 'damageTypes', 'input').selectOption([{ label: 'Fire' }, { label: 'Flood' }]);
     await fieldPart(page, 'street', 'input').fill('12 Roof Lane');
     await fieldPart(page, 'postcode', 'input').fill('10115');
     await fieldPart(page, 'narrative', 'input').fill('Short.');
@@ -211,23 +217,23 @@ test.describe('insuranceClaims — hostile edge cases', () => {
 
     await safeClick(tab(page, 'Settlement'));
     await expect(fieldPart(page, 'lineItems', 'empty')).toBeVisible();
-    await expect(save(page)).toBeEnabled();
+    await expectSaveReady(page);
 
     // An empty required column on a new row is a silent Save-killer if it is not on screen
     // as an error the tester can see. Adding the row must block; removing it must unblock.
     await fieldById(page, 'lineItems').getByTestId('field-lineItems-add').click();
     await expect(page.getByTestId('field-lineItems-row')).toHaveCount(1);
-    await expect(save(page)).toBeDisabled();
+    await expectSaveWithheld(page);
     await fieldById(page, 'lineItems').locator('[data-testid="field-itemDescription-input"]').fill('Roof tiles');
     await fieldById(page, 'lineItems').locator('[data-testid="field-itemAmount-input"]').fill('1200');
-    await expect(save(page)).toBeEnabled();
+    await expectSaveReady(page);
 
     await fieldById(page, 'lineItems').getByTestId('field-lineItems-add').click();
     await expect(page.getByTestId('field-lineItems-row')).toHaveCount(2);
-    await expect(save(page)).toBeDisabled();
+    await expectSaveWithheld(page);
     await fieldById(page, 'lineItems').getByTestId('field-lineItems-remove-1').click();
     await expect(page.getByTestId('field-lineItems-row')).toHaveCount(1);
-    await expect(save(page)).toBeEnabled();
+    await expectSaveReady(page);
 
     await fieldPart(page, 'auditorPin', 'input').fill('9988');
     await page.getByRole('button', { name: 'Show password' }).click();
@@ -236,18 +242,16 @@ test.describe('insuranceClaims — hostile edge cases', () => {
 
     await fieldPart(page, 'settlementTotal', 'input').fill('-1');
     await fieldPart(page, 'settlementTotal', 'input').blur();
-    await expect(save(page)).toBeDisabled();
+    await expectSaveWithheld(page);
     await fieldPart(page, 'settlementTotal', 'input').fill('1200');
-    await expect(save(page)).toBeEnabled();
+    await expectSaveReady(page);
 
     // The demo wires `(formReset)` to cancel: Reset must dump the half-built claim, not
     // persist it. A Reset that saved would show CLM-EDGE-3 in the list with 1 record.
     await safeClick(page.getByTestId('form-reset'));
     await expect(page.getByRole('button', { name: /^\+ Add/ })).toBeVisible();
     await expect(page.getByText('CLM-EDGE-3')).toHaveCount(0);
-    await expect(
-      page.getByText(new RegExp(`Showing ${SEEDED_CLAIMS} of ${SEEDED_CLAIMS} records`)),
-    ).toBeVisible();
+    await expect(page.getByText(new RegExp(`Showing ${SEEDED_CLAIMS} of ${SEEDED_CLAIMS} records`))).toBeVisible();
 
     await safeClick(page.getByRole('button', { name: /^\+ Add/ }));
     await expect(page.locator('[data-testid="form-panel"]')).toBeVisible();
@@ -304,7 +308,7 @@ test.describe('insuranceClaims — hostile edge cases', () => {
     await safeClick(page.getByRole('button', { name: 'Manager', exact: true }));
     await safeClick(page.getByRole('button', { name: /CLM-EDGE-4/i }).first());
     await expect(page.getByTestId('form-actions')).toBeVisible();
-    await expect(save(page)).toBeEnabled();
+    await expectSaveReady(page);
     await expect(fieldPart(page, 'nationalId', 'input')).toHaveValue('QQ123456C');
     await safeClick(tab(page, 'Settlement'));
     await expect(fieldPart(page, 'auditorPin', 'input')).toHaveValue('9988');

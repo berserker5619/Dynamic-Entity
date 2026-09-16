@@ -8,7 +8,7 @@ describe('DateFieldComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [DateFieldComponent, ReactiveFormsModule]
+      imports: [DateFieldComponent, ReactiveFormsModule],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DateFieldComponent);

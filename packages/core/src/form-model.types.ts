@@ -171,6 +171,18 @@ export interface NestedFieldConfig {
   type: RichFieldType;
   label: LocalizedText;
   placeholder?: LocalizedText;
+  /**
+   * Help text shown under the control, and wired to it through `aria-describedby`.
+   *
+   * Distinct from `placeholder`, which the two are routinely confused: a placeholder is an
+   * example of the value and *disappears the moment the user types*, so anything a person
+   * needs while filling the field in — a format, a rule, where to find the number they are
+   * being asked for — cannot live there. This is where that goes, and it stays on screen.
+   *
+   * Also distinct from a validation message, which says what went wrong after the fact. A
+   * hint is what would have stopped it going wrong.
+   */
+  hint?: LocalizedText;
   visibility?: boolean;
   /** System-created field — edit/delete protected in the builder. */
   systemDefault?: boolean;

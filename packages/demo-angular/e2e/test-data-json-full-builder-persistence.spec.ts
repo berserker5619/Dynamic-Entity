@@ -1,13 +1,10 @@
 import { test, expect } from '@playwright/test';
-import {
-  builderFieldRows,
-  builderTabInputs,
-  gotoDemo,
-  safeClick,
-} from './test-helpers';
+import { builderFieldRows, builderTabInputs, gotoDemo, safeClick } from './test-helpers';
 
 test.describe('Dynamic Entity E2E - Full Builder Authoring & Full Data Entry Persistence', () => {
-  test('builds custom entity config via Form Builder UI, saves, renders form, fills fields across all tabs, submits, and verifies persistence', async ({ page }) => {
+  test('builds custom entity config via Form Builder UI, saves, renders form, fills fields across all tabs, submits, and verifies persistence', async ({
+    page,
+  }) => {
     test.setTimeout(90_000);
     const jsErrors: string[] = [];
     page.on('pageerror', err => jsErrors.push(err.message));
@@ -93,7 +90,10 @@ test.describe('Dynamic Entity E2E - Full Builder Authoring & Full Data Entry Per
 
     // Verify record saved and returned to list view
     await expect(page.getByRole('button', { name: /\+ Add/i })).toBeVisible();
-    const recordBtn = page.locator('div[style*="flex-direction: column"] button').first();
+    // `.record-card`, not the inline `flex-direction: column` the list used to carry: the
+    // list is a grid of cards now, and a selector keyed to a style attribute was only ever
+    // going to survive until somebody moved that style into a stylesheet.
+    const recordBtn = page.locator('.record-list .record-card').first();
     await expect(recordBtn).toBeVisible({ timeout: 5000 });
 
     // Re-open saved record to verify persistence

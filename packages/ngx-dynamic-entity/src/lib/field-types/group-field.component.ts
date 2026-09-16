@@ -1,4 +1,4 @@
-import { Component, Input, forwardRef, ChangeDetectionStrategy, inject} from '@angular/core';
+import { Component, Input, forwardRef, ChangeDetectionStrategy, inject } from '@angular/core';
 import { AbstractControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig, EntityFormConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
@@ -12,11 +12,27 @@ import { DynamicFieldComponent } from '../form/dynamic-field/dynamic-field.compo
   standalone: true,
   imports: [ReactiveFormsModule, forwardRef(() => DynamicFieldComponent)],
   template: `
-    <fieldset class="ngx-field ngx-field--group"
-      [attr.data-testid]="'field-' + field.id" [attr.data-field-type]="field.type" [class.ngx-field--readonly]="readonly" [class.ngx-field--masked]="masked">
-      <legend class="ngx-field__legend">{{ label }}</legend>
+    <fieldset
+      class="ngx-field ngx-field--group"
+      [attr.data-testid]="'field-' + field.id"
+      [attr.data-field-type]="field.type"
+      [class.ngx-field--readonly]="readonly"
+      [class.ngx-field--masked]="masked"
+    >
+      <legend class="ngx-field__legend">
+        {{ label }}
+        @if (hint) {
+          <!-- A group's hint describes the whole section, so it hangs off the section's name. -->
+          <span class="ngx-field__hint-wrap">
+            <span class="ngx-field__hint-icon" aria-hidden="true">i</span>
+            <span class="ngx-field__hint" role="tooltip" [attr.data-testid]="'field-' + field.id + '-hint'">{{ hint }}</span>
+          </span>
+        }
+      </legend>
       @if (masked) {
-        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{ maskedText }}</span>
+        <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
+          maskedText
+        }}</span>
       } @else {
         <div class="ngx-field__group-children">
           @for (child of field.children ?? []; track child.id) {
@@ -68,6 +84,11 @@ export class GroupFieldComponent {
   @Input() readonly: boolean = false;
   @Input() masked: boolean = false;
   @Input() userRoles: string[] = [];
+
+  /** Author help text for the section as a whole. */
+  get hint(): string {
+    return resolveLabel(this.field?.hint, this.language);
+  }
 
   get label(): string {
     return resolveLabel(this.field?.label, this.language);

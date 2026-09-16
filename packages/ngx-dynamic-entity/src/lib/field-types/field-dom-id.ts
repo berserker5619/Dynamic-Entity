@@ -35,3 +35,28 @@ export function nextFieldInstanceId(): string {
 export function fieldDomId(field: { id?: string } | undefined, instance: string, suffix = ''): string {
   return `${field?.id ?? 'field'}-${instance}${suffix}`;
 }
+
+/**
+ * The `aria-describedby` a control needs, given what is rendered beside it right now.
+ *
+ * A field can show two things under its control — the author's help text and, once touched, a
+ * validation message — and a screen reader announces only what this attribute names. Three
+ * field components named the error; the other sixteen named nothing at all, so their error
+ * messages were on screen and silent. Help text would have inherited the same gap.
+ *
+ * Order matters: the hint describes the field and the error describes the attempt, so the hint
+ * is read first. `null` rather than an empty string when there is nothing to describe — an
+ * empty `aria-describedby` is a dangling reference, not an absent one.
+ *
+ * Shared rather than written into each of the nineteen field components, because the rule is
+ * the same everywhere and getting it wrong is invisible until somebody uses a screen reader.
+ */
+export function fieldDescribedBy(
+  domId: (suffix?: string) => string,
+  parts: { hint?: boolean; error?: boolean },
+): string | null {
+  const ids: string[] = [];
+  if (parts.hint) ids.push(domId('-hint'));
+  if (parts.error) ids.push(domId('-error'));
+  return ids.length ? ids.join(' ') : null;
+}

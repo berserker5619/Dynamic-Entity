@@ -5,7 +5,7 @@ import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { formatDisplayValue, resolveLabel } from '@dynamic-entity/core';
 
-import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
+import { fieldDescribedBy, fieldDomId, nextFieldInstanceId } from './field-dom-id';
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-date-field',
@@ -19,7 +19,21 @@ import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
       [class.ngx-field--readonly]="readonly"
       [class.ngx-field--masked]="masked"
     >
-      <label class="ngx-field__label" [attr.for]="domId()">{{ label }}</label>
+      <div class="ngx-field__label-row">
+        <label class="ngx-field__label" [attr.for]="domId()">{{ label }}</label>
+        @if (hint) {
+          <span class="ngx-field__hint-wrap">
+            <span class="ngx-field__hint-icon" aria-hidden="true">i</span>
+            <span
+              class="ngx-field__hint"
+              role="tooltip"
+              [attr.data-testid]="'field-' + field.id + '-hint'"
+              [id]="domId('-hint')"
+              >{{ hint }}</span
+            >
+          </span>
+        }
+      </div>
       @if (masked) {
         <span class="ngx-field__value ngx-field__value--masked" [attr.data-testid]="'field-' + field.id + '-masked'">{{
           maskedText
@@ -35,10 +49,13 @@ import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
           [attr.data-testid]="'field-' + field.id + '-input'"
           type="date"
           [formControl]="$any(control)"
+          [attr.aria-describedby]="describedBy()"
           [attr.disabled]="field.disabled ? true : null"
         />
         @if (errorMessage) {
-          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'">{{ errorMessage }}</span>
+          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" [id]="domId('-error')">{{
+            errorMessage
+          }}</span>
         }
       }
     </div>
@@ -96,16 +113,18 @@ export class DateFieldComponent {
    * "This field has an error", which made a documented, configurable feature work on three
    * of fifteen field types.
    */
+  /** Author help text, shown under the control and named by `aria-describedby`. */
+  get hint(): string {
+    return resolveLabel(this.field?.hint, this.language);
+  }
+
+  /** The ids of whatever is describing this control right now. */
+  protected describedBy(): string | null {
+    return fieldDescribedBy(s => this.domId(s), { hint: !!this.hint, error: !!this.errorMessage });
+  }
+
   get errorMessage(): string {
     if (!this.control?.errors || !this.control.touched) return '';
-    return this.messages.resolve(this.control.errors, this.language, [
-      'required',
-      'email',
-      'min',
-      'max',
-      'minlength',
-      'maxlength',
-      'pattern',
-    ]);
+    return this.messages.resolveForField(this.control.errors, this.language, this.field.type);
   }
 }

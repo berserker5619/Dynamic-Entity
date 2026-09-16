@@ -51,8 +51,13 @@ test.describe('migrations — a record one config version behind', () => {
 test.describe('validators — a synchronous rule named from the schema', () => {
   /**
    * `validators: { custom: ['noShouting'] }` in the config; the function itself is registered
-   * through `provideNgxDynamicEntity`. Removing the registration leaves the name unresolved,
-   * the field valid, and Save enabled — which is what this asserts against.
+   * through `provideNgxDynamicEntity`. Removing the registration leaves the name unresolved
+   * and the field valid, so the save goes through — which is what this asserts against.
+   *
+   * What proves the block is the error summary, not a greyed-out button. Save deliberately
+   * stays clickable while the form is invalid: a disabled button cannot explain itself, and
+   * on a tabbed form the field at fault is usually not even on screen. Pressing it refuses
+   * the save and says which field refused it — see `DynamicFormComponent.submitDisabled`.
    */
   test('blocks the save and reports it when the rule fails', async ({ page }) => {
     await openRecord(page, 'Current Sample');
@@ -64,11 +69,15 @@ test.describe('validators — a synchronous rule named from the schema', () => {
     // A custom error key is not on any built-in field type's list of known keys, so the
     // message comes from the `invalid` fallback — which the demo overrides and localizes.
     await expect(fieldPart(page, 'title', 'error')).toHaveText('That value is not allowed.');
-    await expect(page.getByTestId(SAVE)).toBeDisabled();
+
+    await safeClick(page.getByTestId(SAVE));
+    await expect(page.getByTestId('error-summary')).toBeVisible();
+    await expect(page.getByTestId('error-summary-heading')).toBeVisible();
 
     await title.fill('Quiet again');
     await title.blur();
-    await expect(page.getByTestId(SAVE)).toBeEnabled();
+    await safeClick(page.getByTestId(SAVE));
+    await expect(page.getByTestId('error-summary')).toBeHidden();
   });
 
   test('the built-in minlength message is translated too', async ({ page }) => {
@@ -108,7 +117,13 @@ test.describe('asyncValidators — the gate that holds while a check is pending'
     await expect(page.getByTestId(SAVE)).toBeEnabled();
   });
 
-  test('an address the check rejects keeps Save unavailable', async ({ page }) => {
+  /**
+   * Once the answer is back the address is simply invalid, which is no longer a reason to
+   * disable the button — only a reason to refuse the save and say so. Asserting on the
+   * summary rather than the disabled attribute is what keeps this test about the *rejection*
+   * instead of about how the button happens to look.
+   */
+  test('an address the check rejects keeps the save refused', async ({ page }) => {
     await newRecord(page);
 
     await fieldPart(page, 'title', 'input').fill('Async Sample');
@@ -117,7 +132,10 @@ test.describe('asyncValidators — the gate that holds while a check is pending'
     await email.blur();
 
     await expect(fieldPart(page, 'email', 'error')).toHaveText('That value is not allowed.');
-    await expect(page.getByTestId(SAVE)).toBeDisabled();
+    await safeClick(page.getByTestId(SAVE));
+    await expect(page.getByTestId('error-summary-email')).toBeVisible();
+    // Still on the form, and nothing was written.
+    await expect(fieldPart(page, 'email', 'input')).toBeVisible();
   });
 });
 

@@ -79,7 +79,7 @@ export const FIELD_TYPE_CATALOG: FieldTypeMeta[] = [
     type: 'currency',
     label: 'Currency',
     icon: 'attach_money',
-    description: 'Currency amount input',
+    description: 'Currency / money amount input',
     idPrefix: 'currency',
     hasOptions: false,
     isEntityRef: false,

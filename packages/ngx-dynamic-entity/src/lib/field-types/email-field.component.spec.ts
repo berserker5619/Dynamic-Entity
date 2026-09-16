@@ -42,9 +42,7 @@ describe('EmailFieldComponent', () => {
     fixture.componentRef.setInput('control', new FormControl('nope', [Validators.email]));
     component.control.markAsTouched();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.ngx-field__error').textContent).toContain(
-      'valid email',
-    );
+    expect(fixture.nativeElement.querySelector('.ngx-field__error').textContent).toContain('valid email');
   });
 
   it('masks the value for masked roles', () => {

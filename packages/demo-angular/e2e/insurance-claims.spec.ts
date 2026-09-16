@@ -1,5 +1,14 @@
 import { test, expect, type Page } from '@playwright/test';
-import { DEMO_MASK, fieldById, fieldPart, gotoDemo, safeClick, safeSelect } from './test-helpers';
+import {
+  DEMO_MASK,
+  expectSaveReady,
+  expectSaveWithheld,
+  fieldById,
+  fieldPart,
+  gotoDemo,
+  safeClick,
+  safeSelect,
+} from './test-helpers';
 
 /**
  * The `insuranceClaims` config is the most demanding one in the dataset: five tabs including
@@ -97,8 +106,13 @@ test.describe('insuranceClaims — a complex config end to end', () => {
   });
 
   /**
-   * A hidden required field used to hold `form.invalid` true forever, disabling Save with
-   * nothing on screen to explain it. Hiding it must release the form.
+   * A hidden required field used to hold `form.invalid` true forever, so Save was refused with
+   * nothing on screen to explain it. Hiding the field must release the form.
+   *
+   * Asserted through the error summary rather than the button's disabled state: Save stays
+   * clickable while a form is invalid — the refusal is what carries the explanation — so the
+   * question "is the form still blocked?" is answered by whether pressing Save refuses, not by
+   * how the button looks.
    */
   test('a hidden required field does not deadlock submission', async ({ page }) => {
     await openNewClaim(page);
@@ -107,8 +121,9 @@ test.describe('insuranceClaims — a complex config end to end', () => {
     await checkbox.check();
     await expect(fieldById(page, 'staffId')).toBeVisible();
 
-    // staffId is required and empty, so Save is blocked while it is on screen.
-    await expect(page.getByTestId('form-submit')).toBeDisabled();
+    // staffId is required and empty, so the save is refused while it is on screen.
+    await safeClick(page.getByTestId('form-submit'));
+    await expect(page.getByTestId('error-summary-staffId')).toBeVisible();
 
     await checkbox.uncheck();
     await expect(fieldById(page, 'staffId')).toHaveCount(0);
@@ -122,7 +137,9 @@ test.describe('insuranceClaims — a complex config end to end', () => {
     await safeClick(tab(page, 'Incident'));
     await fieldPart(page, 'incidentDate', 'input').fill('2026-03-04');
 
-    await expect(page.getByTestId('form-submit')).toBeEnabled();
+    // Nothing is outstanding, so the summary is gone and the save goes through.
+    await expect(page.getByTestId('error-summary')).toBeHidden();
+    await expectSaveReady(page);
   });
 
   test('cascade options wait for their parent, then filter by it', async ({ page }) => {
@@ -196,13 +213,19 @@ test.describe('insuranceClaims — a complex config end to end', () => {
     const rows = items.locator('.ngx-field__array-item');
     const before = await rows.count();
 
-    await items.getByRole('button', { name: /^\+ Add/ }).first().click();
+    await items
+      .getByRole('button', { name: /^\+ Add/ })
+      .first()
+      .click();
     await expect(rows).toHaveCount(before + 1);
 
     // Row columns come from the array field's children.
     await expect(items.locator('input').first()).toBeVisible();
 
-    await items.getByRole('button', { name: /Remove/i }).first().click();
+    await items
+      .getByRole('button', { name: /Remove/i })
+      .first()
+      .click();
     await expect(rows).toHaveCount(before);
   });
 

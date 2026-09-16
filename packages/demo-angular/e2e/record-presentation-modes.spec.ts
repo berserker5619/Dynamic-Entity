@@ -40,6 +40,8 @@ test.describe('record presentation modes', () => {
 
     await expect(inputs(page)).toHaveCount(0);
     await expect(values(page).first()).toBeVisible();
+    // The heading is the record, not the entity — that used to show "clients" twice.
+    await expect(page.getByTestId('record-title')).toHaveText('Acme Corp');
     // The affordance that separates this from Data only.
     await expect(editSection(page)).toBeVisible();
   });

@@ -8,17 +8,15 @@ describe('DropdownFieldComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [DropdownFieldComponent, ReactiveFormsModule]
+      imports: [DropdownFieldComponent, ReactiveFormsModule],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DropdownFieldComponent);
     component = fixture.componentInstance;
-    component.field = { 
+    component.field = {
+      type: 'dropdown',
       label: { en: 'Color' },
-      options: [
-        { en: 'Red' },
-        { en: 'Blue' }
-      ]
+      options: [{ en: 'Red' }, { en: 'Blue' }],
     } as any;
     fixture.componentRef.setInput('control', new FormControl({ en: 'Red' }));
     fixture.detectChanges();

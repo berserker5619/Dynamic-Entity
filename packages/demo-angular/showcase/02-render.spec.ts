@@ -23,11 +23,11 @@ test('render and fill a form', async ({ page }) => {
 
   const tab = (name: string) => page.getByRole('tab', { name: new RegExp(name, 'i') });
 
-  // Save stays disabled until the schema's required fields are satisfied — the form will not
-  // let an invalid record be stored in the first place.
+  // Save stays clickable while the schema is unsatisfied — pressing it is how the form
+  // explains which field is at fault. It still will not store an invalid record.
   const save = page.getByRole('button', { name: /^Save$/i });
-  await expect(save).toBeDisabled();
-  await say(page, 'Save is blocked until the schema is satisfied', 2000);
+  await expect(save).toHaveAttribute('data-blocked', '');
+  await say(page, 'Save stays clickable, and refuses until the schema is satisfied', 2000);
 
   // The claim reference is a `criticalField`: it renders locked, and has to be unlocked on
   // purpose before it can be edited.

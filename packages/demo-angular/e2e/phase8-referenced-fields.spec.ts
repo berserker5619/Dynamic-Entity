@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoDemo, safeClick, safeFill } from './test-helpers';
+import { gotoDemo, openInspectorSection, safeClick, safeFill } from './test-helpers';
 
 test.describe('Dynamic Entity E2E - Phase 8 Referenced Fields & Drift Detection', () => {
   test('links a field to a source entity field, detects drift on source change, and syncs', async ({ page }) => {
@@ -18,8 +18,14 @@ test.describe('Dynamic Entity E2E - Phase 8 Referenced Fields & Drift Detection'
     const fieldRow = page.locator('[data-testid="builder-field-row"]').last();
     await safeClick(fieldRow);
 
-    // 3. Toggle Referenced Field Link on
-    const toggle = page.locator('[data-testid="toggle-referenced"] label, [data-testid="toggle-referenced"] button, [data-testid="toggle-referenced"]').first();
+    // 3. Toggle Referenced Field Link on. The Reference section opens itself once a field
+    //    is linked, but this one is not linked yet, so it starts closed.
+    await openInspectorSection(page, 'Reference');
+    const toggle = page
+      .locator(
+        '[data-testid="toggle-referenced"] label, [data-testid="toggle-referenced"] button, [data-testid="toggle-referenced"]',
+      )
+      .first();
     await safeClick(toggle);
 
     // 4. Fill Source Entity Key and Source Field ID

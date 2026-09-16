@@ -12,23 +12,38 @@ test.describe('Dynamic Entity E2E - Validation, Roles, and Config Manager', () =
     await gotoDemo(page);
   });
 
-  test('validates required fields before allowing submission', async ({ page }) => {
+  /**
+   * Save stays clickable while a required field is empty, and refuses.
+   *
+   * It used to be disabled, which is a worse answer than a refusal: a greyed button cannot
+   * say which field is missing, and on a tabbed form that field is usually not the one on
+   * screen. Pressing it now names the count, lists the field as a link that jumps to it, and
+   * badges the tab holding it — all of which is asserted here, because "the save was blocked"
+   * is only half the requirement. The other half is that the user can tell why.
+   */
+  test('refuses the save and names the missing field', async ({ page }) => {
     await safeClick(page.getByRole('button', { name: '+ Add Client' }));
     await expect(page.getByRole('heading', { level: 2, name: 'New Client' })).toBeVisible();
 
     const saveBtn = page.getByRole('button', { name: 'Save' });
-    await expect(saveBtn).toBeDisabled();
+    await safeClick(saveBtn);
+
+    await expect(page.getByTestId('error-summary')).toBeVisible();
+    await expect(page.getByTestId('error-summary-heading')).toContainText('1 field');
+    await expect(page.getByTestId('error-summary-name')).toContainText('Name');
+    await expect(page.getByTestId('error-summary-name')).toContainText('This field is required.');
+    await expect(page.getByTestId('tab-errors-general')).toHaveText('1');
+    // Nothing was written: still on the form.
+    await expect(page.getByRole('heading', { level: 2, name: 'New Client' })).toBeVisible();
 
     await fieldByLabel(page, 'Name').locator('input').fill('Valid Test Client');
-    await expect(saveBtn).toBeEnabled();
+    await expect(page.getByTestId('error-summary')).toBeHidden();
 
     await safeClick(saveBtn);
     await expect(recordButton(page, 'Valid Test Client')).toBeVisible();
   });
 
-  test('blocks saving for the viewer role, and allows it for a role with edit rights', async ({
-    page,
-  }) => {
+  test('blocks saving for the viewer role, and allows it for a role with edit rights', async ({ page }) => {
     await safeClick(page.getByRole('button', { name: 'Viewer (Readonly)' }));
     await safeClick(recordButton(page, 'Acme Corp'));
     await expect(page.getByRole('heading', { level: 2, name: 'Edit Client' })).toBeVisible();
@@ -65,7 +80,11 @@ test.describe('Dynamic Entity E2E - Validation, Roles, and Config Manager', () =
     // test_data.json is picked up here without an edit.
     await expect(page.locator('tbody tr')).toHaveCount(entityConfigs.length + 2);
 
-    await page.locator('tr').filter({ hasText: 'clients' }).getByRole('button', { name: /Edit Metadata/i }).click();
+    await page
+      .locator('tr')
+      .filter({ hasText: 'clients' })
+      .getByRole('button', { name: /Edit Metadata/i })
+      .click();
     await expect(page.getByRole('heading', { level: 3, name: /Edit Config: clients/i })).toBeVisible();
 
     const textarea = page.locator('textarea').first();

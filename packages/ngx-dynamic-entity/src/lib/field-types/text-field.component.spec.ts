@@ -10,12 +10,12 @@ describe('TextFieldComponent', () => {
     id: 'name',
     type: 'text',
     label: { en: 'Full Name' },
-    placeholder: { en: 'Enter name' }
+    placeholder: { en: 'Enter name' },
   };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TextFieldComponent, ReactiveFormsModule]
+      imports: [TextFieldComponent, ReactiveFormsModule],
     }).compileComponents();
 
     fixture = TestBed.createComponent(TextFieldComponent);

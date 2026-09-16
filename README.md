@@ -28,6 +28,8 @@ All three share a version and are released together.
 ## ✨ Features
 
 - **21 field types** — `text`, `textarea`, `markdown`, `number`, `currency`, `email`, `password`, `date`, `datetime`, `time`, `monthYear`, `dropdown`, `radio`, `checkbox`, `boolean`, `multiSelect`, `entity-ref`, `group`, `array`, `image`, `file`. Every type is a standalone component you can register individually, or swap for your own.
+- **Field help text** — `hint` on any field puts an info icon beside its label, with the text on hover and for as long as the field has focus. It is wired to the control through `aria-describedby`, so a screen reader gets it without hovering anything. Unlike a `placeholder` it does not vanish at the first keystroke, which is what makes it usable for a format or a rule rather than an example. `LocalizedText`, like every other authored string.
+- **A refused save explains itself** — pressing Save on an invalid form names every field at fault *and what is wrong with it*, badges each tab with its count, and jumps to the first. Save stays clickable while a form is merely invalid: a disabled button cannot say why.
 - **Reactive rules engine** — three action types (`visibility` to show/hide a field or tab, `validation` to attach an error or warning, `info` to raise a banner) driven by 18 condition operators including `EQUAL`, `CONTAINS`, `IN`, `DATE_BEFORE`, `HAS_ITEMS` and `VALUE_CHANGED`. Conditions within a rule are ANDed; rules apply in `priority` order.
 - **Role-based field visibility & masking** — per-entity `view`/`edit`/`delete` role lists, plus `maskData` to render a field as `XXXXXXXXX` for configured roles (override the text with `MASKED_PLACEHOLDER`). **This is presentational only — see [Security](#-security).**
 - **Cross-entity referenced fields** — link a field to a source entity, snapshot what was copied, and detect drift when the source changes. Drift is surfaced in the builder.
@@ -289,9 +291,43 @@ notes: [Presentation defaults](EXTENDING.md#presentation-defaults).
 
 ## 🎨 Styling
 
-The renderer ships **no stylesheet**. Field components emit stable BEM-style hooks — `ngx-field`, `ngx-field__label`, `ngx-field__input`, `ngx-field__error` — and it is up to you to style them. This is deliberate: the library has no Angular Material dependency and imposes no design system, so it drops into a Tailwind, CSS-modules, or hand-rolled setup without conflict.
+Field components emit stable BEM-style hooks — `ngx-field`, `ngx-field__label`,
+`ngx-field__input`, `ngx-field__error` — and **no styles are applied unless you ask for
+them**. The library has no Angular Material dependency and imposes no design system, so it
+drops into a Tailwind, CSS-modules or hand-rolled setup without conflict.
 
-`packages/demo-angular/src/styles.css` is a working reference implementation.
+An optional base stylesheet ships alongside it, for when you would rather start from
+something legible than from browser defaults:
+
+```css
+/* angular.json → styles, or a global stylesheet */
+@import 'ngx-dynamic-entity/styles.css';
+```
+
+It is driven entirely by custom properties, scoped to `.ngx-form` / `.ngx-record-editor` so
+importing it cannot affect the rest of your app. Re-skin it by redeclaring the tokens on the
+same selectors — nothing else needs overriding:
+
+```css
+.ngx-form,
+.ngx-record-editor {
+  --ngx-color-accent: #4f46e5;
+  --ngx-color-border: #e2e8f0;
+  --ngx-radius-sm: 8px;
+  --ngx-control-height: 40px;
+}
+```
+
+Dark mode follows `prefers-color-scheme`; pin it either way by redeclaring the palette.
+Two behaviours are opt-in rather than default:
+
+| Add this | To get |
+|---|---|
+| `ngx-form-sticky-actions` on a wrapper | A Save/Reset bar that stays in view down a long form. Opt-in because `position: sticky` resolves against the nearest scrolling ancestor, so a form embedded mid-page would detach its bar and float it over whatever is below. |
+| `layout="auto"` on the component | Fields with no `colSpan` of their own sized by type — a date is a third of a row, a textarea still takes all twelve — instead of every field taking the full width. |
+
+`packages/demo-angular/src/styles.css` shows the whole arrangement: it imports the
+stylesheet, overrides the tokens, and adds only its own chrome.
 
 > The **builder** does depend on Angular Material and requires `provideAnimations()`.
 

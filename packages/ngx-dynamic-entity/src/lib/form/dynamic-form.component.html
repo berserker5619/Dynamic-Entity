@@ -1,8 +1,48 @@
 @if (canView) {
-  <form [formGroup]="form" (ngSubmit)="submit()" class="ngx-form" novalidate>
+  <form [formGroup]="form" (ngSubmit)="submit()" class="ngx-form" [class.ngx-form--readonly]="readonly" novalidate>
     <!-- Error message banner -->
     @if (error) {
       <div class="ngx-form__error-banner" role="alert" data-testid="form-error">{{ error }}</div>
+    }
+
+    <!--
+      Why the last Save did nothing.
+      Only after a refused submit — see `submitAttempted`. Each entry jumps to its field,
+      switching tabs on the way, because the field is usually not the one on screen.
+    -->
+    @if (submitAttempted() && invalidFields().length > 0) {
+      <div class="ngx-form__error-summary" role="alert" data-testid="error-summary" tabindex="-1">
+        <!--
+          `error-summary-heading`, not `-title`: the links below are `error-summary-<fieldId>`,
+          and a field whose id happens to be `title` would then share a test id with this line.
+          The `extensions` entity has exactly such a field.
+        -->
+        <p class="ngx-form__error-summary-title" data-testid="error-summary-heading">
+          {{ ui.text('errorSummaryTitle', language, { count: invalidFields().length }) }}
+        </p>
+        <ul class="ngx-form__error-summary-list">
+          @for (entry of invalidFields(); track entry.field.id) {
+            <li>
+              <!--
+                The field, and what is wrong with it — the same sentence the field renders
+                under itself, so the summary is not a second opinion. Naming only the field
+                left the user to visit each one to find out what it wanted.
+              -->
+              <button
+                type="button"
+                class="ngx-form__error-summary-link"
+                [attr.data-testid]="'error-summary-' + entry.field.id"
+                (click)="jumpToField(entry.field.id)"
+              >
+                <span class="ngx-form__error-summary-field">{{ resolveFieldLabel(entry.field) }}</span>
+                @if (entry.message) {
+                  <span class="ngx-form__error-summary-reason">{{ entry.message }}</span>
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      </div>
     }
 
     <!-- Rules Info Banners -->
@@ -45,6 +85,19 @@
             [attr.aria-selected]="activeTab() === tab.id"
           >
             {{ resolveTabLabel(tab) }}
+            <!--
+              How many fields on this tab are stopping the save.
+              The count is in the accessible name rather than the badge, because "3" read out
+              after a tab name says nothing about what it counts.
+            -->
+            @if (tabErrorCount(tab); as errors) {
+              <span
+                class="ngx-form__tab-badge"
+                [attr.data-testid]="'tab-errors-' + tab.id"
+                [attr.aria-label]="ui.text('tabErrorCount', language, { count: errors })"
+                >{{ errors }}</span
+              >
+            }
           </button>
         }
       </div>
@@ -69,6 +122,14 @@
             [attr.aria-selected]="activeSubTabConfig?.id === subTab.id"
           >
             {{ resolveTabLabel(subTab) }}
+            @if (subTabErrorCount(subTab); as errors) {
+              <span
+                class="ngx-form__tab-badge"
+                [attr.data-testid]="'subtab-errors-' + subTab.id"
+                [attr.aria-label]="ui.text('tabErrorCount', language, { count: errors })"
+                >{{ errors }}</span
+              >
+            }
           </button>
         }
       </div>
@@ -148,11 +209,26 @@
         <button type="button" class="ngx-form__reset" data-testid="form-reset" (click)="reset()" [disabled]="isSaving()">
           {{ ui.text('reset', language) }}
         </button>
+        <!--
+          Two different "unavailable" states, and they are not the same thing.
+
+          `disabled` is for what a retry cannot fix — a save in flight, an async check still
+          outstanding. `data-blocked` is for validation: the button stays fully operable,
+          because pressing it is how the user gets the error summary, but it should not look
+          ready either. The stylesheet mutes it without taking the click away.
+
+          Deliberately not `aria-disabled`. That announces a control as present-but-inoperable,
+          and this one is operable and useful — pressing it raises a `role="alert"` naming
+          every field at fault, which is more than a disabled button could ever say. Tooling
+          agrees: Playwright refuses to click through `aria-disabled`, and it would be right
+          to, because the attribute would be claiming something untrue.
+        -->
         <button
           type="submit"
           class="ngx-form__submit"
           data-testid="form-submit"
-          [disabled]="submitBlocked"
+          [disabled]="submitDisabled"
+          [attr.data-blocked]="submitBlocked ? '' : null"
           [title]="ui.text('saveShortcutHint', language)"
         >
           @if (isSaving() || loading) {

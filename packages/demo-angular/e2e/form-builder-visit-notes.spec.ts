@@ -21,8 +21,17 @@
  *   Alternatively (simpler) we verify only field presence + tab labels, which covers the real UX.
  */
 
-import { test, expect, type Page, type Locator } from '@playwright/test';
-import { builderFieldRows, builderRowId, builderTabInputs, fieldPart, gotoDemo, safeClick } from './test-helpers';
+import { test, expect, type Page } from '@playwright/test';
+import {
+  addInspectorOption,
+  builderFieldRows,
+  builderRowId,
+  builderTabInputs,
+  fieldPart,
+  gotoDemo,
+  safeClick,
+  setInspectorLabel,
+} from './test-helpers';
 
 // ─── Builder UI helpers ──────────────────────────────────────────────────────
 
@@ -51,13 +60,7 @@ async function addField(page: Page, label: string): Promise<void> {
  * It's the mat-form-field whose mat-label contains "Label".
  */
 async function setFieldLabel(page: Page, label: string): Promise<void> {
-  const field = page
-    .locator('ngx-field-inspector mat-form-field')
-    .filter({ hasText: /Label.*en/ })
-    .first();
-  const input = field.locator('input');
-  await expect(input).toBeVisible({ timeout: 5000 });
-  await input.fill(label);
+  await setInspectorLabel(page, label);
 }
 
 /**
@@ -77,25 +80,9 @@ async function setRequired(page: Page, required: boolean): Promise<void> {
  * Clicks "+ Option", then fills the last newly-created option row.
  */
 async function addOption(page: Page, value: string, label: string): Promise<void> {
-  // "+ Option" button is in the inspector Options section
-  const addOptBtn = page.locator('ngx-field-inspector button').filter({ hasText: 'Option' }).first();
-  await expect(addOptBtn).toBeVisible({ timeout: 5000 });
-
-  // Count first, then wait for the row to actually appear.
-  //
-  // This used to click and read `count()` straight afterwards. `count()` does not retry, so
-  // whenever the new row had not rendered yet it returned the old total and `nth(count - 1)`
-  // filled the *previous* row — overwriting a label that was already set and leaving the new
-  // one blank. That is the intermittent missing option this spec kept failing on under CI
-  // load. `toHaveCount` retries, so the row is there before it is filled.
-  const optRows = page.getByTestId('option-row');
-  const before = await optRows.count();
-  await addOptBtn.click();
-  await expect(optRows).toHaveCount(before + 1);
-
   // One input per option: the displayed text IS the stored value, so `value` is unused.
   void value;
-  await optRows.nth(before).locator('input').fill(label);
+  await addInspectorOption(page, label);
 }
 
 /** Set the entity name in the top-left settings panel. */

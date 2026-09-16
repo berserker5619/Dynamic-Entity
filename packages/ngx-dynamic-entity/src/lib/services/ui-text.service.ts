@@ -28,6 +28,10 @@ export const DEFAULT_UI_TEXT = {
   saveShortcutHint: 'Shortcut: Ctrl+S',
   loading: 'Loading…',
 
+  // Why a save was refused — the summary above the form, and the count on each tab
+  errorSummaryTitle: '{count} field(s) need attention before this can be saved.',
+  tabErrorCount: '{count} field(s) need attention on this tab',
+
   // Record view — the per-tab edit flow
   editSection: 'Edit section',
   saveSection: 'Save section',

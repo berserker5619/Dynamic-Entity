@@ -5,7 +5,7 @@ import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { resolveLabel } from '@dynamic-entity/core';
 import { UiTextService } from '../services/ui-text.service';
-import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
+import { fieldDescribedBy, fieldDomId, nextFieldInstanceId } from './field-dom-id';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -38,14 +38,31 @@ import { fieldDomId, nextFieldInstanceId } from './field-dom-id';
             [attr.data-testid]="'field-' + field.id + '-input'"
             type="checkbox"
             [formControl]="$any(control)"
+            [attr.aria-describedby]="describedBy()"
             [attr.disabled]="field.disabled ? true : null"
           />
           {{ label }}
+          @if (hint) {
+            <span class="ngx-field__hint-wrap">
+              <span class="ngx-field__hint-icon" aria-hidden="true">i</span>
+              <span
+                class="ngx-field__hint"
+                role="tooltip"
+                [attr.data-testid]="'field-' + field.id + '-hint'"
+                [id]="domId('-hint')"
+                >{{ hint }}</span
+              >
+            </span>
+          }
         </label>
         @if (errorMessage) {
-          <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" role="alert">{{
-            errorMessage
-          }}</span>
+          <span
+            class="ngx-field__error"
+            [attr.data-testid]="'field-' + field.id + '-error'"
+            [id]="domId('-error')"
+            role="alert"
+            >{{ errorMessage }}</span
+          >
         }
       }
     </div>
@@ -81,8 +98,18 @@ export class CheckboxFieldComponent {
    * It rendered no error element at all, so a required checkbox left unticked told the user
    * nothing — and `validationMessages` could not reach a field that never displayed one.
    */
+  /** Author help text, shown under the control and named by `aria-describedby`. */
+  get hint(): string {
+    return resolveLabel(this.field?.hint, this.language);
+  }
+
+  /** The ids of whatever is describing this control right now. */
+  protected describedBy(): string | null {
+    return fieldDescribedBy(s => this.domId(s), { hint: !!this.hint, error: !!this.errorMessage });
+  }
+
   get errorMessage(): string {
     if (!this.control?.errors || !this.control.touched) return '';
-    return this.messages.resolve(this.control.errors, this.language, ['required', 'pattern']);
+    return this.messages.resolveForField(this.control.errors, this.language, this.field.type);
   }
 }

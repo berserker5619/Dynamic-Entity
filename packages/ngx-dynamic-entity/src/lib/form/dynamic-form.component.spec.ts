@@ -229,7 +229,14 @@ describe('DynamicFormComponent', () => {
       expect(submit).not.toHaveBeenCalled();
     });
 
-    it('does not submit an invalid form', () => {
+    /**
+     * The shortcut reaches `submit()` on an invalid form, and `submit()` is what refuses.
+     *
+     * It used to be guarded here as well, so Ctrl+S on an incomplete form did nothing at all
+     * — no save, and no explanation either. `submit()` refuses the save *and* raises the
+     * error summary, and the shortcut should behave exactly like the button it stands for.
+     */
+    it('reaches submit on an invalid form, so the refusal is explained', () => {
       build();
       // The stubbed ValidatorRegistryService attaches no validators, so invalidity is set
       // directly — what is under test is the guard, not Angular's validation.
@@ -237,9 +244,13 @@ describe('DynamicFormComponent', () => {
       control?.setErrors({ required: true });
       expect(component.form.valid).toBe(false);
 
-      const submit = jest.spyOn(component, 'submit').mockImplementation(() => undefined);
+      const formSubmit = jest.fn();
+      component.formSubmit.subscribe(formSubmit);
       press();
-      expect(submit).not.toHaveBeenCalled();
+
+      // Reached `submit()`, which refused: the summary is up and nothing was emitted.
+      expect(component.submitAttempted()).toBe(true);
+      expect(formSubmit).not.toHaveBeenCalled();
     });
 
     it('still swallows the browser Save dialog even when it will not submit', () => {
@@ -1486,5 +1497,169 @@ describe('async validation and a rejectable beforeSave', () => {
     await component.submit();
 
     expect(submitted).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * What a refused save tells the user.
+ *
+ * The form used to mark every control touched and stop there, which on a tabbed form is
+ * indistinguishable from a broken button: the errors appear on whichever tabs hold them, and
+ * the user is looking at a different one. Three things carry the explanation now — the
+ * summary, the per-tab counts, and the jump to the first offending field — and all three read
+ * the same `invalidFields()`, so they cannot disagree about what is wrong.
+ */
+describe('DynamicFormComponent — a save that validation refuses', () => {
+  let fixture: ComponentFixture<DynamicFormComponent>;
+  let component: DynamicFormComponent;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({ imports: [DynamicFormComponent, ReactiveFormsModule] }).compileComponents();
+    fixture = TestBed.createComponent(DynamicFormComponent);
+    component = fixture.componentInstance;
+    component.config = mockConfig;
+    component.ngOnInit();
+    component.ngOnChanges({ config: new SimpleChange(undefined, mockConfig, true) });
+    fixture.detectChanges();
+  });
+
+  /** `name` is the config's only required field, and it starts out with a default. */
+  function emptyTheRequiredField(): void {
+    component.getControl('name')?.setValue('');
+    component.getControl('name')?.setValidators(Validators.required);
+    component.getControl('name')?.updateValueAndValidity();
+    fixture.detectChanges();
+  }
+
+  it('says nothing until a save is actually attempted', () => {
+    emptyTheRequiredField();
+
+    // Invalid from the first render, because the field is required and empty. Leading with a
+    // block of red before the user has typed anything is an accusation, not help.
+    expect(component.form.invalid).toBe(true);
+    expect(component.submitAttempted()).toBe(false);
+    expect(fixture.nativeElement.querySelector('[data-testid="error-summary"]')).toBeNull();
+  });
+
+  it('names the fields at fault once Save is pressed', async () => {
+    emptyTheRequiredField();
+
+    await component.submit();
+    fixture.detectChanges();
+
+    expect(component.submitAttempted()).toBe(true);
+    expect(component.invalidFields().map(entry => entry.field.id)).toEqual(['name']);
+    expect(fixture.nativeElement.querySelector('[data-testid="error-summary"]')).not.toBeNull();
+  });
+
+  it('counts the offending fields against the tab that holds them', async () => {
+    emptyTheRequiredField();
+    await component.submit();
+
+    const [tab1, tab2] = component.visibleTabs;
+    expect(component.tabErrorCount(tab1)).toBe(1);
+    expect(component.tabErrorCount(tab2)).toBe(0);
+  });
+
+  it('clears the summary once the save goes through', async () => {
+    emptyTheRequiredField();
+    await component.submit();
+    expect(component.submitAttempted()).toBe(true);
+
+    component.getControl('name')?.setValue('Acme');
+    fixture.detectChanges();
+    await component.submit();
+
+    expect(component.submitAttempted()).toBe(false);
+  });
+
+  /**
+   * A field hidden by `showWhen` is disabled by `syncHiddenFieldState`, and a disabled control
+   * is not part of validity. Listing one would send the user to a field that is not on screen
+   * — and worse, the jump would switch tabs to show them nothing.
+   */
+  it('leaves a field hidden by its condition out of the count', async () => {
+    const withHiddenRequired: EntityFormConfig = {
+      entity: 'clients',
+      version: 1,
+      tabs: [
+        {
+          id: 'tab1',
+          label: { en: 'Tab 1' },
+          fields: [
+            { id: 'isEmployee', type: 'boolean', label: { en: 'Employee' }, defaultValue: false },
+            {
+              id: 'staffId',
+              type: 'text',
+              label: { en: 'Staff id' },
+              validators: { required: true },
+              showWhen: { isEmployee: true },
+            },
+          ],
+        },
+      ],
+    };
+    const local = TestBed.createComponent(DynamicFormComponent);
+    local.componentInstance.config = withHiddenRequired;
+    local.componentInstance.ngOnInit();
+    local.componentInstance.ngOnChanges({ config: new SimpleChange(undefined, withHiddenRequired, true) });
+    local.detectChanges();
+
+    local.componentInstance.getControl('staffId')?.setValidators(Validators.required);
+    local.componentInstance.getControl('staffId')?.updateValueAndValidity();
+    local.detectChanges();
+
+    await local.componentInstance.submit();
+
+    expect(local.componentInstance.invalidFields()).toEqual([]);
+  });
+
+  /**
+   * Save stays clickable while the form is merely invalid — that click is where the
+   * explanation comes from. What disables it is a state a retry cannot fix.
+   */
+  it('keeps Save available while invalid, and withholds it only while saving or pending', () => {
+    emptyTheRequiredField();
+    expect(component.submitBlocked).toBe(true);
+    expect(component.submitDisabled).toBe(false);
+
+    component.isSaving.set(true);
+    expect(component.submitDisabled).toBe(true);
+  });
+});
+
+/** `layout="auto"` sizes a field by its type; an authored `colSpan` still wins. */
+describe('DynamicFormComponent — automatic column widths', () => {
+  let component: DynamicFormComponent;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({ imports: [DynamicFormComponent, ReactiveFormsModule] }).compileComponents();
+    component = TestBed.createComponent(DynamicFormComponent).componentInstance;
+  });
+
+  it('gives every field the full row under the default stack layout', () => {
+    expect(component.getFieldSpan({ id: 'a', type: 'text', label: {} })).toBe('span 12');
+    expect(component.getFieldSpan({ id: 'b', type: 'date', label: {} })).toBe('span 12');
+  });
+
+  it('sizes by type under auto', () => {
+    component.layout = 'auto';
+    expect(component.getFieldSpan({ id: 'a', type: 'text', label: {} })).toBe('span 6');
+    expect(component.getFieldSpan({ id: 'b', type: 'date', label: {} })).toBe('span 4');
+    // Holds a paragraph, a picture, or a form of its own — still the whole row.
+    expect(component.getFieldSpan({ id: 'c', type: 'textarea', label: {} })).toBe('span 12');
+    expect(component.getFieldSpan({ id: 'd', type: 'array', label: {} })).toBe('span 12');
+  });
+
+  it('never overrides a span the config authored', () => {
+    component.layout = 'auto';
+    expect(component.getFieldSpan({ id: 'a', type: 'text', label: {}, colSpan: 12 })).toBe('span 12');
+    expect(component.getFieldSpan({ id: 'b', type: 'textarea', label: {}, colSpan: 4 })).toBe('span 4');
+  });
+
+  /** A type the table says nothing about is a consumer's own; the conservative width is full. */
+  it('falls back to the full row for an unknown type', () => {
+    component.layout = 'auto';
+    expect(component.getFieldSpan({ id: 'a', type: 'rating' as never, label: {} })).toBe('span 12');
   });
 });

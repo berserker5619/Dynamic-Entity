@@ -407,4 +407,41 @@ describe('EntityBuilderComponent — config cache invalidation on save', () => {
     expect(saved).toEqual(['clients']);
   });
 
+  it('selects problem field when problem has fieldId', async () => {
+    const component = await setup(false);
+    const componentStore = (component as any).store as BuilderStore;
+    const selectSpy = jest.spyOn(componentStore, 'selectField');
+
+    (component as any).selectProblemField({ level: 'error', message: 'test', fieldId: 'field_1' });
+    expect(selectSpy).toHaveBeenCalledWith('field_1');
+
+    (component as any).selectProblemField({ level: 'error', message: 'test' });
+    expect(selectSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('manages RBAC roles correctly', async () => {
+    const component = await setup(false);
+    expect((component as any).rolesFor('view')).toEqual([]);
+
+    (component as any).setRoles('view', ['admin', 'manager']);
+    expect((component as any).rolesFor('view')).toEqual(['admin', 'manager']);
+
+    (component as any).setRolesFromText('edit', 'admin, manager, admin , IT_SUPPORT');
+    expect((component as any).rolesFor('edit')).toEqual(['admin', 'manager', 'IT_SUPPORT']);
+  });
+
+  it('copies json string to clipboard when available', async () => {
+    const component = await setup(false);
+    expect((component as any).json).toContain('clients');
+
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+      writable: true,
+    });
+
+    (component as any).copyJson();
+    expect(writeText).toHaveBeenCalledWith((component as any).json);
+  });
 });

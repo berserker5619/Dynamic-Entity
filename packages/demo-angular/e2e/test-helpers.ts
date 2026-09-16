@@ -142,3 +142,69 @@ export async function selectMatOption(page: Page, triggerTestId: string, optionN
   await safeClick(page.getByRole('listbox').getByRole('option', { name: optionName }));
   await expect(page.locator('.cdk-overlay-backdrop')).toHaveCount(0);
 }
+
+/**
+ * Whether the form would refuse a save right now.
+ *
+ * Save is deliberately not `disabled` while a form is merely invalid — a disabled button
+ * cannot explain itself, and pressing it is how the user gets the error summary and the jump
+ * to the first offending field. The form says "this will not go yet" with `aria-disabled`
+ * instead, which is what these assert on.
+ *
+ * Deliberately not asserted by clicking Save: a refused submit switches tabs and moves focus
+ * to the first invalid field, so using it as a probe would walk the test off the tab it was
+ * working on. These read `data-blocked` instead, which the form sets for exactly this state
+ * and which the stylesheet mutes the button with. The specs that are *about* the refusal
+ * press the button and assert on `error-summary`.
+ */
+export async function expectSaveWithheld(page: Page): Promise<void> {
+  await expect(page.getByTestId('form-submit')).toHaveAttribute('data-blocked', '');
+}
+
+export async function expectSaveReady(page: Page): Promise<void> {
+  const save = page.getByTestId('form-submit');
+  await expect(save).not.toHaveAttribute('data-blocked', '');
+  await expect(save).toBeEnabled();
+}
+
+/**
+ * Opens one of the field inspector's collapsible sections, by its heading.
+ *
+ * The inspector's advanced half — Display, Visibility, Automation, Rules, Reference — starts
+ * closed for a field that does not use it, and a closed `<details>` hides its contents from
+ * the page as well as from the eye. A spec that wants to *add* the first condition or the
+ * first rule to a field has to open the section, which is what a person does too.
+ *
+ * Idempotent: a section that is already open (because the field already uses it) is left
+ * alone, so a spec need not know which state it will find.
+ */
+export async function openInspectorSection(page: Page, heading: string): Promise<void> {
+  const section = page.locator('details.deb-inspector__section').filter({
+    has: page.locator('summary', { hasText: heading }),
+  });
+  await expect(section).toHaveCount(1);
+  if (await section.evaluate((el: HTMLDetailsElement) => el.open)) return;
+  await safeClick(section.locator('summary'));
+  await expect(section).toHaveAttribute('open', '');
+}
+
+/** The inspector's Label input for the active language. */
+export async function setInspectorLabel(page: Page, label: string): Promise<void> {
+  await safeFill(page.getByTestId('field-label'), label);
+}
+
+/**
+ * Add one inline option to the selected choice field.
+ *
+ * The Options section is open by default, but a closed `<details>` hides the control, and
+ * the live preview under the canvas re-renders on every edit — so the click is the test-id,
+ * not a substring match on "Option" (which also matches the section heading "Options").
+ */
+export async function addInspectorOption(page: Page, label: string): Promise<void> {
+  await openInspectorSection(page, 'Options');
+  const rows = page.getByTestId('option-row');
+  const before = await rows.count();
+  await safeClick(page.getByTestId('add-option'));
+  await expect(rows).toHaveCount(before + 1);
+  await safeFill(rows.nth(before).locator('input'), label);
+}

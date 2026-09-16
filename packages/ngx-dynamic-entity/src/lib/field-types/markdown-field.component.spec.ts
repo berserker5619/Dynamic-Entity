@@ -59,9 +59,7 @@ describe('MarkdownFieldComponent', () => {
     beforeEach(() =>
       TestBed.configureTestingModule({
         imports: [MarkdownFieldComponent],
-        providers: [
-          { provide: MARKDOWN_RENDERER, useValue: (src: string) => `<h1>${src.replace(/^#\s*/, '')}</h1>` },
-        ],
+        providers: [{ provide: MARKDOWN_RENDERER, useValue: (src: string) => `<h1>${src.replace(/^#\s*/, '')}</h1>` }],
       }),
     );
 

@@ -197,26 +197,17 @@ import { BuilderTextService } from '../builder-text';
   `,
   styles: [
     `
+      /*
+       * .deb-row, .deb-row--split, .deb-option-row and .deb-full were copied here from the
+       * builder's stylesheet, because under emulated encapsulation the originals could not
+       * reach this component. That stylesheet is no longer scoped, so the copies are gone and
+       * this panel takes the same definitions as every other one — which is the point of
+       * having them in one place.
+       */
       .deb-entity-ref {
         display: flex;
         flex-direction: column;
         gap: 12px;
-      }
-      .deb-full {
-        width: 100%;
-      }
-      .deb-row {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-      }
-      .deb-row--split {
-        justify-content: space-between;
-      }
-      .deb-option-row {
-        display: flex;
-        gap: 6px;
-        align-items: center;
       }
       .deb-option-row > mat-form-field {
         flex: 1;

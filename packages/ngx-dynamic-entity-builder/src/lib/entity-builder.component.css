@@ -1,27 +1,75 @@
-:host {
+/* `ngx-entity-builder` rather than `:host` — see the encapsulation note on the component. */
+ngx-entity-builder {
   --deb-accent: #6366f1;
   --deb-accent-hover: #4f46e5;
-  --deb-accent-soft: #eeef2;
+  --deb-accent-soft: #eef2ff;
   --deb-border: #e2e8f0;
   --deb-muted: #64748b;
   --deb-surface: #ffffff;
   display: block;
 }
 
+/*
+ * A light toolbar, not Material's saturated primary bar.
+ *
+ * The builder is embedded in a host application, and a full-bleed indigo band across the top
+ * of it announced itself as a different product from everything around it. This reads as the
+ * header of a panel, which is what it is.
+ */
+.deb-toolbar {
+  background: var(--deb-surface);
+  color: #0f172a;
+  border-bottom: 1px solid var(--deb-border);
+  gap: 4px;
+  height: 56px;
+}
+.deb-toolbar__mark {
+  color: var(--deb-accent);
+}
 .deb-toolbar__title {
   margin-left: 8px;
   font-family: var(--font-heading, sans-serif);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  /* On the indigo toolbar the previous #0f172a was 2.59:1; white is 6.87:1. */
-  color: #ffffff;
+  color: #0f172a;
+}
+/* Which entity is open. The builder never said, and it is the first thing to check. */
+.deb-toolbar__entity {
+  margin-left: 10px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: var(--deb-accent-soft);
+  color: var(--deb-accent-hover);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .deb-spacer {
   flex: 1 1 auto;
 }
+.deb-problems {
+  font-weight: 600;
+}
 .deb-problems--error {
   color: #ef4444;
   font-weight: 600;
+}
+/* A validation message is a sentence, and the menu's default single line truncates it. */
+.deb-problems-menu__text {
+  white-space: normal;
+  line-height: 1.35;
+  padding: 6px 0;
+}
+.deb-problems-menu .mat-mdc-menu-item {
+  height: auto;
+  min-height: 40px;
+}
+.deb-problems-menu {
+  max-width: 460px;
 }
 
 /* ─── Shared helpers reused by child components ─── */
@@ -36,12 +84,15 @@
   gap: 8px;
   align-items: center;
 }
+.deb-row--split {
+  justify-content: space-between;
+}
 .deb-section-title {
   font-family: var(--font-heading, sans-serif);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   color: var(--deb-muted);
 }
 .deb-hint {
@@ -66,9 +117,19 @@
 }
 
 /* ─── Layout ─── */
+
+/*
+ * The centre column is the work surface, so it gets the room.
+ *
+ * The three columns were 320 / 1fr / 380 with every card sized by its own content, which on a
+ * fresh builder produced a 1200px-tall left rail beside a 140px-tall canvas and a 160px-tall
+ * inspector — two thirds of the screen empty, and the palette the most prominent thing on it.
+ * Both side rails now scroll within the viewport instead of setting the page height, so the
+ * canvas and the preview under it are what the page is as tall as.
+ */
 .deb-body {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr) 380px;
+  grid-template-columns: 300px minmax(0, 1fr) 360px;
   gap: 20px;
   padding: 20px;
   align-items: start;
@@ -79,33 +140,78 @@
   gap: 16px;
   min-width: 0;
 }
+.deb-col--left,
 .deb-col--right {
   position: sticky;
   top: 20px;
   max-height: calc(100vh - 40px);
-  overflow: auto;
+  overflow-y: auto;
+  /* Room for the scrollbar, so a card's focus ring is not clipped by it. */
+  padding-right: 4px;
 }
 
-@media (max-width: 1100px) {
+.deb-preview-slot:empty {
+  display: none;
+}
+
+@media (max-width: 1240px) {
+  .deb-body {
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+  /* The inspector follows the canvas rather than being squeezed into a third column. */
+  .deb-col--right {
+    grid-column: 2;
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 900px) {
   .deb-body {
     grid-template-columns: 1fr;
   }
+  .deb-col--left,
   .deb-col--right {
+    grid-column: 1;
     position: static;
+    max-height: none;
+    overflow: visible;
   }
 }
 
 /* ─── Field Canvas & Rows ─── */
+.deb-canvas__group {
+  margin: 14px 0 6px;
+  font-family: var(--font-heading, sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--deb-muted);
+}
+.deb-canvas__group:first-of-type {
+  margin-top: 0;
+}
+
 .deb-field-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
+
+/* An empty tab still has a drop target, and a zero-height one cannot be dropped into. */
+.deb-field-list:empty {
+  min-height: 44px;
+  border: 1px dashed var(--deb-border);
+  border-radius: 10px;
+}
+
 .deb-field-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 9px 12px;
   border: 1px solid var(--deb-border);
   border-radius: 10px;
   background: var(--deb-surface);
@@ -125,6 +231,34 @@
   background: #f5f3ff;
   box-shadow: 0 4px 16px rgba(99, 102, 241, 0.18);
 }
+
+/*
+ * The row's buttons appear on hover, focus, and selection.
+ *
+ * Four icon buttons on every row put twice as much ink into the controls as into the field
+ * names, and a list of twelve fields read as a toolbar rather than a structure. They stay
+ * present for keyboard and touch — `:focus-within` covers the first, and the coarse-pointer
+ * query below covers the second — so this hides them without removing them.
+ */
+.deb-field-row__actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.deb-field-row:hover .deb-field-row__actions,
+.deb-field-row:focus-within .deb-field-row__actions,
+.deb-field-row--active .deb-field-row__actions {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .deb-field-row__actions {
+    opacity: 1;
+  }
+}
+
 .deb-type-badge {
   font-size: 10px;
   font-weight: 700;
@@ -134,17 +268,31 @@
   border-radius: 6px;
   background: #e0e7ff;
   color: #4338ca;
+  flex: none;
+}
+/* The grid width this field takes, shown beside its type — see the inspector's Width control. */
+.deb-span-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: var(--deb-muted);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  flex: none;
 }
 .deb-drag-handle {
   cursor: grab;
   color: #94a3b8;
   transition: color 0.15s;
+  flex: none;
 }
 .deb-drag-handle:hover {
   color: var(--deb-accent);
 }
 .deb-field-type {
   color: var(--deb-accent);
+  flex: none;
 }
 .deb-field-meta {
   display: flex;
@@ -169,6 +317,7 @@
 .deb-req {
   color: #ef4444;
   font-weight: 700;
+  flex: none;
 }
 
 .deb-empty,
@@ -183,21 +332,180 @@
   color: #cbd5e1;
 }
 
-/* CDK drag-and-drop feedback */
-.cdk-drag-preview {
+/*
+ * CDK drag-and-drop feedback.
+ *
+ * Qualified with `.deb-field-row` rather than written as bare `.cdk-drag-*`. This stylesheet
+ * is unscoped (see the component's encapsulation note), and the CDK's classes belong to every
+ * drag list on the page — a host application with its own `cdkDropList` would inherit the
+ * builder's indigo drag shadow. The only draggable here is a field row, and the preview the
+ * CDK builds is a clone of one, so naming it costs nothing and gives the rules a boundary.
+ */
+.cdk-drag-preview.deb-field-row {
   box-shadow: 0 12px 28px rgba(79, 70, 229, 0.22);
   border-radius: 10px;
-  border: 1px solid var(--deb-accent);
+  border: 1px solid var(--deb-accent, #6366f1);
   background: #ffffff;
 }
-.cdk-drag-placeholder {
+.cdk-drag-placeholder.deb-field-row {
   opacity: 0.35;
 }
-.cdk-drag-animating {
+.cdk-drag-animating.deb-field-row {
   transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
 }
 .deb-field-list.cdk-drop-list-dragging .deb-field-row:not(.cdk-drag-placeholder) {
   transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deb-field-row,
+  .deb-field-row__actions,
+  .cdk-drag-animating.deb-field-row,
+  .deb-field-list.cdk-drop-list-dragging .deb-field-row:not(.cdk-drag-placeholder) {
+    transition: none;
+  }
+  .deb-field-row:hover {
+    transform: none;
+  }
+}
+
+/* ─── Inspector ─── */
+.deb-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/*
+ * The inspector's sections collapse.
+ *
+ * It was one flat scroll of fifteen `mat-divider`-separated blocks — identity, validation,
+ * options, display flags, visibility conditions, mappings, rules, references — so editing a
+ * label meant looking at every advanced setting a field has, and finding the rules list meant
+ * scrolling past all of them. Collapsing everything but identity puts the common edit at the
+ * top and keeps the rest one click away.
+ */
+.deb-inspector__section {
+  border: 1px solid var(--deb-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--deb-surface);
+}
+.deb-inspector__summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-heading, sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--deb-muted);
+  background: #f8fafc;
+  user-select: none;
+}
+.deb-inspector__summary::-webkit-details-marker {
+  display: none;
+}
+.deb-inspector__summary:hover {
+  color: #0f172a;
+}
+.deb-inspector__summary:focus-visible {
+  outline: 2px solid var(--deb-accent);
+  outline-offset: -2px;
+}
+.deb-inspector__chevron {
+  margin-left: auto;
+  transition: transform 0.18s ease;
+  color: #94a3b8;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+.deb-inspector__section[open] > .deb-inspector__summary > .deb-inspector__chevron {
+  transform: rotate(180deg);
+}
+/* The count of things configured in a section, so a collapsed one still reports its state. */
+.deb-inspector__count {
+  padding: 1px 7px;
+  border-radius: 9999px;
+  background: var(--deb-accent-soft);
+  color: var(--deb-accent-hover);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.deb-inspector__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid var(--deb-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deb-inspector__chevron {
+    transition: none;
+  }
+}
+
+/* The width picker: 1/4, 1/3, 1/2, 2/3, full, as a segmented control. */
+.deb-span-picker {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.deb-span-picker__btn {
+  appearance: none;
+  cursor: pointer;
+  flex: 1;
+  min-width: 46px;
+  padding: 7px 4px;
+  border: 1px solid var(--deb-border);
+  border-radius: 8px;
+  background: var(--deb-surface);
+  color: var(--deb-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.deb-span-picker__btn:hover {
+  border-color: #a5b4fc;
+  color: #0f172a;
+}
+.deb-span-picker__btn:focus-visible {
+  outline: 2px solid var(--deb-accent);
+  outline-offset: 2px;
+}
+.deb-span-picker__btn--active {
+  border-color: var(--deb-accent);
+  background: var(--deb-accent-soft);
+  color: var(--deb-accent-hover);
+}
+
+.deb-option-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.deb-toggles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deb-span-picker__btn {
+    transition: none;
+  }
 }
 
 /* ─── Footer & JSON Preview ─── */
