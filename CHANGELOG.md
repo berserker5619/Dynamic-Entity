@@ -7,6 +7,76 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.12.0] — 2026-09-16
+
+The builder's two side panels collapse, and the width they give up goes where the work is.
+Alongside that, a colour audit that ran in both schemes for the first time and found a Save
+button no light-mode check could see.
+
+### Added
+
+- **Collapsible builder sidebars.** The palette/settings column and the field inspector each
+  collapse independently, from the toolbar, from a button in the card header, or back from
+  the rail a collapsed panel leaves behind. A collapsed side keeps its grid track rather than
+  dropping it — the rail button is a child of the same grid, so dropping the track pushed the
+  inspector onto a second row underneath the canvas.
+- **`leftSidebarOpen` / `rightSidebarOpen` are two-way bindable** (`model()`), so a host can
+  persist panel state. The libraries still store nothing themselves — no package here touches
+  `localStorage`, which is what keeps them safe to render on a server; the demo binds them to
+  a `de_demo_` key to show the wiring.
+- **A sticky builder toolbar.** Its toggles are the control of record for the panels, and the
+  canvas is long enough that reopening one used to mean scrolling back to the top to find it.
+
+### Changed
+
+- **The canvas is narrower and the palette column wider, at every width.** A field row wants
+  about 380px; past that the extra was gutter between a label and its badges, while the tab
+  cards beside it truncated names to "Persona". `--deb-left-wide` is computed as
+  `left + right - rail`, so collapsing the inspector hands its width to the palette and the
+  canvas does not move at all.
+- The inspector now stacks under the canvas below **1300px** (was 1240px). In that band three
+  columns starved the canvas below the width a row needs.
+- **`--deb-accent-ink`** splits the accent's two jobs. As a border it owes 3:1; as text or an
+  icon glyph it owes 4.5:1, and `#6366f1` measured 4.47:1 — close enough that axe cleared it
+  locally and failed it in CI on the same commit.
+- The toolbar wraps instead of pushing the page sideways, and sheds its title and the Copy
+  JSON label on narrow screens so a sticky bar stays thin.
+
+### Fixed
+
+- **The side panels clipped their own content.** `overflow: hidden` on a card zeroes a flex
+  item's automatic minimum size, so inside a viewport-capped column the cards shrank to fit
+  instead of overflowing it. The column's `overflow-y: auto` never fired and no scrollbar
+  appeared anywhere: 641px of the palette and 801px of the inspector were unreachable.
+- **A "collapsed" sidebar stayed fully visible.** `[hidden]` takes its `display: none` from the
+  user-agent sheet, which loses to any author rule setting `display` on the same element —
+  and `.deb-col` sets `display: flex`.
+- **Contrast below AA** on the width badge (4.34:1), the type chip (3.99:1), the required
+  marker (3.76:1), the active sidebar toggle (3.99:1), the drag handle (2.56:1) and the
+  inspector chevron (2.45:1). The chip was a duplicate `.deb-chip` rule in the inspector
+  shadowing the shared one; it is gone rather than corrected.
+- **Field rows overflowed their card on phones.** Four 40px action buttons stay visible under
+  `(hover: none)` because there is no hover to reveal them; the row wraps below 560px.
+- Keyboard and screen-reader gaps: collapsing destroyed the button that was pressed and
+  dropped focus to `<body>`; the toggles now carry `aria-expanded` and `aria-controls`, and
+  focus moves to whichever control stands in for the panel.
+- **Demo:** the record form's Save was near-black on indigo (3.0:1) for anyone whose machine
+  was set to dark. The renderer re-declares its palette under `prefers-color-scheme: dark` on
+  the same selectors, at the same specificity, that a consumer overrides tokens on — and the
+  demo pinned `--ngx-color-accent` without `--ngx-color-accent-text`. All four tokens it was
+  leaving to the dark block are now pinned.
+
+### Notes
+
+- New `contrast-aa.spec.ts` computes composited contrast ratios in **both** colour schemes
+  across five views. The dark pass is the point: the Save defect above passed every
+  light-mode check, and axe alone would not have caught a pairing between two stylesheets.
+- `PLAYWRIGHT_ALL_BROWSERS=1` adds a Firefox project over the CSS-sensitive specs. It is off
+  by default because CI installs chromium only. WebKit is deliberately absent: it will not
+  launch on a Windows host.
+
+---
+
 ## [1.11.0] — 2026-09-16
 
 A UI/UX pass over the two things a person actually uses: the form that gets rendered, and
