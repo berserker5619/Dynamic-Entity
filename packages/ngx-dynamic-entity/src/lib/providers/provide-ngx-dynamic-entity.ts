@@ -12,8 +12,11 @@ import {
   MASKED_ROLES,
   UI_TEXT,
   VALIDATOR_REGISTRY,
+  SHEET_PARSER,
+  IMPORT_TRANSPORT,
 } from '../tokens/injection-tokens';
 import type { UiTextOverrides } from '../services/ui-text.service';
+import type { ImportTransport, SheetParser } from '../import/import-contracts';
 
 export interface NgxDynamicEntityConfig {
   /** Roles that see masked field values as XXXXXXXXX */
@@ -64,6 +67,20 @@ export interface NgxDynamicEntityConfig {
    * of the record's `_configVersion`. Applied to `initialData` before the form is patched.
    */
   migrations?: RecordMigration[];
+  /**
+   * Reads an uploaded spreadsheet for the import wizard, as `{ headers, rows }` with rows
+   * positional rather than keyed by header.
+   *
+   * Omit it and CSV is read by the dependency-free parser in `@dynamic-entity/core`; supply
+   * one to accept `.xlsx`, using whichever spreadsheet library you already have.
+   */
+  sheetParser?: SheetParser;
+  /**
+   * Where an import's work happens. Omit it and the whole import runs in the browser with no
+   * network at all; supply one that posts to a server for files too large to hold in memory.
+   * Either way the mapping, coercion and validation are the same pure functions.
+   */
+  importTransport?: ImportTransport;
 }
 
 /**
@@ -91,4 +108,8 @@ export const provideNgxDynamicEntity = (config: NgxDynamicEntityConfig = {}): En
     { provide: RECORD_MIGRATIONS, useValue: config.migrations ?? [] },
     { provide: VALIDATION_MESSAGES, useValue: config.validationMessages ?? {} },
     { provide: UI_TEXT, useValue: config.uiText ?? {} },
+    // Both optional and both null when unset: the wizard falls back to the built-in CSV
+    // parser and the in-browser transport, so it works with nothing registered.
+    { provide: SHEET_PARSER, useValue: config.sheetParser ?? null },
+    { provide: IMPORT_TRANSPORT, useValue: config.importTransport ?? null },
   ]);

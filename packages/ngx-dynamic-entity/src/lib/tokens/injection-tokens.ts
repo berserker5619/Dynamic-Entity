@@ -9,6 +9,7 @@ import type {
 } from '@dynamic-entity/core';
 import { InMemoryEntityRefCacheStore, type EntityRefCacheStore } from '../services/entity-ref-cache';
 import type { UiTextOverrides } from '../services/ui-text.service';
+import type { ImportTransport, SheetParser } from '../import/import-contracts';
 
 /** Roles that see XXXXXXXXX for masked fields. Presentational only — enforce authz server-side. */
 export const MASKED_ROLES = new InjectionToken<string[]>('MASKED_ROLES');
@@ -139,6 +140,48 @@ export const COMMON_MODULES_REGISTRY = new InjectionToken<CommonModuleEntry[]>('
  * { provide: UPLOAD_HANDLER, useFactory: () => (file: File) => myUploadService.upload(file) }
  */
 export const UPLOAD_HANDLER = new InjectionToken<FileUploadHandler>('UPLOAD_HANDLER');
+
+/**
+ * Reads an uploaded spreadsheet into headers and positional rows, for the import wizard.
+ *
+ * Unregistered, the wizard reads CSV with the dependency-free parser in
+ * `@dynamic-entity/core`, so it works with nothing provided. Register one to accept `.xlsx`
+ * — which spreadsheet library that uses stays the consumer's choice, and this package keeps
+ * having no runtime dependency.
+ *
+ * Rows come back **positional** (`string[][]`) rather than keyed by header, because a real
+ * sheet has duplicate headers and blank ones; a header-keyed row silently loses the second
+ * of two columns both called "Notes".
+ *
+ * @example
+ * provideNgxDynamicEntity({
+ *   sheetParser: async file => {
+ *     const wb = XLSX.read(await file.arrayBuffer());
+ *     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {
+ *       header: 1, raw: false, defval: '',
+ *     }) as string[][];
+ *     return { headers: rows[0] ?? [], rows: rows.slice(1) };
+ *   },
+ * })
+ */
+export const SHEET_PARSER = new InjectionToken<SheetParser>('SHEET_PARSER');
+
+/**
+ * Where an import's work happens.
+ *
+ * Unregistered, everything runs in the browser through `@dynamic-entity/core` and nothing
+ * touches the network — the wizard is fully usable with no backend. Register one that posts
+ * to a server and the same components drive that instead, over the same pure mapping engine,
+ * which is what keeps a client-side import and a server-side one from disagreeing about what
+ * they produced.
+ *
+ * The reason to register one is size: the default reads the whole file into memory, which is
+ * right for a sheet somebody assembled and wrong for a fifty-thousand-row export.
+ *
+ * @example
+ * { provide: IMPORT_TRANSPORT, useClass: HttpImportTransport }
+ */
+export const IMPORT_TRANSPORT = new InjectionToken<ImportTransport>('IMPORT_TRANSPORT');
 
 /**
  * Backing store for the entity-reference options cache. Defaults to in-memory.

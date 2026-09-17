@@ -88,6 +88,50 @@ export const DEFAULT_UI_TEXT = {
   dismissBanner: 'Dismiss: {message}',
   jumpToField: 'Click to jump to {field}',
 
+  // Import wizard — the steps, in order
+  importUpload: 'Choose a file',
+  importMap: 'Match columns',
+  importReview: 'Review',
+  importDone: 'Done',
+
+  // Import wizard — choosing a file
+  importChooseFile: 'Choose a spreadsheet',
+  importFileChosen: '{name} — {rows} row(s)',
+  importReading: 'Reading the file…',
+  importNeedFile: 'Choose a file to continue.',
+
+  // Import wizard — the template a user can start from
+  importTemplateHeading: 'Start from a template',
+  importTemplateExplain: 'Download a sheet with the right columns, fill it in, and upload it.',
+  importTemplateDownload: 'Download template',
+  importTemplateSelectAll: 'Select all',
+  importTemplateSelectNone: 'Select none',
+  importTemplateUnsupported: '{count} field(s) cannot be carried by a spreadsheet.',
+
+  // Import wizard — matching columns
+  importColumnInFile: 'Column in your file',
+  importTargetField: 'Field',
+  importUnmapped: 'Not imported',
+  importGuessed: 'Guessed',
+  importMappedCount: '{mapped} of {total} field(s) matched.',
+  importRequiredUnmapped: '{count} required field(s) still need a column.',
+
+  // Import wizard — review and result
+  importPreviewHeading: 'First {count} row(s), as they will be saved',
+  importRunImport: 'Import {count} row(s)',
+  importImporting: 'Importing…',
+  importSucceeded: 'Imported {count} record(s).',
+  importSkippedRows: '{count} blank row(s) skipped.',
+  importFailedRows: '{count} row(s) could not be imported.',
+  importStartOver: 'Import another file',
+
+  // Import wizard — what went wrong
+  importErrorsHeading: 'Rows that need attention',
+  importErrorRow: 'Row {row}',
+  importErrorField: 'Field',
+  importErrorReason: 'Reason',
+  importPlanProblem: 'This mapping cannot be used: {message}',
+
   // Banners and whole-record states
   entityLabel: 'Entity: {entity}',
   criticalFieldChanged: '🔒 Critical field changed: {fields} — this differs from the value at the start of this session.',

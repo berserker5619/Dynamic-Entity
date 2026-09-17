@@ -9,12 +9,13 @@ import {
   resolveLabel,
 } from 'ngx-dynamic-entity';
 import { BuilderPageComponent } from './builder-page.component';
+import { ImportPageComponent } from './import-page.component';
 import { LocalStore } from './mock/local-store.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, DynamicFormComponent, DynamicRecordFormComponent, BuilderPageComponent],
+  imports: [CommonModule, DynamicFormComponent, DynamicRecordFormComponent, BuilderPageComponent, ImportPageComponent],
   templateUrl: './app.component.html',
 })
 export class AppComponent implements OnInit {
@@ -34,7 +35,7 @@ export class AppComponent implements OnInit {
    * is a clean demonstration of the second half.
    */
   readonly language = signal<'en' | 'de'>('en');
-  readonly view = signal<'list' | 'form' | 'config' | 'builder'>('list');
+  readonly view = signal<'list' | 'form' | 'config' | 'builder' | 'import'>('list');
   readonly config = signal<EntityFormConfig | null>(null);
   readonly allConfigs = signal<EntityFormConfig[]>([]);
   readonly records = signal<VersionedRecord[]>([]);
@@ -153,7 +154,7 @@ export class AppComponent implements OnInit {
     this.loadRecords();
   }
 
-  setView(view: 'list' | 'form' | 'config' | 'builder') {
+  setView(view: 'list' | 'form' | 'config' | 'builder' | 'import') {
     this.view.set(view);
     if (view === 'config') {
       this.selectedConfig.set(null);

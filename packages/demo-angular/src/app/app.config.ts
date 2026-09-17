@@ -22,6 +22,7 @@ import { renderMarkdown } from './mock/markdown-renderer';
 import { BUILDER_TEXT } from 'ngx-dynamic-entity-builder';
 import { DEMO_BUILDER_TEXT, DEMO_UI_TEXT } from './mock/ui-text-de';
 import { DEMO_ENTITY_REF_LOADERS } from './mock/entity-ref-loaders';
+import { demoSheetParser } from './mock/demo-sheet-parser';
 import { RATING_TYPE } from './mock/extensions-entity';
 import { RatingFieldComponent } from './mock/rating-field.component';
 import { SessionEntityRefCacheStore } from './mock/session-ref-cache';
@@ -63,6 +64,10 @@ export const appConfig: ApplicationConfig = {
       // labels come from the config and already follow `language`; without this the chrome
       // around them stays English whatever `language` says.
       uiText: DEMO_UI_TEXT,
+      // Reads the import wizard's uploaded file. The library handles CSV with no dependency;
+      // this adds TSV, which is what the seam is for — a format one shop has and nobody else
+      // does. Swap in SheetJS or ExcelJS here to accept .xlsx.
+      sheetParser: demoSheetParser,
       /**
        * The messages shown under an invalid field.
        *

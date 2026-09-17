@@ -25,6 +25,8 @@
         Manager</button>
       <button class="nav-link" [class.nav-link--active]="view() === 'builder'"
         (click)="setView('builder')">Form Builder</button>
+      <button class="nav-link" [class.nav-link--active]="view() === 'import'"
+        (click)="setView('import')">Import</button>
     </nav>
 
     <!--
@@ -193,6 +195,10 @@
       </div>
       }
     </div>
+    }
+
+    @if (view() === 'import') {
+    <app-import-page [config]="$any(config())" [uiLanguage]="language()"></app-import-page>
     }
 
     @if (view() === 'builder') {

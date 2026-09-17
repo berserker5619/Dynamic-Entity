@@ -26,6 +26,16 @@ export * from './lib/form/dynamic-form.component';
 export * from './lib/form/dynamic-record-form.component';
 export * from './lib/form/dynamic-field/dynamic-field.component';
 
+// Import wizard — the shell, and each screen individually, same reusability rule as above.
+export * from './lib/import/import-contracts';
+export * from './lib/import/sheet-parser';
+export * from './lib/import/local-import-transport';
+export * from './lib/import/entity-import.component';
+export * from './lib/import/import-mapper.component';
+export * from './lib/import/import-preview.component';
+export * from './lib/import/import-template.component';
+export * from './lib/import/import-errors.component';
+
 // The contract a field component must satisfy to be registered with provideFieldTypes.
 // Previously this existed only as a code comment and an ADR that is gitignored, so a
 // consumer had no interface to implement against.

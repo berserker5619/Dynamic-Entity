@@ -58,6 +58,14 @@ const DELIBERATELY_UNDEMONSTRATED = {
   HOOK_REGISTRY: 'Plumbing under provideNgxDynamicEntity({ hooks }), which the demo uses.',
   RECORD_MIGRATIONS: 'Plumbing under provideNgxDynamicEntity({ migrations }), which the demo uses.',
   UI_TEXT: 'Plumbing under provideNgxDynamicEntity({ uiText }), which the demo uses.',
+  SHEET_PARSER: 'Plumbing under provideNgxDynamicEntity({ sheetParser }), which the demo uses.',
+  IMPORT_TRANSPORT:
+    'The seam for running an import on a server instead of in the browser. The demo drives ' +
+    'the *default* transport, which is the in-browser one — that is the path a consumer gets ' +
+    'with nothing registered, and the one worth proving end to end. Registering an ' +
+    'alternative only says something once there is a server to point it at, so this is wired ' +
+    'when @dynamic-entity/server lands and demonstrated against it.',
+  importTransport: 'See IMPORT_TRANSPORT — the same decision, seen from the option side.',
   setValueByPath:
     'A path utility, not an extension point. It is caught by the `set*` naming rule below ' +
     'and named here so the rule can stay automatic — an exception written down beats a ' +
