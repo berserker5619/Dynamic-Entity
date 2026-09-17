@@ -93,6 +93,7 @@ function writePanel(panel: 'left' | 'right' | 'fields' | 'preview', open: boolea
     >
       @if (draft(); as c) {
         <div ngxBuilderPreview class="builder-preview" data-testid="builder-preview">
+          <h3>Live preview — {{ c.entity || 'Unnamed Entity' }}</h3>
           <ngx-dynamic-form [config]="c" [userRoles]="['admin']"></ngx-dynamic-form>
         </div>
       }
@@ -102,6 +103,12 @@ function writePanel(panel: 'left' | 'right' | 'fields' | 'preview', open: boolea
     `
       .builder-preview {
         padding: 4px 0 0;
+      }
+      .builder-preview h3 {
+        margin: 0 0 12px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-muted, #64748b);
       }
       .builder-toast {
         margin: 0 0 16px;
