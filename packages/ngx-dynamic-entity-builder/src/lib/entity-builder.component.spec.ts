@@ -79,12 +79,8 @@ describe('EntityBuilderComponent', () => {
     });
 
     it('collapses from the button inside each card header', () => {
-      const collapseButtons = Array.from(
-        host.querySelectorAll<HTMLButtonElement>('.deb-card__collapse-btn'),
-      );
-      expect(collapseButtons).toHaveLength(2);
-      collapseButtons.forEach(b => b.click());
-      fixture.detectChanges();
+      click(byTestId('collapse-left-sidebar'));
+      click(byTestId('collapse-right-sidebar'));
 
       expect(leftCol().hasAttribute('hidden')).toBe(true);
       expect(rightCol().hasAttribute('hidden')).toBe(true);
@@ -115,6 +111,55 @@ describe('EntityBuilderComponent', () => {
       // Read from source: the component's own sheet is not injected under jsdom.
       const css = readFileSync(join(__dirname, 'entity-builder.component.css'), 'utf8');
       expect(css).toMatch(/\.deb-col\[hidden\]\s*\{\s*display:\s*none/);
+    });
+  });
+
+  describe('fields canvas and live preview collapse', () => {
+    const byTestId = <T extends HTMLElement>(id: string): T | null =>
+      host.querySelector(`[data-testid="${id}"]`);
+    const fieldsSection = () => host.querySelector('[data-testid="builder-fields-section"]') as HTMLElement;
+    const previewSection = () => host.querySelector('[data-testid="builder-preview-section"]') as HTMLElement;
+
+    function click(el: HTMLElement | null): void {
+      el!.click();
+      fixture.detectChanges();
+    }
+
+    it('starts with fields and preview open and dock bars closed', () => {
+      expect(fieldsSection().classList).not.toContain('deb-toggle-pane--collapsed');
+      expect(previewSection().classList).not.toContain('deb-toggle-pane--collapsed');
+      expect(host.querySelector('.deb-dock-pane--fields')!.classList).not.toContain('deb-dock-pane--open');
+      expect(host.querySelector('.deb-dock-pane--preview')!.classList).not.toContain('deb-dock-pane--open');
+    });
+
+    it('collapses fields canvas from toolbar and restores it from the dock bar', () => {
+      click(byTestId('toggle-fields'));
+      expect(fieldsSection().classList).toContain('deb-toggle-pane--collapsed');
+      expect(host.querySelector('.deb-dock-pane--fields')!.classList).toContain('deb-dock-pane--open');
+      expect(previewSection().classList).not.toContain('deb-toggle-pane--collapsed');
+
+      click(byTestId('expand-fields'));
+      expect(fieldsSection().classList).not.toContain('deb-toggle-pane--collapsed');
+      expect(host.querySelector('.deb-dock-pane--fields')!.classList).not.toContain('deb-dock-pane--open');
+    });
+
+    it('collapses preview from toolbar and restores it from the dock bar', () => {
+      click(byTestId('toggle-preview'));
+      expect(previewSection().classList).toContain('deb-toggle-pane--collapsed');
+      expect(host.querySelector('.deb-dock-pane--preview')!.classList).toContain('deb-dock-pane--open');
+      expect(fieldsSection().classList).not.toContain('deb-toggle-pane--collapsed');
+
+      click(byTestId('expand-preview'));
+      expect(previewSection().classList).not.toContain('deb-toggle-pane--collapsed');
+      expect(host.querySelector('.deb-dock-pane--preview')!.classList).not.toContain('deb-dock-pane--open');
+    });
+
+    it('collapses fields and preview from the button inside each card header', () => {
+      click(byTestId('collapse-fields'));
+      expect(fieldsSection().classList).toContain('deb-toggle-pane--collapsed');
+
+      click(byTestId('collapse-preview'));
+      expect(previewSection().classList).toContain('deb-toggle-pane--collapsed');
     });
   });
 

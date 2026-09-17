@@ -15,19 +15,19 @@ import { LocalStore } from './mock/local-store.service';
  * throw in some browsers, and a builder that will not open because it could not remember a
  * sidebar is a worse failure than one that opens with both panels showing.
  */
-const panelKey = (side: 'left' | 'right'): string => `de_demo_builder_${side}_open`;
+const panelKey = (panel: 'left' | 'right' | 'fields' | 'preview'): string => `de_demo_builder_${panel}_open`;
 
-function readPanel(side: 'left' | 'right'): boolean {
+function readPanel(panel: 'left' | 'right' | 'fields' | 'preview'): boolean {
   try {
-    return localStorage.getItem(panelKey(side)) !== 'false';
+    return localStorage.getItem(panelKey(panel)) !== 'false';
   } catch {
     return true;
   }
 }
 
-function writePanel(side: 'left' | 'right', open: boolean): void {
+function writePanel(panel: 'left' | 'right' | 'fields' | 'preview', open: boolean): void {
   try {
-    localStorage.setItem(panelKey(side), String(open));
+    localStorage.setItem(panelKey(panel), String(open));
   } catch {
     /* Nothing to do: the panel simply will not be remembered. */
   }
@@ -86,12 +86,13 @@ function writePanel(side: 'left' | 'right', open: boolean): void {
       [commonModules]="commonModules"
       [(leftSidebarOpen)]="leftSidebarOpen"
       [(rightSidebarOpen)]="rightSidebarOpen"
+      [(fieldsOpen)]="fieldsOpen"
+      [(previewOpen)]="previewOpen"
       (configChange)="draft.set($event)"
       (save)="onSave($event)"
     >
       @if (draft(); as c) {
         <div ngxBuilderPreview class="builder-preview" data-testid="builder-preview">
-          <h3>Live preview — {{ c.entity || 'Unnamed Entity' }}</h3>
           <ngx-dynamic-form [config]="c" [userRoles]="['admin']"></ngx-dynamic-form>
         </div>
       }
@@ -100,17 +101,7 @@ function writePanel(side: 'left' | 'right', open: boolean): void {
   styles: [
     `
       .builder-preview {
-        background: #fff;
-        border: 1px solid var(--border, #e2e8f0);
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-      }
-      .builder-preview h3 {
-        margin-top: 0;
-        font-size: 16px;
-        font-weight: 700;
-        color: #0f172a;
+        padding: 4px 0 0;
       }
       .builder-toast {
         margin: 0 0 16px;
@@ -224,10 +215,14 @@ export class BuilderPageComponent {
    */
   readonly leftSidebarOpen = signal(readPanel('left'));
   readonly rightSidebarOpen = signal(readPanel('right'));
+  readonly fieldsOpen = signal(readPanel('fields'));
+  readonly previewOpen = signal(readPanel('preview'));
 
   constructor() {
     effect(() => writePanel('left', this.leftSidebarOpen()));
     effect(() => writePanel('right', this.rightSidebarOpen()));
+    effect(() => writePanel('fields', this.fieldsOpen()));
+    effect(() => writePanel('preview', this.previewOpen()));
   }
 
   readonly editing = signal<EntityFormConfig>({

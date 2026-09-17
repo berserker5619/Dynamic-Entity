@@ -139,15 +139,18 @@ export class EntityBuilderComponent implements OnChanges {
   protected readonly rbacActions = RBAC_ACTIONS;
 
   /*
-   * Two-way bindable, so the host decides whether a collapsed rail survives a reload.
+   * Two-way bindable, so the host decides whether a collapsed rail/bar survives a reload.
    *
    * `model()` rather than a plain signal: these stay ordinary writable signals to everything
-   * inside the component, and gain `[(leftSidebarOpen)]` for anyone outside it. The library
-   * deliberately persists nothing itself — no package here touches `localStorage`, which is
-   * what keeps it safe to render on a server; the demo wires these to storage to show how.
+   * inside the component, and gain `[(leftSidebarOpen)]`, `[(rightSidebarOpen)]`, `[(fieldsOpen)]`,
+   * `[(previewOpen)]` for anyone outside it. The library deliberately persists nothing itself —
+   * no package here touches `localStorage`, which is what keeps it safe to render on a server;
+   * the demo wires these to storage to show how.
    */
   readonly leftSidebarOpen = model(true);
   readonly rightSidebarOpen = model(true);
+  readonly fieldsOpen = model(true);
+  readonly previewOpen = model(true);
 
   toggleLeftSidebar(): void {
     this.leftSidebarOpen.update(open => !open);
@@ -155,6 +158,14 @@ export class EntityBuilderComponent implements OnChanges {
 
   toggleRightSidebar(): void {
     this.rightSidebarOpen.update(open => !open);
+  }
+
+  toggleFields(): void {
+    this.fieldsOpen.update(open => !open);
+  }
+
+  togglePreview(): void {
+    this.previewOpen.update(open => !open);
   }
 
   /*
@@ -183,6 +194,26 @@ export class EntityBuilderComponent implements OnChanges {
   protected expandRight(): void {
     this.rightSidebarOpen.set(true);
     this.focusAfterRender('collapse-right-sidebar');
+  }
+
+  protected collapseFields(): void {
+    this.fieldsOpen.set(false);
+    this.focusAfterRender('expand-fields');
+  }
+
+  protected expandFields(): void {
+    this.fieldsOpen.set(true);
+    this.focusAfterRender('collapse-fields');
+  }
+
+  protected collapsePreview(): void {
+    this.previewOpen.set(false);
+    this.focusAfterRender('expand-preview');
+  }
+
+  protected expandPreview(): void {
+    this.previewOpen.set(true);
+    this.focusAfterRender('collapse-preview');
   }
 
   /** The replacement control does not exist until the template has caught up with the signal. */

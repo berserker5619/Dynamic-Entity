@@ -86,6 +86,13 @@ export const DEMO_BUILDER_TEXT: BuilderTextOverrides = {
   expandInspector: { en: 'Expand the inspector', de: 'Inspektor ausklappen' },
   paletteRailLabel: { en: 'Add fields', de: 'Felder' },
   inspectorRailLabel: { en: 'Properties', de: 'Eigenschaften' },
+  collapseFields: { en: 'Collapse fields', de: 'Felder einklappen' },
+  expandFields: { en: 'Expand fields', de: 'Felder ausklappen' },
+  fieldsRailLabel: { en: 'Fields', de: 'Felder' },
+  collapsePreview: { en: 'Collapse live preview', de: 'Live-Vorschau einklappen' },
+  expandPreview: { en: 'Expand live preview', de: 'Live-Vorschau ausklappen' },
+  previewRailLabel: { en: 'Live preview', de: 'Live-Vorschau' },
+  previewHeading: { en: 'Live preview', de: 'Live-Vorschau' },
   configJson: { en: 'Config JSON', de: 'Konfigurations-JSON' },
   fieldsHeading: { en: 'Fields ({count})', de: '{count} Felder' },
   canvasEmpty: {

@@ -221,7 +221,11 @@ mat-toolbar.deb-toolbar {
  * so `.deb-col` above would otherwise keep a "collapsed" sidebar fully visible.
  */
 .deb-col[hidden] {
-  display: none;
+  display: none !important;
+}
+.deb-section--fields[hidden],
+.deb-preview-slot[hidden] {
+  display: none !important;
 }
 
 /*
@@ -237,6 +241,121 @@ mat-toolbar.deb-toolbar {
   flex: 0 0 auto;
 }
 
+@keyframes debDockFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes debDockSlideInY {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes debSectionExpand {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes debColLeftExpand {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes debColRightExpand {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/*
+ * Smooth accordion vertical transitions for fields canvas and live preview.
+ * Uses grid-template-rows (0fr <-> 1fr) for true continuous 60fps height interpolation.
+ */
+.deb-toggle-pane {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    grid-template-rows 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.22s ease,
+    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deb-toggle-pane--collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.deb-toggle-pane__inner,
+.deb-dock-pane__inner {
+  overflow: hidden;
+  min-height: 0;
+  padding: 4px 2px;
+  margin: -4px -2px;
+}
+
+.deb-dock-pane {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    grid-template-rows 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.22s ease,
+    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deb-dock-pane--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.deb-col--left:not([hidden]) {
+  animation: debColLeftExpand 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.deb-col--right:not([hidden]) {
+  animation: debColRightExpand 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /*
  * Someone who has asked their system for less motion gets the collapse without the slide.
  * The layout still changes — only the animation between the two states is dropped.
@@ -245,9 +364,14 @@ mat-toolbar.deb-toolbar {
   .deb-body,
   .deb-col--left,
   .deb-col--right,
+  .deb-col--center,
+  .deb-section--fields,
+  .deb-preview-slot,
   .deb-dock-btn,
-  .deb-card {
+  .deb-card,
+  .deb-sidebar-toggle-btn {
     transition: none !important;
+    animation: none !important;
   }
 }
 .deb-col--left,
@@ -353,6 +477,7 @@ mat-toolbar.deb-toolbar {
   font-weight: 700;
   box-shadow: 0 4px 14px rgba(99, 102, 241, 0.15);
   cursor: pointer;
+  animation: debDockFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .deb-dock-btn:hover {
@@ -386,6 +511,28 @@ mat-toolbar.deb-toolbar {
   display: none;
   letter-spacing: 0.04em;
   white-space: nowrap;
+}
+
+/*
+ * Horizontal dock bar for collapsed fields canvas or live preview.
+ * Spans across the column with a clear label, icon and chevron.
+ */
+.deb-dock-btn--horizontal {
+  flex-direction: row;
+  justify-content: center;
+  width: 100%;
+  padding: 10px 18px;
+  border-radius: 12px;
+  gap: 12px;
+  position: static;
+  animation: debDockSlideInY 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.deb-dock-btn--horizontal .deb-dock-btn__label {
+  display: inline;
+}
+
+.deb-card--preview mat-card-content {
+  padding: 0 16px 16px !important;
 }
 
 .deb-settings-grid {

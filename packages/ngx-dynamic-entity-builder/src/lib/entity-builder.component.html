@@ -95,6 +95,36 @@
   <button
     mat-icon-button
     type="button"
+    data-testid="toggle-fields"
+    class="deb-sidebar-toggle-btn"
+    [class.deb-sidebar-toggle-btn--active]="fieldsOpen()"
+    [attr.aria-expanded]="fieldsOpen()"
+    aria-controls="deb-fields-section"
+    (click)="toggleFields()"
+    [matTooltip]="fieldsOpen() ? ui.text('collapseFields') : ui.text('expandFields')"
+    [attr.aria-label]="fieldsOpen() ? ui.text('collapseFields') : ui.text('expandFields')"
+  >
+    <mat-icon>{{ fieldsOpen() ? 'view_agenda' : 'table_rows' }}</mat-icon>
+  </button>
+
+  <button
+    mat-icon-button
+    type="button"
+    data-testid="toggle-preview"
+    class="deb-sidebar-toggle-btn"
+    [class.deb-sidebar-toggle-btn--active]="previewOpen()"
+    [attr.aria-expanded]="previewOpen()"
+    aria-controls="deb-preview-section"
+    (click)="togglePreview()"
+    [matTooltip]="previewOpen() ? ui.text('collapsePreview') : ui.text('expandPreview')"
+    [attr.aria-label]="previewOpen() ? ui.text('collapsePreview') : ui.text('expandPreview')"
+  >
+    <mat-icon>{{ previewOpen() ? 'visibility' : 'visibility_off' }}</mat-icon>
+  </button>
+
+  <button
+    mat-icon-button
+    type="button"
     data-testid="toggle-right-sidebar"
     class="deb-sidebar-toggle-btn"
     [class.deb-sidebar-toggle-btn--active]="rightSidebarOpen()"
@@ -262,17 +292,104 @@
 
   <!-- ─── Center: field canvas, then what it renders as ─── -->
   <div class="deb-col deb-col--center" data-testid="builder-canvas-column">
-    <ngx-entity-builder-canvas />
+    <!-- Collapsed fields canvas dock bar -->
+    <div
+      class="deb-dock-pane deb-dock-pane--fields"
+      [class.deb-dock-pane--open]="!fieldsOpen()"
+      [attr.aria-hidden]="fieldsOpen()"
+    >
+      <div class="deb-dock-pane__inner">
+        <button
+          type="button"
+          class="deb-dock-btn deb-dock-btn--horizontal deb-dock-btn--fields"
+          data-testid="expand-fields"
+          aria-expanded="false"
+          aria-controls="deb-fields-section"
+          (click)="expandFields()"
+          [matTooltip]="ui.text('expandFields')"
+          [attr.aria-label]="ui.text('expandFields')"
+        >
+          <mat-icon class="deb-dock-btn__icon">format_list_bulleted</mat-icon>
+          <span class="deb-dock-btn__label">{{ ui.text('fieldsRailLabel') }} ({{ store.fields().length }})</span>
+          <mat-icon class="deb-dock-btn__chevron">keyboard_arrow_down</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Fields canvas section -->
+    <div
+      id="deb-fields-section"
+      class="deb-toggle-pane deb-section--fields"
+      [class.deb-toggle-pane--collapsed]="!fieldsOpen()"
+      data-testid="builder-fields-section"
+      [attr.aria-hidden]="!fieldsOpen()"
+    >
+      <div class="deb-toggle-pane__inner">
+        <ngx-entity-builder-canvas (collapse)="collapseFields()" />
+      </div>
+    </div>
+
+    <!-- Collapsed preview dock bar -->
+    <div
+      class="deb-dock-pane deb-dock-pane--preview"
+      [class.deb-dock-pane--open]="!previewOpen()"
+      [attr.aria-hidden]="previewOpen()"
+    >
+      <div class="deb-dock-pane__inner">
+        <button
+          type="button"
+          class="deb-dock-btn deb-dock-btn--horizontal deb-dock-btn--preview"
+          data-testid="expand-preview"
+          aria-expanded="false"
+          aria-controls="deb-preview-section"
+          (click)="expandPreview()"
+          [matTooltip]="ui.text('expandPreview')"
+          [attr.aria-label]="ui.text('expandPreview')"
+        >
+          <mat-icon class="deb-dock-btn__icon">visibility</mat-icon>
+          <span class="deb-dock-btn__label">{{ ui.text('previewRailLabel') }}</span>
+          <mat-icon class="deb-dock-btn__chevron">keyboard_arrow_up</mat-icon>
+        </button>
+      </div>
+    </div>
 
     <!--
       The live preview, moved up from the footer.
-      It used to sit below a collapsed JSON accordion at the very bottom of the page — around
-      1500px under the canvas on a fresh builder — so the one thing that tells an author what
-      they are building was never on screen while they built it. Directly under the field list
-      is where a change and its effect can be seen in the same glance.
+      Directly under the field list is where a change and its effect can be seen in the same glance.
     -->
-    <div class="deb-preview-slot">
-      <ng-content select="[ngxBuilderPreview]"></ng-content>
+    <div
+      id="deb-preview-section"
+      class="deb-toggle-pane deb-preview-slot"
+      [class.deb-toggle-pane--collapsed]="!previewOpen()"
+      data-testid="builder-preview-section"
+      [attr.aria-hidden]="!previewOpen()"
+    >
+      <div class="deb-toggle-pane__inner">
+        <mat-card class="deb-card deb-card--preview">
+          <mat-card-header>
+            <mat-card-title class="deb-card__title">
+              <mat-icon class="deb-card__icon">visibility</mat-icon>
+              {{ ui.text('previewHeading') }}
+            </mat-card-title>
+            <button
+              mat-icon-button
+              type="button"
+              class="deb-card__collapse-btn"
+              data-testid="collapse-preview"
+              aria-expanded="true"
+              aria-controls="deb-preview-section"
+              (click)="collapsePreview()"
+              [matTooltip]="ui.text('collapsePreview')"
+              [attr.aria-label]="ui.text('collapsePreview')"
+            >
+              <mat-icon>keyboard_arrow_down</mat-icon>
+            </button>
+          </mat-card-header>
+          <mat-card-content>
+            <ng-content select="[ngxBuilderPreview]"></ng-content>
+          </mat-card-content>
+        </mat-card>
+      </div>
     </div>
   </div>
 

@@ -25,8 +25,8 @@ export const DEFAULT_BUILDER_TEXT = {
   saveBlockedTooltip: 'Fix the errors in the issue list before saving.',
 
   /*
-   * The side panels collapse, so each control is named in both directions — and a collapsed
-   * panel leaves a rail whose label is the only word left standing for it.
+   * The panels collapse, so each control is named in both directions — and a collapsed
+   * panel leaves a rail or dock bar whose label is the only word left standing for it.
    */
   collapsePalette: 'Collapse the palette',
   expandPalette: 'Expand the palette',
@@ -34,6 +34,13 @@ export const DEFAULT_BUILDER_TEXT = {
   expandInspector: 'Expand the inspector',
   paletteRailLabel: 'Add fields',
   inspectorRailLabel: 'Properties',
+  collapseFields: 'Collapse fields',
+  expandFields: 'Expand fields',
+  fieldsRailLabel: 'Fields',
+  collapsePreview: 'Collapse live preview',
+  expandPreview: 'Expand live preview',
+  previewRailLabel: 'Live preview',
+  previewHeading: 'Live preview',
 
   // Entity settings panel
   entityName: 'Entity name',

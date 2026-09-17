@@ -7,6 +7,23 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.13.0] — 2026-09-17
+
+The builder's center column sections (Fields canvas and Live Preview) now support collapsible toggles with smooth accordion transitions, matching the left and right sidebar ergonomics.
+
+### Added
+
+- **Collapsible Fields Canvas & Live Preview.** The Fields canvas (top) and Live Preview (bottom) within the builder center column can now collapse and expand independently via toolbar toggle buttons, the canvas card header collapse button, or dedicated toggle rails when collapsed.
+- **`fieldsOpen` / `previewOpen` two-way bindings** (`model()`), allowing consumer hosts to control and persist visibility state for both center sections.
+- **Dedicated toggle rail bars** with accessible focus management, ARIA expansion states (`aria-expanded`, `aria-controls`), and localized action labels (`collapseFields`, `expandFields`, `fieldsRailLabel`, `collapsePreview`, `expandPreview`, `previewRailLabel`, `previewHeading`).
+
+### Changed
+
+- **Smooth CSS accordion transitions.** Vertical collapse/expansion uses CSS grid fractional track transitions (`grid-template-rows: 0fr` <-> `1fr`) alongside opacity and subtle vertical translation for 60fps animations.
+- Added `@media (prefers-reduced-motion: reduce)` support to respect system reduced motion preferences.
+
+---
+
 ## [1.12.0] — 2026-09-16
 
 The builder's two side panels collapse, and the width they give up goes where the work is.

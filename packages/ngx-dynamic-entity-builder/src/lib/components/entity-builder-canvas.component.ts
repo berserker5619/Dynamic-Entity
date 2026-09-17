@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { resolveLabel } from '@dynamic-entity/core';
 import { BuilderStore, type BuilderFieldGroup } from '../builder-store.service';
 import { EntityBuilderTreeNodeComponent } from './entity-builder-tree-node.component';
@@ -12,11 +14,35 @@ import { BuilderTextService } from '../builder-text';
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'ngx-entity-builder-canvas',
   standalone: true,
-  imports: [CommonModule, DragDropModule, MatCardModule, MatIconModule, EntityBuilderTreeNodeComponent],
+  imports: [
+    CommonModule,
+    DragDropModule,
+    MatButtonModule,
+    MatCardModule,
+    MatIconModule,
+    MatTooltipModule,
+    EntityBuilderTreeNodeComponent,
+  ],
   template: `
-    <mat-card class="deb-canvas">
+    <mat-card class="deb-card deb-card--canvas">
       <mat-card-header>
-        <mat-card-title>{{ ui.text('fieldsHeading', { count: store.fields().length }) }}</mat-card-title>
+        <mat-card-title class="deb-card__title">
+          <mat-icon class="deb-card__icon">format_list_bulleted</mat-icon>
+          {{ ui.text('fieldsHeading', { count: store.fields().length }) }}
+        </mat-card-title>
+        <button
+          mat-icon-button
+          type="button"
+          class="deb-card__collapse-btn"
+          data-testid="collapse-fields"
+          aria-expanded="true"
+          aria-controls="deb-fields-section"
+          (click)="collapse.emit()"
+          [matTooltip]="ui.text('collapseFields')"
+          [attr.aria-label]="ui.text('collapseFields')"
+        >
+          <mat-icon>keyboard_arrow_up</mat-icon>
+        </button>
       </mat-card-header>
       <mat-card-content>
         @if (store.fields().length === 0) {
@@ -59,6 +85,8 @@ import { BuilderTextService } from '../builder-text';
   `,
 })
 export class EntityBuilderCanvasComponent {
+  @Output() collapse = new EventEmitter<void>();
+
   /** Builder chrome, overridable via BUILDER_TEXT. */
   protected readonly ui = inject(BuilderTextService);
   protected readonly store = inject(BuilderStore);
