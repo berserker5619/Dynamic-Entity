@@ -9,6 +9,7 @@
     "build": "turbo run build",
     "lint": "node scripts/check-control-chars.mjs && node scripts/check-demo-coverage.mjs && eslint \"packages/*/src/**/*.ts\" \"scripts/**/*.mjs\" \"packages/core/cli.mjs\" && turbo run lint",
     "test": "turbo run test",
+    "check:timezones": "node scripts/check-timezones.mjs",
     "dev": "turbo run dev",
     "test:coverage": "turbo run test:coverage",
     "check:chars": "node scripts/check-control-chars.mjs",

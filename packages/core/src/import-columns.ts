@@ -176,6 +176,34 @@ export function parseArrayHeader(ref: string): { segments: string[]; indices: nu
   return { segments, indices };
 }
 
+/**
+ * An upper bound on how far a plan's row numbers may reach.
+ *
+ * A plan is data, and a hand-edited one naming `contacts.999999.name` would otherwise make the
+ * column derivation generate a million columns before deciding it did not like the ref.
+ */
+export const MAX_ARRAY_BOUND = 1000;
+
+/**
+ * The array bound a plan implies: the highest row number any of its refs names, plus one.
+ *
+ * This exists so a caller never has to tell `applyMapping` what `maxArrayRows` the plan was
+ * authored with. That parameter was the cause of silent data loss — a plan written for five
+ * rows, applied with the default three, had two of its columns quietly dropped and reported a
+ * clean import. The information was in the plan the whole time; asking for it again is what
+ * created the chance to disagree.
+ */
+export function arrayBoundOf(plan: MappingPlan | null | undefined): number {
+  let highest = -1;
+  for (const entry of plan?.entries ?? []) {
+    if (!entry || typeof entry.ref !== 'string') continue;
+    for (const index of parseArrayHeader(entry.ref).indices) {
+      if (index > highest) highest = index;
+    }
+  }
+  return Math.min(highest + 1, MAX_ARRAY_BOUND);
+}
+
 /** `contacts.0.email` → `contacts.email`, so a selection can name a field once. */
 export function stripIndices(ref: string): string {
   return String(ref ?? '')
@@ -386,7 +414,15 @@ export function validateMappingPlan(
     );
   }
 
-  const known = new Set(deriveImportColumns(config, options).columns.map(column => column.ref));
+  // Derived from the plan rather than taken from the caller, so a plan's own row numbers are
+  // always in scope and an unknown ref means the *config* lacks the field — not that the
+  // column list happened to be generated too short to contain it.
+  const known = new Set(
+    deriveImportColumns(config, {
+      ...options,
+      maxArrayRows: Math.max(options.maxArrayRows ?? 0, arrayBoundOf(plan), 1),
+    }).columns.map(column => column.ref),
+  );
   const seen = new Set<string>();
 
   plan.entries.forEach((entry, i) => {

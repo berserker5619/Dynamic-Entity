@@ -23,6 +23,7 @@ Everything CI enforces, you can run locally:
 | `npm run build` | All four packages via turbo |
 | `npm test` | Unit tests |
 | `npm run test:coverage` | Coverage thresholds — a ratchet, see below |
+| `npm run check:timezones` | Runs the date-sensitive suites once per timezone |
 | `npm run e2e` | Playwright, against the demo app |
 | `node scripts/verify-consumer.mjs --angular 20` | Packs the tarballs, installs them into a throwaway Angular project, and AOT-compiles a consumer |
 | `node scripts/verify-consumer.mjs --angular 20 --readme` | Compiles every documented code block |
@@ -40,6 +41,14 @@ still appears to work. That script is what proves an actual consumer can install
   fence it as `ts` and it will be skipped — see the note at the top of `EXTENDING.md`.
 - **Lowering a coverage threshold to make a change pass.** The numbers sit just under what
   each package actually achieves so a regression fails. Raise them when coverage improves.
+  They are **per-file**, not aggregate, and there is no `global` entry on purpose — Jest
+  removes glob-matched files from the `global` group, so a `./src/**/*.ts` key next to a
+  `global` key silently leaves the latter measuring nothing. Per-file is also the stronger
+  gate: no single rotting file can hide behind the average.
+- **Reading a date through `new Date` when it has no time.** `new Date('2024-03-07')` is UTC
+  midnight, so formatting it back with local getters moves it a day earlier everywhere west
+  of Greenwich. Parse the text; `new Date` is for a `datetime`, which genuinely is an instant.
+  `npm run check:timezones` is what catches this — CI runs UTC and cannot.
 - **A test that cannot fail.** If you add a guard, check that reintroducing the bug it guards
   against actually breaks the test.
 - **A new field type without a catalog entry**, or a catalog entry without a component. The

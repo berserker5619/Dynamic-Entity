@@ -109,12 +109,30 @@ describe('compactArrays', () => {
   it('removes the holes a sparse write leaves', () => {
     const record: Record<string, unknown> = {};
     setRecordValue(record, 'contacts.1.name', 'Bob');
-    compactArrays(record);
-    expect(record).toEqual({ contacts: [{ name: 'Bob' }] });
+    expect(compactArrays(record)).toEqual({ contacts: [{ name: 'Bob' }] });
   });
 
   it('drops a row whose every cell was blank', () => {
     expect(compactArrays({ rows: [{ a: '' }, { a: 'x' }] })).toEqual({ rows: [{ a: 'x' }] });
+  });
+
+  it('returns the result and leaves the argument alone, whatever it was given', () => {
+    // It used to mutate an object in place while returning a new array, so whether a caller
+    // could ignore the return value depended on what they passed in.
+    const object = { rows: [{ a: '' }, { a: 'x' }] };
+    const array = [1, null, 2];
+
+    expect(compactArrays(object)).toEqual({ rows: [{ a: 'x' }] });
+    expect(object).toEqual({ rows: [{ a: '' }, { a: 'x' }] });
+
+    expect(compactArrays(array)).toEqual([1, 2]);
+    expect(array).toEqual([1, null, 2]);
+  });
+
+  it('keeps a value that merely has no enumerable keys', () => {
+    // A Date has none, so judging emptiness by its keys deleted it outright.
+    const when = new Date('2024-01-01T00:00:00.000Z');
+    expect(compactArrays([when])).toEqual([when]);
   });
 });
 
@@ -128,7 +146,20 @@ describe('coerceCell', () => {
 
   it('parses a number, including the thousands separator a spreadsheet shows', () => {
     expect(coerceCell(field('headcount'), '1,234')).toEqual({ value: 1234 });
+    expect(coerceCell(field('headcount'), '1,234,567.5')).toEqual({ value: 1234567.5 });
+    expect(coerceCell(field('headcount'), '-42')).toEqual({ value: -42 });
+    expect(coerceCell(field('headcount'), '1.5e3')).toEqual({ value: 1500 });
     expect(coerceCell(field('headcount'), 'seven')).toEqual({ error: '"seven" is not a number' });
+  });
+
+  it('rejects text that Number() would happily turn into a plausible wrong answer', () => {
+    // `Number` is far looser than any spreadsheet: it reads 0x10 as 16, and stripping commas
+    // before parsing turned the plainly broken 1,2,3 into 123.
+    for (const text of ['1,2,3', '0x10', '1,23', 'Infinity', '12 34', '1..2']) {
+      expect(coerceCell(field('headcount'), text)).toEqual({
+        error: `"${text}" is not a number`,
+      });
+    }
   });
 
   it('stores a dropdown cell as the option object, not the text that was typed', () => {
@@ -207,7 +238,15 @@ describe('coerceCell', () => {
   it('stores a date as YYYY-MM-DD and rejects text that is not one', () => {
     const date: NestedFieldConfig = { id: 'd', type: 'date', label: { en: 'D' } };
     expect(coerceCell(date, '2024-03-07')).toEqual({ value: '2024-03-07' });
+    expect(coerceCell(date, '2024-3-7')).toEqual({ value: '2024-03-07' });
     expect(coerceCell(date, 'last Tuesday')).toEqual({ error: '"last Tuesday" is not a date' });
+  });
+
+  it('rejects a well-formed date that does not exist', () => {
+    // `new Date` rolls 2024-02-30 forward to March and reports no problem.
+    const date: NestedFieldConfig = { id: 'd', type: 'date', label: { en: 'D' } };
+    expect(coerceCell(date, '2024-02-30')).toEqual({ error: '"2024-02-30" is not a date' });
+    expect(coerceCell(date, '2024-02-29')).toEqual({ value: '2024-02-29' }); // a real leap day
   });
 
   it('stores a datetime as an ISO instant and rejects text that is not one', () => {
@@ -397,6 +436,36 @@ describe('suggestMapping', () => {
   it('records the headers it was given, so a re-run can notice the sheet changed', () => {
     expect(suggestMapping(['a', 'b'], columnsOf()).sourceHeaders).toEqual(['a', 'b']);
   });
+
+  it('refuses to guess when two fields answer to the same label', () => {
+    // "Address" on Personal Details and "Address" on Work Details are two fields with one
+    // label — the reason a field's identity is its path. Picking one by walk order resolves
+    // the ambiguity invisibly and shows the user a mapping that looks considered.
+    const twins: EntityFormConfig = {
+      entity: 'x',
+      tabs: [
+        {
+          id: 'personal',
+          label: { en: 'Personal' },
+          fields: [{ id: 'address', type: 'text', label: { en: 'Address' } }],
+        },
+        {
+          id: 'work',
+          label: { en: 'Work' },
+          fields: [{ id: 'address', type: 'text', label: { en: 'Address' } }],
+        },
+      ],
+    };
+    const columns = deriveImportColumns(twins).columns;
+
+    expect(suggestMapping(['Address'], columns).entries).toEqual([]);
+
+    // The qualified heading a generated template carries is still unambiguous, and still matches.
+    const exact = suggestMapping(['Work / Address'], columns).entries;
+    expect(exact).toEqual([
+      expect.objectContaining({ ref: 'work.address', column: 0, confidence: 'exact' }),
+    ]);
+  });
 });
 
 describe('validateImportedRecord — parity with what the form enforces', () => {
@@ -579,6 +648,69 @@ describe('applyMapping', () => {
       { rules: RULES },
     );
     expect(result.errors).toEqual([]);
+    expect(result.records).toHaveLength(1);
+  });
+
+  it('imports every row a plan names, whatever row numbers it reaches for', () => {
+    // A plan authored when the UI offered five array rows. The bound now comes from the plan
+    // itself, so there is no `maxArrayRows` for a caller to get wrong — two of these columns
+    // used to be dropped in silence, and the import reported success.
+    const result = applyMapping(
+      [['Alice', 'left', 'Bob', 'Carol', 'Dave']],
+      plan([
+        { ref: 'personal.firstName', column: 0 },
+        { ref: 'personal.terminationReason', column: 1 },
+        { ref: 'work.contacts.0.name', column: 2 },
+        { ref: 'work.contacts.3.name', column: 3 },
+        { ref: 'work.contacts.4.name', column: 4 },
+      ]),
+      CONFIG,
+    );
+
+    expect(result.planProblems).toEqual([]);
+    expect(result.errors).toEqual([]);
+    expect((result.records[0] as any).work.contacts).toEqual([
+      { name: 'Bob' },
+      { name: 'Carol' },
+      { name: 'Dave' },
+    ]);
+  });
+
+  it('imports nothing when the plan names a field the config does not have', () => {
+    // Refusing beats importing whichever columns happened to resolve: a plan that is wrong
+    // about one field is wrong about every row, and a partial import looks like a clean one.
+    const result = applyMapping(
+      [['Alice', 'left']],
+      plan([
+        { ref: 'personal.firstName', column: 0 },
+        { ref: 'personal.goneAway', column: 1 },
+      ]),
+      CONFIG,
+    );
+
+    expect(result.records).toEqual([]);
+    expect(result.planProblems).toContainEqual(
+      expect.objectContaining({ level: 'error', path: 'entries[1].ref' }),
+    );
+  });
+
+  it('reports a plan written for another entity instead of importing it quietly', () => {
+    const result = applyMapping(
+      [['Alice', 'left']],
+      {
+        entity: 'clients',
+        entries: [
+          { ref: 'personal.firstName', column: 0 },
+          { ref: 'personal.terminationReason', column: 1 },
+        ],
+      },
+      CONFIG,
+    );
+
+    // A warning, not an error: the refs all resolve, so the import runs — but it says so.
+    expect(result.planProblems).toContainEqual(
+      expect.objectContaining({ level: 'warning', path: 'entity' }),
+    );
     expect(result.records).toHaveLength(1);
   });
 

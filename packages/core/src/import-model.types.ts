@@ -15,6 +15,7 @@
  */
 
 import type { NestedFieldConfig } from './form-model.types';
+import type { ConfigProblem } from './validate-config';
 
 /**
  * One column a sheet may carry for a config, derived from the config alone.
@@ -125,4 +126,13 @@ export interface ImportResult {
   records: Record<string, unknown>[];
   errors: ImportRowError[];
   skipped: number;
+  /**
+   * What is wrong with the plan itself, rather than with any row.
+   *
+   * An `error` here means **nothing was imported**: a plan naming a field the config does not
+   * have is wrong about every row, and importing whichever of its columns happened to resolve
+   * is how a sheet loses a column while reporting success. Warnings — a plan authored against
+   * an older config version, or naming another entity — do not stop the import.
+   */
+  planProblems: ConfigProblem[];
 }

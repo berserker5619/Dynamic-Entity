@@ -1,5 +1,7 @@
 import { parseCsv, toCsv } from './csv';
 import {
+  MAX_ARRAY_BOUND,
+  arrayBoundOf,
   buildTemplateSpec,
   collectLeafTargets,
   deriveImportColumns,
@@ -218,6 +220,30 @@ describe('array header syntax', () => {
 
   it('strips indices so a selection can name a repeating field once', () => {
     expect(stripIndices('work.contacts.2.name')).toBe('work.contacts.name');
+  });
+});
+
+describe('arrayBoundOf', () => {
+  const of = (...refs: string[]): number =>
+    arrayBoundOf({ entity: 'x', entries: refs.map(ref => ({ ref, column: 0 })) });
+
+  it('reads the bound out of the plan, so no caller has to supply it', () => {
+    // The parameter this replaces was the cause of silent data loss: a plan authored for five
+    // array rows, applied with a default of three, had two of its columns quietly dropped.
+    expect(of('work.contacts.0.name', 'work.contacts.4.name')).toBe(5);
+  });
+
+  it('is zero for a plan with no repeating fields', () => {
+    expect(of('personal.firstName')).toBe(0);
+  });
+
+  it('caps an absurd row number rather than generating a million columns', () => {
+    expect(of('work.contacts.999999.name')).toBe(MAX_ARRAY_BOUND);
+  });
+
+  it('ignores an entry with no usable ref', () => {
+    expect(arrayBoundOf({ entity: 'x', entries: [null as never, { ref: 'a.2.b' }] })).toBe(3);
+    expect(arrayBoundOf(null)).toBe(0);
   });
 });
 

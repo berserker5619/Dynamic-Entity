@@ -29,9 +29,15 @@ module.exports = {
   //
   // Actuals at the time of writing: 95.9 / 83.0 / 97.9 / 97.1 global, and the weakest file
   // (builder-store.service.ts) at 93.9 / 78.5 / 97.0 / 95.6.
+  // No `global` entry, deliberately. Jest removes every file matched by a path or glob key
+  // from the `global` group, so a glob of `./src/**/*.ts` — which matches everything — left
+  // `global` measuring nothing. The 96/83/97/98 that used to sit here enforced none of itself.
+  //
+  // The per-file numbers are the real gate and are stronger than the aggregate they replace:
+  // every file must clear them, so no single rotting file hides behind the average. Set just
+  // under the weakest file in the package.
   coverageThreshold: {
-    global: { statements: 96, branches: 83, functions: 97, lines: 98 },
-    './src/**/*.ts': { statements: 85, branches: 75, functions: 85, lines: 85 },
+    './src/**/*.ts': { statements: 95, branches: 81, functions: 93, lines: 95 },
   },
   // Ignore the built output so haste doesn't see two package.json manifests.
   modulePathIgnorePatterns: ['<rootDir>/dist/'],

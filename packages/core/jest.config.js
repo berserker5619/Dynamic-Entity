@@ -7,9 +7,18 @@ module.exports = {
   coverageReporters: ['text-summary', 'lcov'],
   // Thresholds sit just under the current numbers: they are a ratchet against regression,
   // not a target to game. Raise them when coverage genuinely improves.
+  //
+  // There is no `global` entry, and that is deliberate. Jest removes every file matched by a
+  // path or glob key from the `global` group, so a glob of `./src/**/*.ts` — which matches
+  // everything — left `global` measuring nothing at all. It read as a 96% aggregate gate and
+  // enforced zero: the suite exited 0 at 95.11% statements while that line sat in this file.
+  // A misleading gate is worse than a missing one, because it is the reason nobody looks.
+  //
+  // The per-file numbers below are the real gate, and they are stronger than the aggregate
+  // they replace: every file must clear them, so no single rotting file can hide behind the
+  // average. They are set just under the weakest file currently in the package.
   coverageThreshold: {
-    global: { statements: 96, branches: 89, functions: 98, lines: 98 },
-    './src/**/*.ts': { statements: 85, branches: 75, functions: 85, lines: 85 },
+    './src/**/*.ts': { statements: 90, branches: 80, functions: 100, lines: 91 },
   },
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   transform: {

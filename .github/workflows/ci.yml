@@ -47,6 +47,15 @@ jobs:
       - name: Coverage thresholds
         run: npm run test:coverage
 
+      # This runner is UTC, and so was the machine the import engine was written on, so the
+      # whole gate sat on the side of Greenwich where a date bug is invisible: a bare date
+      # parsed as UTC midnight and read back with local getters moved a day earlier for every
+      # user at a negative offset, and passed everything here. The zone has to be set before
+      # the process starts — assigning process.env.TZ inside a test does not reach Node's
+      # timezone cache, and looks like it works.
+      - name: Dates hold in every timezone
+        run: npm run check:timezones
+
   consumer:
     name: Consumer install + AOT (Angular ${{ matrix.angular }})
     runs-on: ubuntu-latest
