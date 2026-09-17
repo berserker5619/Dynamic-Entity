@@ -63,6 +63,9 @@ const DELIBERATELY_UNDEMONSTRATED = {
     'and named here so the rule can stay automatic — an exception written down beats a ' +
     'cleverer rule nobody can predict.',
   setTabData: 'A record-shape utility, not an extension point. See setValueByPath.',
+  setRecordValue:
+    'The import engine s array-aware path writer. A utility, not an extension point, and ' +
+    'the demo reaches it through the import wizard rather than by name. See setValueByPath.',
 };
 
 /** Every `.ts` / `.html` file under a directory, excluding specs. */
