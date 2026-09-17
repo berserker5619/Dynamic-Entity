@@ -19,6 +19,7 @@ import {
   toCsv,
   type ImportResult,
   type MappingPlan,
+  type SheetData,
   type TemplateSpec,
 } from '@dynamic-entity/core';
 import { SHEET_PARSER } from '../tokens/injection-tokens';
@@ -37,13 +38,37 @@ const SAMPLE_ROWS = 5;
 export class LocalImportTransport implements ImportTransport {
   private readonly registered = inject(SHEET_PARSER, { optional: true });
 
+  /**
+   * One parse per file, not one per call.
+   *
+   * A wizard run reads the same file twice — once to show its headers, once to import it —
+   * and this is the transport whose stated limit is that it holds the file in memory. Doing
+   * the work twice doubled both the parse and the peak memory of the one implementation that
+   * can least afford it.
+   *
+   * A `WeakMap` keyed on the `File` itself: the entry lives exactly as long as something
+   * still holds the file, so choosing a different file drops the old sheet without anything
+   * having to remember to. Keying on a name or a size would collide between two files a user
+   * picked in sequence.
+   */
+  private readonly parsed = new WeakMap<File, Promise<SheetData>>();
+
   /** The registered parser, or the built-in CSV one. */
-  private get parse(): NonNullable<typeof this.registered> {
-    return this.registered ?? defaultSheetParser;
+  private read(file: File): Promise<SheetData> {
+    const cached = this.parsed.get(file);
+    if (cached) return cached;
+
+    // The *promise* is cached, not its result, so two calls that overlap share one parse
+    // rather than starting a second before the first resolves.
+    const pending = Promise.resolve((this.registered ?? defaultSheetParser)(file));
+    this.parsed.set(file, pending);
+    // A failed parse must not be remembered: the user may fix the file and pick it again.
+    pending.catch(() => this.parsed.delete(file));
+    return pending;
   }
 
   async preview(file: File, context: ImportContext): Promise<ImportPreview> {
-    const sheet = await this.parse(file);
+    const sheet = await this.read(file);
     const { columns } = deriveImportColumns(context.config, { lang: context.lang });
 
     return {
@@ -55,7 +80,7 @@ export class LocalImportTransport implements ImportTransport {
   }
 
   async commit(file: File, plan: MappingPlan, context: ImportContext): Promise<ImportResult> {
-    const sheet = await this.parse(file);
+    const sheet = await this.read(file);
     return applyMapping(sheet.rows, plan, context.config, {
       lang: context.lang,
       rules: context.rules,

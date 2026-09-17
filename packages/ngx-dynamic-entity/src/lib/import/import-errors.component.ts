@@ -46,6 +46,33 @@ import { UiTextService } from '../services/ui-text.service';
       </section>
     }
   `,
+  styles: [
+    `
+      .ngx-import-errors__heading {
+        margin: 0 0 8px;
+        font-size: var(--ngx-font-size, 14px);
+        color: var(--ngx-color-error, #b91c1c);
+      }
+      .ngx-import-errors__table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .ngx-import-errors__table th,
+      .ngx-import-errors__table td {
+        text-align: left;
+        padding: 6px 10px;
+        border-bottom: 1px solid var(--ngx-color-border, #e5e7eb);
+        vertical-align: top;
+      }
+      .ngx-import-errors__table thead th {
+        color: var(--ngx-color-muted, #6b7280);
+      }
+      .ngx-import-errors__table tbody th {
+        white-space: nowrap;
+        color: var(--ngx-color-error, #b91c1c);
+      }
+    `,
+  ],
 })
 export class ImportErrorsComponent {
   @Input() errors: readonly ImportRowError[] = [];

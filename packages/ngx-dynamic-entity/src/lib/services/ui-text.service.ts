@@ -118,6 +118,7 @@ export const DEFAULT_UI_TEXT = {
 
   // Import wizard — review and result
   importPreviewHeading: 'First {count} row(s), as they will be saved',
+  importRowRejected: 'This row will not be imported: {reason}',
   importRunImport: 'Import {count} row(s)',
   importImporting: 'Importing…',
   importSucceeded: 'Imported {count} record(s).',

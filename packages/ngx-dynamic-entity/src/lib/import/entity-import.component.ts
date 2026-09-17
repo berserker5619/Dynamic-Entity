@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import {
   buildTemplateSpec,
+  collectLeafTargets,
   formatConfigProblems,
   type EntityFormConfig,
   type FormRule,
@@ -18,6 +19,7 @@ import {
 } from '@dynamic-entity/core';
 import { IMPORT_TRANSPORT } from '../tokens/injection-tokens';
 import { UiTextService } from '../services/ui-text.service';
+import { LookupRegistryService } from '../services/lookup-registry.service';
 import { LocalImportTransport } from './local-import-transport';
 import { ImportErrorsComponent } from './import-errors.component';
 import { ImportMapperComponent } from './import-mapper.component';
@@ -110,7 +112,8 @@ type Step = 'upload' | 'map' | 'review' | 'done';
               [config]="config"
               [plan]="current"
               [rows]="sample()"
-              [lookups]="lookups"
+              [lookups]="resolvedLookups()"
+              [rules]="rules"
               [language]="language"
             />
           }
@@ -155,6 +158,75 @@ type Step = 'upload' | 'map' | 'review' | 'done';
       }
     </div>
   `,
+  styles: [
+    `
+      .ngx-import {
+        display: flex;
+        flex-direction: column;
+        gap: var(--ngx-gap, 16px);
+        color: var(--ngx-color-text, #1f2937);
+        font-size: var(--ngx-font-size, 14px);
+      }
+      .ngx-import__steps {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .ngx-import__step {
+        padding: 4px 12px;
+        border: 1px solid var(--ngx-color-border, #e5e7eb);
+        border-radius: var(--ngx-radius-sm, 6px);
+        color: var(--ngx-color-muted, #6b7280);
+        background: var(--ngx-color-surface-alt, #f9fafb);
+      }
+      .ngx-import__step--current {
+        color: var(--ngx-color-accent, #4f46e5);
+        border-color: var(--ngx-color-accent, #4f46e5);
+        background: var(--ngx-color-accent-soft, #e0e7ff);
+        font-weight: 600;
+      }
+      .ngx-import__problem {
+        margin: 0;
+        padding: 10px 12px;
+        border: 1px solid var(--ngx-color-border, #fecaca);
+        border-radius: var(--ngx-radius-sm, 6px);
+        background: var(--ngx-color-error-soft, #fef2f2);
+        color: var(--ngx-color-error, #b91c1c);
+        /* A parser message can be a whole sentence with a filename in it. */
+        overflow-wrap: anywhere;
+      }
+      .ngx-import__file {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 14px;
+        border: 1px dashed var(--ngx-color-border, #d1d5db);
+        border-radius: var(--ngx-radius-sm, 6px);
+        background: var(--ngx-color-surface, #ffffff);
+      }
+      .ngx-import button {
+        align-self: flex-start;
+        padding: 8px 16px;
+        border: 1px solid var(--ngx-color-border, #d1d5db);
+        border-radius: var(--ngx-radius-sm, 6px);
+        background: var(--ngx-color-surface, #ffffff);
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+      .ngx-import button:hover:not(:disabled) {
+        border-color: var(--ngx-color-accent, #4f46e5);
+        background: var(--ngx-color-accent-soft, #e0e7ff);
+      }
+      .ngx-import button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+    `,
+  ],
 })
 export class EntityImportComponent {
   @Input({ required: true }) config!: EntityFormConfig;
@@ -165,7 +237,12 @@ export class EntityImportComponent {
    * enforces, and a required field hidden by a rule will fail every row.
    */
   @Input() rules?: readonly FormRule[];
-  /** Values for any `listName` field; core cannot reach `LOOKUP_REGISTRY` itself. */
+  /**
+   * Named lists, overriding what the wizard already resolves from `LOOKUP_REGISTRY`.
+   *
+   * Not something a host has to supply: every `listName` a config mentions is loaded from the
+   * registry the renderer is already holding. Pass this only to override one.
+   */
   @Input() lookups?: ImportLookups;
   @Input() language = 'en';
   /** Format asked of the transport when a template is downloaded. */
@@ -191,19 +268,62 @@ export class EntityImportComponent {
 
   private readonly registered = inject(IMPORT_TRANSPORT, { optional: true });
   private readonly local = inject(LocalImportTransport);
+  private readonly lookupRegistry = inject(LookupRegistryService);
   private file: File | null = null;
+
+  /** Named lists resolved from `LOOKUP_REGISTRY`, merged under the `lookups` input. */
+  protected readonly resolvedLookups = signal<ImportLookups>({});
 
   private get transport(): ImportTransport {
     return this.registered ?? this.local;
   }
 
-  private get context(): ImportContext {
+  private context(): ImportContext {
     return {
       config: this.config,
       rules: this.rules,
-      lookups: this.lookups,
+      lookups: this.resolvedLookups(),
       lang: this.language,
     };
+  }
+
+  /**
+   * Load every named list this config's fields refer to.
+   *
+   * `@dynamic-entity/core` is framework-agnostic and cannot reach `LOOKUP_REGISTRY`, so
+   * `coerceCell` takes the values as an argument. That is a reason for *core* to ask, not a
+   * reason for the host to be asked — this package is holding the registry, and making the
+   * consumer re-supply what the library already has is how a `listName` column ends up
+   * storing the raw text `"Gold"` instead of the option object. Such a record renders
+   * correctly and then matches no rule, which is the exact failure the option-shape contract
+   * exists to prevent.
+   *
+   * The `lookups` input still wins where it names a list, so a host can override one without
+   * having to provide all of them.
+   */
+  private async loadLookups(): Promise<void> {
+    const fromRegistry: ImportLookups = {};
+
+    const names = new Set<string>();
+    for (const target of collectLeafTargets(this.config)) {
+      if (target.field.listName) names.add(target.field.listName);
+    }
+
+    for (const listName of names) {
+      // A list that fails to load is not a reason to refuse the import: the field falls back
+      // to passing its text through, which is what happens today for an unregistered list.
+      try {
+        const options = await this.lookupRegistry.resolveOptions(
+          { id: listName, type: 'dropdown', label: {}, listName },
+          this.language,
+        );
+        if (options.length) fromRegistry[listName] = options;
+      } catch {
+        /* left out, so the field passes its text through */
+      }
+    }
+
+    this.resolvedLookups.set({ ...fromRegistry, ...(this.lookups ?? {}) });
   }
 
   protected stepLabel(step: Step): string {
@@ -225,13 +345,16 @@ export class EntityImportComponent {
       return;
     }
 
-    this.file = file;
-    this.fileName.set(file.name);
     this.problem.set(null);
     this.busy.set(true);
 
     try {
-      const preview = await this.transport.preview(file, this.context);
+      await this.loadLookups();
+      const preview = await this.transport.preview(file, this.context());
+      // Assigned only once the file has been read: holding a file whose headers describe the
+      // previous one is an invariant worth not having to reason about.
+      this.file = file;
+      this.fileName.set(file.name);
       this.headers.set(preview.headers);
       this.sample.set(preview.sample);
       this.rowCount.set(preview.rowCount);
@@ -257,7 +380,7 @@ export class EntityImportComponent {
     this.problem.set(null);
 
     try {
-      const result = await this.transport.commit(this.file, plan, this.context);
+      const result = await this.transport.commit(this.file, plan, this.context());
 
       // A plan-level error means nothing was imported, and saying "imported 0 records" would
       // describe that as a successful run of an empty file.
@@ -286,7 +409,7 @@ export class EntityImportComponent {
     this.problem.set(null);
     try {
       const spec = buildTemplateSpec(this.config, { lang: this.language, fields });
-      const blob = await this.transport.template(spec, this.templateFormat, this.context);
+      const blob = await this.transport.template(spec, this.templateFormat, this.context());
       this.templateReady.emit(blob);
       saveBlob(blob, `${this.config?.entity || 'import'}-template.${this.templateFormat}`);
     } catch (error) {

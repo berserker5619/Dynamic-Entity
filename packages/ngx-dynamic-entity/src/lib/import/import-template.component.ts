@@ -93,6 +93,71 @@ interface TemplateChoice {
       </button>
     </section>
   `,
+  styles: [
+    `
+      .ngx-import-template {
+        padding: 14px;
+        border: 1px solid var(--ngx-color-border, #e5e7eb);
+        border-radius: var(--ngx-radius-sm, 6px);
+        background: var(--ngx-color-surface-alt, #f9fafb);
+      }
+      .ngx-import-template__heading {
+        margin: 0 0 4px;
+        font-size: var(--ngx-font-size, 14px);
+      }
+      .ngx-import-template__explain {
+        margin: 0 0 10px;
+        color: var(--ngx-color-muted, #6b7280);
+      }
+      .ngx-import-template__bulk {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .ngx-import-template__list {
+        list-style: none;
+        margin: 0 0 10px;
+        padding: 0;
+        max-height: 240px;
+        overflow-y: auto;
+        display: grid;
+        gap: 4px;
+      }
+      .ngx-import-template__item {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 8px;
+      }
+      .ngx-import-template__item label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+      }
+      .ngx-import-template__note {
+        color: var(--ngx-color-muted, #6b7280);
+        font-size: 12px;
+      }
+      .ngx-import-template__unsupported {
+        margin: 0 0 10px;
+        color: var(--ngx-color-muted, #6b7280);
+      }
+      .ngx-import-template button {
+        padding: 6px 12px;
+        border: 1px solid var(--ngx-color-border, #d1d5db);
+        border-radius: var(--ngx-radius-sm, 6px);
+        background: var(--ngx-color-surface, #ffffff);
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+      .ngx-import-template button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+    `,
+  ],
 })
 export class ImportTemplateComponent implements OnChanges {
   @Input({ required: true }) config!: EntityFormConfig;

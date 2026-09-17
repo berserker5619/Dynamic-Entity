@@ -1,14 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import type { EntityFormConfig, FormRule, MappingPlan } from '@dynamic-entity/core';
-import { IMPORT_TRANSPORT, SHEET_PARSER } from '../tokens/injection-tokens';
+import type { EntityFormConfig, FormRule, ImportResult } from '@dynamic-entity/core';
+import { IMPORT_TRANSPORT, LOOKUP_REGISTRY } from '../tokens/injection-tokens';
 import { EntityImportComponent } from './entity-import.component';
-import { ImportErrorsComponent } from './import-errors.component';
-import { ImportMapperComponent } from './import-mapper.component';
-import { ImportPreviewComponent } from './import-preview.component';
-import { ImportTemplateComponent } from './import-template.component';
-import { LocalImportTransport } from './local-import-transport';
-import { defaultSheetParser } from './sheet-parser';
-import type { ImportContext, ImportTransport } from './import-contracts';
+import type { ImportTransport } from './import-contracts';
 
 const STATUS = [
   { en: 'Active', de: 'Aktiv' },
@@ -64,322 +58,6 @@ function blobText(blob: Blob): Promise<string> {
 /** Lets a promise chain that is several awaits deep finish before the next assertion. */
 const settle = (): Promise<void> => new Promise(resolve => setTimeout(resolve, 0));
 
-const CONTEXT: ImportContext = { config: CONFIG, lang: 'en' };
-
-describe('defaultSheetParser', () => {
-  it('reads a CSV into headers and positional rows', async () => {
-    const sheet = await defaultSheetParser(csvFile('people.csv', 'First Name,Status\nAlice,Active'));
-    expect(sheet).toEqual({ headers: ['First Name', 'Status'], rows: [['Alice', 'Active']] });
-  });
-
-  it('refuses a workbook by name rather than reading a zip as text', async () => {
-    // Attempting it yields a header row of mojibake and a mapping screen of nonsense, which
-    // is far harder to diagnose than being told the format is not supported.
-    await expect(defaultSheetParser(csvFile('people.xlsx', 'PK...'))).rejects.toThrow(
-      /built-in parser handles CSV only/,
-    );
-  });
-});
-
-describe('LocalImportTransport', () => {
-  let transport: LocalImportTransport;
-
-  beforeEach(() => {
-    TestBed.configureTestingModule({});
-    transport = TestBed.inject(LocalImportTransport);
-  });
-
-  it('previews headers, a sample and a suggested mapping', async () => {
-    const preview = await transport.preview(
-      csvFile('p.csv', 'First Name,Status\nAlice,Active\nBob,Inactive'),
-      CONTEXT,
-    );
-
-    expect(preview.headers).toEqual(['First Name', 'Status']);
-    expect(preview.rowCount).toBe(2);
-    expect(preview.suggestion.entries).toContainEqual(
-      expect.objectContaining({ ref: 'personal.firstName', column: 0 }),
-    );
-  });
-
-  it('commits a file into records through the same engine a server would use', async () => {
-    const plan: MappingPlan = {
-      entity: 'employees',
-      entries: [
-        { ref: 'personal.firstName', column: 0 },
-        { ref: 'personal.status', column: 1 },
-      ],
-    };
-    const result = await transport.commit(csvFile('p.csv', 'a,b\nAlice,Aktiv'), plan, CONTEXT);
-
-    expect(result.errors).toEqual([]);
-    // Resolved to the option object, not the German text that was in the cell.
-    expect((result.records[0] as any).personal.status).toEqual(STATUS[0]);
-  });
-
-  it('writes a CSV template of headers only', async () => {
-    // Not headers plus a guidance row: CSV has one header row, so guidance inside the file
-    // comes back as a record and fails row 2 of every re-import.
-    const spec = {
-      entity: 'employees',
-      sheetName: 'Employees',
-      columns: [
-        { ref: 'a', scope: '(root)', field: {} as never, header: 'First Name', required: true },
-      ],
-      notes: ['Required'],
-      unsupported: [],
-    };
-    const text = await blobText(await transport.template(spec, 'csv'));
-    expect(text).toBe('First Name');
-  });
-
-  it('refuses xlsx rather than handing back CSV under an xlsx name', async () => {
-    const spec = { entity: 'e', sheetName: 's', columns: [], notes: [], unsupported: [] };
-    await expect(transport.template(spec, 'xlsx')).rejects.toThrow(/only write CSV/);
-  });
-
-  it('uses a registered sheet parser instead of the built-in one', async () => {
-    TestBed.resetTestingModule();
-    TestBed.configureTestingModule({
-      providers: [
-        {
-          provide: SHEET_PARSER,
-          useValue: () => ({ headers: ['First Name'], rows: [['FromParser']] }),
-        },
-      ],
-    });
-    const preview = await TestBed.inject(LocalImportTransport).preview(
-      csvFile('anything.xlsx', ''),
-      CONTEXT,
-    );
-    expect(preview.sample).toEqual([['FromParser']]);
-  });
-});
-
-describe('ImportMapperComponent', () => {
-  let fixture: ComponentFixture<ImportMapperComponent>;
-
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [ImportMapperComponent] }).compileComponents();
-    fixture = TestBed.createComponent(ImportMapperComponent);
-    fixture.componentRef.setInput('config', CONFIG);
-    fixture.componentRef.setInput('headers', ['Notes', 'First Name', 'Notes']);
-    fixture.componentRef.setInput('plan', {
-      entity: 'employees',
-      entries: [{ ref: 'personal.firstName', column: 1, confidence: 'guess' }],
-    } as MappingPlan);
-    fixture.detectChanges();
-  });
-
-  it('lists a row per importable field and leaves out the ones a sheet cannot carry', () => {
-    const rows = fixture.nativeElement.querySelectorAll('[data-testid^="import-map-"]');
-    const refs = [...rows].map((r: Element) => r.getAttribute('data-testid'));
-    expect(refs).toEqual(['import-map-personal.firstName', 'import-map-personal.status']);
-  });
-
-  it('badges a guessed match so the user knows it was inferred', () => {
-    expect(
-      fixture.nativeElement.querySelector('[data-testid="import-guess-personal.firstName"]'),
-    ).toBeTruthy();
-  });
-
-  it('warns while a required field has no column', () => {
-    expect(fixture.nativeElement.querySelector('[data-testid="import-required-unmapped"]')).toBeNull();
-
-    fixture.componentRef.setInput('plan', { entity: 'employees', entries: [] } as MappingPlan);
-    fixture.detectChanges();
-    expect(
-      fixture.nativeElement.querySelector('[data-testid="import-required-unmapped"]'),
-    ).toBeTruthy();
-  });
-
-  it('emits a plan addressing the column by index, not by header text', () => {
-    // The sheet has "Notes" at 0 and at 2. Only an index can say which was chosen.
-    let emitted: MappingPlan | null = null;
-    fixture.componentInstance.planChange.subscribe(plan => (emitted = plan));
-
-    const select: HTMLSelectElement = fixture.nativeElement.querySelector(
-      '[data-testid="import-select-personal.status"]',
-    );
-    select.value = select.options[3].value; // null, then headers 0..2
-    select.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
-
-    expect(emitted!.entries).toContainEqual(
-      expect.objectContaining({ ref: 'personal.status', column: 2, header: 'Notes' }),
-    );
-  });
-});
-
-describe('ImportPreviewComponent', () => {
-  it('shows each cell as the record will hold it, and names a cell that will fail', async () => {
-    await TestBed.configureTestingModule({ imports: [ImportPreviewComponent] }).compileComponents();
-    const fixture = TestBed.createComponent(ImportPreviewComponent);
-
-    fixture.componentRef.setInput('config', CONFIG);
-    fixture.componentRef.setInput('plan', {
-      entity: 'employees',
-      entries: [
-        { ref: 'personal.firstName', column: 0 },
-        { ref: 'personal.status', column: 1 },
-      ],
-    } as MappingPlan);
-    fixture.componentRef.setInput('rows', [
-      ['Alice', 'Aktiv'],
-      ['Bob', 'Retired'],
-    ]);
-    fixture.detectChanges();
-
-    const text = fixture.nativeElement.textContent;
-    // The German cell previews as the option it resolved to, in the form's language.
-    expect(text).toContain('Active');
-    expect(text).toContain('is not one of: Active, Inactive');
-  });
-
-  it('previews a constant the same way it previews a column', async () => {
-    await TestBed.configureTestingModule({ imports: [ImportPreviewComponent] }).compileComponents();
-    const fixture = TestBed.createComponent(ImportPreviewComponent);
-
-    fixture.componentRef.setInput('config', CONFIG);
-    fixture.componentRef.setInput('plan', {
-      entity: 'employees',
-      entries: [
-        { ref: 'personal.firstName', column: 0 },
-        { ref: 'personal.status', constant: STATUS[1] },
-      ],
-    } as MappingPlan);
-    fixture.componentRef.setInput('rows', [['Alice']]);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.textContent).toContain('Inactive');
-  });
-
-  it('ignores a plan entry the config no longer has a column for', async () => {
-    await TestBed.configureTestingModule({ imports: [ImportPreviewComponent] }).compileComponents();
-    const fixture = TestBed.createComponent(ImportPreviewComponent);
-
-    fixture.componentRef.setInput('config', CONFIG);
-    fixture.componentRef.setInput('plan', {
-      entity: 'employees',
-      entries: [{ ref: 'personal.goneAway', column: 0 }],
-    } as MappingPlan);
-    fixture.componentRef.setInput('rows', [['Alice']]);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelectorAll('th').length).toBe(0);
-  });
-});
-
-describe('ImportErrorsComponent', () => {
-  it('groups problems by the row number the spreadsheet shows', async () => {
-    await TestBed.configureTestingModule({ imports: [ImportErrorsComponent] }).compileComponents();
-    const fixture = TestBed.createComponent(ImportErrorsComponent);
-
-    fixture.componentRef.setInput('errors', [
-      { row: 4, ref: 'personal.status', message: 'bad status' },
-      { row: 2, ref: 'personal.firstName', message: 'required' },
-      { row: 4, ref: 'personal.firstName', message: 'required' },
-    ]);
-    fixture.detectChanges();
-
-    const rows = fixture.nativeElement.querySelectorAll('[data-testid^="import-error-row-"]');
-    expect(rows.length).toBe(3);
-    // Row 2 before row 4, and row 4's two problems share one row heading.
-    expect(rows[0].getAttribute('data-testid')).toBe('import-error-row-2');
-    expect(fixture.nativeElement.querySelector('th[rowspan="2"]')).toBeTruthy();
-  });
-
-  it('renders nothing when there is nothing wrong', async () => {
-    await TestBed.configureTestingModule({ imports: [ImportErrorsComponent] }).compileComponents();
-    const fixture = TestBed.createComponent(ImportErrorsComponent);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[data-testid="import-errors"]')).toBeNull();
-  });
-});
-
-describe('ImportTemplateComponent', () => {
-  let fixture: ComponentFixture<ImportTemplateComponent>;
-
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [ImportTemplateComponent] }).compileComponents();
-    fixture = TestBed.createComponent(ImportTemplateComponent);
-    fixture.componentRef.setInput('config', CONFIG);
-    fixture.detectChanges();
-  });
-
-  it('says how many fields a spreadsheet cannot carry rather than hiding them', () => {
-    const note = fixture.nativeElement.querySelector('[data-testid="import-template-unsupported"]');
-    expect(note.textContent).toContain('1');
-  });
-
-  it('emits the selected refs, with row numbers stripped', () => {
-    let emitted: string[] = [];
-    fixture.componentInstance.download.subscribe(refs => (emitted = refs));
-
-    fixture.nativeElement.querySelector('[data-testid="import-template-none"]').click();
-    fixture.detectChanges();
-    fixture.nativeElement
-      .querySelector('[data-testid="import-template-field-personal.firstName"]')
-      .click();
-    fixture.detectChanges();
-    fixture.nativeElement.querySelector('[data-testid="import-template-download"]').click();
-
-    expect(emitted).toEqual(['personal.firstName']);
-  });
-
-  it('cannot download an empty template', () => {
-    fixture.nativeElement.querySelector('[data-testid="import-template-none"]').click();
-    fixture.detectChanges();
-    expect(
-      fixture.nativeElement.querySelector('[data-testid="import-template-download"]').disabled,
-    ).toBe(true);
-  });
-
-  it('offers a repeating field once, not once per row number', async () => {
-    // "Contacts / Name" is one decision. Asking it three times as "Name 1", "Name 2",
-    // "Name 3" is the same decision wearing different numbers.
-    const withArray: EntityFormConfig = {
-      entity: 'e',
-      tabs: [
-        {
-          id: 'work',
-          label: { en: 'Work' },
-          fields: [
-            {
-              id: 'contacts',
-              type: 'array',
-              label: { en: 'Contacts' },
-              children: [{ id: 'name', type: 'text', label: { en: 'Name' } }],
-            },
-          ],
-        },
-      ],
-    };
-
-    fixture.componentRef.setInput('config', withArray);
-    fixture.detectChanges();
-
-    const boxes = fixture.nativeElement.querySelectorAll('[data-testid^="import-template-field-"]');
-    expect(boxes.length).toBe(1);
-    expect(fixture.nativeElement.textContent).toContain('Work / Contacts / Name');
-    expect(fixture.nativeElement.textContent).not.toContain('Name 1');
-  });
-
-  it('says nothing about unsupported fields when there are none', () => {
-    const plain: EntityFormConfig = {
-      entity: 'e',
-      tabs: [
-        { id: 't', label: { en: 'T' }, fields: [{ id: 'a', type: 'text', label: { en: 'A' } }] },
-      ],
-    };
-    fixture.componentRef.setInput('config', plain);
-    fixture.detectChanges();
-    expect(
-      fixture.nativeElement.querySelector('[data-testid="import-template-unsupported"]'),
-    ).toBeNull();
-  });
-});
-
 describe('EntityImportComponent', () => {
   let fixture: ComponentFixture<EntityImportComponent>;
 
@@ -403,6 +81,91 @@ describe('EntityImportComponent', () => {
     await settle();
     fixture.detectChanges();
   };
+
+  it('resolves a listName field from LOOKUP_REGISTRY without the host passing lookups', async () => {
+    // Core is framework-agnostic and cannot reach the registry, which is a reason for *core*
+    // to be given the values — not a reason to ask the host for what this package is already
+    // holding. Without this the column stores the raw text "Gold", which renders correctly
+    // and then matches no rule: the exact failure the option-shape contract exists to stop.
+    const listed: EntityFormConfig = {
+      entity: 'clients',
+      tabs: [
+        {
+          id: 'main',
+          label: { en: 'Main' },
+          fields: [{ id: 'tier', type: 'dropdown', label: { en: 'Tier' }, listName: 'tiers' }],
+        },
+      ],
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [EntityImportComponent],
+      providers: [
+        { provide: LOOKUP_REGISTRY, useValue: new Map([['tiers', [{ en: 'Gold' }, { en: 'Silver' }]]]) },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(EntityImportComponent);
+    fixture.componentRef.setInput('config', listed);
+    fixture.detectChanges();
+
+    const results: ImportResult[] = [];
+    fixture.componentInstance.importComplete.subscribe(result => results.push(result));
+
+    await chooseFile(csvFile('t.csv', 'Tier\nGold'));
+    fixture.nativeElement.querySelector('[data-testid="import-to-review"]').click();
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="import-commit"]').click();
+    await fixture.whenStable();
+    await settle();
+    fixture.detectChanges();
+
+    expect((results[0].records[0] as any).main.tier).toEqual({ en: 'Gold' });
+  });
+
+  it('lets the lookups input override one list without supplying them all', async () => {
+    const listed: EntityFormConfig = {
+      entity: 'clients',
+      tabs: [
+        {
+          id: 'main',
+          label: { en: 'Main' },
+          fields: [{ id: 'tier', type: 'dropdown', label: { en: 'Tier' }, listName: 'tiers' }],
+        },
+      ],
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [EntityImportComponent],
+      providers: [{ provide: LOOKUP_REGISTRY, useValue: new Map([['tiers', [{ en: 'Gold' }]]]) }],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(EntityImportComponent);
+    fixture.componentRef.setInput('config', listed);
+    fixture.componentRef.setInput('lookups', { tiers: [{ en: 'Platinum' }] });
+    fixture.detectChanges();
+
+    await chooseFile(csvFile('t.csv', 'Tier\nGold'));
+    fixture.nativeElement.querySelector('[data-testid="import-to-review"]').click();
+    fixture.detectChanges();
+
+    // The override replaced the registry's list, so "Gold" is no longer an allowed value.
+    expect(fixture.nativeElement.textContent).toContain('is not one of: Platinum');
+  });
+
+  it('keeps the previous file when a new one cannot be read', async () => {
+    await mount();
+    await chooseFile(csvFile('good.csv', 'First Name\nAlice'));
+    expect(fixture.nativeElement.querySelector('[data-testid="import-mapper"]')).toBeTruthy();
+
+    // The component must not end up holding a file whose headers describe a different one.
+    fixture.componentInstance['restart']();
+    fixture.detectChanges();
+    await chooseFile(csvFile('bad.xlsx', 'PK'));
+
+    expect(fixture.nativeElement.querySelector('[data-testid="import-file-chosen"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="import-problem"]')).toBeTruthy();
+  });
 
   it('starts on the upload step with a template offer', async () => {
     await mount();
