@@ -82,6 +82,30 @@ jobs:
       - name: Verify a consumer can install and compile
         run: node scripts/verify-consumer.mjs --angular ${{ matrix.angular }}
 
+  server-consumer:
+    name: Server consumer install + routes
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # A second script rather than a flag on the first, because an Angular consumer and a Node
+      # consumer break in different ways: one fails to AOT-compile a template, the other fails
+      # to resolve an `exports` subpath or finds a dependency left in devDependencies. This
+      # packs @dynamic-entity/server into a throwaway Node project, imports it as CommonJS and
+      # as ESM — a wrong `main` only shows up from the side that is not being used — drives all
+      # four routes against a real listener, and compiles the package README's snippets.
+      - name: Verify a Node consumer can install, import and serve
+        run: node scripts/verify-server-consumer.mjs
+
   readme:
     name: README snippets compile
     runs-on: ubuntu-latest

@@ -5,6 +5,7 @@
 [![npm core](https://img.shields.io/npm/v/@dynamic-entity/core.svg?label=@dynamic-entity/core&color=blue)](https://www.npmjs.com/package/@dynamic-entity/core)
 [![npm renderer](https://img.shields.io/npm/v/ngx-dynamic-entity.svg?label=ngx-dynamic-entity&color=red)](https://www.npmjs.com/package/ngx-dynamic-entity)
 [![npm builder](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg?label=ngx-dynamic-entity-builder&color=purple)](https://www.npmjs.com/package/ngx-dynamic-entity-builder)
+[![npm server](https://img.shields.io/npm/v/@dynamic-entity/server.svg?label=@dynamic-entity/server&color=green)](https://www.npmjs.com/package/@dynamic-entity/server)
 [![Angular](https://img.shields.io/badge/angular-17%20%7C%2018%20%7C%2019%20%7C%2020%20%7C%2021%20%7C%2022-red.svg)](https://angular.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -19,9 +20,12 @@
 | [`@dynamic-entity/core`](./packages/core) | [![npm](https://img.shields.io/npm/v/@dynamic-entity/core.svg)](https://www.npmjs.com/package/@dynamic-entity/core) | Framework-agnostic schema models, pure form logic, and the rules evaluator. No Angular, no RxJS. |
 | [`ngx-dynamic-entity`](./packages/ngx-dynamic-entity) | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity.svg)](https://www.npmjs.com/package/ngx-dynamic-entity) | Angular standalone form renderer and tabbed record editor. |
 | [`ngx-dynamic-entity-builder`](./packages/ngx-dynamic-entity-builder) | [![npm](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg)](https://www.npmjs.com/package/ngx-dynamic-entity-builder) | Standalone visual builder for authoring `EntityFormConfig` schemas. |
+| [`@dynamic-entity/server`](./packages/server) | [![npm](https://img.shields.io/npm/v/@dynamic-entity/server.svg)](https://www.npmjs.com/package/@dynamic-entity/server) | Node-only. Streaming spreadsheet import for files too large to hold in a browser, with an Express adapter. |
 | `demo-angular` | — | Showcase application with the Playwright E2E suite. Not published. |
 
-All three share a version and are released together.
+All four share a version and are released together. Only the first two are needed to render a
+form; the builder is for authoring schemas, and the server is for importing files a browser
+cannot hold.
 
 ---
 

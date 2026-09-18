@@ -20,7 +20,7 @@ Everything CI enforces, you can run locally:
 | Command | What it checks |
 |---|---|
 | `npm run lint` | Control characters, eslint, and each package's typecheck |
-| `npm run build` | All four packages via turbo |
+| `npm run build` | All five packages via turbo |
 | `npm test` | Unit tests |
 | `npm run test:coverage` | Coverage thresholds — a ratchet, see below |
 | `npm run check:timezones` | Runs the date-sensitive suites once per timezone |
@@ -29,10 +29,14 @@ Everything CI enforces, you can run locally:
 | `node scripts/verify-consumer.mjs --angular 20 --readme` | Compiles every documented code block |
 | `node scripts/verify-consumer.mjs --angular 20 --ssr` | Packs the tarballs and `renderApplication`s a form on `@angular/platform-server` |
 | `node scripts/verify-consumer.mjs --angular 20 --ssr --zoneless` | Same, under `provideZonelessChangeDetection()` with no `zone.js` |
+| `node scripts/verify-server-consumer.mjs` | Packs `@dynamic-entity/server`, installs it into a throwaway **Node** project, imports it as both CJS and ESM, drives all four routes against a real listener, and compiles the package README's snippets |
 
-The last one is worth knowing about. The workspace build cannot catch packaging faults —
+The last two are worth knowing about. The workspace build cannot catch packaging faults —
 inside the repo everything resolves through symlinks and tsconfig paths, so a broken manifest
-still appears to work. That script is what proves an actual consumer can install and compile.
+still appears to work. Those scripts are what prove an actual consumer can install and compile,
+and they are two scripts rather than one because an Angular consumer and a Node consumer break
+in different ways: one fails to AOT-compile a template, the other fails to resolve an `exports`
+subpath.
 
 ## Things that will fail review
 
@@ -64,14 +68,20 @@ existing history is the guide.
 
 Maintainers only, and mostly automatic:
 
-1. Bump the version in all three package manifests. They share a version.
+1. Bump the version in all four package manifests, and `CORE_VERSION` in
+   `packages/core/src/constants.ts` alongside them. They share a version, and the build
+   refuses to publish core when the constant and its manifest disagree — it is compared
+   across a network, so a stale one would report agreement between two engines that had
+   diverged.
 2. Add a `CHANGELOG.md` entry.
 3. Tag `vX.Y.Z` and push it.
 
 The Release workflow re-runs every gate, verifies the tag matches the manifests, and publishes
-core → renderer → builder in that order (each peer-depends on the previous). Authentication is
-npm trusted publishing via OIDC — there is no token to manage. Publishing a version that is
-already on the registry is a no-op rather than a failure, so re-running a release is safe.
+core → renderer → builder in that order (each peer-depends on the previous), then
+`@dynamic-entity/server`, which peer-depends only on core and is independent of the Angular
+two. Authentication is npm trusted publishing via OIDC — there is no token to manage.
+Publishing a version that is already on the registry is a no-op rather than a failure, so
+re-running a release is safe.
 
 ## Reporting something
 

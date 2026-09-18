@@ -4,6 +4,8 @@
 
 | Version | Supported |
 |---|---|
+| 1.13.x | Yes |
+| 1.12.x | Yes |
 | 1.11.x | Yes |
 | 1.10.x | Yes |
 | 1.9.x | Yes |
@@ -15,7 +17,7 @@
 | 1.3.x | Yes |
 | 1.2.x | Yes |
 | 1.1.x | Yes |
-| 1.0.x | No — upgrade to 1.11.0 |
+| 1.0.x | No — upgrade to the latest 1.x |
 | < 1.0 | No |
 
 1.0.0 cannot be installed on any Angular newer than 17 and shipped a dependency fault that
@@ -53,6 +55,57 @@ cannot reach an object's prototype.
 
 If you find a way for config content to execute code or escape those guards, that is a real
 vulnerability and we want to hear about it.
+
+## `@dynamic-entity/server`: an upload endpoint, and what it does not cover
+
+The other packages run in a browser tab or in a build step. This one accepts a file over the
+network, which changes the threat model rather than extending it — so it gets its own section.
+
+### What the router does guard
+
+Every limit below has a **finite default**, and each is enforced *during* streaming rather than
+after. A guard that runs once the file is in memory has already lost.
+
+| Threat | Guard |
+|---|---|
+| Upload exhaustion | `maxBytes`, counted as bytes arrive; the body is abandoned and closed on breach |
+| A `.csv` that is really a zip | Format is decided by **magic bytes**, never by the client-controlled extension |
+| Zip bomb (an `.xlsx` is a zip) | `maxUncompressedBytes`, `maxCompressionRatio`, `maxZipEntries`, per-entry size — all checked *as entries inflate* |
+| XML entity expansion / XXE | The parser refuses an undefined entity outright and does not process an internal DTD subset; asserted with crafted files rather than assumed |
+| Row / column / cell floods | `maxRows`, `maxColumns`, `maxCellLength` |
+| Formula injection in generated files | Every written cell goes through `escapeFormula`, and the xlsx writer's output is checked for formula elements |
+| Path traversal via `:entity` | A lookup key into the configs you supplied. Never a path segment, never interpolated |
+| `Content-Disposition` header injection | Filenames are derived from the config's entity and sanitised; a client-supplied name never reaches a header |
+| Prototype pollution via a posted plan | `setRecordValue` refuses `__proto__` and `constructor.prototype`; a posted hostile plan is a test, not an inherited assurance |
+| A malformed or hostile plan | `validateMappingPlan` runs **before a single row is read** |
+| Multipart abuse | Field count, field-name length, field value size and file count are all capped |
+| Stalled uploads (slowloris) | Idle and total request timeouts, both of which close the connection |
+| Information disclosure | The error envelope carries a code and a message this library wrote. No stack, no filesystem path, no parser internals |
+
+### What it does not, and you must
+
+**Authentication, authorization and concurrency limiting are yours.** The router is mounted
+inside your app, behind your middleware. Nothing in it checks who is asking, and nothing in it
+limits how many imports run at once. A report that an unauthenticated request reaches the
+import endpoint is a report about the app it was mounted in.
+
+**An import is not transactional, and a retry will double-write.** A stream that fails at row
+30,000 has already written 29,999 records. Over HTTP a retry is *likely* rather than possible —
+a client, a proxy or a user will send the same file again — so **`onImport` must be
+idempotent**. This library does not deduplicate: an `EntityFormConfig` has no natural-key
+concept for it to deduplicate on. `POST /:entity/validate` runs the identical pipeline and
+writes nothing, which is the intended way to find problems before anything is stored.
+
+**`validators.pattern` became a server concern.** It is a config-supplied regular expression
+that core compiles and runs against cell text. In a browser a catastrophic backtrack costs the
+user their own tab; on a server the cell content is attacker-chosen and the cost is your CPU.
+`maxCellLength` bounds the input and therefore bounds the blow-up, but a pattern authored
+without that in mind is now a denial-of-service surface. If you author patterns, review them
+for catastrophic backtracking.
+
+**A published template is a file another program executes.** Cells are escaped and the writer's
+output is checked, but the *content* comes from your config's labels. A label you would not
+paste into a spreadsheet is a label you should not put in a config.
 
 ## Supply chain
 

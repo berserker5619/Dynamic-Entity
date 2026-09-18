@@ -226,12 +226,17 @@ if (useReadme) {
   // checked too, or the guard silently stops covering the thing it was added for.
   const coreMd = read('packages/core/README.md');
   const extendingMd = read('EXTENDING.md');
+  // The server README's Angular-side snippet too. Its Node snippets are fenced ```ts and are
+  // compiled by verify-server-consumer.mjs instead, where @dynamic-entity/server is installed
+  // — the two fences split the file by which project can actually check it.
+  const serverMd = read('packages/server/README.md');
   const allTs = [
     ['root', rootMd],
     ['core', coreMd],
     ['renderer', rendererMd],
     ['builder', builderMd],
     ['extending', extendingMd],
+    ['server', serverMd],
   ];
   for (const [label, md] of allTs) {
     ts(md).forEach((snippet, i) => {
