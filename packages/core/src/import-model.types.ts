@@ -135,4 +135,25 @@ export interface ImportResult {
    * an older config version, or naming another entity — do not stop the import.
    */
   planProblems: ConfigProblem[];
+  /**
+   * How many records were written when the transport did the writing and cannot hand them back.
+   *
+   * The in-browser transport returns every record in `records`, so this is absent there and
+   * `records.length` is the count. A **server** transport streams — the whole reason it exists
+   * — and returning fifty thousand records on the way out would undo that, so it reports a
+   * number and leaves `records` empty. A caller wanting "how many" should read
+   * `imported ?? records.length`; one wanting the records themselves is asking a question only
+   * the local transport can answer.
+   */
+  imported?: number;
+  /**
+   * Failures found, when `errors` is only a sample of them.
+   *
+   * A streaming import caps what it retains — fifty thousand error objects is the same
+   * unbounded growth as holding the file — so the count and the sample are different numbers
+   * and both are reported. Absent means `errors` is complete.
+   */
+  errorCount?: number;
+  /** `errors` is a sample rather than the whole set. */
+  truncated?: boolean;
 }

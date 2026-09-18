@@ -4,6 +4,19 @@
 
 export const DEFAULT_LANGUAGE = 'en';
 
+/**
+ * The version of this package, as a value code can read.
+ *
+ * It exists because the browser's copy of core and a server's copy are separately deployed
+ * and may differ. `MappingPlan.configVersion` catches *config* drift and says nothing about
+ * *engine* drift, so a preview response carries this and the client transport warns on a
+ * mismatch. "One engine, both sides" is only true if something checks.
+ *
+ * Kept in step by `build-manifest.mjs`, which refuses to publish when it disagrees with
+ * package.json — a hand-maintained constant nobody verifies is worse than no constant.
+ */
+export const CORE_VERSION = '1.13.0';
+
 export const SUPPORTED_LANGUAGES: ReadonlyArray<{ code: string; label: string }> = [
   { code: 'en', label: 'English' },
   { code: 'de', label: 'German' },

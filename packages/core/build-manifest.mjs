@@ -80,4 +80,19 @@ if (missing.length) {
   process.exit(1);
 }
 
+// `CORE_VERSION` is a value the server and the client transport compare against each other,
+// so a stale one would report agreement between two engines that had diverged. Checked here
+// rather than trusted: a hand-maintained constant nobody verifies is worse than no constant.
+const declared = /export const CORE_VERSION = '([^']+)'/.exec(
+  fs.readFileSync(path.join(HERE, 'src', 'constants.ts'), 'utf8'),
+)?.[1];
+if (declared !== published.version) {
+  console.error(
+    `error: CORE_VERSION is ${declared} but package.json says ${published.version}.
+` +
+      'They are compared across a network — bump both.',
+  );
+  process.exit(1);
+}
+
 console.log(`@dynamic-entity/core ${published.version} — dist/ manifest written`);

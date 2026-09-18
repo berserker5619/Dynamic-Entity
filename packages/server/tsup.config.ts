@@ -1,14 +1,14 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  entry: ['src/index.ts', 'src/express.ts'],
   format: ['cjs', 'esm'],
   dts: true,
   sourcemap: true,
   clean: true,
   splitting: false,
   treeshake: true,
-  // Nothing in `dependencies` or `peerDependencies` is bundled — the consumer owns those
-  // versions and needs to be able to patch and audit them.
-  external: ['@dynamic-entity/core'],
+  // Nothing in `dependencies` or `peerDependencies` is bundled: exceljs and busboy stay
+  // separate packages a consumer can patch and audit, and express is theirs entirely.
+  external: ['@dynamic-entity/core', 'exceljs', 'busboy', 'express'],
 });

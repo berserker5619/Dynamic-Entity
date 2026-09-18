@@ -15,6 +15,7 @@ export * from './constants';
 export * from './referenced-field';
 export * from './csv';
 export * from './import-model.types';
+export * from './import-wire.types';
 export * from './import-columns';
 export * from './import-engine';
 

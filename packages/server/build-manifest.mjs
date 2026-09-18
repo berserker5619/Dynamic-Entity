@@ -50,6 +50,12 @@ const published = {
       import: './index.mjs',
       require: './index.js',
     },
+    // Its own entry point, so the `express` import is reached only by someone who wants it.
+    './express': {
+      types: './express.d.ts',
+      import: './express.mjs',
+      require: './express.js',
+    },
     './package.json': './package.json',
   },
   ...(source.dependencies ? { dependencies: source.dependencies } : {}),
@@ -65,7 +71,14 @@ for (const file of ['README.md']) {
   if (fs.existsSync(from)) fs.copyFileSync(from, path.join(DIST, file));
 }
 
-const missing = ['index.js', 'index.mjs', 'index.d.ts'].filter(
+const missing = [
+  'index.js',
+  'index.mjs',
+  'index.d.ts',
+  'express.js',
+  'express.mjs',
+  'express.d.ts',
+].filter(
   f => !fs.existsSync(path.join(DIST, f)),
 );
 if (missing.length) {
