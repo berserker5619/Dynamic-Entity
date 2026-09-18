@@ -1,0 +1,59 @@
+{
+  "name": "@dynamic-entity/server",
+  "version": "1.13.0",
+  "description": "Streaming spreadsheet import for @dynamic-entity/core.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts && node build-manifest.mjs",
+    "test": "jest",
+    "lint": "tsc --noEmit",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "peerDependencies": {
+    "@dynamic-entity/core": "^1.13.0"
+  },
+  "devDependencies": {
+    "@dynamic-entity/core": "^1.13.0",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "tsup": "^8.0.0",
+    "typescript": "~5.9.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "dynamic-entity",
+    "import",
+    "spreadsheet",
+    "csv",
+    "streaming"
+  ],
+  "license": "MIT",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/berserker5619/Dynamic-Entity.git",
+    "directory": "packages/server"
+  },
+  "homepage": "https://github.com/berserker5619/Dynamic-Entity/tree/main/packages/server#readme",
+  "bugs": {
+    "url": "https://github.com/berserker5619/Dynamic-Entity/issues"
+  },
+  "author": "Nizamudeen"
+}

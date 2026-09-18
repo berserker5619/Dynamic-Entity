@@ -81,13 +81,14 @@ function stripBom(text: string): string {
 /**
  * Pad a short row out to the header width.
  *
- * Exported because two callers need it and a second copy would be a second decision. A
- * spreadsheet that ends a row early still has values in the columns it did fill, and losing
- * them silently is worse than carrying empty strings. Longer rows keep their extra cells —
+ * Exported because two callers need it and a second copy would be a second decision — and
+ * generic because the second caller's cells are `unknown`: an xlsx row carries numbers,
+ * booleans and dates, not text. A spreadsheet that ends a row early still has values in the
+ * columns it did fill, and losing them silently is worse than carrying empty strings. Longer rows keep their extra cells —
  * the mapping decides which columns matter, and a column the header forgot to name may
  * still be mapped.
  */
-export function padRow(row: readonly string[], width: number): string[] {
+export function padRow<T>(row: readonly T[], width: number): (T | '')[] {
   if (row.length >= width) return [...row];
   return [...row, ...Array(width - row.length).fill('')];
 }
