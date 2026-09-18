@@ -60,16 +60,15 @@ const DELIBERATELY_UNDEMONSTRATED = {
   UI_TEXT: 'Plumbing under provideNgxDynamicEntity({ uiText }), which the demo uses.',
   SHEET_PARSER: 'Plumbing under provideNgxDynamicEntity({ sheetParser }), which the demo uses.',
   IMPORT_TRANSPORT:
-    'The seam for running an import on a server instead of in the browser. The demo drives ' +
-    'the *default* transport, which is the in-browser one — that is the path a consumer gets ' +
-    'with nothing registered, and e2e/import-wizard.spec.ts drives it in a browser. ' +
-    '@dynamic-entity/server ships provideHttpImportTransport, which is unit-tested against a ' +
-    'stubbed fetch and proven against a real listener by scripts/verify-server-consumer.mjs. ' +
-    'What is deliberately not here is a *second* demo wired to that listener: this entry is ' +
-    'about which transport the demo registers, and registering two would prove neither is the ' +
-    'default. Note that "the demo wires it" is all this gate can check — it reads source. The ' +
-    'Playwright suite is what turns wiring into evidence, and saying otherwise here once ' +
-    'described a spec that did not exist.',
+    'The seam for running an import on a server instead of in the browser, and the demo now ' +
+    'wires both sides of it. The default is the in-browser transport — that is what a consumer ' +
+    'gets with nothing registered — and e2e/import-wizard.spec.ts drives it. ' +
+    '?transport=http registers provideHttpImportTransport against import-server.mjs, which ' +
+    'e2e/import-server.spec.ts drives through a real listener, including the assertion the ' +
+    'whole package rests on: the same sheet imported each way produces identical records. ' +
+    'Opt-in rather than default because registering both unconditionally would prove neither ' +
+    'is the default. The token itself is still not named in demo source — provideHttpImport' +
+    'Transport provides it — which is why this entry exists at all.',
   importTransport: 'See IMPORT_TRANSPORT — the same decision, seen from the option side.',
   setValueByPath:
     'A path utility, not an extension point. It is caught by the `set*` naming rule below ' +

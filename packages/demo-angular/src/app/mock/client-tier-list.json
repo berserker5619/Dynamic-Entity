@@ -1,0 +1,5 @@
+[
+  { "_id": "tier_silver", "code": "SLV", "name": { "en": "Silver", "de": "Silber" }, "sortOrder": 2 },
+  { "_id": "tier_gold", "code": "GLD", "name": { "en": "Gold", "de": "Gold" }, "sortOrder": 1, "isSystemDefined": true },
+  { "_id": "tier_bronze", "code": "BRZ", "name": { "en": "Bronze", "de": "Bronze" }, "sortOrder": 3 }
+]

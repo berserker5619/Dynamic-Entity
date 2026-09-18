@@ -12,6 +12,9 @@ const env = (globalThis as { process?: { env?: Record<string, string | undefined
 const PORT = Number(env['PLAYWRIGHT_PORT'] ?? 4200);
 const BASE_URL = env['PLAYWRIGHT_BASE_URL'] ?? `http://localhost:${PORT}`;
 
+/** Where import-server.mjs listens. proxy.conf.json points /api here, so the two must agree. */
+const IMPORT_PORT = Number(env['IMPORT_PORT'] ?? 4300);
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -24,12 +27,29 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'on',
   },
-  webServer: {
-    command: `npx ng serve --port ${PORT}`,
-    url: BASE_URL,
-    reuseExistingServer: !env['CI'],
-    timeout: 120 * 1000,
-  },
+  /**
+   * Two servers, because half this suite is about a backend.
+   *
+   * The Angular dev server proxies /api to the import server (proxy.conf.json), so the browser
+   * only ever sees one origin — the same shape a real deployment has, and the reason no CORS
+   * header appears anywhere in this demo. import-server.mjs answers nothing on / , so its
+   * readiness is checked on a route it actually serves.
+   */
+  webServer: [
+    {
+      command: `node import-server.mjs`,
+      url: `http://localhost:${IMPORT_PORT}/api/imported/visitNotes`,
+      env: { IMPORT_PORT: String(IMPORT_PORT) },
+      reuseExistingServer: !env['CI'],
+      timeout: 60 * 1000,
+    },
+    {
+      command: `npx ng serve --port ${PORT}`,
+      url: BASE_URL,
+      reuseExistingServer: !env['CI'],
+      timeout: 120 * 1000,
+    },
+  ],
   projects: [
     {
       name: 'chromium',

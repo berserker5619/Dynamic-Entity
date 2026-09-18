@@ -1,5 +1,6 @@
 import type { EntityFormConfig, LocalizedText } from 'ngx-dynamic-entity';
 import testDataRaw from '../../../../../test_data.json';
+import clientTierRaw from './client-tier-list.json';
 
 export const TEST_DATA_CONFIGS: EntityFormConfig[] = testDataRaw as EntityFormConfig[];
 
@@ -72,11 +73,15 @@ export const CLIENTS_CONFIG: EntityFormConfig = {
  * explicit `sortOrder`, several languages, and metadata (`code`, `isSystemDefined`) that the
  * option shape drops but `LookupRegistryService.valuesFor` still exposes.
  */
-export const CLIENT_TIER_LIST = [
-  { _id: 'tier_silver', code: 'SLV', name: { en: 'Silver', de: 'Silber' }, sortOrder: 2 },
-  { _id: 'tier_gold', code: 'GLD', name: { en: 'Gold', de: 'Gold' }, sortOrder: 1, isSystemDefined: true },
-  { _id: 'tier_bronze', code: 'BRZ', name: { en: 'Bronze', de: 'Bronze' }, sortOrder: 3 },
-];
+/**
+ * Read from JSON so the demo app and import-server.mjs share one source.
+ *
+ * The import server resolves this list to the same options the browser does — insuranceClaims
+ * has a clientTier field, and createImportRouter refuses to start without it. A second copy of
+ * the array would be a second thing to keep right, and the symptom of getting it wrong is a
+ * record that renders correctly and matches nothing.
+ */
+export const CLIENT_TIER_LIST = clientTierRaw;
 
 let seq = 1;
 // `status` holds the option object itself — for dropdowns the displayed text IS the value.

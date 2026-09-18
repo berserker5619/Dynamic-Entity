@@ -12,6 +12,7 @@ import {
   UPLOAD_HANDLER,
   provideBuiltInFieldTypes,
   provideFieldTypes,
+  provideHttpImportTransport,
   provideNgxDynamicEntity,
 } from 'ngx-dynamic-entity';
 import { CLIENT_TIER_LIST, MASKED_ROLES } from './mock/sample-data';
@@ -33,6 +34,22 @@ import {
   DEMO_VALIDATORS,
   demoUploadHandler,
 } from './mock/demo-extensions';
+
+/**
+ * Whether to run the import on a server instead of in the browser.
+ *
+ * **Opt-in, and the default is deliberately the in-browser transport.** That is the path a
+ * consumer gets with nothing registered, and it is the one worth being the demo's default.
+ * Registering both unconditionally would prove neither is.
+ *
+ * ?transport=http points the wizard at import-server.mjs, which the dev server proxies at
+ * /api/import so the browser sees one origin — the same shape a real deployment has, and the
+ * reason there is no CORS header anywhere in this demo. e2e/import-server.spec.ts drives it,
+ * and a reader can flip it by hand to watch a fifty-thousand-row file import without the tab
+ * ever holding it.
+ */
+const useServerImport =
+  typeof location !== 'undefined' && new URLSearchParams(location.search).get('transport') === 'http';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -157,5 +174,8 @@ export const appConfig: ApplicationConfig = {
     // The builder's chrome is a separate vocabulary with its own token — an app that ships
     // only the renderer has no use for these keys.
     { provide: BUILDER_TEXT, useValue: DEMO_BUILDER_TEXT },
+    // Opt-in, per the note above. An empty array when it is off, so the wizard falls back to
+    // the in-browser transport exactly as it does for a consumer who registers nothing.
+    ...(useServerImport ? [provideHttpImportTransport({ baseUrl: '/api/import' })] : []),
   ],
 };
