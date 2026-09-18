@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { createHash } from 'node:crypto';
 import zlib from 'node:zlib';
 import { guardZip } from './guard-zip';
 import { resolveLimits } from './limits';
@@ -57,6 +58,21 @@ function rawZip(
 }
 
 const deflate = (text: string): Buffer => zlib.deflateRawSync(Buffer.from(text, 'utf8'));
+
+/**
+ * Bytes that do not compress, deterministically.
+ *
+ * A linear congruential generator is not good enough and the difference matters: its high bits
+ * repeat with a short period, so 512 KB of it deflated thirty-fold and a test meant to breach a
+ * retention bound never reached it. Hash output has no such structure.
+ */
+function incompressible(size: number): Buffer {
+  const blocks: Buffer[] = [];
+  for (let i = 0; blocks.length * 32 < size; i++) {
+    blocks.push(createHash('sha256').update(String(i)).digest());
+  }
+  return Buffer.concat(blocks).subarray(0, size);
+}
 
 /** The three parts the guard insists on seeing, so a test can add just the odd one. */
 const sheetEntry = { name: 'xl/worksheets/sheet1.xml', data: deflate('<worksheet/>') };
@@ -190,16 +206,10 @@ describe('guardZip', () => {
   });
 
   it('refuses to retain more than the upload bound, whatever the header claimed', async () => {
-    // Incompressible on purpose: a repetitive payload would deflate to nothing and never
-    // reach the retention bound, which would make this test pass for the wrong reason.
-    const noise = Buffer.alloc(64 * 1024);
-    let state = 1;
-    for (let i = 0; i < noise.length; i++) {
-      state = (state * 1103515245 + 12345) >>> 0;
-      noise[i] = (state >>> 16) & 0xff;
-    }
+    // Incompressible on purpose: a repetitive payload would deflate to nothing and never reach
+    // the retention bound, which would make this test pass for the wrong reason.
     const zip = new JSZip();
-    zip.file('xl/worksheets/sheet1.xml', noise);
+    zip.file('xl/worksheets/sheet1.xml', incompressible(64 * 1024));
     const bytes = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
     await expect(
       guardZip(chunked(bytes, 4096), resolveLimits({ maxBytes: 1024 })),
@@ -242,5 +252,96 @@ describe('guardZip', () => {
     ]);
     const back = await JSZip.loadAsync(await guardZip(chunked(bytes, 6), LIMITS));
     expect(Object.keys(back.files)).toEqual(['xl/worksheets/sheet1.xml']);
+  });
+});
+
+describe('guardZip — which worksheet an import reads', () => {
+  /** jszip writes entries in insertion order, so this controls what the archive looks like. */
+  const withSheets = async (order: string[]): Promise<Buffer> => {
+    const zip = new JSZip();
+    zip.file('[Content_Types].xml', '<Types/>');
+    for (const name of order) zip.file(`xl/worksheets/${name}`, `<worksheet>${name}</worksheet>`);
+    zip.file('xl/workbook.xml', '<workbook/>');
+    return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+  };
+
+  const keptSheet = async (bytes: Buffer): Promise<string> => {
+    const back = await JSZip.loadAsync(await guardZip(chunked(bytes, 128), LIMITS));
+    const name = Object.keys(back.files).find(f => f.startsWith('xl/worksheets/'));
+    return name ? await back.file(name)!.async('string') : '';
+  };
+
+  it('takes the lowest-numbered sheet, not the one the archive happens to list first', async () => {
+    // Byte order used to decide this, so an archive that put sheet2 first imported the wrong
+    // sheet — while preview and import agreed with each other about it, which is the kind of
+    // wrong that never gets reported.
+    expect(await keptSheet(await withSheets(['sheet2.xml', 'sheet1.xml']))).toBe(
+      '<worksheet>sheet1.xml</worksheet>',
+    );
+  });
+
+  it('agrees with itself when the archive is in the usual order', async () => {
+    expect(await keptSheet(await withSheets(['sheet1.xml', 'sheet2.xml']))).toBe(
+      '<worksheet>sheet1.xml</worksheet>',
+    );
+  });
+
+  it('compares numbers rather than names, so sheet10 does not beat sheet2', async () => {
+    expect(await keptSheet(await withSheets(['sheet10.xml', 'sheet2.xml']))).toBe(
+      '<worksheet>sheet2.xml</worksheet>',
+    );
+  });
+
+  it('carries exactly one worksheet into the rebuilt archive', async () => {
+    const rebuilt = await guardZip(
+      chunked(await withSheets(['sheet3.xml', 'sheet1.xml', 'sheet2.xml']), 128),
+      LIMITS,
+    );
+    const names = Object.keys((await JSZip.loadAsync(rebuilt)).files);
+    expect(names.filter(name => name.startsWith('xl/worksheets/'))).toEqual([
+      'xl/worksheets/sheet1.xml',
+    ]);
+  });
+
+  it('releases a superseded sheet rather than counting it against the budget for ever', async () => {
+    // Three sheets whose bytes together exceed the bound, only one of which is ever held.
+    // Without the release, meeting them in descending order would refuse a workbook that the
+    // same file in ascending order sails through — a limit that depends on entry order.
+    const zip = new JSZip();
+    zip.file('xl/worksheets/sheet3.xml', incompressible(48 * 1024));
+    zip.file('xl/worksheets/sheet2.xml', incompressible(48 * 1024));
+    zip.file('xl/worksheets/sheet1.xml', incompressible(48 * 1024));
+    const bytes = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+
+    // Room for one sheet with headroom, and nowhere near all three.
+    const limits = resolveLimits({ maxBytes: Math.floor(bytes.length * 0.6) });
+    await expect(guardZip(chunked(bytes, 4096), limits)).resolves.toBeInstanceOf(Buffer);
+  });
+});
+
+describe('guardZip — retention is counted as it accumulates', () => {
+  it('refuses part-way through the entry, not once it is all in memory', async () => {
+    // The failure this whole file exists to criticise. It was harmless only because limitBytes
+    // caps the stream upstream — and "harmless because something else did the work" is not a
+    // guard. The assertion is about how much of the archive was read, not only that it threw.
+    const zip = new JSZip();
+    zip.file('xl/worksheets/sheet1.xml', incompressible(512 * 1024));
+    const bytes = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+
+    const cap = 64 * 1024;
+    let read = 0;
+    async function* counted(): AsyncGenerator<Uint8Array> {
+      for await (const chunk of chunked(bytes, 16 * 1024)) {
+        read += chunk.byteLength;
+        yield chunk;
+      }
+    }
+
+    await expect(guardZip(counted(), resolveLimits({ maxBytes: cap }))).rejects.toThrow(
+      /larger than the 65536 byte limit/,
+    );
+    // The bound, plus the slice it was part-way through — not the half-megabyte the entry holds.
+    expect(read).toBeLessThan(cap * 3);
+    expect(bytes.length).toBeGreaterThan(cap * 4);
   });
 });

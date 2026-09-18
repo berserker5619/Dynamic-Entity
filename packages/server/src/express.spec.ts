@@ -113,6 +113,37 @@ describe('GET /:entity/template', () => {
     expect(response.body.error.code).toBe('UNSUPPORTED_FORMAT');
   });
 
+  it('does not answer a refusal wearing the download it was about to send', async () => {
+    // A 413 whose headers say `text/csv` and `attachment; filename=…` is an error a browser
+    // saves as the template. The format refusal above takes a path that throws before the
+    // headers are set; this one takes the path that does not.
+    const wide = app({ limits: { maxColumns: 2 } });
+    const response = await request(wide).get('/import/employee/template');
+
+    expect(response.status).toBe(413);
+    expect(response.headers['content-type']).toContain('application/json');
+    expect(response.headers['content-disposition']).toBeUndefined();
+    expect(response.body.error.code).toBe('SHEET_TOO_LARGE');
+  });
+
+  it('names the download from the config, not from the route it was mounted at', async () => {
+    // A consumer mounting a plural route gets a file named after the data, not after the URL.
+    // The map key is a route segment and carries no other meaning.
+    const server = express();
+    server.use(
+      '/import',
+      createImportRouter({
+        configs: { employees: CONFIG },
+        lookups: LOOKUPS,
+        onImport: () => undefined,
+      }),
+    );
+    const response = await request(server).get('/import/employees/template');
+    expect(response.headers['content-disposition']).toBe(
+      'attachment; filename="employee-template.csv"',
+    );
+  });
+
   it('404s an unknown entity without echoing what was asked for', async () => {
     // Reflecting the key back turns a 404 into a way to probe which entities exist, and into
     // an injection point anywhere the message is rendered.
@@ -439,7 +470,7 @@ describe('POST /:entity/validate', () => {
     expect(written).toEqual([]);
   });
 
-  it('answers the same numbers an import would, minus the writing', async () => {
+  it('answers the same numbers an import would, and says it wrote none of them', async () => {
     const written: Record<string, unknown>[] = [];
     const validated = await request(app({}, written))
       .post('/import/employee/validate')
@@ -451,7 +482,12 @@ describe('POST /:entity/validate', () => {
       .field('plan', JSON.stringify(PLAN))
       .attach('file', Buffer.from(CSV_TEXT), 'people.csv');
 
-    expect(validated.body).toEqual(imported.body);
+    // Identical in every count — that is what "the identical pipeline" means — and different
+    // in the one field that says whether anything was stored. Without `written`, `imported`
+    // reads as a count of records written on the route where nothing was.
+    expect({ ...validated.body, written: undefined }).toEqual({ ...imported.body, written: undefined });
+    expect(validated.body.written).toBe(false);
+    expect(imported.body.written).toBe(true);
     expect(written).toHaveLength(3);
   });
 
@@ -567,26 +603,22 @@ describe('the guards that need a socket rather than a client', () => {
 });
 
 describe('sendFailure', () => {
-  const fakeResponse = (headersSent: boolean): {
-    headersSent: boolean;
-    destroyed: boolean;
-    code: number;
-    body: unknown;
-    status(code: number): unknown;
-    json(body: unknown): void;
-    destroy(): void;
-  } => {
+  const fakeResponse = (headersSent: boolean, headers: Record<string, string> = {}) => {
     const response = {
       headersSent,
       destroyed: false,
       code: 0,
       body: undefined as unknown,
+      headers: { ...headers },
       status(code: number) {
         response.code = code;
         return response;
       },
       json(body: unknown) {
         response.body = body;
+      },
+      removeHeader(name: string) {
+        delete response.headers[name];
       },
       destroy() {
         response.destroyed = true;
@@ -600,6 +632,22 @@ describe('sendFailure', () => {
     sendFailure(response as unknown as express.Response, new ImportError('NO_FILE', 'No file.'));
     expect(response.code).toBe(400);
     expect(response.body).toEqual({ error: { code: 'NO_FILE', message: 'No file.' } });
+  });
+
+  it('takes off the headers of the download it was about to send', () => {
+    // Measured, not theorised: `res.json` only sets a content type when one is not already
+    // there, so a template that failed after its headers were set answered 413 with a JSON
+    // body wearing `text/csv` and an `attachment` filename — which a browser saves as the
+    // template it asked for.
+    const response = fakeResponse(false, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="employee-template.csv"',
+      'X-Consumer-Header': 'kept',
+    });
+    sendFailure(response as unknown as express.Response, new ImportError('SHEET_TOO_LARGE', 'Too wide.'));
+
+    expect(response.headers).toEqual({ 'X-Consumer-Header': 'kept' });
+    expect(response.code).toBe(413);
   });
 
   it('ends the connection when the response has already started', () => {

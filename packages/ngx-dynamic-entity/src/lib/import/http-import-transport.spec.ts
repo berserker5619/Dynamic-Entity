@@ -1,4 +1,10 @@
-import { CORE_VERSION, type EntityFormConfig, type MappingPlan, type TemplateSpec } from '@dynamic-entity/core';
+import {
+  buildTemplateSpec,
+  CORE_VERSION,
+  type EntityFormConfig,
+  type MappingPlan,
+  type TemplateSpec,
+} from '@dynamic-entity/core';
 import { IMPORT_TRANSPORT } from '../tokens/injection-tokens';
 import { HttpImportTransport, provideHttpImportTransport } from './http-import-transport';
 import type { ImportContext, ImportTransport } from './import-contracts';
@@ -168,6 +174,34 @@ describe('HttpImportTransport.preview', () => {
     expect(preview.rowCount).toBe(1);
   });
 
+  it('says nothing about a patch difference between two deploys', async () => {
+    // The normal state of a rolling release. Warning on it puts a line in the console on every
+    // preview and every commit, which is how people learn to scroll past the one that matters.
+    const [major, minor] = CORE_VERSION.split('.');
+    const warnings: string[] = [];
+    const { fetch } = stubFetch(() => reply({ ...PREVIEW_BODY, engineVersion: `${major}.${minor}.999` }));
+    await new HttpImportTransport({
+      baseUrl: '/api/import',
+      fetch,
+      warn: message => warnings.push(message),
+    }).preview(file(), CONTEXT);
+    expect(warnings).toEqual([]);
+  });
+
+  it('does say something about a minor difference', async () => {
+    const [major, minor] = CORE_VERSION.split('.');
+    const warnings: string[] = [];
+    const drifted = `${major}.${Number(minor) + 1}.0`;
+    const { fetch } = stubFetch(() => reply({ ...PREVIEW_BODY, engineVersion: drifted }));
+    await new HttpImportTransport({
+      baseUrl: '/api/import',
+      fetch,
+      warn: message => warnings.push(message),
+    }).preview(file(), CONTEXT);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain(drifted);
+  });
+
   it('says nothing when the two agree', async () => {
     const warnings: string[] = [];
     const { fetch } = stubFetch(() => json(PREVIEW_BODY));
@@ -262,7 +296,7 @@ describe('HttpImportTransport.commit', () => {
 });
 
 describe('HttpImportTransport.template', () => {
-  it('asks for the format and the field selection, and returns the bytes', async () => {
+  it('asks for the format and returns the bytes', async () => {
     const { fetch, calls } = stubFetch(
       () => reply('name\r\n'),
     );
@@ -274,10 +308,93 @@ describe('HttpImportTransport.template', () => {
 
     expect(calls[0].url).toContain('/api/import/employee/template?');
     expect(calls[0].url).toContain('format=csv');
-    expect(calls[0].url).toContain('fields=personal.firstName');
     expect(calls[0].init.method).toBe('GET');
     // jsdom's Blob has no `text()`; its size is enough to say the bytes came through.
     expect(blob.size).toBe(6);
+  });
+
+  it('sends a partial selection, and only a partial one', async () => {
+    const two: EntityFormConfig = {
+      ...CONFIG,
+      tabs: [
+        {
+          ...CONFIG.tabs![0],
+          fields: [...CONFIG.tabs![0].fields!, { id: 'age', type: 'number', label: { en: 'Age' } }],
+        },
+      ],
+    };
+    const { fetch, calls } = stubFetch(() => reply(''));
+    await new HttpImportTransport({ baseUrl: '/api/import', fetch }).template(SPEC, 'csv', {
+      config: two,
+    });
+    expect(calls[0].url).toContain('fields=personal.firstName');
+    expect(calls[0].url).not.toContain('personal.age');
+  });
+
+  it('says "everything" by saying nothing, so a wide config fits in a URL', async () => {
+    // A selection of every column is what omitting `fields` already means. Spelling it out
+    // produced ten kilobytes of query string for a wide config — past the eight nginx and Node
+    // default to — on the request most likely to be made: give me a template with everything.
+    const wide: EntityFormConfig = {
+      entity: 'wide',
+      version: 1,
+      tabs: [
+        {
+          id: 'tab',
+          label: { en: 'Tab' },
+          fields: Array.from({ length: 300 }, (_unused, i) => ({
+            id: `someReasonablyLongFieldName${i}`,
+            type: 'text' as const,
+            label: { en: `Field ${i}` },
+          })),
+        },
+      ],
+    };
+    const spec = buildTemplateSpec(wide);
+    expect(spec.columns.length).toBe(300);
+
+    const { fetch, calls } = stubFetch(() => reply(''));
+    await new HttpImportTransport({ baseUrl: '/api/import', fetch }).template(spec, 'csv', {
+      config: wide,
+    });
+
+    expect(calls[0].url).toBe('/api/import/wide/template?format=csv');
+  });
+
+  it('collapses a repeating field back to the one choice the picker offered', async () => {
+    // `contacts.0.email, contacts.1.email, contacts.2.email` is the expansion of a single tick.
+    // Sending the expansion back is both longer and a different sentence from the one the user
+    // said, and `buildTemplateSpec` matches on the stripped ref anyway.
+    const repeating: EntityFormConfig = {
+      entity: 'people',
+      version: 1,
+      tabs: [
+        {
+          id: 'tab',
+          label: { en: 'Tab' },
+          fields: [
+            { id: 'name', type: 'text', label: { en: 'Name' } },
+            {
+              id: 'contacts',
+              type: 'array',
+              label: { en: 'Contacts' },
+              // An `array` carries its row columns in `children`, not `fields`.
+              children: [{ id: 'email', type: 'text', label: { en: 'Email' } }],
+            },
+          ],
+        },
+      ],
+    };
+    const spec = buildTemplateSpec(repeating, { fields: ['tab.contacts.email'] });
+    expect(spec.columns.length).toBeGreaterThan(1);
+
+    const { fetch, calls } = stubFetch(() => reply(''));
+    await new HttpImportTransport({ baseUrl: '/api/import', fetch }).template(spec, 'csv', {
+      config: repeating,
+    });
+
+    const fields = new URL(calls[0].url, 'http://x').searchParams.get('fields');
+    expect(fields).toBe('tab.contacts.email');
   });
 
   it('sends only the selection, never the headers themselves', async () => {

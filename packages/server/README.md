@@ -58,13 +58,19 @@ app.use(
 
 | Route | Does |
 |---|---|
-| `GET /:entity/template?fields=&format=` | Streams a CSV or xlsx template for the config |
+| `GET /:entity/template?fields=&format=` | Streams a CSV or xlsx template. No `fields` means every column |
 | `POST /:entity/preview` | multipart → headers, a sample, a suggested mapping, a row count |
-| `POST /:entity/validate` | The identical import pipeline with **no** writing — every error, nothing stored |
-| `POST /:entity/import` | multipart + a `plan` field → runs the import, calling `onImport` per batch |
+| `POST /:entity/validate` | The identical import pipeline with **no** writing — every error, nothing stored. Answers `written: false` |
+| `POST /:entity/import` | multipart + a `plan` field → runs the import, calling `onImport` per batch. Answers `written: true` |
 
 `configs` may be a **function** rather than a map, so an app that keeps its configs in a
-database does not need a restart to add an entity.
+database does not need a restart to add an entity. The map key is a **route segment and nothing
+else** — mount `{ employees: employeeConfig }` and the route is `/employees/…` while the
+download is still named from `config.entity`.
+
+`/validate` and `/import` answer with the same body shape. `imported` counts records the run
+*produced*; `written` says whether they were stored. Read them together — on `/validate`,
+`imported` is what would have been written.
 
 ### The client half
 
@@ -195,6 +201,9 @@ catastrophic backtrack. See [SECURITY.md](../../SECURITY.md).
 Stated rather than left to be discovered:
 
 - **CSV streams properly.** Rows are read incrementally and never accumulated.
+- **Exactly one worksheet is read** — the lowest-numbered `sheetN.xml`, not whichever the
+  archive happens to list first. True tab order lives in `workbook.xml` and is not parsed; the
+  sheet number is what exceljs matches on and is a great deal closer than byte order.
 - **An `.xlsx` holds the archive, compressed** — bounded by `maxBytes`, so a few megabytes for
   a fifty-thousand-row workbook. The archive is read and rebuilt before the parser sees it, for
   two reasons: the only place its inflated size is knowable early is there, and exceljs's

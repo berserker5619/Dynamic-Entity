@@ -44,7 +44,21 @@ export interface ImportPreviewResponse {
  * `onImport` to know.
  */
 export interface ImportCommitResponse {
-  /** Records produced and handed to the consumer's writer. */
+  /**
+   * Whether the records were **stored**.
+   *
+   * `/import` writes and reports `true`; `/validate` runs the identical pipeline and reports
+   * `false`. Without it the two routes answer with byte-identical bodies, and `imported` — a
+   * count of records *produced* — reads as a count of records *written* on the one route where
+   * nothing was. The field name is the contract, so the contract needs this beside it.
+   */
+  written: boolean;
+  /**
+   * Records produced by the run.
+   *
+   * On `/import` these were handed to the consumer's writer. On `/validate` they were built,
+   * checked and dropped — see `written`.
+   */
   imported: number;
   /** Rows that held no values at all. A blank line is not an error and is not a record. */
   skipped: number;

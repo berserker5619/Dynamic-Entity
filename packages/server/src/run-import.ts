@@ -89,8 +89,14 @@ export interface ImportRunResult {
   planProblems: ConfigProblem[];
   /** Data rows read from the sheet, blank ones included. */
   rowsRead: number;
-  /** What the file turned out to be. */
-  format: SheetFormat;
+  /**
+   * What the file turned out to be — **absent when no byte of it was ever read**.
+   *
+   * A plan refused before the stream is touched has nothing to report here, and it used to
+   * report `'csv'` anyway. A guessed field is worse than a missing one: it is indistinguishable
+   * from a measured one.
+   */
+  format?: SheetFormat;
 }
 
 /**
@@ -128,7 +134,6 @@ export async function runImport(options: RunImportOptions): Promise<ImportRunRes
       truncated: false,
       planProblems,
       rowsRead: 0,
-      format: 'csv',
     };
   }
 

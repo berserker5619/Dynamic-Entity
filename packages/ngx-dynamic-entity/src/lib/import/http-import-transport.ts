@@ -13,6 +13,8 @@
 
 import {
   CORE_VERSION,
+  deriveImportColumns,
+  stripIndices,
   type ImportCommitResponse,
   type ImportErrorResponse,
   type ImportPreviewResponse,
@@ -58,6 +60,12 @@ function resolveHeaders(options: HttpImportTransportOptions): Record<string, str
 
 const trimSlash = (url: string): string => String(url ?? '').replace(/\/+$/, '');
 
+/** Same major and minor. Two engines a patch apart are the same engine. */
+function sameLine(a: string, b: string): boolean {
+  const line = (version: string): string => version.split('.').slice(0, 2).join('.');
+  return line(a) === line(b);
+}
+
 /**
  * Turn a failed response into an `Error` the wizard can show.
  *
@@ -74,6 +82,34 @@ async function failureOf(response: Response): Promise<Error> {
   }
   const message = body?.error?.message;
   return new Error(message || `The import server answered ${response.status}.`);
+}
+
+/**
+ * The field selection, as short as it can be said without changing what it means.
+ *
+ * Two reductions, and both are exact rather than approximate:
+ *
+ * - **Row numbers come off.** `buildTemplateSpec` matches a column by its ref *or* by its ref
+ *   with indices stripped, and the picker that produced this selection worked in stripped refs
+ *   to begin with — so `contacts.0.email, contacts.1.email, contacts.2.email` is the expansion
+ *   of one choice, and collapsing it back recovers exactly what the user ticked.
+ * - **A full selection is sent as no selection at all**, because omitting `fields` already
+ *   means every column.
+ *
+ * Without them a wide config produced a query string of ten kilobytes or more — past the eight
+ * nginx and Node default to — and the request most likely to hit it is "give me a template with
+ * everything", which is the one this now sends as a bare `?format=`.
+ */
+function selectionOf(spec: TemplateSpec, context: ImportContext): string {
+  const chosen = new Set(spec.columns.map(column => stripIndices(column.ref)));
+  const all = new Set(
+    deriveImportColumns(context?.config, { lang: context?.lang }).columns.map(column =>
+      stripIndices(column.ref),
+    ),
+  );
+
+  if (all.size && chosen.size === all.size && [...all].every(ref => chosen.has(ref))) return '';
+  return [...chosen].join(',');
 }
 
 /**
@@ -109,7 +145,11 @@ class HttpImportTransport implements ImportTransport {
    * patch release is not a reason to stop somebody importing.
    */
   private checkEngine(version: string | undefined): void {
-    if (!version || version === CORE_VERSION) return;
+    // Compared at major.minor. A patch difference between two deploys is the normal state of
+    // a rolling release and says nothing about whether the engines agree; warning on it puts a
+    // line in the console on every preview and every commit, which is how people learn to
+    // scroll past the warning that does matter.
+    if (!version || sameLine(version, CORE_VERSION)) return;
     const warn = this.options.warn ?? ((message: string) => console.warn(message));
     warn(
       `[ngx-dynamic-entity] The import server runs @dynamic-entity/core ${version}; this app ` +
@@ -177,8 +217,8 @@ class HttpImportTransport implements ImportTransport {
     // The server rebuilds the spec from its own config; only the selection crosses the wire.
     // Posting a whole spec would let a client choose the headers of a file the server signs
     // its name to, and the server has the config anyway.
-    const fields = spec.columns.map(column => column.ref).join(',');
     const query = new URLSearchParams({ format });
+    const fields = selectionOf(spec, context);
     if (fields) query.set('fields', fields);
 
     const response = await this.send(

@@ -126,6 +126,9 @@ describe('the plan is checked before a single row is read', () => {
     expect(result.imported).toBe(0);
     expect(result.rowsRead).toBe(0);
     expect(pulled).toBe(false);
+    // And it does not report a format it never looked at. A guessed field is worse than a
+    // missing one: it is indistinguishable from a measured one.
+    expect(result.format).toBeUndefined();
   });
 
   it('closes the request body it decided not to read', async () => {

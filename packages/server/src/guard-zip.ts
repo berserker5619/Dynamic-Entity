@@ -53,6 +53,9 @@ const SLICE = 64 * 1024;
 const STORED = 0;
 const DEFLATED = 8;
 
+/** The largest size a non-zip64 header can express. */
+const ZIP32_MAX = 0xffffffff;
+
 /**
  * The parts an import reads, in the order exceljs must meet them.
  *
@@ -69,7 +72,25 @@ const WANTED = [
   'xl/sharedStrings.xml',
 ];
 
-const WORKSHEET = /^xl\/worksheets\/sheet\d+\.xml$/;
+const WORKSHEET = /^xl\/worksheets\/sheet(\d+)\.xml$/;
+
+/**
+ * The number in `sheetN.xml`, or `null` for anything that is not a worksheet.
+ *
+ * **Which worksheet an import reads used to be decided by byte order** — whichever one the
+ * archive happened to list first. A user means the first *tab*, and an archive that put
+ * `sheet2.xml` before `sheet1.xml` therefore imported the wrong sheet while preview and import
+ * agreed with each other about it. Every mainstream writer emits sheet1 first, so it was latent
+ * rather than live, but "the first worksheet" read as a decision when it was an accident.
+ *
+ * The lowest number is not *quite* tab order either: the real order lives in `workbook.xml`'s
+ * `<sheets>` and the relationship map, which this does not parse. It is a great deal closer
+ * than byte order, and it is the same number exceljs matches a worksheet by.
+ */
+function sheetNumber(name: string): number | null {
+  const match = WORKSHEET.exec(name);
+  return match ? Number(match[1]) : null;
+}
 
 const refuse = (message: string): never => {
   throw new ImportError('ARCHIVE_REFUSED', message);
@@ -201,6 +222,21 @@ async function readDeflated(
   declared: number | null,
   keep: boolean,
 ): Promise<{ data: Buffer; inflated: number; crc: number }> {
+  /**
+   * Retention counted as it grows, not once the entry is complete.
+   *
+   * Checking afterwards is the failure this whole file exists to criticise: by then the memory
+   * the limit was protecting has been spent. It was harmless in practice only because
+   * `limitBytes` already caps the stream upstream — which made it dead code on the real path
+   * and a late check on the direct one, and "harmless because something else did the work" is
+   * not a guard.
+   */
+  const retain = (slice: Buffer): void => {
+    budget.retained += slice.length;
+    if (budget.retained > limits.maxBytes) {
+      refuse(`The workbook is larger than the ${limits.maxBytes} byte limit.`);
+    }
+  };
   const inflater = zlib.createInflateRaw();
   const kept: Buffer[] = [];
   let produced = 0;
@@ -257,7 +293,10 @@ async function readDeflated(
       // a guard that refused a perfectly ordinary fifty-thousand-row workbook.
       consumed += slice.length;
       await writeChunk(inflater, slice);
-      if (keep) kept.push(slice);
+      if (keep) {
+        retain(slice);
+        kept.push(slice);
+      }
       await settle();
 
       if (ended && declared === null) {
@@ -267,7 +306,10 @@ async function readDeflated(
         if (overshoot > 0) {
           scanner.pushBack(slice.subarray(slice.length - overshoot));
           consumed -= overshoot;
-          if (keep) kept[kept.length - 1] = slice.subarray(0, slice.length - overshoot);
+          if (keep) {
+            kept[kept.length - 1] = slice.subarray(0, slice.length - overshoot);
+            budget.retained -= overshoot;
+          }
         }
       }
     }
@@ -279,7 +321,10 @@ async function readDeflated(
       if (!(await scanner.need(1))) refuse(`The workbook ends part-way through "${name}".`);
       const slice = Buffer.from(scanner.take(Math.min(declared - consumed, SLICE, scanner.available)));
       consumed += slice.length;
-      if (keep) kept.push(slice);
+      if (keep) {
+        retain(slice);
+        kept.push(slice);
+      }
     }
   } catch (error) {
     if (error instanceof ImportError) throw error;
@@ -315,7 +360,14 @@ async function readStored(
     if (!(await scanner.need(1))) refuse(`The workbook ends part-way through "${name}".`);
     const slice = Buffer.from(scanner.take(Math.min(left, SLICE, scanner.available)));
     crc = crc32(crc, slice);
-    if (keep) kept.push(slice);
+    if (keep) {
+      // Counted as it grows, for the reason given in `readDeflated`.
+      budget.retained += slice.length;
+      if (budget.retained > limits.maxBytes) {
+        refuse(`The workbook is larger than the ${limits.maxBytes} byte limit.`);
+      }
+      kept.push(slice);
+    }
     left -= slice.length;
     budget.total += slice.length;
     if (budget.total > limits.maxUncompressedBytes) {
@@ -407,7 +459,8 @@ export async function guardZip(
   const scanner = new ZipScanner(source[Symbol.asyncIterator]());
   const budget: Budget = { total: 0, retained: 0, entries: 0 };
   const kept = new Map<string, Entry>();
-  let firstWorksheet: string | null = null;
+  /** The lowest-numbered worksheet seen so far, which is the one an import reads. */
+  let sheet: { name: string; number: number } | null = null;
 
   for (;;) {
     if (!(await scanner.need(4))) break;
@@ -434,11 +487,24 @@ export async function guardZip(
     const name = scanner.peek(HEADER_SIZE + nameLength).subarray(HEADER_SIZE).toString('utf8');
     scanner.take(HEADER_SIZE + nameLength + extraLength);
 
-    // The first worksheet and no other: a mapping plan addresses one sheet's columns, and
-    // carrying the rest would be holding data nothing reads.
-    const isFirstSheet = WORKSHEET.test(name) && (firstWorksheet === null || firstWorksheet === name);
-    const keep = (WANTED.includes(name) && !kept.has(name)) || isFirstSheet;
-    if (isFirstSheet) firstWorksheet = name;
+    // One worksheet and no other: a mapping plan addresses one sheet's columns, and carrying
+    // the rest would be holding data nothing reads. Which one is decided by `sheetNumber`
+    // rather than by the order the archive happens to list them in — see that function.
+    const number = sheetNumber(name);
+    const keep =
+      number === null
+        ? WANTED.includes(name) && !kept.has(name)
+        : sheet === null || number < sheet.number;
+
+    // The superseded sheet goes **before** the new one is read, not after. Releasing it
+    // afterwards means holding two at once at the moment of changeover, which makes the
+    // retention bound depend on the order the archive lists its sheets in: the same workbook
+    // sails through ascending and is refused descending.
+    if (keep && number !== null && sheet) {
+      budget.retained -= kept.get(sheet.name)?.data.length ?? 0;
+      kept.delete(sheet.name);
+      sheet = null;
+    }
 
     const streamed = (flags & HAS_DATA_DESCRIPTOR) !== 0 || declaredCompressed === ZIP64_SENTINEL;
     let read: { data: Buffer; inflated: number; crc: number };
@@ -466,20 +532,23 @@ export async function guardZip(
     }
 
     if (keep) {
-      budget.retained += read.data.length;
-      if (budget.retained > limits.maxBytes) {
-        refuse(`The workbook is larger than the ${limits.maxBytes} byte limit.`);
+      // The rebuilt archive is written without zip64, so a size a 32-bit header cannot express
+      // would be silently truncated. `maxUncompressedBytes` keeps this out of reach at its
+      // default; it is a consumer-settable limit, so the ceiling is checked rather than assumed.
+      if (read.data.length > ZIP32_MAX || read.inflated > ZIP32_MAX) {
+        refuse(`Entry "${name}" is too large to repack without zip64.`);
       }
       kept.set(name, { name, method, data: read.data, inflated: read.inflated, crc: read.crc });
+      if (number !== null) sheet = { name, number };
     }
   }
 
-  if (!firstWorksheet) {
+  if (!sheet) {
     throw new ImportError('MALFORMED_FILE', 'This workbook has no worksheet.');
   }
 
-  const ordered = [...WANTED, firstWorksheet]
-    .map(name => kept.get(name))
+  const ordered = [...WANTED, sheet.name]
+    .map(wanted => kept.get(wanted))
     .filter((entry): entry is Entry => entry !== undefined);
 
   return repack(ordered);

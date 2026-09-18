@@ -137,7 +137,12 @@ export function receiveUpload(request: IncomingMessage, limits: ImportLimits): P
       if (!sawFile) fail(new ImportError('NO_FILE', 'No file was uploaded.'));
     });
 
-    request.on('aborted', () => fail(new ImportError('TIMEOUT', 'The upload did not finish.')));
+    // `'close'` and `complete`, not `'aborted'`. The latter is deprecated on Node 18+ and may
+    // never fire, which makes it protection that reads as real and is not; `complete` is false
+    // exactly when the body stopped arriving before it ended.
+    request.on('close', () => {
+      if (!request.complete) fail(new ImportError('TIMEOUT', 'The upload did not finish.'));
+    });
     request.pipe(parser);
   });
 }

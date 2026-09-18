@@ -128,7 +128,14 @@ function readFormat(value: unknown): TemplateFormat {
   throw new ImportError('UNSUPPORTED_FORMAT', 'Supported template formats are csv and xlsx.');
 }
 
-/** `?fields=a,b&fields=c` and `?fields=a&fields=b` both mean the same thing. */
+/**
+ * `?fields=a,b&fields=c` and `?fields=a&fields=b` both mean the same thing, and **no `fields`
+ * at all means every column** — which is what a client sends when the user picked everything,
+ * rather than spelling out a selection long enough to outgrow the URL.
+ *
+ * A ref with its row numbers stripped selects every row of a repeating field, because
+ * `buildTemplateSpec` matches on both spellings. That is the shape the picker works in.
+ */
 function readFields(value: unknown): string[] | undefined {
   const raw = value === undefined ? [] : Array.isArray(value) ? value : [value];
   const fields = raw.flatMap(item => String(item).split(',')).map(item => item.trim()).filter(Boolean);
@@ -140,8 +147,13 @@ function readFields(value: unknown): string[] | undefined {
  *
  * A filename that reaches a `Content-Disposition` having come from a request is header
  * injection with extra steps: a newline in it ends the header and starts another. This takes
- * the entity — which is a key into a map the consumer owns — and keeps only characters that
- * cannot mean anything in a header.
+ * the entity and keeps only characters that cannot mean anything in a header.
+ *
+ * The caller passes `config.entity`, not the route segment. They are usually the same string,
+ * and when they are not — a consumer mounting a plural route, `{ employees: employeeConfig }` —
+ * the config is the one that names the data. Reading the route key instead made the map key
+ * carry meaning it was never given, which is a footgun with no upside: the key is a route
+ * segment and nothing else.
  */
 export function templateFilename(entity: string, format: TemplateFormat): string {
   const safe = String(entity).replace(/[^A-Za-z0-9._-]/g, '-').replace(/^[-.]+/, '').slice(0, 64);
@@ -186,6 +198,16 @@ export function sendFailure(response: Response, error: unknown): void {
     response.destroy();
     return;
   }
+
+  // **The download's headers have to come off first.** The template route sets `Content-Type`
+  // and `Content-Disposition` before it starts writing, and `res.json` only sets a content type
+  // when one is *not* already there — so a failure after that point answered 413 with a JSON
+  // body wearing `text/csv; charset=utf-8` and `attachment; filename="employee-template.csv"`,
+  // which a browser dutifully saves as the template. Measured, not theorised.
+  for (const header of ['Content-Type', 'Content-Disposition', 'Content-Length']) {
+    response.removeHeader(header);
+  }
+
   const { status, body } = toErrorBody(error);
   response.status(status).json(body);
 }
@@ -226,7 +248,8 @@ export function createImportRouter(options: ImportRouterOptions): Router {
     return { entity, config };
   };
 
-  const respond = (result: ImportRunResult): ImportCommitResponse => ({
+  const respond = (result: ImportRunResult, written: boolean): ImportCommitResponse => ({
+    written,
     imported: result.imported,
     skipped: result.skipped,
     errors: result.errors,
@@ -263,7 +286,7 @@ export function createImportRouter(options: ImportRouterOptions): Router {
       response.setHeader('Content-Type', TEMPLATE_MEDIA_TYPE[format]);
       response.setHeader(
         'Content-Disposition',
-        `attachment; filename="${templateFilename(entity, format)}"`,
+        `attachment; filename="${templateFilename(config.entity || entity, format)}"`,
       );
       await writeTemplate({ spec, format, out: response, limits });
     }),
@@ -364,7 +387,7 @@ export function createImportRouter(options: ImportRouterOptions): Router {
       onBatch: write && ((records, info) => write(records, info, entity, config)),
     });
 
-    return respond(result);
+    return respond(result, write !== undefined);
   }
 
   return router;
