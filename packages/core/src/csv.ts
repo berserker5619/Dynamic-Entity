@@ -79,12 +79,156 @@ function stripBom(text: string): string {
 }
 
 /**
+ * Pad a short row out to the header width.
+ *
+ * Exported because two callers need it and a second copy would be a second decision. A
+ * spreadsheet that ends a row early still has values in the columns it did fill, and losing
+ * them silently is worse than carrying empty strings. Longer rows keep their extra cells —
+ * the mapping decides which columns matter, and a column the header forgot to name may
+ * still be mapped.
+ */
+export function padRow(row: readonly string[], width: number): string[] {
+  if (row.length >= width) return [...row];
+  return [...row, ...Array(width - row.length).fill('')];
+}
+
+/**
+ * An incremental CSV parser: push text, pull whole rows.
+ *
+ * `parseCsv` takes the entire file as one string, which is fine in a browser tab and wrong on
+ * a server streaming a fifty-thousand-row export — CSV being the *most* common format, a
+ * streaming importer that buffered it would miss most of the point.
+ *
+ * The hard part is not chunking, it is that three of CSV's decisions need the character
+ * *after* the one in hand, and a 64 KB boundary can land between them:
+ *
+ *   - a `"` inside a quoted field either closes it or, doubled, is one literal quote;
+ *   - `\r\n` is one terminator, and the `\n` may arrive in the next chunk;
+ *   - a quoted field may contain a line break, so a record can straddle any number of chunks.
+ *
+ * So each is a flag carried across `push` calls rather than a lookahead. `parseCsv` is
+ * expressed in terms of this reader — one set of quoting rules, one place to be wrong.
+ */
+export interface CsvReader {
+  /** Feed the next chunk of text; returns every row it completed, which may be none. */
+  push(chunk: string): string[][];
+  /** No more input: returns the final row if one is still open. */
+  end(): string[][];
+}
+
+export function createCsvReader(): CsvReader {
+  let row: string[] = [];
+  let field = '';
+  /** Inside a quoted field. */
+  let quoted = false;
+  /** Distinguishes a trailing newline (no final row) from a trailing empty field. */
+  let pending = false;
+  /** Saw a `"` while quoted; the next character says whether it closed or was doubled. */
+  let quoteHeld = false;
+  /** Ended a row on `\r`; a `\n` immediately after belongs to that same terminator. */
+  let crHeld = false;
+  /** Nothing has been consumed yet, so a leading BOM is still strippable. */
+  let atStart = true;
+
+  let out: string[][] = [];
+
+  const endField = (): void => {
+    row.push(field);
+    field = '';
+    pending = true;
+  };
+  const endRow = (): void => {
+    endField();
+    out.push(row);
+    row = [];
+    pending = false;
+  };
+
+  /** The unquoted-state transition, reached directly and after a held quote resolves. */
+  const plain = (char: string): void => {
+    if (char === '"' && field === '') {
+      quoted = true;
+      pending = true;
+      return;
+    }
+    if (char === ',') {
+      endField();
+      return;
+    }
+    if (char === '\r') {
+      endRow();
+      crHeld = true;
+      return;
+    }
+    if (char === '\n') {
+      endRow();
+      return;
+    }
+    field += char;
+    pending = true;
+  };
+
+  return {
+    push(chunk: string): string[][] {
+      out = [];
+      let source = typeof chunk === 'string' ? chunk : '';
+      if (atStart && source !== '') {
+        source = stripBom(source);
+        atStart = false;
+      }
+
+      for (let i = 0; i < source.length; i++) {
+        const char = source[i];
+
+        // A `\n` right after a `\r` completes one terminator; anything else is ordinary and
+        // falls through to be processed in its own right.
+        if (crHeld) {
+          crHeld = false;
+          if (char === '\n') continue;
+        }
+
+        if (quoteHeld) {
+          quoteHeld = false;
+          // A doubled quote inside a quoted field is one literal quote.
+          if (char === '"') {
+            field += '"';
+            continue;
+          }
+          quoted = false;
+          plain(char);
+          continue;
+        }
+
+        if (quoted) {
+          if (char === '"') quoteHeld = true;
+          else field += char;
+          continue;
+        }
+
+        plain(char);
+      }
+
+      return out;
+    },
+
+    end(): string[][] {
+      out = [];
+      // A held quote at end of input closed its field: there is no next character to double it.
+      quoteHeld = false;
+      quoted = false;
+      crHeld = false;
+      atStart = false;
+      if (pending || field !== '' || row.length > 0) endRow();
+      return out;
+    },
+  };
+}
+
+/**
  * Parse CSV text into a header row and positional data rows.
  *
- * Written as a character scan rather than a line split because a quoted field may contain
- * `,`, `"` and a line break, and splitting on lines breaks every one of those. Accepts LF,
- * CRLF and CR endings, and strips a UTF-8 BOM — Excel writes one, and a BOM left on the
- * first header makes it match nothing.
+ * A thin wrapper over `createCsvReader`, so the whole-string and streaming paths cannot
+ * disagree about quoting: there is one scanner and this feeds it once.
  *
  * Malformed input is read as far as it goes rather than rejected: a sheet is user data
  * arriving from somewhere else, and reporting "row 812 column 4 is unmatched" is the
@@ -96,73 +240,9 @@ function stripBom(text: string): string {
  * subsequent row number in every error message.
  */
 export function parseCsv(text: string): SheetData {
-  const source = typeof text === 'string' ? stripBom(text) : '';
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = '';
-  let quoted = false;
-  /** Distinguishes a trailing newline (no final row) from a trailing empty field. */
-  let pending = false;
-
-  const endField = (): void => {
-    row.push(field);
-    field = '';
-    pending = true;
-  };
-  const endRow = (): void => {
-    endField();
-    rows.push(row);
-    row = [];
-    pending = false;
-  };
-
-  for (let i = 0; i < source.length; i++) {
-    const char = source[i];
-
-    if (quoted) {
-      if (char !== '"') {
-        field += char;
-        continue;
-      }
-      // A doubled quote inside a quoted field is one literal quote.
-      if (source[i + 1] === '"') {
-        field += '"';
-        i++;
-        continue;
-      }
-      quoted = false;
-      continue;
-    }
-
-    if (char === '"' && field === '') {
-      quoted = true;
-      pending = true;
-      continue;
-    }
-    if (char === ',') {
-      endField();
-      continue;
-    }
-    if (char === '\r' || char === '\n') {
-      // CRLF is one terminator, not two.
-      if (char === '\r' && source[i + 1] === '\n') i++;
-      endRow();
-      continue;
-    }
-    field += char;
-    pending = true;
-  }
-
-  if (pending || field !== '' || row.length > 0) endRow();
+  const reader = createCsvReader();
+  const rows = [...reader.push(typeof text === 'string' ? text : ''), ...reader.end()];
 
   const headers = rows.shift() ?? [];
-  // A row shorter than the header is padded rather than dropped: a spreadsheet that ends a
-  // row early still has values in the columns it did fill, and losing them silently is worse
-  // than carrying empty strings. Longer rows keep their extra cells — the mapping decides
-  // which columns matter, and a column the header forgot to name may still be mapped.
-  const padded = rows.map(r =>
-    r.length >= headers.length ? r : [...r, ...Array(headers.length - r.length).fill('')],
-  );
-
-  return { headers, rows: padded };
+  return { headers, rows: rows.map(r => padRow(r, headers.length)) };
 }

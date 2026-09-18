@@ -20,6 +20,12 @@
  *
  * `scripts/check-timezones.mjs` runs this file once per zone with `TZ` in the real
  * environment. Under a plain `npm test` it still runs, in whatever zone the machine is in.
+ *
+ * **The second half of this file is the same defect arriving through a different door.** The
+ * cases above all pass *text*, and so did the gate — which is why a typed cell walked straight
+ * past it. A spreadsheet reader hands back a JS `Date` for a date cell, `String(date)` renders
+ * local time, and the day moved again. A gate only ever catches what it is given, so it is now
+ * given typed values too.
  */
 
 import { applyMapping, coerceCell } from './import-engine';
@@ -81,5 +87,87 @@ describe(`a bare date carries no timezone (TZ=${ZONE}, offset ${OFFSET})`, () =>
     const local = new Date(2024, 2, 7);
     const asText = `${local.getFullYear()}-03-0${local.getDate()}`;
     expect(coerceCell(DATE_FIELD, asText)).toEqual({ value: '2024-03-07' });
+  });
+});
+
+describe(`a typed date cell carries no timezone either (TZ=${ZONE}, offset ${OFFSET})`, () => {
+  /**
+   * What a spreadsheet reader actually hands back for `2024-03-07` in a date-formatted cell:
+   * UTC midnight, because an Excel date is a calendar date with no zone and that is how one
+   * is represented without inventing an offset.
+   */
+  const cell = (iso: string): Date => new Date(iso);
+
+  it('reads a UTC-midnight date cell as the day it says', () => {
+    // Verified to fail before `coerceTypedCell` existed: `String(raw)` rendered local time,
+    // so this returned 2024-03-06 at every negative offset.
+    expect(coerceCell(DATE_FIELD, cell('2024-03-07T00:00:00.000Z'))).toEqual({
+      value: '2024-03-07',
+    });
+  });
+
+  it('holds the boundaries a typed cell is most likely to fall off', () => {
+    expect(coerceCell(DATE_FIELD, cell('2024-01-01T00:00:00.000Z'))).toEqual({
+      value: '2024-01-01',
+    });
+    expect(coerceCell(DATE_FIELD, cell('2024-12-31T00:00:00.000Z'))).toEqual({
+      value: '2024-12-31',
+    });
+    expect(coerceCell(DATE_FIELD, cell('2024-02-29T00:00:00.000Z'))).toEqual({
+      value: '2024-02-29',
+    });
+  });
+
+  it('does not let a typed cell slip into the previous month', () => {
+    expect(coerceCell(MONTH_FIELD, cell('2024-03-01T00:00:00.000Z'))).toEqual({ value: '2024-03' });
+    expect(coerceCell(MONTH_FIELD, cell('2024-01-01T00:00:00.000Z'))).toEqual({ value: '2024-01' });
+  });
+
+  it('agrees with the text spelling of the same cell, in every zone', () => {
+    // The whole parity claim in one line: a file read as CSV and the same file read as xlsx
+    // must produce the same record.
+    expect(coerceCell(DATE_FIELD, cell('2024-03-07T00:00:00.000Z'))).toEqual(
+      coerceCell(DATE_FIELD, '2024-03-07'),
+    );
+  });
+
+  it('still reads a typed instant as an instant', () => {
+    const when: NestedFieldConfig = { id: 'at', type: 'datetime', label: { en: 'At' } };
+    expect(coerceCell(when, cell('2024-03-07T09:30:00.000Z'))).toEqual({
+      value: '2024-03-07T09:30:00.000Z',
+    });
+  });
+
+  it("reads a time-only cell by its clock reading, not the machine's", () => {
+    const at: NestedFieldConfig = { id: 'at', type: 'time', label: { en: 'At' } };
+    // Excel stores a time as a fraction of a day against an epoch date.
+    expect(coerceCell(at, new Date('1899-12-30T09:05:00.000Z'))).toEqual({ value: '09:05' });
+  });
+
+  it('gives a non-temporal field the calendar date rather than a local rendering', () => {
+    const note: NestedFieldConfig = { id: 'note', type: 'text', label: { en: 'Note' } };
+    expect(coerceCell(note, cell('2024-03-07T00:00:00.000Z'))).toEqual({ value: '2024-03-07' });
+    // Not midnight, so nothing can be dropped without losing information.
+    expect(coerceCell(note, cell('2024-03-07T09:30:00.000Z'))).toEqual({
+      value: '2024-03-07T09:30:00.000Z',
+    });
+  });
+
+  it('rejects an invalid date cell instead of rendering "Invalid Date"', () => {
+    expect(coerceCell(DATE_FIELD, new Date('nonsense'))).toEqual({
+      error: 'Cell is not a valid date',
+    });
+  });
+
+  it('round-trips a typed cell through a full import unchanged', () => {
+    const result = applyMapping(
+      [[cell('2024-03-07T00:00:00.000Z')]],
+      { entity: 'dated', entries: [{ ref: 'tab.startDate', column: 0 }] },
+      CONFIG,
+      { stamp: false },
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(result.records[0]).toEqual({ tab: { startDate: '2024-03-07' } });
   });
 });

@@ -248,12 +248,76 @@ function parseCalendarDate(text: string): { year: number; month: number; day: nu
 }
 
 /**
+ * Read a cell that already carries a type, rather than stringifying it and parsing it back.
+ *
+ * A spreadsheet cell is not a string. An xlsx carries numbers, booleans and dates as typed
+ * values, and a streaming reader hands back a JS `Date` for a date cell — so `coerceCell`
+ * receives `unknown`, not `string`, the moment anything other than CSV is involved.
+ *
+ * **Why this is a defect and not a nicety.** `String(date)` renders *local* time, which is
+ * exactly the trap `parseCalendarDate` exists to avoid, arriving through a door the timezone
+ * gate did not watch because the gate only ever passed strings:
+ *
+ *     cell value from xlsx : 2024-03-07T00:00:00.000Z   (an .xlsx date cell is UTC midnight)
+ *     String(raw)          : Wed Mar 06 2024 19:00:00 GMT-0500
+ *     without this          : { value: '2024-03-06' }   ← a day early
+ *
+ * So a `Date` is read by its **UTC** components for the field types that carry no zone. An
+ * Excel date cell is a calendar date with no zone, which is precisely why it is stored at UTC
+ * midnight; `datetime` is the one type that genuinely is an instant and normalises to ISO.
+ *
+ * Returns `null` when the value is not one this can decide, and the text path takes over.
+ */
+function coerceTypedCell(field: NestedFieldConfig, raw: unknown): CoerceOutcome | null {
+  if (raw instanceof Date) {
+    if (Number.isNaN(raw.getTime())) return { error: 'Cell is not a valid date' };
+    const ymd = `${raw.getUTCFullYear()}-${pad2(raw.getUTCMonth() + 1)}-${pad2(raw.getUTCDate())}`;
+
+    switch (field.type) {
+      case 'date':
+        return { value: ymd };
+      case 'monthYear':
+        return { value: ymd.slice(0, 7) };
+      case 'datetime':
+        return { value: raw.toISOString() };
+      case 'time':
+        // A time-only cell is stored as a fraction of a day against an epoch date, so the
+        // clock reading is in its UTC components too.
+        return { value: `${pad2(raw.getUTCHours())}:${pad2(raw.getUTCMinutes())}` };
+      default:
+        // Any other field given a date cell — a `text` column someone typed dates into, a
+        // `dropdown` whose options are dates. Rendering it locally is what this function
+        // exists to prevent, so a midnight-UTC instant reads as the calendar date it is and
+        // anything else keeps its full ISO form rather than silently losing its time.
+        return { value: raw.getTime() % 86_400_000 === 0 ? ymd : raw.toISOString() };
+    }
+  }
+
+  if (typeof raw === 'number' && (field.type === 'number' || field.type === 'currency')) {
+    // Taken as-is. Stringifying first loses precision at the edges and re-parses a perfectly
+    // good number through a regex that was written for what a person types.
+    if (!Number.isFinite(raw)) return { error: `"${String(raw)}" is not a number` };
+    return { value: raw };
+  }
+
+  if (typeof raw === 'boolean' && (field.type === 'boolean' || field.type === 'checkbox')) {
+    return { value: raw };
+  }
+
+  return null;
+}
+
+/**
  * Turn one cell into the value its field stores.
  *
  * An empty cell is not an error and not a value: it returns `{ value: undefined }`, and the
  * caller writes nothing. Writing `''` instead would turn every blank cell into a present-but-
  * empty field, which is a different record from one where the user said nothing — and it would
  * defeat `required`, because `''` is a value that exists.
+ *
+ * `raw` is `unknown` because a cell genuinely is: CSV yields text, an xlsx yields numbers,
+ * booleans and `Date`s. Typed values are read as their type by `coerceTypedCell`; everything
+ * else is trimmed text from here down.
  */
 export function coerceCell(
   field: NestedFieldConfig,
@@ -264,6 +328,11 @@ export function coerceCell(
   if (!field || typeof field !== 'object') return { value: undefined };
 
   if (raw === null || raw === undefined) return { value: undefined };
+
+  // Before anything is stringified: a cell that already has a type is read as that type.
+  const typed = coerceTypedCell(field, raw);
+  if (typed) return typed;
+
   const text = typeof raw === 'string' ? raw.trim() : String(raw).trim();
   if (text === '') return { value: undefined };
 
