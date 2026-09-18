@@ -24,6 +24,7 @@ import {
   type MappingPlan,
 } from '@dynamic-entity/core';
 import { destroySource, type ByteSource } from './bytes';
+import { sampleText } from './cell-text';
 import { ImportError } from './errors';
 import { resolveLimits, type ImportLimits } from './limits';
 import { readSheet, type SheetFormat } from './read-sheet';
@@ -236,25 +237,6 @@ export interface SheetPreview {
   /** Data rows in the file, which the whole stream is read to count. */
   rowCount: number;
   format: SheetFormat;
-}
-
-/**
- * Render a typed cell as the text a mapping screen shows.
- *
- * It mirrors `coerceTypedCell`'s date rule on purpose. A preview sample crosses the wire as
- * text and the browser then runs `coerceCell` over that text, so if this rendered a `Date`
- * with `String()` the preview would show — and the browser would coerce — a different day
- * from the one the import will store. That is a preview lying about the only thing it exists
- * to show. `run-import.spec.ts` asserts the two agree rather than trusting this comment.
- */
-export function sampleText(raw: unknown): string {
-  if (raw === null || raw === undefined) return '';
-  if (raw instanceof Date) {
-    if (Number.isNaN(raw.getTime())) return '';
-    const iso = raw.toISOString();
-    return raw.getTime() % 86_400_000 === 0 ? iso.slice(0, 10) : iso;
-  }
-  return typeof raw === 'string' ? raw : String(raw);
 }
 
 /**

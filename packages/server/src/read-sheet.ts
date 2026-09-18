@@ -5,7 +5,8 @@
  *
  * 1. **Format is decided by content, never by the filename.** `.csv` is client-controlled and
  *    an attacker who wants a zip parsed will name their zip `.csv`. The first four bytes are
- *    not.
+ *    not. Both readers then meet the same row guards, so a workbook cannot buy itself a
+ *    larger sheet by being a workbook.
  * 2. **Rows arrive one at a time.** Nothing here ever holds the sheet. `rows` is an
  *    `AsyncIterable`, so a consumer that stops pulling stops the read.
  *
@@ -16,8 +17,10 @@
 
 import { createCsvReader, padRow } from '@dynamic-entity/core';
 import { destroySource, limitBytes, peek, toByteStream, type ByteSource } from './bytes';
+import { sampleText } from './cell-text';
 import { ImportError } from './errors';
 import { resolveLimits, type ImportLimits } from './limits';
+import { xlsxRows } from './xlsx-source';
 
 /** The formats this package reads. Both are decided by magic bytes. */
 export type SheetFormat = 'csv' | 'xlsx';
@@ -146,17 +149,14 @@ export async function readSheet(options: ReadSheetOptions): Promise<SheetSource>
     const counted = limitBytes(toByteStream(options.stream), limits.maxBytes);
     const { head, stream } = await peek(counted, MAGIC_BYTES);
     const format = detectFormat(head);
+    const rows = format === 'xlsx' ? xlsxRows(stream, limits) : csvRows(stream);
 
-    if (format === 'xlsx') {
-      throw new ImportError(
-        'UNSUPPORTED_FORMAT',
-        'This build reads CSV only. Install the .xlsx reader to import a workbook.',
-      );
-    }
-
-    const iterator = csvRows(stream)[Symbol.asyncIterator]();
+    const iterator = rows[Symbol.asyncIterator]();
     const first = await iterator.next();
-    const headers = first.done ? [] : first.value.map(cell => String(cell ?? ''));
+    // Headers are text whichever format they came from — a column heading is a label, and a
+    // plan addresses a column by index anyway. `sampleText` rather than `String` so a header
+    // cell that is somehow a date reads the same on both sides.
+    const headers = first.done ? [] : first.value.map(sampleText);
 
     if (headers.length > limits.maxColumns) {
       throw new ImportError(
@@ -182,7 +182,7 @@ export async function readSheet(options: ReadSheetOptions): Promise<SheetSource>
 
 /** Everything the iterator has left, after the header row has been taken off the front. */
 async function* drain(
-  iterator: AsyncIterator<string[]>,
+  iterator: AsyncIterator<unknown[]>,
 ): AsyncGenerator<unknown[]> {
   for (let next = await iterator.next(); !next.done; next = await iterator.next()) {
     yield next.value;

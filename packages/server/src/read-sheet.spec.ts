@@ -81,9 +81,11 @@ describe('readSheet over CSV', () => {
     expect(await drain(sheet.rows)).toEqual([]);
   });
 
-  it('refuses a workbook until the xlsx reader is installed', async () => {
+  it('refuses a truncated archive rather than hanging on it', async () => {
+    // Eight bytes of zip signature and nothing else. Before the guard's error was raced
+    // against the parser's pulls, this hung a sixty-second test instead of failing it.
     await expect(readSheet({ stream: ZIP_HEAD })).rejects.toMatchObject({
-      code: 'UNSUPPORTED_FORMAT',
+      code: 'ARCHIVE_REFUSED',
     });
   });
 

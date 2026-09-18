@@ -5,7 +5,27 @@
  * and then proves something about that config rather than about the package.
  */
 
+import v8 from 'node:v8';
+import vm from 'node:vm';
 import type { EntityFormConfig, ImportLookups, MappingPlan } from '@dynamic-entity/core';
+
+/**
+ * Heap in use after a collection, which is the only number worth asserting on.
+ *
+ * An uncollected heap grows past a hundred megabytes on a ten-megabyte file however the code
+ * is written — a number that would pass whatever it was asserting. `global.gc` exists only
+ * under `--expose-gc` and the test script is a plain `jest`, so the flag is turned on from
+ * inside the process, used, and turned off again.
+ */
+export function collectedHeap(): number {
+  v8.setFlagsFromString('--expose-gc');
+  try {
+    (vm.runInNewContext('gc') as () => void)();
+  } finally {
+    v8.setFlagsFromString('--no-expose-gc');
+  }
+  return process.memoryUsage().heapUsed;
+}
 
 /**
  * Deliberately mixed types, because the whole risk of a streaming reader is the cells that are

@@ -1,5 +1,3 @@
-import v8 from 'node:v8';
-import vm from 'node:vm';
 import {
   applyMapping,
   coerceCell,
@@ -8,9 +6,11 @@ import {
   suggestMapping,
   type NestedFieldConfig,
 } from '@dynamic-entity/core';
-import { previewSheet, runImport, sampleText, type OnBatch } from './run-import';
+import { sampleText } from './cell-text';
+import { previewSheet, runImport, type OnBatch } from './run-import';
 import {
   chunked,
+  collectedHeap,
   CONFIG,
   CSV_TEXT,
   generatedCsv,
@@ -308,17 +308,7 @@ describe('memory is bounded by batchSize, not by file size', () => {
    * text, so a run that buffered it would retain the string, the row arrays and the strings
    * inside them: tens of megabytes, against a streaming run's handful.
    */
-  const collect = (): number => {
-    // `global.gc` only exists under --expose-gc, and the test script is a plain `jest`.
-    // Turning the flag on from inside the process is the standard way to get at it.
-    v8.setFlagsFromString('--expose-gc');
-    try {
-      (vm.runInNewContext('gc') as () => void)();
-    } finally {
-      v8.setFlagsFromString('--no-expose-gc');
-    }
-    return process.memoryUsage().heapUsed;
-  };
+  const collect = collectedHeap;
 
   /** ~10 MB: 50,000 rows whose first cell is 200 characters wide. */
   async function* wideCsv(rows: number): AsyncGenerator<Uint8Array> {
