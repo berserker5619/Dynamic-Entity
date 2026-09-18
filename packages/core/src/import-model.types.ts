@@ -156,4 +156,12 @@ export interface ImportResult {
   errorCount?: number;
   /** `errors` is a sample rather than the whole set. */
   truncated?: boolean;
+  /**
+   * Rows that produced at least one error, when `errors` is only a sample of the reasons.
+   *
+   * Absent for an in-browser import, where `errors` is complete and the distinct rows in it are
+   * the answer. Present for a streaming one, where counting the sample would report how many
+   * rows fitted in the cap rather than how many failed.
+   */
+  failed?: number;
 }

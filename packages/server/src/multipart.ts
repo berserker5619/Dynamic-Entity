@@ -92,6 +92,13 @@ export function receiveUpload(request: IncomingMessage, limits: ImportLimits): P
         fail(new ImportError('TOO_LARGE', `The "${safeFieldName(name)}" field is too long.`));
         return;
       }
+      // A repeated part is refused rather than resolved. Last-one-wins is a rule this code
+      // would be choosing on a client's behalf, and anything upstream that read the *first*
+      // `plan` would then be acting on a different plan from the one imported.
+      if (Object.prototype.hasOwnProperty.call(fields, name)) {
+        fail(new ImportError('MALFORMED_FILE', `The upload repeats the "${safeFieldName(name)}" field.`));
+        return;
+      }
       fields[name] = value;
     });
 

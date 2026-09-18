@@ -72,6 +72,11 @@ download is still named from `config.entity`.
 *produced*; `written` says whether they were stored. Read them together — on `/validate`,
 `imported` is what would have been written.
 
+The counts reconcile: **`imported + skipped + failed === rowsRead`**. `failed` is rows, counted
+exactly; `errorCount` is *problems*, and `errors` is a sample of them capped at
+`maxReportedErrors`. Do not count the distinct rows in `errors` — that answers how many rows
+fitted inside the cap, which on a thousand-row file with two hundred failures is seven.
+
 ### The client half
 
 ```typescript
@@ -186,7 +191,7 @@ createImportRouter({ ...options, limits: { maxBytes: 50 * 1024 * 1024, batchSize
 | `maxUncompressedBytes` | 200 MB | What an `.xlsx` inflates to, checked *as it inflates* |
 | `maxCompressionRatio` / `maxZipEntries` | 200 / 512 | Zip bombs |
 | `batchSize` | 500 | Rows in memory at once |
-| `maxReportedErrors` | 200 | Error objects **retained** — the count is always exact |
+| `maxReportedErrors` | 200 | Error objects **retained**. `errorCount` and `failed` stay exact |
 | `maxFields` / `maxFieldBytes` / `maxFieldNameBytes` / `maxFiles` | 16 / 1 MB / 200 / 1 | Multipart abuse |
 | `idleTimeoutMs` / `totalTimeoutMs` | 30 s / 10 min | Stalled and never-ending uploads |
 

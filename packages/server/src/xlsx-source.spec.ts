@@ -177,6 +177,43 @@ describe('hostile workbooks', () => {
     expect(destroyed()).toBe(true);
   });
 
+  it('refuses a sparse sheet before generating its way to the row limit', async () => {
+    // Two cells and `r="500000"` in under two kilobytes. Synthesising the gap to keep row
+    // numbers aligned cost a quarter of a second of CPU per request before the row guard
+    // noticed — a hundred-fold amplification from a file that fits in a tweet. The row number
+    // says how big the sheet claims to be, so it says it first now.
+    const sparse =
+      `<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+      `<sheetData>` +
+      `<row r="1"><c r="A1" t="inlineStr"><is><t>First Name</t></is></c></row>` +
+      `<row r="500000"><c r="A500000" t="inlineStr"><is><t>Alice</t></is></c></row>` +
+      `</sheetData></worksheet>`;
+
+    const bytes = await workbookWithSheet(sparse);
+    expect(bytes.length).toBeLessThan(4096);
+
+    const started = Date.now();
+    const sheet = await readSheet({ stream: bytes });
+    await expect(drain(sheet.rows)).rejects.toMatchObject({ code: 'SHEET_TOO_LARGE' });
+    // Generating two hundred thousand blank rows took ~190ms; refusing outright is immediate.
+    expect(Date.now() - started).toBeLessThan(150);
+  });
+
+  it('still fills a gap a real sheet can legitimately have', async () => {
+    // The guard must not cost a sheet its row numbering. Blank rows inside the limit are rows.
+    const gapped =
+      `<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+      `<sheetData>` +
+      `<row r="1"><c r="A1" t="inlineStr"><is><t>First Name</t></is></c></row>` +
+      `<row r="5"><c r="A5" t="inlineStr"><is><t>Alice</t></is></c></row>` +
+      `</sheetData></worksheet>`;
+
+    const sheet = await readSheet({ stream: await workbookWithSheet(gapped) });
+    const rows = await drain(sheet.rows);
+    expect(rows).toHaveLength(4);
+    expect(rows[3]).toEqual(['Alice']);
+  });
+
   it('lets an ordinary workbook through the same guards untouched', async () => {
     // The guards have to be survivable by real files, which is the half of a limit that is
     // easy to forget to check.

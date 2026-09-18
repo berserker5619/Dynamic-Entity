@@ -442,12 +442,16 @@ export class EntityImportComponent {
   /**
    * How many distinct rows failed, not how many problems they had between them.
    *
-   * Counted from the errors actually in hand. A streaming transport caps what it retains, so
-   * this is a floor rather than a total when `truncated` is set — which is exactly what the
-   * line beside it says.
+   * `failed` when the transport reports it, and the distinct rows in `errors` only when it does
+   * not. Counting the errors alone was wrong the moment a transport started capping them: a run
+   * of a thousand rows where two hundred failed said **seven**, because seven was how many
+   * distinct rows fitted inside the first twenty retained problems. This is the number a user
+   * acts on — which rows do I go and fix — so a confident wrong answer is the worst of the
+   * available ones. The in-browser transport returns every error, so counting them there is
+   * exact and `failed` is absent.
    */
   protected failedRowCount(result: ImportResult): number {
-    return new Set(result.errors.map(error => error.row)).size;
+    return result.failed ?? new Set(result.errors.map(error => error.row)).size;
   }
 
   protected restart(): void {

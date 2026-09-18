@@ -62,6 +62,24 @@ export interface ImportCommitResponse {
   imported: number;
   /** Rows that held no values at all. A blank line is not an error and is not a record. */
   skipped: number;
+  /**
+   * Rows that produced at least one error, counted exactly — **not** derived from `errors`.
+   *
+   * `errors` is a capped sample, so counting the distinct rows in it answers a different and
+   * much smaller question. A run of a thousand rows where two hundred failed reported seven,
+   * because seven was how many distinct rows fitted in the first twenty retained problems. The
+   * number a user acts on is "which rows do I go and fix", so it is the one that has to be
+   * exact.
+   */
+  failed: number;
+  /**
+   * Data rows read from the sheet, blank ones included.
+   *
+   * Here so the counts reconcile: `imported + skipped + failed === rowsRead`. Without it a
+   * caller who expected four hundred records and got three hundred and ninety-seven has no way
+   * to find out where the other three went, which is the whole reason `skipped` exists.
+   */
+  rowsRead: number;
   /** A **sample** of the failures, capped by the server's `maxReportedErrors`. */
   errors: ImportRowError[];
   /** Every failure found, whether or not it was retained. */

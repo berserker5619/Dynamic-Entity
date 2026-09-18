@@ -288,6 +288,49 @@ describe('bounded error retention', () => {
     expect(result.truncated).toBe(false);
   });
 
+  it('counts failing rows exactly, however few of their reasons it kept', async () => {
+    // The defect this closes: the wizard reported the distinct rows in the *sample*, which is
+    // how a run of a thousand rows with two hundred failures told the user seven.
+    const rows = 1000;
+    let text = `${HEADERS.join(',')}\r\n`;
+    for (let i = 0; i < rows; i++) {
+      if (i % 10 === 9) text += '\r\n';
+      else if (i % 5 === 0) text += `,not-a-number,nonsense-date,true,Active\r\n`;
+      else text += `Name${i},34,2024-03-07,true,Active\r\n`;
+    }
+
+    const result = await runImport({
+      stream: chunked(text, 8192),
+      plan: PLAN,
+      config: CONFIG,
+      lookups: LOOKUPS,
+      limits: { maxReportedErrors: 20, batchSize: 100 },
+      onBatch: () => undefined,
+    });
+
+    expect(result.failed).toBe(200);
+    expect(result.truncated).toBe(true);
+    // What counting the sample would have answered instead.
+    expect(new Set(result.errors.map(error => error.row)).size).toBeLessThan(20);
+    // And the counts now reconcile, which is the point of reporting them at all.
+    expect(result.imported + result.skipped + result.failed).toBe(result.rowsRead);
+  });
+
+  it('counts a row that fails twice over as one row to go and fix', async () => {
+    const text =
+      `${HEADERS.join(',')}\r\n` +
+      `,not-a-number,nonsense-date,true,Active\r\n`;
+    const result = await runImport({
+      stream: chunked(text),
+      plan: PLAN,
+      config: CONFIG,
+      lookups: LOOKUPS,
+    });
+
+    expect(result.errorCount).toBeGreaterThan(1);
+    expect(result.failed).toBe(1);
+  });
+
   it('keeps the first errors, which are the ones a user can act on', async () => {
     const result = await runImport({
       stream: allBad(10),
@@ -446,28 +489,54 @@ describe('validating without writing', () => {
 });
 
 describe('sampleText', () => {
-  const DATE_FIELD: NestedFieldConfig = { id: 'd', type: 'date', label: { en: 'D' } };
-  const NUMBER_FIELD: NestedFieldConfig = { id: 'n', type: 'number', label: { en: 'N' } };
-  const BOOL_FIELD: NestedFieldConfig = { id: 'b', type: 'checkbox', label: { en: 'B' } };
+  const field = (type: string): NestedFieldConfig =>
+    ({ id: 'f', type, label: { en: 'F' } }) as NestedFieldConfig;
 
   /**
    * The parity the preview rests on: what the sample shows is what the import will store.
    *
    * A preview sample crosses the wire as text and the browser coerces that text. If the two
-   * disagreed, the preview would be wrong about the one thing it exists to show — and for a
-   * date it would be wrong by a day, silently, only for users at a negative UTC offset.
+   * disagreed, the preview would be wrong about the one thing it exists to show.
+   *
+   * **Table-driven over every type `coerceTypedCell` special-cases, on purpose.** The first
+   * version of this test hand-picked four of them, and the one it skipped — `time` — was the
+   * one that diverged: the review screen showed `1899-12-30T09:05:00.000Z` and "is not a time",
+   * for a cell the import stored as `09:05`. A parity claim checked against a selection is a
+   * claim about the selection.
    */
-  const agrees = (field: NestedFieldConfig, raw: unknown): void => {
-    expect(coerceCell(field, sampleText(raw))).toEqual(coerceCell(field, raw));
-  };
+  const CASES: { type: string; raw: unknown; expected: unknown }[] = [
+    { type: 'date', raw: new Date('2024-03-07T00:00:00.000Z'), expected: '2024-03-07' },
+    { type: 'date', raw: new Date('2024-01-01T00:00:00.000Z'), expected: '2024-01-01' },
+    { type: 'datetime', raw: new Date('2024-03-07T09:30:00.000Z'), expected: '2024-03-07T09:30:00.000Z' },
+    { type: 'monthYear', raw: new Date('2024-03-01T00:00:00.000Z'), expected: '2024-03' },
+    // What a spreadsheet hands back for a time-only cell: a clock reading on an epoch date.
+    { type: 'time', raw: new Date('1899-12-30T09:05:00.000Z'), expected: '09:05' },
+    { type: 'time', raw: new Date('1899-12-30T23:59:00.000Z'), expected: '23:59' },
+    { type: 'number', raw: 42, expected: 42 },
+    { type: 'number', raw: -1.5, expected: -1.5 },
+    { type: 'currency', raw: 1234.56, expected: 1234.56 },
+    { type: 'checkbox', raw: true, expected: true },
+    { type: 'checkbox', raw: false, expected: false },
+    { type: 'boolean', raw: true, expected: true },
+    { type: 'text', raw: new Date('2024-03-07T00:00:00.000Z'), expected: '2024-03-07' },
+    { type: 'text', raw: 'plain', expected: 'plain' },
+  ];
 
-  it('renders a typed cell so the browser coerces it to the same value', () => {
-    agrees(DATE_FIELD, new Date('2024-03-07T00:00:00.000Z'));
-    agrees(DATE_FIELD, new Date('2024-01-01T00:00:00.000Z'));
-    agrees(NUMBER_FIELD, 42);
-    agrees(NUMBER_FIELD, -1.5);
-    agrees(BOOL_FIELD, true);
-    agrees(BOOL_FIELD, false);
+  it.each(CASES)('agrees typed and as text for a $type cell', ({ type, raw, expected }) => {
+    const typed = coerceCell(field(type), raw);
+    const asText = coerceCell(field(type), sampleText(raw));
+
+    expect(typed).toEqual({ value: expected });
+    expect(asText).toEqual(typed);
+  });
+
+  it('covers every type the typed-cell path special-cases', () => {
+    // The guard on the guard. A type added to `coerceTypedCell` without a row above would
+    // otherwise be exactly as unchecked as `time` was.
+    const covered = new Set(CASES.map(entry => entry.type));
+    for (const type of ['date', 'datetime', 'monthYear', 'time', 'number', 'currency', 'boolean', 'checkbox']) {
+      expect({ type, covered: covered.has(type) }).toEqual({ type, covered: true });
+    }
   });
 
   it('shows a date cell as the calendar date it is', () => {

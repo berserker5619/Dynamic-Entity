@@ -207,6 +207,20 @@ const pad2 = (n: number): string => String(n).padStart(2, '0');
 /** A bare calendar date: no time, no zone, so no instant is involved. */
 const BARE_DATE = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
 
+/**
+ * A full ISO instant in UTC, which is how a spreadsheet's time-only cell renders as text.
+ *
+ * A time cell in a workbook is a fraction of a day against an epoch date, so a reader hands
+ * back `1899-12-30T09:05:00.000Z` and anything that stringifies it produces exactly this. The
+ * clock reading is in the UTC components — the same components `coerceTypedCell` reads from
+ * the `Date` itself — so accepting this shape is what makes a preview's text and an import's
+ * typed cell agree instead of one erroring while the other succeeds.
+ *
+ * Deliberately `Z` only. `09:30+05:00` in a field that stores no zone is ambiguous between the
+ * clock the author read and the clock UTC would show, and guessing is how a time moves.
+ */
+const UTC_INSTANT = /^\d{4}-\d{2}-\d{2}T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?Z$/;
+
 /** A number as a spreadsheet writes one, including 3-digit grouping and exponents. */
 const NUMERIC = /^[+-]?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
 
@@ -387,7 +401,7 @@ export function coerceCell(
 
     case 'time': {
       // Stored as `HH:mm` with no date and no zone, which is how the renderer stores it.
-      const match = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(text);
+      const match = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(text) ?? UTC_INSTANT.exec(text);
       if (!match) return { error: `"${text}" is not a time (HH:mm)` };
       const hours = Number(match[1]);
       const minutes = Number(match[2]);

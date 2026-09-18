@@ -237,6 +237,47 @@ describe('EntityImportComponent', () => {
     );
   });
 
+  it('trusts a transport that reports the count rather than counting a capped sample', async () => {
+    // A streaming transport retains a sample of the problems, so counting the distinct rows in
+    // it answers how many fitted in the cap. Measured on a real run: a thousand rows with two
+    // hundred failures reported seven. This is the number a user acts on.
+    const capped: ImportTransport = {
+      preview: async () => ({
+        headers: ['First Name', 'Status'],
+        sample: [['Alice', 'Active']],
+        suggestion: { entity: 'person', entries: [] },
+        rowCount: 1000,
+      }),
+      commit: async () => ({
+        records: [],
+        imported: 700,
+        skipped: 100,
+        failed: 200,
+        errors: [{ row: 5, ref: 'personal.firstName', message: 'required' }],
+        errorCount: 600,
+        truncated: true,
+        planProblems: [],
+      }),
+      template: async () => new Blob(['']),
+    };
+
+    await mount([{ provide: IMPORT_TRANSPORT, useValue: capped }]);
+    await chooseFile(csvFile('p.csv', 'First Name,Status\\nAlice,Active'));
+    fixture.nativeElement.querySelector('[data-testid="import-to-review"]').click();
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="import-commit"]').click();
+    await fixture.whenStable();
+    await settle();
+    fixture.detectChanges();
+
+    const failed = fixture.nativeElement.querySelector('[data-testid="import-failed"]').textContent;
+    expect(failed).toContain('200');
+    // And the record count comes from `imported`, because the records are not returned.
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="import-succeeded"]').textContent,
+    ).toContain('700');
+  });
+
   it('drives a registered transport instead of the local one', async () => {
     const calls: string[] = [];
     const fake: ImportTransport = {

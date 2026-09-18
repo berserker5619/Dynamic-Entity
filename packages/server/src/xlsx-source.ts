@@ -109,6 +109,16 @@ export async function* xlsxRows(
     for await (const worksheet of reader) {
       for await (const row of worksheet) {
         const number = typeof row.number === 'number' ? row.number : expected;
+
+        // **Refused before the gap is generated, not after it is counted.** A sheet holding two
+        // cells and `r="500000"` is under two kilobytes, and synthesising its way to the row
+        // limit cost a quarter of a second of CPU per request before the row guard noticed —
+        // the same "enforce the limit after doing the work" shape this package keeps finding in
+        // itself. The row number says how big the sheet claims to be, so it can say it first.
+        if (number - 1 > limits.maxRows) {
+          throw new ImportError('SHEET_TOO_LARGE', `The sheet has more than ${limits.maxRows} rows.`);
+        }
+
         // A blank row is a row. `applyMapping` counts it as skipped, and every row after it
         // keeps the number the user sees.
         while (expected < number) {

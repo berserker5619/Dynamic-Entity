@@ -82,8 +82,12 @@ const PREVIEW_BODY = {
 };
 
 const COMMIT_BODY = {
+  written: true,
   imported: 400,
   skipped: 3,
+  // 47 rows failed; one of their problems is retained. Counting the sample would say one.
+  failed: 47,
+  rowsRead: 450,
   errors: [{ row: 5, ref: 'personal.firstName', message: 'required' }],
   errorCount: 90,
   truncated: true,
@@ -268,6 +272,20 @@ describe('HttpImportTransport.commit', () => {
     expect(result.errorCount).toBe(90);
     expect(result.truncated).toBe(true);
     expect(result.errors).toHaveLength(1);
+  });
+
+  it('carries the true failed-row count, which the retained sample cannot give', async () => {
+    // Counting distinct rows in a capped `errors` answers how many fitted in the cap. Here
+    // that would be one, against forty-seven rows that actually failed.
+    const { fetch } = stubFetch(() => reply(COMMIT_BODY));
+    const result = await new HttpImportTransport({ baseUrl: '/api/import', fetch }).commit(
+      file(),
+      PLAN,
+      CONTEXT,
+    );
+
+    expect(result.failed).toBe(47);
+    expect(new Set(result.errors.map(error => error.row)).size).toBe(1);
   });
 
   it('carries plan problems through, so the wizard can send the user back to the mapping', async () => {
@@ -525,6 +543,7 @@ describe('HttpImportTransport — the defaults', () => {
       records: [],
       imported: 0,
       skipped: 0,
+      failed: 0,
       errors: [],
       errorCount: 0,
       truncated: false,

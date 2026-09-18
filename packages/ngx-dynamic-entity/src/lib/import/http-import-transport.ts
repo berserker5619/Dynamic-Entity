@@ -206,6 +206,7 @@ class HttpImportTransport implements ImportTransport {
       records: [],
       imported: result.imported ?? 0,
       skipped: result.skipped ?? 0,
+      failed: result.failed ?? 0,
       errors: result.errors ?? [],
       errorCount: result.errorCount ?? result.errors?.length ?? 0,
       truncated: result.truncated ?? false,

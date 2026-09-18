@@ -222,7 +222,12 @@ describe('POST /:entity/import', () => {
     expect(response.status).toBe(200);
     expect(response.body.imported).toBe(3);
     expect(response.body.skipped).toBe(1);
+    expect(response.body.failed).toBe(0);
     expect(response.body.errors).toEqual([]);
+    // The counts reconcile against what was read, which is the point of reporting them.
+    expect(response.body.imported + response.body.skipped + response.body.failed).toBe(
+      response.body.rowsRead,
+    );
     expect(written).toHaveLength(3);
     expect(written[0]).toMatchObject({ personal: { firstName: 'Alice' } });
   });
@@ -669,6 +674,21 @@ describe('multipart abuse', () => {
 
     expect(response.status).toBe(413);
     expect(response.body.error.code).toBe('TOO_LARGE');
+  });
+
+  it('refuses a repeated part rather than quietly taking the last one', async () => {
+    // Last-one-wins is a rule this code would be choosing on a client's behalf, and anything
+    // upstream that read the *first* plan would be acting on a different plan from the one
+    // imported.
+    const response = await request(app())
+      .post('/import/employee/import')
+      .field('plan', JSON.stringify(PLAN))
+      .field('plan', JSON.stringify(BROKEN_PLAN))
+      .attach('file', Buffer.from(CSV_TEXT), 'people.csv');
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('MALFORMED_FILE');
+    expect(response.body.error.message).toContain('plan');
   });
 
   it('sanitises the field name it puts in the refusal, because a message is a log line', () => {

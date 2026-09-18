@@ -63,6 +63,9 @@ export interface ImportLimits {
    * A file where every row fails accumulates one error object per failing row, and fifty
    * thousand of those is the same unbounded growth as holding the file — the failure this
    * package exists to avoid, arrived at from the other direction.
+   *
+   * Lowering it costs a user *reasons*, never *counts*: `errorCount` and `failed` are tallied
+   * as rows go past and do not depend on what was kept.
    */
   maxReportedErrors: number;
   /** Rows a preview returns as a sample. */

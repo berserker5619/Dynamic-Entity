@@ -252,6 +252,8 @@ export function createImportRouter(options: ImportRouterOptions): Router {
     written,
     imported: result.imported,
     skipped: result.skipped,
+    failed: result.failed,
+    rowsRead: result.rowsRead,
     errors: result.errors,
     errorCount: result.errorCount,
     truncated: result.truncated,

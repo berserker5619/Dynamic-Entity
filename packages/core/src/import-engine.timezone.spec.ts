@@ -144,6 +144,26 @@ describe(`a typed date cell carries no timezone either (TZ=${ZONE}, offset ${OFF
     expect(coerceCell(at, new Date('1899-12-30T09:05:00.000Z'))).toEqual({ value: '09:05' });
   });
 
+  it('reads a time-only cell the same whether it arrives typed or as text', () => {
+    // A spreadsheet's time cell renders to text as a full ISO instant, and a preview sends it
+    // that way. The two paths agreeing is what stops a review screen reporting an error for a
+    // row the import stores fine — and both read the UTC clock, so neither moves with the zone.
+    const at: NestedFieldConfig = { id: 'at', type: 'time', label: { en: 'At' } };
+    const cell = new Date('1899-12-30T09:05:00.000Z');
+
+    expect(coerceCell(at, cell)).toEqual({ value: '09:05' });
+    expect(coerceCell(at, cell.toISOString())).toEqual(coerceCell(at, cell));
+  });
+
+  it('refuses a time carrying an offset rather than guessing which clock was meant', () => {
+    // `09:30+05:00` in a field that stores no zone is ambiguous between the clock the author
+    // read and the clock UTC would show. Guessing is how a time moves.
+    const at: NestedFieldConfig = { id: 'at', type: 'time', label: { en: 'At' } };
+    expect(coerceCell(at, '2024-03-07T09:30:00+05:00')).toEqual({
+      error: '"2024-03-07T09:30:00+05:00" is not a time (HH:mm)',
+    });
+  });
+
   it('gives a non-temporal field the calendar date rather than a local rendering', () => {
     const note: NestedFieldConfig = { id: 'note', type: 'text', label: { en: 'Note' } };
     expect(coerceCell(note, cell('2024-03-07T00:00:00.000Z'))).toEqual({ value: '2024-03-07' });
