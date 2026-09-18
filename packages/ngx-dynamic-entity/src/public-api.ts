@@ -30,6 +30,7 @@ export * from './lib/form/dynamic-field/dynamic-field.component';
 export * from './lib/import/import-contracts';
 export * from './lib/import/sheet-parser';
 export * from './lib/import/local-import-transport';
+export * from './lib/import/http-import-transport';
 export * from './lib/import/entity-import.component';
 export * from './lib/import/import-mapper.component';
 export * from './lib/import/import-preview.component';

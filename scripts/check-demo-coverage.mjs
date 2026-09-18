@@ -62,9 +62,11 @@ const DELIBERATELY_UNDEMONSTRATED = {
   IMPORT_TRANSPORT:
     'The seam for running an import on a server instead of in the browser. The demo drives ' +
     'the *default* transport, which is the in-browser one — that is the path a consumer gets ' +
-    'with nothing registered, and the one worth proving end to end. Registering an ' +
-    'alternative only says something once there is a server to point it at, so this is wired ' +
-    'when @dynamic-entity/server lands and demonstrated against it.',
+    'with nothing registered, and the one worth proving end to end. @dynamic-entity/server ' +
+    'now exists and ships provideHttpImportTransport, which is unit-tested against a stubbed ' +
+    'fetch; what is still missing is a demo that runs a real listener alongside the Angular ' +
+    'app, which is a second server in the E2E harness rather than another provider call. That ' +
+    'is the next step, and this entry says so rather than letting the gap look accidental.',
   importTransport: 'See IMPORT_TRANSPORT — the same decision, seen from the option side.',
   setValueByPath:
     'A path utility, not an extension point. It is caught by the `set*` naming rule below ' +

@@ -124,6 +124,10 @@ export const DEFAULT_UI_TEXT = {
   importSucceeded: 'Imported {count} record(s).',
   importSkippedRows: '{count} blank row(s) skipped.',
   importFailedRows: '{count} row(s) could not be imported.',
+  // A streaming transport caps what it retains — fifty thousand error objects is the same
+  // unbounded growth as holding the file — so the count and the sample are different numbers
+  // and the user is told which they are looking at.
+  importErrorsTruncated: 'Showing the first {shown} of {count} problem(s).',
   importStartOver: 'Import another file',
 
   // Import wizard — what went wrong

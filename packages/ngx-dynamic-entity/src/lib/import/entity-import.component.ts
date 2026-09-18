@@ -137,7 +137,7 @@ type Step = 'upload' | 'map' | 'review' | 'done';
         @case ('done') {
           @if (result(); as done) {
             <p data-testid="import-succeeded">
-              {{ ui.text('importSucceeded', language, { count: done.records.length }) }}
+              {{ ui.text('importSucceeded', language, { count: importedCount(done) }) }}
             </p>
             @if (done.skipped) {
               <p data-testid="import-skipped">
@@ -147,6 +147,16 @@ type Step = 'upload' | 'map' | 'review' | 'done';
             @if (failedRowCount(done)) {
               <p data-testid="import-failed">
                 {{ ui.text('importFailedRows', language, { count: failedRowCount(done) }) }}
+              </p>
+            }
+            @if (done.truncated) {
+              <p data-testid="import-errors-truncated">
+                {{
+                  ui.text('importErrorsTruncated', language, {
+                    shown: done.errors.length,
+                    count: done.errorCount ?? done.errors.length,
+                  })
+                }}
               </p>
             }
             <ngx-import-errors [errors]="done.errors" [language]="language" />
@@ -417,7 +427,25 @@ export class EntityImportComponent {
     }
   }
 
-  /** How many distinct rows failed, not how many problems they had between them. */
+  /**
+   * How many records were written.
+   *
+   * `records.length` for the in-browser transport, which returns every record it built, and
+   * `imported` for a server one, which streamed the file precisely so that fifty thousand
+   * records never had to exist at once and therefore has a number rather than a list. Reading
+   * `records.length` alone would report a successful import of nothing.
+   */
+  protected importedCount(result: ImportResult): number {
+    return result.imported ?? result.records.length;
+  }
+
+  /**
+   * How many distinct rows failed, not how many problems they had between them.
+   *
+   * Counted from the errors actually in hand. A streaming transport caps what it retains, so
+   * this is a floor rather than a total when `truncated` is set — which is exactly what the
+   * line beside it says.
+   */
   protected failedRowCount(result: ImportResult): number {
     return new Set(result.errors.map(error => error.row)).size;
   }
