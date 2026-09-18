@@ -379,6 +379,42 @@ describe('HttpImportTransport.template', () => {
     expect(calls[0].url).toBe('/api/import/wide/template?format=csv');
   });
 
+  it('sends the selection the caller gave, rather than recovering it from the expansion', async () => {
+    // The wizard knows what the user ticked. Reconstructing it from the expanded spec worked
+    // only because `stripIndices` happens to invert the expansion exactly, which is a property
+    // to rely on when there is no choice and not when the caller can simply say.
+    const { fetch, calls } = stubFetch(() => reply(''));
+    await new HttpImportTransport({ baseUrl: '/api/import', fetch }).template(
+      SPEC,
+      'csv',
+      CONTEXT,
+      ['personal.firstName'],
+    );
+    const fields = new URL(calls[0].url, 'http://x').searchParams.get('fields');
+    // The only column there is, so "everything" — sent as nothing, which is what it means.
+    expect(fields).toBeNull();
+  });
+
+  it('honours a caller selection that is narrower than the config', async () => {
+    const two: EntityFormConfig = {
+      ...CONFIG,
+      tabs: [
+        {
+          ...CONFIG.tabs![0],
+          fields: [...CONFIG.tabs![0].fields!, { id: 'age', type: 'number', label: { en: 'Age' } }],
+        },
+      ],
+    };
+    const { fetch, calls } = stubFetch(() => reply(''));
+    await new HttpImportTransport({ baseUrl: '/api/import', fetch }).template(
+      SPEC,
+      'csv',
+      { config: two },
+      ['personal.firstName'],
+    );
+    expect(calls[0].url).toContain('fields=personal.firstName');
+  });
+
   it('collapses a repeating field back to the one choice the picker offered', async () => {
     // `contacts.0.email, contacts.1.email, contacts.2.email` is the expansion of a single tick.
     // Sending the expansion back is both longer and a different sentence from the one the user

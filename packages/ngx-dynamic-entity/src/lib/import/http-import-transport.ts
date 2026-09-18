@@ -100,8 +100,14 @@ async function failureOf(response: Response): Promise<Error> {
  * nginx and Node default to — and the request most likely to hit it is "give me a template with
  * everything", which is the one this now sends as a bare `?format=`.
  */
-function selectionOf(spec: TemplateSpec, context: ImportContext): string {
-  const chosen = new Set(spec.columns.map(column => stripIndices(column.ref)));
+function selectionOf(
+  spec: TemplateSpec,
+  context: ImportContext,
+  fields?: readonly string[],
+): string {
+  // The caller's own selection when it gave one — the wizard does — and the expanded spec
+  // reduced back to it otherwise, for a host calling `template` directly.
+  const chosen = new Set(fields ?? spec.columns.map(column => stripIndices(column.ref)));
   const all = new Set(
     deriveImportColumns(context?.config, { lang: context?.lang }).columns.map(column =>
       stripIndices(column.ref),
@@ -214,13 +220,18 @@ class HttpImportTransport implements ImportTransport {
     };
   }
 
-  async template(spec: TemplateSpec, format: TemplateFormat, context: ImportContext): Promise<Blob> {
+  async template(
+    spec: TemplateSpec,
+    format: TemplateFormat,
+    context: ImportContext,
+    fields?: readonly string[],
+  ): Promise<Blob> {
     // The server rebuilds the spec from its own config; only the selection crosses the wire.
     // Posting a whole spec would let a client choose the headers of a file the server signs
     // its name to, and the server has the config anyway.
     const query = new URLSearchParams({ format });
-    const fields = selectionOf(spec, context);
-    if (fields) query.set('fields', fields);
+    const selection = selectionOf(spec, context, fields);
+    if (selection) query.set('fields', selection);
 
     const response = await this.send(
       `${this.base}/${this.entityOf(context)}/template?${query.toString()}`,

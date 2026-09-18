@@ -175,11 +175,21 @@ function applyTimeouts(request: Request, response: Response, limits: ImportLimit
     request.destroy(new ImportError('TIMEOUT', message));
   };
 
+  // `setTimeout` on a request sets it on the *socket*, which a keep-alive connection reuses
+  // for whatever request comes next — so an import's thirty seconds would quietly become the
+  // idle bound for every later request on that connection, including ones outside this router.
+  // The previous value goes back when the response closes.
+  const socket = request.socket;
+  const previous = socket?.timeout;
   request.setTimeout(limits.idleTimeoutMs, abandon('The upload stalled.'));
+
   const total = setTimeout(abandon('The upload took too long.'), limits.totalTimeoutMs);
   // `unref` so a pending timer never holds a process open past its work.
   total.unref?.();
-  response.on('close', () => clearTimeout(total));
+  response.on('close', () => {
+    clearTimeout(total);
+    if (socket && !socket.destroyed) socket.setTimeout(previous ?? 0);
+  });
 }
 
 /**

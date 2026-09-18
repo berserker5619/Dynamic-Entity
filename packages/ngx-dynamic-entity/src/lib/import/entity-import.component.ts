@@ -419,7 +419,10 @@ export class EntityImportComponent {
     this.problem.set(null);
     try {
       const spec = buildTemplateSpec(this.config, { lang: this.language, fields });
-      const blob = await this.transport.template(spec, this.templateFormat, this.context());
+      // The selection as well as the spec. A server transport needs the choice, not the
+      // expansion of it — and recovering one from the other is a round trip that only works
+      // while the expansion stays exactly invertible.
+      const blob = await this.transport.template(spec, this.templateFormat, this.context(), fields);
       this.templateReady.emit(blob);
       saveBlob(blob, `${this.config?.entity || 'import'}-template.${this.templateFormat}`);
     } catch (error) {

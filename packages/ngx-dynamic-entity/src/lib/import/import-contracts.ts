@@ -94,6 +94,21 @@ export interface ImportTransport {
   preview(file: File, context: ImportContext): Promise<ImportPreview>;
   /** Apply a plan to the whole file. */
   commit(file: File, plan: MappingPlan, context: ImportContext): Promise<ImportResult>;
-  /** Render a template for download. */
-  template(spec: TemplateSpec, format: TemplateFormat, context: ImportContext): Promise<Blob>;
+  /**
+   * Render a template for download.
+   *
+   * `fields` is the selection the user actually made — refs with row numbers stripped, one per
+   * choice — and `spec` is that selection already expanded against the config. A transport that
+   * renders locally wants the spec; one that asks a server wants the selection, because the
+   * server has the config and only the choice needs to cross the wire. Passing both means
+   * neither has to reconstruct the other: the HTTP transport used to recover the selection from
+   * the expanded spec, which worked only because `stripIndices` happens to be exactly the
+   * inverse of the expansion. Optional, so an existing implementation keeps compiling.
+   */
+  template(
+    spec: TemplateSpec,
+    format: TemplateFormat,
+    context: ImportContext,
+    fields?: readonly string[],
+  ): Promise<Blob>;
 }

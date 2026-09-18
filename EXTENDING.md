@@ -637,6 +637,178 @@ in dev mode naming the keys it could not place.
 
 ---
 
+## Spreadsheet import
+
+`<ngx-entity-import>` turns a CSV or spreadsheet into records. **It works with no backend and
+nothing registered** — the file is read in the tab by a dependency-free parser and mapped by
+`@dynamic-entity/core`. Two seams exist for the cases where that has to change, and they answer
+different questions: `sheetParser` reads the file, `importTransport` decides *where the work
+happens*. Collapsing them into one option would make each answer imply the other.
+
+```typescript
+import { provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+import type { SheetData } from '@dynamic-entity/core';
+
+declare const XLSX: {
+  read(data: ArrayBuffer): { SheetNames: string[]; Sheets: Record<string, unknown> };
+  utils: { sheet_to_json(sheet: unknown, options: unknown): unknown[][] };
+};
+
+export const importProviders = [
+  provideNgxDynamicEntity({
+    // Only needed for formats beyond CSV. Rows are positional, never keyed by header: a real
+    // sheet has two columns both called "Notes", and a header-keyed row loses one of them.
+    sheetParser: async (file: File): Promise<SheetData> => {
+      const workbook = XLSX.read(await file.arrayBuffer());
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {
+        header: 1,
+        raw: true,
+        defval: '',
+      });
+      return { headers: (rows[0] ?? []) as string[], rows: rows.slice(1) as string[][] };
+    },
+  }),
+];
+```
+
+`raw: true` rather than `raw: false`, deliberately. A date cell should arrive as a `Date`, and
+`coerceCell` reads a typed cell by its **UTC** components — a spreadsheet date is a calendar
+date with no zone, which is exactly why it is stored at UTC midnight. Stringify it first and
+you get *local* time, which moves every date back a day for anyone west of Greenwich.
+
+### The column contract
+
+What a sheet may carry is **derived from the config, never authored**. `deriveImportColumns`
+walks it and produces one `ImportColumn` per field a cell can hold; anything it cannot hold
+comes back in `unsupported`, with a reason, rather than being silently dropped.
+
+A column's `ref` is the field's address in the record — the same dotted string `refOf` produces
+and the same one a rule names. There is one address language in this library, not two.
+
+```typescript
+import { deriveImportColumns } from '@dynamic-entity/core';
+import type { EntityFormConfig } from '@dynamic-entity/core';
+
+declare const config: EntityFormConfig;
+
+const { columns, unsupported } = deriveImportColumns(config, { lang: 'en' });
+// columns[0].ref  — 'work.address', or 'contacts.0.email' for a repeating field
+// unsupported[0]  — { ref, field, reason: 'An image is a file reference, …' }
+```
+
+`image` and `file` fields are always unsupported: a cell cannot carry a file reference. Fields
+marked `readonly` or `systemDefault` are left out of a *suggestion* — nobody maps a column onto
+a field the form fills in — but included when a plan is applied, so a stored plan may target
+one deliberately.
+
+### Repeating fields, and `maxArrayRows`
+
+A flat sheet cannot express an unbounded repeating list, so an `array` field is unrolled into
+numbered columns: `contacts.0.email`, `contacts.1.email`, `contacts.2.email`. **`maxArrayRows`
+is where that stops, and it defaults to 3.** Raising it multiplies the column count by the
+array's child count, which is why the default is small.
+
+A field inside an array *inside another array* gets no columns at all — the count would be the
+product of both limits, and a template nobody can read is not a template. It is reported as
+`unsupported`, so the gap is visible rather than mysterious.
+
+**Never pass `maxArrayRows` when applying a plan.** `applyMapping` reads the bound out of the
+plan's own refs. That parameter used to be the caller's to supply and was a source of silent
+data loss: a plan authored for five rows, applied with the default three, had two of its
+columns quietly discarded and reported a clean import. The information was in the plan all
+along, and asking for it again is what created the chance to disagree.
+
+The template picker offers a repeating field **once**, as `contacts.email`, and
+`buildTemplateSpec` matches a column by its ref *or* by its ref with row numbers stripped.
+Selecting one selects every row.
+
+### What an import checks, and what it cannot
+
+`validateImportedRecord` runs the **rules engine as well as the field validators**, because
+that is the renderer's actual contract: a `validation` rule attaches an error, and a
+`visibility` rule hides a field, which must relax its `required`. Checking only the validators
+would both accept records the form rejects and reject records the form accepts — a required
+field hidden by a rule being the case that bites first.
+
+So pass the rules. A wizard given none checks field validators only:
+
+```html
+<ngx-entity-import [config]="config" [rules]="rules" (importComplete)="save($event)" />
+```
+
+**The parity gap, stated rather than left to be discovered:** `validators.custom` and
+`validators.customAsync` name functions in the renderer's Angular registries, which a
+framework-agnostic engine has no way to call. Parity here means "everything the schema and the
+rules express", not "everything the form enforces". If a custom validator is load-bearing for
+correctness rather than convenience, register an equivalent on whichever side runs the import —
+or re-check on save, which you should be doing regardless.
+
+### Duplicates are yours
+
+**Nothing here deduplicates.** An `EntityFormConfig` has no natural-key concept, so the library
+has nothing to deduplicate *on*: it cannot know whether two rows with the same email are the
+same person. Importing the same file twice produces two sets of records.
+
+`importComplete` is where you decide, and where an upsert belongs — it is the only place that
+knows what your keys are.
+
+### Running the import on a server
+
+The default transport reads the file into memory whole, which is right for a sheet somebody
+assembled by hand and wrong for a fifty-thousand-row export. `@dynamic-entity/server` streams
+instead, and the wizard components do not change at all — they already talk to a transport:
+
+```typescript
+import { provideNgxDynamicEntity, provideHttpImportTransport } from 'ngx-dynamic-entity';
+
+export const serverImportProviders = [
+  provideNgxDynamicEntity({}),
+  provideHttpImportTransport({ baseUrl: '/api/import' }),
+];
+```
+
+The engine underneath is the same pure code either way, which is what keeps a client-side
+import and a server-side one from disagreeing about what they produced. Three things do change,
+and each is a consequence of crossing a network rather than a defect:
+
+- **`result.records` is empty and `result.imported` is the count.** The server streamed the file
+  precisely so that fifty thousand records never existed at once; sending them back would undo
+  that. Read `imported ?? records.length`, and `failed` for the rows that did not make it —
+  never the distinct rows in `errors`, which is a capped sample and will under-report.
+- **An import is not transactional.** A failure part-way leaves the rows before it written, and
+  over HTTP a retry is likely rather than possible, so your writer must be idempotent.
+  `POST /:entity/validate` runs the identical pipeline and writes nothing, which is how a user
+  sees every problem before anything is stored.
+- **The two engines are separately deployed.** `MappingPlan.configVersion` catches config drift
+  and says nothing about engine drift, so the transport compares `CORE_VERSION` and warns when
+  the halves are a minor version apart.
+
+### A transport of your own
+
+`ImportTransport` is three methods, and a backend that is not Express implements them against
+the framework-neutral half of `@dynamic-entity/server` — `previewSheet`, `runImport` and
+`writeTemplate`, none of which import an HTTP type.
+
+```typescript
+import { IMPORT_TRANSPORT } from 'ngx-dynamic-entity';
+import type { ImportTransport } from 'ngx-dynamic-entity';
+
+declare const mine: ImportTransport;
+
+export const customTransport = [{ provide: IMPORT_TRANSPORT, useValue: mine }];
+```
+
+- `preview(file, context)` → headers, a sample as text, a suggested `MappingPlan`, a row count.
+- `commit(file, plan, context)` → an `ImportResult`.
+- `template(spec, format, context, fields?)` → a `Blob`. `spec` is the selection already
+  expanded against the config; `fields` is the selection itself, which is what a server wants —
+  it has the config, so only the choice needs to cross the wire.
+
+The wire shapes — `ImportPreviewResponse`, `ImportCommitResponse`, `ImportErrorResponse` — live
+in `@dynamic-entity/core` as plain interfaces with no HTTP in them, because both sides need them
+and core is the only thing both already depend on. On a response the counts reconcile:
+`imported + skipped + failed === rowsRead`.
+
 ## Schema migration
 
 See the [Schema versioning](README.md#-schema-versioning) section of the README.

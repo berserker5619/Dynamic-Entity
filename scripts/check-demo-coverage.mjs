@@ -62,11 +62,14 @@ const DELIBERATELY_UNDEMONSTRATED = {
   IMPORT_TRANSPORT:
     'The seam for running an import on a server instead of in the browser. The demo drives ' +
     'the *default* transport, which is the in-browser one — that is the path a consumer gets ' +
-    'with nothing registered, and the one worth proving end to end. @dynamic-entity/server ' +
-    'now exists and ships provideHttpImportTransport, which is unit-tested against a stubbed ' +
-    'fetch; what is still missing is a demo that runs a real listener alongside the Angular ' +
-    'app, which is a second server in the E2E harness rather than another provider call. That ' +
-    'is the next step, and this entry says so rather than letting the gap look accidental.',
+    'with nothing registered, and e2e/import-wizard.spec.ts drives it in a browser. ' +
+    '@dynamic-entity/server ships provideHttpImportTransport, which is unit-tested against a ' +
+    'stubbed fetch and proven against a real listener by scripts/verify-server-consumer.mjs. ' +
+    'What is deliberately not here is a *second* demo wired to that listener: this entry is ' +
+    'about which transport the demo registers, and registering two would prove neither is the ' +
+    'default. Note that "the demo wires it" is all this gate can check — it reads source. The ' +
+    'Playwright suite is what turns wiring into evidence, and saying otherwise here once ' +
+    'described a spec that did not exist.',
   importTransport: 'See IMPORT_TRANSPORT — the same decision, seen from the option side.',
   setValueByPath:
     'A path utility, not an extension point. It is caught by the `set*` naming rule below ' +
