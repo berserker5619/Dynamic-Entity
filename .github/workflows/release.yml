@@ -125,6 +125,54 @@ jobs:
           [ "$FAILED" = "0" ] || exit 1
           echo "All four packages and CORE_VERSION are at $TAG"
 
+      # A package that has never been published cannot be published by this workflow, and the
+      # reason is worth stating because it is not a bug to be fixed here.
+      #
+      # Trusted publishing is configured in a package's settings on npmjs.com, which requires
+      # the package to exist. npm has no "pending" publisher for a name that is not on the
+      # registry yet — PyPI does, npm does not — so a new package has a bootstrap problem: it
+      # cannot be configured before it exists, and it cannot be published by OIDC before it is
+      # configured. The way out is one manual publish by a maintainer, documented in
+      # CONTRIBUTING under "Adding a fourth (or fifth) published package".
+      #
+      # This runs *before* any publish step so a release is all-or-nothing. Discovering it at
+      # the fourth package would leave three published at a version the fourth never reached,
+      # which is the one outcome worse than not releasing.
+      - name: Every package already exists on the registry
+        if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
+        run: |
+          MISSING=""
+          for PKG in @dynamic-entity/core ngx-dynamic-entity ngx-dynamic-entity-builder @dynamic-entity/server; do
+            if OUT=$(npm view "$PKG" version 2>&1); then
+              echo "$PKG is on the registry at $OUT"
+              continue
+            fi
+            # A 404 is a first publish. Anything else is the registry being unreachable, and
+            # treating that as "new package" would send a maintainer down the wrong path.
+            case "$OUT" in
+              *E404*) MISSING="$MISSING $PKG" ;;
+              *)
+                echo "::error::Could not reach the registry for $PKG"
+                echo "$OUT"
+                exit 1
+                ;;
+            esac
+          done
+
+          if [ -n "$MISSING" ]; then
+            echo "::error::First publish needed for:$MISSING"
+            echo ""
+            echo "Trusted publishing cannot be set up for a package that is not on the registry"
+            echo "yet, so this workflow cannot publish it. One manual publish by a maintainer"
+            echo "creates the name; the trusted publisher is configured after that, and every"
+            echo "release from then on runs through here with no token involved."
+            echo ""
+            echo "See CONTRIBUTING.md — 'Adding a fourth (or fifth) published package'."
+            exit 1
+          fi
+
+          echo "All four packages exist; trusted publishing can do the rest."
+
       # Paths are written as ./packages/... deliberately. `npm publish packages/core` reads
       # a one-slash argument as GitHub shorthand for a repository and tries to fetch
       # ssh://git@github.com/packages/core.git, which fails with exit 128; the leading ./

@@ -83,6 +83,70 @@ two. Authentication is npm trusted publishing via OIDC — there is no token to 
 Publishing a version that is already on the registry is a no-op rather than a failure, so
 re-running a release is safe.
 
+It also checks that every package already exists on the registry before it publishes any of
+them. A package being released for the very first time needs one manual publish first — see
+below for why, and for the five values the trusted publisher needs.
+
+### Adding a fourth (or fifth) published package
+
+**A package that has never been published cannot be released by the Release workflow**, and
+that is a limitation of the registry rather than of this repository. Trusted publishing is
+configured in a package's settings on npmjs.com, which requires the package to exist. npm has
+no "pending" trusted publisher for a name that is not on the registry yet — PyPI has one, npm
+does not — so a new name cannot be configured before it exists and cannot be published by OIDC
+before it is configured.
+
+The Release workflow checks for this **before it publishes anything**, so a first release fails
+whole rather than leaving three packages at a version the fourth never reached.
+
+The way through is one manual publish, once, per new package:
+
+1. **Publish the name by hand, from a clean checkout at the release commit.**
+
+   ```bash
+   npm run build
+   npm login                     # the 2FA prompt is the point — no token is stored
+   npm publish ./packages/server/dist --access public
+   ```
+
+   `--access public` is required: a scoped package defaults to restricted, and publishing it
+   private looks exactly like success. Publish the built `dist/`, never the package root — the
+   manifest a consumer gets is written by `build-manifest.mjs`.
+
+   No provenance attestation on this one publish, because provenance comes from the workflow.
+   Every later release has it.
+
+2. **Configure the trusted publisher**, now that the package exists. On npmjs.com → the
+   package → Settings → Trusted Publisher, with exactly these values:
+
+   | Field | Value |
+   |---|---|
+   | Publisher | GitHub Actions |
+   | Organization or user | `berserker5619` |
+   | Repository | `Dynamic-Entity` |
+   | Workflow filename | `release.yml` |
+   | Environment | `npm` |
+
+   The environment is not optional here: `release.yml` declares `environment: npm`, and a
+   configuration that omits it will not match the token the workflow presents. npm does not
+   verify any of this when you save it — a wrong value fails at the next publish, not now.
+
+3. **Check it before you need it.** Run the Release workflow by hand with `dry_run: true`. It
+   runs every gate and packs the tarballs without publishing, which is how you find out that
+   step 2 was wrong while it is still cheap.
+
+4. **Add the package to the release plumbing** if it is not there already: the tag-vs-manifest
+   loop, a publish step, the dry-run pack list, and a consumer verification script of the right
+   shape — `verify-consumer.mjs` for an Angular package, `verify-server-consumer.mjs` for a
+   Node one. They break differently, which is why there are two.
+
+**Why not a bootstrap workflow with a token.** The obvious alternative is a second,
+`workflow_dispatch`-only workflow holding an `NPM_TOKEN`. It would make step 1 a button rather
+than a terminal. It would also put a long-lived publish credential back in this repository,
+which the Release workflow's header explains at length was removed on purpose — and it would
+sit there for years to save a maintainer one command they run once per package. A local publish
+behind the account's own 2FA leaves nothing behind.
+
 ## Reporting something
 
 Use the issue templates. For anything security-related, see [SECURITY.md](SECURITY.md) — please
