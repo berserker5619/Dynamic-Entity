@@ -19,7 +19,8 @@ Everything CI enforces, you can run locally:
 
 | Command | What it checks |
 |---|---|
-| `npm run lint` | Control characters, eslint, and each package's typecheck |
+| `npm run lint` | Control characters, build order, extension-point coverage, eslint, and each package's typecheck |
+| `npm run check:build-graph` | Every sibling a package imports is one turbo will build first |
 | `npm run build` | All five packages via turbo |
 | `npm test` | Unit tests |
 | `npm run test:coverage` | Coverage thresholds — a ratchet, see below |

@@ -29,6 +29,7 @@
     "@angular/material": "^21.0.0",
     "@angular/platform-browser": "^21.0.0",
     "@angular/platform-browser-dynamic": "^21.0.0",
+    "@dynamic-entity/core": "^1.14.0",
     "@types/jest": "^30.0.0",
     "jest": "^30.0.0",
     "jest-environment-jsdom": "^30.0.0",
