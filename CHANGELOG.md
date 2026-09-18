@@ -1,9 +1,69 @@
 # Changelog
 
-All notable changes to `@dynamic-entity/core`, `ngx-dynamic-entity` and
-`ngx-dynamic-entity-builder`. The three packages share a version and are released together.
+All notable changes to `@dynamic-entity/core`, `ngx-dynamic-entity`,
+`ngx-dynamic-entity-builder` and `@dynamic-entity/server`. The four packages share a version
+and are released together.
 
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [1.14.0] — 2026-09-18
+
+A fourth published package. `@dynamic-entity/server` streams a spreadsheet import for files a
+browser cannot hold, over the same `@dynamic-entity/core` functions the browser runs — and the
+wizard components do not change at all, because they already talked to a transport.
+
+### Added
+
+- **`@dynamic-entity/server`** — streaming import, with an Express adapter at
+  `@dynamic-entity/server/express`. `runImport` pulls rows in batches, hands each to core's
+  `applyMapping`, **awaits** `onBatch`, and drops the batch: peak memory is a function of
+  `batchSize`, not of file size. Four routes — `template`, `preview`, `validate`, `import` —
+  and `express` is an optional peer, reached only through its own entry point, so a consumer
+  wiring Fastify never pays for a framework they do not use.
+- **`provideHttpImportTransport({ baseUrl })`** in `ngx-dynamic-entity`, built on `fetch`
+  rather than `HttpClient` — this package has no `@angular/common/http` dependency and four
+  requests is not the reason to acquire one.
+- **`createCsvReader()`** in core: push chunks, pull whole rows, with the quote and CRLF state
+  carried across chunk boundaries. `parseCsv` is now expressed in terms of it, so there is one
+  set of quoting rules rather than two.
+- **`CORE_VERSION`**, so a preview response can carry the engine that produced it and a client
+  can notice that two separately deployed halves have diverged. `MappingPlan.configVersion`
+  catches *config* drift and says nothing about *engine* drift.
+- **Wire types in core** — `ImportPreviewResponse`, `ImportCommitResponse`,
+  `ImportErrorResponse`. Plain interfaces with no HTTP in them, in core because both sides need
+  them and core is the only thing both already depend on.
+- `ImportResult` gains optional `imported`, `failed`, `errorCount` and `truncated`, for a
+  transport that streams and therefore reports counts rather than returning records.
+- An **E2E suite for the import wizard**, and an import section in `EXTENDING.md` covering the
+  column contract, `maxArrayRows`, the validation-parity gap, and deduplication being yours.
+
+### Fixed
+
+- **A date cell arriving typed moved a day.** `coerceCell` stringified anything non-string, and
+  `String(Date)` renders *local* time — so a spreadsheet's UTC-midnight date read back a day
+  early at every negative offset. Reachable today by any consumer whose `sheetParser` returns
+  typed cells, which is what a SheetJS or ExcelJS parser naturally does. Typed cells are now
+  read by their UTC components, and `check-timezones.mjs` grows typed cases: the gate missed
+  this because of what it was given, not because of where it ran.
+- **A `time` cell's preview contradicted its own import.** The import read the clock and stored
+  `09:05` while the review screen showed `1899-12-30T09:05:00.000Z` and reported "is not a
+  time" — a failing row that would have succeeded. `time` now accepts a full ISO instant in
+  UTC; offset-bearing forms stay an error, because `09:30+05:00` in a field that stores no zone
+  is ambiguous and guessing is how a time moves.
+
+### Security
+
+- SECURITY.md gains a section for `@dynamic-entity/server`: an upload endpoint changes the
+  threat model rather than extending it. Every limit has a finite default and each is enforced
+  *during* streaming — `maxBytes`, zip-bomb bounds checked as entries inflate, row, column and
+  cell caps, multipart bounds, idle and total timeouts, and an error envelope that carries
+  nothing from below the package.
+- It also says what the router does **not** do: authentication, authorization and concurrency
+  limiting are the consumer's, an import is not transactional so `onImport` must be idempotent,
+  and `validators.pattern` has become a server concern — a config-supplied regex with
+  catastrophic backtracking now runs against attacker-chosen cell text.
 
 ---
 
