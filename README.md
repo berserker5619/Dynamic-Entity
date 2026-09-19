@@ -39,6 +39,7 @@ cannot hold.
 - **Cross-entity referenced fields** — link a field to a source entity, snapshot what was copied, and detect drift when the source changes. Drift is surfaced in the builder.
 - **Sync and async validation** — built-in validators, your own by name, and async checks against a server. A form cannot be submitted while an async check is pending, and a `beforeSave` hook can abort the save outright — from the whole-record Save and the record view's per-tab save alike, with `(saveRejected)` saying why.
 - **Named lookup lists** — sync or async master lists resolved by name, with localized labels, fallbacks, and an integrity report for values that no longer match any option.
+- **Spreadsheet import** — a four-step wizard that derives its own columns from the config, generates a matching CSV or `.xlsx` template, suggests a mapping and reports every row it could not take. Works with **no backend**; add `@dynamic-entity/server` and the identical wizard streams a fifty-thousand-row workbook a tab could never hold. See [Spreadsheet import](#-spreadsheet-import).
 - **Visual builder** — click-to-add palette, drag-and-drop reordering, and a recursive tree editor for tabs, sub-tabs, groups, and arrays.
 - **Localizable end to end** — config labels, placeholders and options are `LocalizedText` keyed by language; the libraries' own chrome (Save, Reset, "No rows yet.", every builder panel) resolves through `uiText` / `BUILDER_TEXT`, either as `LocalizedText` per key or through a resolver into an existing i18n layer.
 - **Configurable date display** — `date` / `datetime` / `time` format through `setDateFormatters` in `@dynamic-entity/core`. The default stays the browser's locale, not the form's `language`.
@@ -243,6 +244,110 @@ Two behaviours worth knowing:
 `migrateRecord`, `needsMigration`, `stampRecord` and `validateMigrations` are exported from
 `@dynamic-entity/core` and are pure, so the same migration set runs on a server before
 persisting.
+
+---
+
+## 📥 Spreadsheet import
+
+A config already describes every field, its type, its validators and its options — which is
+enough to derive the columns a spreadsheet may carry, generate a template shaped like them, and
+map an uploaded file back onto records. None of that is authored twice.
+
+The wizard is one component and works with **no backend at all**. Registering
+`@dynamic-entity/server` moves the same import onto a server for files a tab cannot hold; the
+wizard does not change, because it already talks to a transport.
+
+```mermaid
+flowchart TB
+  W["ngx-entity-import<br>1 Choose a file<br>2 Match columns<br>3 Review<br>4 Done"]
+  T["SEAM 1 — ImportTransport"]
+  W -->|"preview() · commit()"| T
+
+  T -->|"nothing registered"| A1
+  T -->|"provideHttpImportTransport"| B1
+
+  subgraph A ["In the tab · LocalImportTransport (the default)"]
+    direction TB
+    A1["SHEET_PARSER<br>reads the whole file"]
+    A2["applyMapping()<br>every row at once"]
+    Y1["YOUR CODE · seam 2<br>importComplete<br>handler"]
+    A1 --> A2 -->|"a records array, all at once"| Y1
+  end
+
+  subgraph B ["On a server · @dynamic-entity/server"]
+    direction TB
+    B1["multipart POST<br>the tab never parses it"]
+    B2["readSheet()<br>streamed, limits enforced"]
+    B3["applyMapping()<br>one batch of 500"]
+    Y2["YOUR CODE · seam 2<br>onImport<br>your insert"]
+    B1 --> B2 --> B3 -->|"awaited"| Y2
+    Y2 -.->|"resolves: drop the batch, pull the next 500"| B2
+  end
+
+  B3 -.->|"when the file ends"| R["returns a count<br>imported: 20000, records: empty"]
+
+  classDef yours stroke-width:3px,stroke-dasharray:5 3
+  class Y1,Y2 yours
+```
+
+**Both lanes call the same `applyMapping` from `@dynamic-entity/core`**, so a row imported in a
+tab and the same row imported on a server produce the same record. That parity is asserted
+across every config in the repository, through three paths — in-browser, CSV on a server, and a
+typed `.xlsx` workbook — rather than being claimed.
+
+### The library never writes anywhere
+
+Both paths end at code you write. Seam 2 is where it stops:
+
+```html
+<!-- In the tab — an output you subscribe to. -->
+<ngx-entity-import [config]="config" [rules]="rules" (importComplete)="onImported($event)" />
+```
+
+```typescript
+// The wizard has stored nothing of its own. If you don't handle this, the import is a no-op.
+onImported(result: ImportResult): void {
+  for (const record of result.records) this.store.create(entity, record);
+}
+```
+
+```typescript
+// On a server — a function you hand the router.
+// Called once per batch and awaited; `request` is where your auth context lives.
+createImportRouter({
+  configs,
+  lookups,
+  async onImport(records, { entity, request }) {
+    await db.insertMany(entity, records);
+  },
+});
+```
+
+That `await` is the backpressure. A consumer writing to a database is slower than a parser
+reading a file, so the run does not touch the source again until your insert resolves — which
+is what makes peak memory a function of the batch size rather than of the file. Measured on a
+50,000-row, 35-column sheet: **2.7 MB** of collected heap.
+
+Four things worth knowing before you wire it up:
+
+- **On the server path `result.records` arrives empty** and `imported` carries the count.
+  Shipping 20,000 records back over the wire would undo the streaming. Read
+  `imported ?? records.length`, and `failed` for the rows that did not make it — never the
+  distinct rows in `errors`, which is a capped sample and will under-report.
+- **`onImport` must be idempotent.** An import is not transactional: a failure at row 30,000
+  leaves 29,999 written, and clients retry. `POST /:entity/validate` runs the identical pipeline
+  and writes nothing.
+- **There is no deduplication**, because a config has no natural-key concept to deduplicate on.
+- **The router has no authentication.** It is an upload endpoint; guarding it is yours.
+
+Fields a cell cannot carry — `image`, `file`, an array nested inside another array — are
+*reported* rather than dropped, because a missing column looks identical to one nobody thought
+of. `[templateFormat]="'xlsx'"` writes a real workbook through a server transport, and is
+refused by name in a CSV-only build rather than producing a CSV under an `.xlsx` name.
+
+See [EXTENDING.md](./EXTENDING.md#spreadsheet-import) for the column contract, `maxArrayRows`
+and the validation-parity gap, and [`@dynamic-entity/server`](./packages/server) for limits,
+formats and deployment notes.
 
 ---
 
