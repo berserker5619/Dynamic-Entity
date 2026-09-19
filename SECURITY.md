@@ -113,3 +113,40 @@ paste into a spreadsheet is a label you should not put in a config.
 Releases are published from CI by the `Release` workflow using npm trusted publishing (OIDC):
 there is no long-lived publish token, and each tarball carries a provenance attestation linking
 it to the commit and workflow that produced it. You can verify it with `npm audit signatures`.
+
+### What actually reaches you
+
+Three of the four published packages declare **no runtime dependencies at all**:
+
+| Package | Runtime dependencies |
+|---|---|
+| `@dynamic-entity/core` | none |
+| `ngx-dynamic-entity` | none |
+| `ngx-dynamic-entity-builder` | none |
+| `@dynamic-entity/server` | `busboy`, `exceljs` |
+
+So an advisory against this repository's `node_modules` is almost always an advisory against
+the *build*, not against anything installed alongside your application. `express` is an
+optional peer — you bring your own — and is not in the table for that reason.
+
+### Accepted advisories
+
+`npm audit` is not expected to read zero here, and a residue with no written reason is
+indistinguishable from one nobody looked at. What is currently accepted, and why:
+
+- **`uuid` < 11.1.1, reached through `exceljs`** — GHSA-w5hq-g745-h8pq, a missing buffer
+  bounds check in `v3`/`v5`/`v6` **when a `buf` argument is supplied**. `exceljs` calls `v4()`
+  and passes no buffer (`lib/xlsx/xform/sheet/cf-ext/cf-rule-ext-xform.js`), so the affected
+  code is not reachable from this package. `exceljs` itself carries no advisory: it is flagged
+  only for depending on `uuid`, and npm's suggested remedy is a **downgrade** to `exceljs@3.4.0`
+  — a version that predates the dependency, and a worse position than the one it replaces. Both
+  `exceljs` and `sockjs` pin `uuid@^8`, so an override cannot move them without forcing a major
+  version of a transitive dependency on a library that was never tested against it. The
+  reachability argument is the stronger guarantee; taken, and recorded here.
+- **Angular build tooling** (`@angular-devkit/build-angular`, `webpack-dev-server`, `sockjs`,
+  `esbuild`, `qs`) — development scope, pinned by the Angular version this repo targets, and
+  never present in a published tarball. The `esbuild` advisory is specific to running a
+  **development server on Windows**, which no consumer of these packages does on their account.
+
+Everything with a non-breaking fix is taken rather than accepted; the list above is what is
+left after that.
