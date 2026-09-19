@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "lint": "node scripts/check-control-chars.mjs && node scripts/check-build-graph.mjs && node scripts/check-demo-coverage.mjs && eslint \"packages/*/src/**/*.ts\" \"scripts/**/*.mjs\" \"packages/core/cli.mjs\" && turbo run lint",
+    "lint": "node scripts/check-lockfile-platforms.mjs && node scripts/check-control-chars.mjs && node scripts/check-build-graph.mjs && node scripts/check-demo-coverage.mjs && eslint \"packages/*/src/**/*.ts\" \"scripts/**/*.mjs\" \"packages/core/cli.mjs\" && turbo run lint",
     "test": "turbo run test",
     "check:timezones": "node scripts/check-timezones.mjs",
     "dev": "turbo run dev",
@@ -16,7 +16,8 @@
     "check:demo-coverage": "node scripts/check-demo-coverage.mjs",
     "lint:fix": "eslint \"packages/*/src/**/*.ts\" \"scripts/**/*.mjs\" --fix",
     "e2e": "npm run e2e --workspace=demo-angular",
-    "check:build-graph": "node scripts/check-build-graph.mjs"
+    "check:build-graph": "node scripts/check-build-graph.mjs",
+    "check:lockfile": "node scripts/check-lockfile-platforms.mjs"
   },
   "devDependencies": {
     "@angular/animations": "^21.0.0",
