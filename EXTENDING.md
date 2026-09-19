@@ -4,8 +4,13 @@ Everything the library does is registered rather than built in, so most extensio
 provider call. This covers the seams a consumer actually needs on day two.
 
 > Blocks fenced as `typescript` are complete and are compiled in CI against the published
-> packages, so they cannot drift out of date. Blocks fenced as `ts` are fragments that
-> reference your own classes and are illustrative only.
+> packages, so they cannot drift out of date. Blocks fenced as `ts` **in this file** are
+> fragments that reference your own classes and are illustrative only.
+>
+> The same fence means something else in `README.md` and `packages/server/README.md`, where a
+> `ts` block is a **Node** snippet compiled against `@dynamic-entity/server` — the Angular
+> consumer project that checks everything else does not have that package installed.
+> `CONTRIBUTING.md` carries the full table.
 
 Contents: [how a field is addressed](#how-a-field-is-addressed) ·
 [custom field types](#a-custom-field-type) · [validators](#custom-validators) ·

@@ -48,6 +48,47 @@ implied, and the half of it a person could not reach became reachable.
   path in `core` and nothing else, so the typed path — a `Date` out of a workbook — had never
   run outside UTC. Verified to discriminate: reverting `coerceTypedCell` to local getters fails
   the new suite under `America/Los_Angeles`.
+- **The demo's four TypeScript configs are JSON, and the import server serves them.** It used
+  to serve five of the nine entities and 404 the rest, because the app overrode four with
+  richer schemas and serving a *second copy* would have handed the browser one config and the
+  server another. They now live in `src/app/mock/configs/`, read by both halves, so there is
+  one source and nothing left to diverge. The E2E server leg covers nine entities instead of
+  five — `employees`, whose repeating array becomes numbered columns, and `extensions`, whose
+  `file` column a sheet cannot carry, had never run server-side at all.
+- **The import wizard's dependency surface is smaller and documented.** 26 advisories down to
+  8, with the critical and all twelve highs taken. What remains is accepted with a reason in
+  `SECURITY.md` rather than left silent — chiefly `uuid` via `exceljs`, whose advisory covers
+  `v3`/`v5`/`v6` with a `buf` argument while `exceljs` calls `v4()` with none. npm's suggested
+  remedy is a *downgrade* to a version predating the dependency, and is not taken. Three of the
+  four published packages declare no runtime dependencies at all, which is the number that
+  actually matters to a consumer and is now a table in `SECURITY.md`.
+
+### Fixed
+
+- **`LocalStore.createRecords`, in the demo.** Saving imported records one at a time re-read
+  and re-serialised the whole table per record — O(n²), and the reason a 1,200-row in-browser
+  import took 13.2s against the server's 3.6s for the same file. It also closes an id collision
+  only a bulk insert could expose: `_id` was `${entity}_${Date.now()}`, so a thousand records
+  written inside one millisecond all got the same one.
+- **Two flaky builder E2E specs, root-caused.** One measured `boundingBox()` through the
+  shell's 250ms `grid-template-columns` transition with no wait at all — a sound assertion
+  taken too early, so it failed on whichever machine was slower. The other was the dev server
+  live-reloading mid-test and detaching the element under the cursor; `ng serve` now runs with
+  `--live-reload false`, since nothing in a test run edits application source.
+- **README snippets that never compiled.** The import section's two examples were a bare class
+  method (a syntax error) and a call naming three undeclared identifiers. CI compiles every
+  documented snippet and had been red since they landed.
+
+### Internal
+
+- **`check-lockfile-platforms.mjs`**, first in `npm run lint`. A lockfile regenerated on one
+  platform carries only that platform's optional binaries, so `npm ci` fails everywhere else —
+  which is how six green local gates preceded a red CI on every workflow. Verified against the
+  real regression rather than a synthetic one.
+- **`verify-server-consumer.mjs` reads the root README too.** Its `ts` blocks were compiled by
+  neither consumer project, so a server-side snippet on the front page could go stale unnoticed.
+  `CONTRIBUTING.md` now carries the full fence table, because `ts` genuinely means two different
+  things in two places and the docs claimed it meant only one.
 
 ---
 

@@ -42,8 +42,21 @@ subpath.
 ## Things that will fail review
 
 - **A claim in a README that the code does not back.** Every fenced `typescript` and `html`
-  block is extracted and compiled in CI. If a snippet is a fragment that cannot compile,
-  fence it as `ts` and it will be skipped — see the note at the top of `EXTENDING.md`.
+  block is extracted and compiled in CI against the published packages. The fence says which
+  project checks it, because the two consumer projects install different things:
+
+  | Fence | Where | Checked by |
+  |---|---|---|
+  | `typescript` / `html` | anywhere | `verify-consumer.mjs` — an Angular project with the renderer and builder installed |
+  | `ts` | `README.md`, `packages/server/README.md` | `verify-server-consumer.mjs` — a Node project with `@dynamic-entity/server` installed |
+  | `ts` | anywhere else | nothing: a fragment that references your own classes, illustrative only |
+
+  So a snippet needing `@dynamic-entity/server` goes in one of those two files fenced `ts`,
+  with `declare const` for whatever the reader supplies — the Angular project cannot compile
+  it, and a `typescript` fence there would fail on the import alone. A snippet that genuinely
+  cannot stand up, like a lone object literal, stays a fragment. **What is not allowed is a
+  complete snippet hidden behind a fragment fence to avoid the check** — that is how a README
+  goes stale without anything saying so.
 - **Lowering a coverage threshold to make a change pass.** The numbers sit just under what
   each package actually achieves so a regression fails. Raise them when coverage improves.
   They are **per-file**, not aggregate, and there is no `global` entry on purpose — Jest
