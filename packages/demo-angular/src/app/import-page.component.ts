@@ -1,5 +1,5 @@
 import { Component, Input, inject, signal } from '@angular/core';
-import { EntityImportComponent } from 'ngx-dynamic-entity';
+import { EntityImportComponent, type TemplateFormat } from 'ngx-dynamic-entity';
 import type { EntityFormConfig, FormRule, ImportResult } from '@dynamic-entity/core';
 import { LocalStore } from './mock/local-store.service';
 
@@ -24,10 +24,24 @@ import { LocalStore } from './mock/local-store.service';
     <section class="import-page">
       <h2>Import records</h2>
       @if (config) {
+        <label class="import-page__format">
+          <span>Template format</span>
+          <select
+            class="ngx-field__input"
+            data-testid="demo-template-format"
+            [value]="templateFormat()"
+            (change)="onFormatChange($any($event.target).value)"
+          >
+            <option value="csv">CSV</option>
+            <option value="xlsx">Excel (.xlsx)</option>
+          </select>
+        </label>
+
         <ngx-entity-import
           [config]="config"
           [rules]="rules"
           [language]="uiLanguage"
+          [templateFormat]="templateFormat()"
           (importComplete)="onImported($event)"
         />
         @if (saved()) {
@@ -44,6 +58,18 @@ import { LocalStore } from './mock/local-store.service';
     `
       .import-page {
         padding: 16px;
+      }
+      .import-page__format {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+      .import-page__format select {
+        width: auto;
       }
       .import-page__saved {
         margin-top: 12px;
@@ -64,8 +90,26 @@ export class ImportPageComponent {
    */
   @Input() rules: readonly FormRule[] = [];
 
+  /**
+   * Which file the template button writes, and the only way a person reaches the xlsx writer.
+   *
+   * Both halves of this feature ship — map columns onto fields, and pick fields to generate a
+   * file — but xlsx generation only works through a *server* transport: `LocalImportTransport`
+   * refuses it by design rather than writing a CSV under an `.xlsx` name. Until this control
+   * existed the demo never set `templateFormat`, so `write-template.ts` was unreachable by
+   * anyone browsing the demo and its refusal was unreachable by anyone testing it.
+   *
+   * Defaulting to `csv` keeps it the format a visitor gets without choosing, which is the one
+   * that works with nothing registered.
+   */
+  readonly templateFormat = signal<TemplateFormat>('csv');
+
   private readonly store = inject(LocalStore);
   readonly saved = signal(0);
+
+  onFormatChange(value: string): void {
+    this.templateFormat.set(value === 'xlsx' ? 'xlsx' : 'csv');
+  }
 
   onImported(result: ImportResult): void {
     for (const record of result.records) {

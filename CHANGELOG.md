@@ -8,6 +8,49 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [Unreleased]
+
+No published API changes. The import feature gained the coverage its shipped surface always
+implied, and the half of it a person could not reach became reachable.
+
+### Added
+
+- **`templateFormat` is reachable from the demo.** The wizard's `[templateFormat]` input
+  shipped in 1.14.0 and the demo never set it, so `write-template.ts` — the xlsx writer —
+  could not be exercised by anyone browsing the demo, and `LocalImportTransport`'s deliberate
+  refusal of `xlsx` could not be seen. The import page now has a CSV/Excel picker, and
+  `EXTENDING.md` documents the input and why binding it unconditionally is safe.
+- **The import matrix runs over every config the repository ships.** Every automated import
+  test used one or two hand-written configs covering five field types; `test_data.json` carries
+  seven configs spanning sixteen, with pattern validators, bounded numbers, a repeating array,
+  `file`/`image` columns a sheet cannot carry, and a `listName` that resolves against a lookup
+  list. Per config, the generated template's own headers must map back **exactly**, and one
+  synthesised row must produce an identical record three ways — `applyMapping` directly, the
+  same row as CSV through `runImport`, and the same row as a **typed** workbook. The third is
+  the only path that reaches `coerceTypedCell`, which exists because `String(date)` renders
+  local time.
+- **`config-rows.fixtures.ts`** derives a valid row from an `ImportColumn`, so a config added
+  tomorrow is covered by the tests that already exist. It **throws** rather than blanking a
+  field whose `pattern` no candidate satisfies — a synthesiser that quietly blanked a required
+  field would turn every failure in the matrix into a pass, which is what the prototype did.
+- **Stress at width.** `insuranceClaims` — thirty-five columns, four nesting levels — at 50,000
+  rows as CSV and as xlsx, with backpressure and exact failure counts asserted at that scale.
+  The collected-heap bound is set to discriminate rather than to be comfortable: 2.7 MB as
+  written, 163 MB with the per-batch flush removed, bound at 16 MB.
+- **Nine entities through a browser**, both transports — the picker's whole list, where the
+  E2E suite previously drove two of the narrowest. Plus a twenty-thousand-row upload through
+  the wizard and the real server, which is the only place the "the tab never holds the file"
+  claim is made in a tab.
+
+### Changed
+
+- **`check-timezones.mjs` sweeps the server's config matrix too.** The gate watched the string
+  path in `core` and nothing else, so the typed path — a `Date` out of a workbook — had never
+  run outside UTC. Verified to discriminate: reverting `coerceTypedCell` to local getters fails
+  the new suite under `America/Los_Angeles`.
+
+---
+
 ## [1.14.0] — 2026-09-18
 
 A fourth published package. `@dynamic-entity/server` streams a spreadsheet import for files a

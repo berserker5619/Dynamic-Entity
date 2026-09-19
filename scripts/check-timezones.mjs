@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CORE = path.join(ROOT, 'packages', 'core');
+const SERVER = path.join(ROOT, 'packages', 'server');
 
 /**
  * Chosen to straddle Greenwich rather than to be exhaustive.
@@ -39,31 +40,49 @@ const ZONES = [
   'Pacific/Kiritimati', // UTC+14
 ];
 
-/** The suites whose behaviour a timezone can change. */
-const PATTERN = 'timezone|import-columns|import-engine';
+/**
+ * The suites whose behaviour a timezone can change.
+ *
+ * `core` is where the coercion lives, and where the original defect was. `server/all-configs`
+ * is here because it is the only suite that runs a **typed** cell — a `Date` out of a workbook
+ * — through every dated field of every config the repository ships. The string path and the
+ * typed path reach the same bug from different doors, and the gate only ever watched one of
+ * them: `coerceTypedCell` exists precisely because `String(date)` renders local time, and no
+ * zone ran over it until this line.
+ */
+const SUITES = [
+  { cwd: CORE, label: 'core', pattern: 'timezone|import-columns|import-engine' },
+  { cwd: SERVER, label: 'server', pattern: 'all-configs' },
+];
 
 const failures = [];
 
 for (const zone of ZONES) {
   process.stdout.write(`  ${zone.padEnd(22)}`);
 
-  const result = spawnSync(
-    process.execPath,
-    [path.join(ROOT, 'node_modules', 'jest', 'bin', 'jest.js'), '--silent', PATTERN],
-    {
-      cwd: CORE,
-      env: { ...process.env, TZ: zone },
-      encoding: 'utf8',
-    },
-  );
+  const broken = [];
+  for (const suite of SUITES) {
+    const result = spawnSync(
+      process.execPath,
+      [path.join(ROOT, 'node_modules', 'jest', 'bin', 'jest.js'), '--silent', suite.pattern],
+      {
+        cwd: suite.cwd,
+        env: { ...process.env, TZ: zone },
+        encoding: 'utf8',
+      },
+    );
+    if (result.status !== 0) {
+      broken.push({ suite: suite.label, output: (result.stderr || result.stdout || '').trim() });
+    }
+  }
 
-  if (result.status === 0) {
+  if (!broken.length) {
     console.log('ok');
     continue;
   }
 
-  console.log('FAILED');
-  failures.push({ zone, output: (result.stderr || result.stdout || '').trim() });
+  console.log(`FAILED (${broken.map(entry => entry.suite).join(', ')})`);
+  failures.push({ zone, output: broken.map(entry => entry.output).join('\n\n') });
 }
 
 if (failures.length) {

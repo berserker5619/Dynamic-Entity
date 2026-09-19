@@ -23,13 +23,21 @@ export const WORKBOOK_ROWS: unknown[][] = [
   ['Carol', 29],
 ];
 
-/** A real .xlsx, written by exceljs, with the header row and whatever rows are given. */
-export async function workbook(rows: unknown[][] = WORKBOOK_ROWS): Promise<Buffer> {
+/** A real .xlsx, written by exceljs, under whatever headers and rows are given. */
+export async function workbookOf(
+  headers: readonly string[],
+  rows: readonly unknown[][],
+): Promise<Buffer> {
   const book = new ExcelJS.Workbook();
   const sheet = book.addWorksheet('Sheet1');
-  sheet.addRow(HEADERS);
+  sheet.addRow([...headers]);
   for (const row of rows) sheet.addRow(row as ExcelJS.CellValue[]);
   return Buffer.from(await book.xlsx.writeBuffer());
+}
+
+/** A real .xlsx, written by exceljs, with the header row and whatever rows are given. */
+export async function workbook(rows: unknown[][] = WORKBOOK_ROWS): Promise<Buffer> {
+  return workbookOf(HEADERS, rows);
 }
 
 /** `count` rows of plausible data, generated rather than listed. */
@@ -41,8 +49,17 @@ export function generatedRows(count: number): unknown[][] {
   return rows;
 }
 
-/** A workbook written by the *streaming* writer, which uses zip data descriptors. */
-export async function streamedWorkbook(rows: unknown[][] = WORKBOOK_ROWS): Promise<Buffer> {
+/**
+ * A workbook written by the *streaming* writer, which uses zip data descriptors.
+ *
+ * `rows` is an iterable rather than an array so a fifty-thousand-row fixture can be generated
+ * a row at a time. Materialising it first would hold 1.75 million cells in the test process
+ * while the test measures what the *reader* holds.
+ */
+export async function streamedWorkbookOf(
+  headers: readonly string[],
+  rows: Iterable<readonly unknown[]>,
+): Promise<Buffer> {
   const { PassThrough } = await import('node:stream');
   const chunks: Buffer[] = [];
   const out = new PassThrough();
@@ -51,12 +68,17 @@ export async function streamedWorkbook(rows: unknown[][] = WORKBOOK_ROWS): Promi
 
   const book = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: out, useStyles: true });
   const sheet = book.addWorksheet('Sheet1');
-  sheet.addRow(HEADERS).commit();
+  sheet.addRow([...headers]).commit();
   for (const row of rows) sheet.addRow(row as ExcelJS.CellValue[]).commit();
   sheet.commit();
   await book.commit();
   await finished;
   return Buffer.concat(chunks);
+}
+
+/** A workbook written by the *streaming* writer, under the shared fixture's headers. */
+export async function streamedWorkbook(rows: unknown[][] = WORKBOOK_ROWS): Promise<Buffer> {
+  return streamedWorkbookOf(HEADERS, rows);
 }
 
 // ─── The parts a minimal workbook needs, so a hostile sheet can be the only odd one ──────

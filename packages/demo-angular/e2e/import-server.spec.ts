@@ -190,6 +190,50 @@ test.describe('an import that happens on a server', () => {
   });
 });
 
+/**
+ * The size the package exists for, through a browser.
+ *
+ * `stress.spec.ts` proves the reader streams fifty thousand rows without holding them, but it
+ * hands bytes to a function. A user hands bytes to a **form**, over a network, and the tab has
+ * its own memory — the whole reason the server transport exists is that the browser must never
+ * parse the file. This is the only test where that claim is made in a browser.
+ *
+ * Twenty thousand rows rather than fifty: this runs inside the E2E budget, and the number that
+ * matters here is whether the count survives the upload, not where the reader's ceiling is.
+ */
+test.describe('a file too large to parse in a tab', () => {
+  test('uploads twenty thousand rows and reports what the server imported', async ({ page, request }) => {
+    test.setTimeout(180_000);
+    await request.delete(STORE);
+
+    let sheet = `${HEADERS}\r\n`;
+    for (let i = 0; i < 20_000; i++) sheet += `Patient ${i},2024-03-07,Routine review\r\n`;
+
+    await openServerWizard(page);
+    await chooseEntity(page, 'visitNotes');
+    await choose(page, 'many.csv', sheet);
+
+    await expect(page.locator('[data-testid="import-mapper"]')).toBeVisible();
+    await page.locator('[data-testid="import-to-review"]').click();
+
+    // The preview read the whole file **on the server** and counted its rows, which is why
+    // the button offers an exact number rather than "about this many" — and why the tab never
+    // held the file to find it out.
+    const commitButton = page.locator('[data-testid="import-commit"]');
+    await expect(commitButton).toContainText('20000');
+    await commitButton.click();
+
+    await expect(page.locator('[data-testid="import-succeeded"]')).toContainText('20000', {
+      timeout: 120_000,
+    });
+    // The wizard reached its last step rather than hanging on a spinner, which is the other
+    // half of what a user experiences.
+    await expect(page.locator('[data-testid="import-restart"]')).toBeVisible();
+
+    expect(await stored(page, 'visitNotes')).toHaveLength(20_000);
+  });
+});
+
 test.describe('client and server produce the same records', () => {
   /**
    * The claim the whole package rests on, asserted end to end rather than in a unit test.

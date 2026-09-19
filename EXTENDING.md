@@ -783,6 +783,20 @@ and each is a consequence of crossing a network rather than a defect:
   and says nothing about engine drift, so the transport compares `CORE_VERSION` and warns when
   the halves are a minor version apart.
 
+One thing is *gained*: `[templateFormat]="'xlsx'"` on `<ngx-entity-import>` writes a real
+workbook instead of a CSV.
+
+```html
+<ngx-entity-import [config]="config" [rules]="rules" [templateFormat]="'xlsx'" />
+```
+
+`LocalImportTransport` **refuses** `xlsx` rather than writing a CSV under an `.xlsx` name — a
+file that opens wrong in Excel is worse than a download that did not happen, because the user
+finds out later and somewhere else. So the input is safe to bind unconditionally: with no
+transport registered the wizard says it can only write CSV, and with a server transport the
+same input produces the workbook. The demo's import page has a format picker that shows both
+answers.
+
 ### A transport of your own
 
 `ImportTransport` is three methods, and a backend that is not Express implements them against
