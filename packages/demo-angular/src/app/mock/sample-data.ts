@@ -1,72 +1,35 @@
 import type { EntityFormConfig, LocalizedText } from 'ngx-dynamic-entity';
 import testDataRaw from '../../../../../test_data.json';
 import clientTierRaw from './client-tier-list.json';
+import clientsConfig from './configs/clients.json';
+import employeesConfig from './configs/employees.json';
+import ordersConfig from './configs/orders.json';
 
 export const TEST_DATA_CONFIGS: EntityFormConfig[] = testDataRaw as EntityFormConfig[];
 
 /**
- * Sample `clients` entity config (rich EntityFormConfig model) used to seed localStorage
- * so the demo works fully offline.
+ * The demo's own entity configs, as JSON.
+ *
+ * They live in `configs/` rather than as TypeScript literals for one reason: the demo's
+ * import server reads the same files, so the browser and the server cannot be handed
+ * different schemas for the same entity. That divergence used to be real — the server simply
+ * refused these four entities rather than risk mapping a sheet against a config the user
+ * never saw — and one source removes the risk instead of routing around it.
+ *
+ * Cast rather than validated: `resolveJsonModule` types them structurally, and these are
+ * authored fixtures rather than user input. `validateConfig` is what checks a config that
+ * arrived from somewhere untrusted.
+ *
+ * Two things in `clients.json` are worth knowing about, and neither survives in JSON:
+ *
+ * - `email` carries a `hint`, not a `placeholder`. A placeholder disappears the moment
+ *   somebody types, so anything they need *while* filling the field in cannot live there. A
+ *   hint stays on screen, and `aria-describedby` reads it out with the field.
+ * - `tier` sets `listName: 'clientTier'` and carries no options of its own. They resolve
+ *   through `LOOKUP_REGISTRY` at runtime, so nothing about the tier values lives in the
+ *   config at all.
  */
-export const CLIENTS_CONFIG: EntityFormConfig = {
-  entity: 'clients',
-  version: 1,
-  maskData: false,
-  // Everyone may view; the viewer role may not edit. This is what makes the role switcher
-  // mean something — `DynamicFormComponent.canSubmit` reads it through `RbacService`.
-  permissions: { edit: ['admin', 'manager', 'IT_SUPPORT'] },
-  tabs: [
-    {
-      id: 'general',
-      flatData: true,
-      label: { en: 'General' },
-      fields: [
-        { id: 'name', type: 'text', label: { en: 'Name' }, validators: { required: true }, visibility: true },
-        {
-          id: 'email',
-          type: 'email',
-          label: { en: 'Email' },
-          // `hint`, not `placeholder`: a placeholder disappears the moment somebody types, so
-          // anything they need *while* filling the field in cannot live there. This stays on
-          // screen, and `aria-describedby` reads it out with the field.
-          hint: { en: 'We use this for billing notices — a shared inbox is fine.' },
-          validators: { pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$' },
-          visibility: true,
-        },
-        {
-          id: 'company',
-          type: 'text',
-          label: { en: 'Company' },
-          hint: { en: 'The registered legal name, not the trading name.' },
-          visibility: true,
-        },
-        {
-          id: 'status',
-          type: 'dropdown',
-          label: { en: 'Status' },
-          options: [{ en: 'Active' }, { en: 'Inactive' }],
-          visibility: true,
-        },
-        {
-          // Options come from a named master list, resolved through LOOKUP_REGISTRY at runtime.
-          // Nothing about the tier values lives in this config.
-          id: 'tier',
-          type: 'dropdown',
-          label: { en: 'Tier' },
-          listName: 'clientTier',
-          visibility: true,
-        },
-        { id: 'salary', type: 'number', label: { en: 'Salary' }, visibility: true, maskData: true },
-        { id: 'notes', type: 'textarea', label: { en: 'Notes' }, visibility: true },
-      ],
-    },
-    {
-      id: 'documentsTab',
-      label: { en: 'Documents' },
-      moduleName: 'documents-view',
-    },
-  ],
-};
+export const CLIENTS_CONFIG = clientsConfig as EntityFormConfig;
 
 /**
  * A named master list, as a consuming app would hold it: values out of authoring order with an
@@ -127,69 +90,12 @@ export const CLIENTS_RECORDS: Record<string, unknown>[] = [
 
 export const MASKED_ROLES = ['IT_SUPPORT'];
 
-export const EMPLOYEES_CONFIG: EntityFormConfig = {
-  entity: 'employees',
-  name: { en: 'Employees' },
-  tabs: [
-    {
-      id: 'personal',
-      label: { en: 'Personal' },
-      fields: [
-        { id: 'firstName', type: 'text', label: { en: 'First Name' }, table: { visible: true, isName: true } },
-        { id: 'lastName', type: 'text', label: { en: 'Last Name' }, table: { visible: true } },
-        {
-          id: 'status',
-          type: 'dropdown',
-          label: { en: 'Status' },
-          options: [{ en: 'Active' }, { en: 'Inactive' }, { en: 'On Leave' }],
-          table: { visible: true },
-        },
-        {
-          id: 'contact',
-          type: 'group',
-          label: { en: 'Contact' },
-          children: [
-            { id: 'email', type: 'email', label: { en: 'Email' }, table: { visible: true } },
-            { id: 'phone', type: 'text', label: { en: 'Phone' }, table: { visible: true } },
-          ],
-        },
-      ],
-    },
-    {
-      id: 'employment',
-      label: { en: 'Employment' },
-      flatData: true,
-      fields: [
-        {
-          id: 'department',
-          type: 'dropdown',
-          label: { en: 'Department' },
-          options: [{ en: 'Engineering' }, { en: 'Sales' }, { en: 'HR' }],
-          table: { visible: true },
-        },
-        { id: 'salary', type: 'number', label: { en: 'Salary' }, table: { visible: true } },
-        { id: 'joined', type: 'date', label: { en: 'Joined' }, table: { visible: true } },
-      ],
-    },
-    {
-      id: 'addressesTab',
-      label: { en: 'Addresses' },
-      fields: [
-        {
-          id: 'addresses',
-          type: 'array',
-          label: { en: 'Addresses' },
-          table: { visible: true },
-          children: [
-            { id: 'street', type: 'text', label: { en: 'Street' }, table: { visible: true } },
-            { id: 'city', type: 'text', label: { en: 'City' }, table: { visible: true } },
-            { id: 'zip', type: 'text', label: { en: 'ZIP' }, table: { visible: true } },
-          ],
-        },
-      ],
-    },
-  ],
-};
+/**
+ * `employees` — the config carrying a `group` (Contact) and an `array` (Addresses), which is
+ * what makes it the one that exercises nesting and repeating rows in an import. The array
+ * becomes numbered columns: Street 1, Street 2, Street 3.
+ */
+export const EMPLOYEES_CONFIG = employeesConfig as EntityFormConfig;
 
 export const EMPLOYEES_RECORDS: Record<string, unknown>[] = [
   {
@@ -282,76 +188,12 @@ export const EMPLOYEES_RECORDS: Record<string, unknown>[] = [
  * an entity-ref cascade (country → city), `autoPatch` from a selected company record,
  * `patchOnTrue`, and a `criticalField` lock. Loaders are registered in `app.config.ts`.
  */
-export const ORDERS_CONFIG: EntityFormConfig = {
-  entity: 'orders',
-  version: 1,
-  name: { en: 'Orders' },
-  tabs: [
-    {
-      id: 'order',
-      label: { en: 'Order' },
-      fields: [
-        { id: 'reference', type: 'text', label: { en: 'Reference' }, validators: { required: true }, colSpan: 6 },
-        {
-          id: 'company',
-          type: 'entity-ref',
-          label: { en: 'Company' },
-          colSpan: 6,
-          entityReference: { enabled: true, linkedEntityKey: 'companies', displayFields: ['name'] },
-          autoPatch: {
-            targetTab: 'order',
-            mappings: [
-              { source: 'vat', target: 'taxId' },
-              { source: 'city', target: 'billingCity' },
-            ],
-          },
-        },
-        { id: 'taxId', type: 'text', label: { en: 'Tax ID' }, colSpan: 6 },
-        { id: 'billingCity', type: 'text', label: { en: 'Billing city' }, colSpan: 6 },
-        {
-          id: 'sameAsBilling',
-          type: 'boolean',
-          label: { en: 'Ship to billing city' },
-          colSpan: 12,
-          patchOnTrue: [{ from: 'billingCity', to: 'shippingCity' }],
-        },
-        { id: 'shippingCity', type: 'text', label: { en: 'Shipping city' }, colSpan: 6 },
-        {
-          id: 'iban',
-          type: 'text',
-          label: { en: 'IBAN' },
-          colSpan: 6,
-          criticalField: true,
-        },
-      ],
-    },
-    {
-      id: 'delivery',
-      label: { en: 'Delivery' },
-      fields: [
-        {
-          id: 'country',
-          type: 'entity-ref',
-          label: { en: 'Country' },
-          colSpan: 6,
-          entityReference: { enabled: true, linkedEntityKey: 'countries' },
-        },
-        {
-          id: 'city',
-          type: 'entity-ref',
-          label: { en: 'City' },
-          colSpan: 6,
-          entityReference: {
-            enabled: true,
-            linkedEntityKey: 'cities',
-            parentField: 'country',
-            lookupFilter: 'country',
-          },
-        },
-      ],
-    },
-  ],
-};
+/**
+ * `orders` — three `entity-ref` fields, an `autoPatch` that copies fields off the referenced
+ * record, a `patchOnTrue`, and a `criticalField`. Nothing else in the demo reaches those, and
+ * their loaders are registered in `app.config.ts`.
+ */
+export const ORDERS_CONFIG = ordersConfig as EntityFormConfig;
 
 /** Loader data for the `orders` entity-ref fields. */
 export const ORDER_REFERENCE_DATA = {

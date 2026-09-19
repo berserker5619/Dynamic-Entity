@@ -111,10 +111,20 @@ export class ImportPageComponent {
     this.templateFormat.set(value === 'xlsx' ? 'xlsx' : 'csv');
   }
 
+  /**
+   * One bulk write, not one write per record.
+   *
+   * `createRecord` in a loop re-reads and re-serialises the whole table every time, which is
+   * O(n²) and is what made a 1,200-row in-browser import take 13.2s against the server's
+   * 3.6s for the same file. A real host inserting into a database would batch for the same
+   * reason, so batching here is the thing worth copying.
+   *
+   * `records` is empty on a server transport — it streamed precisely so the records never
+   * existed at once — and `createRecords` returns early on an empty list rather than writing
+   * the table back unchanged.
+   */
   onImported(result: ImportResult): void {
-    for (const record of result.records) {
-      this.store.createRecord(this.config?.entity ?? '', record);
-    }
+    this.store.createRecords(this.config?.entity ?? '', result.records);
     this.saved.set(result.records.length);
   }
 }

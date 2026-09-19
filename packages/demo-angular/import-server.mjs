@@ -29,23 +29,26 @@ const read = path => JSON.parse(readFileSync(join(HERE, path), 'utf8'));
 const PORT = Number(process.env['IMPORT_PORT'] ?? 4300);
 
 /**
- * The entities whose config the browser and this server genuinely agree on.
+ * Every entity the demo offers, from the same files the browser seeds itself from.
  *
- * `local-store.service.ts` seeds test_data.json first and then *overrides* four entities with
- * the richer TypeScript configs in `sample-data.ts`. Serving those from this file would hand
- * the browser one schema and the server another, and an import would map a sheet against a
- * config the user never saw — the exact failure the whole feature is built to avoid, produced
- * by the demo that is supposed to show it working.
+ * `local-store.service.ts` seeds test_data.json and then *overrides* four entities with the
+ * demo's own configs. This file used to serve only the entities that were not overridden and
+ * 404 the rest, because serving them from a second copy would hand the browser one schema and
+ * the server another — an import mapping a sheet against a config the user never saw, which
+ * is the exact failure the whole feature exists to avoid.
  *
- * So they are left out, and asking for one answers 404. A demo that refuses clearly is worth
- * more than one that quietly imports into the wrong fields.
+ * Those four are now JSON in `src/app/mock/configs/`, read here and imported by
+ * `sample-data.ts` there, so there is one source and nothing left to diverge. Refusing them
+ * was the right answer to two copies; one copy is a better answer than either.
+ *
+ * The order matters: the demo's own configs win, exactly as they do in `ensureSeed`.
  */
-const OVERRIDDEN_BY_THE_APP = new Set(['clients', 'employees', 'orders', 'extensions']);
+const DEMO_CONFIGS = ['clients', 'employees', 'orders', 'extensions'].map(name =>
+  read(`src/app/mock/configs/${name}.json`),
+);
 
 const configs = Object.fromEntries(
-  read('../../test_data.json')
-    .filter(config => !OVERRIDDEN_BY_THE_APP.has(config.entity))
-    .map(config => [config.entity, config]),
+  [...read('../../test_data.json'), ...DEMO_CONFIGS].map(config => [config.entity, config]),
 );
 
 /**

@@ -1,0 +1,137 @@
+{
+  "entity": "orders",
+  "version": 1,
+  "name": {
+    "en": "Orders"
+  },
+  "tabs": [
+    {
+      "id": "order",
+      "label": {
+        "en": "Order"
+      },
+      "fields": [
+        {
+          "id": "reference",
+          "type": "text",
+          "label": {
+            "en": "Reference"
+          },
+          "validators": {
+            "required": true
+          },
+          "colSpan": 6
+        },
+        {
+          "id": "company",
+          "type": "entity-ref",
+          "label": {
+            "en": "Company"
+          },
+          "colSpan": 6,
+          "entityReference": {
+            "enabled": true,
+            "linkedEntityKey": "companies",
+            "displayFields": [
+              "name"
+            ]
+          },
+          "autoPatch": {
+            "targetTab": "order",
+            "mappings": [
+              {
+                "source": "vat",
+                "target": "taxId"
+              },
+              {
+                "source": "city",
+                "target": "billingCity"
+              }
+            ]
+          }
+        },
+        {
+          "id": "taxId",
+          "type": "text",
+          "label": {
+            "en": "Tax ID"
+          },
+          "colSpan": 6
+        },
+        {
+          "id": "billingCity",
+          "type": "text",
+          "label": {
+            "en": "Billing city"
+          },
+          "colSpan": 6
+        },
+        {
+          "id": "sameAsBilling",
+          "type": "boolean",
+          "label": {
+            "en": "Ship to billing city"
+          },
+          "colSpan": 12,
+          "patchOnTrue": [
+            {
+              "from": "billingCity",
+              "to": "shippingCity"
+            }
+          ]
+        },
+        {
+          "id": "shippingCity",
+          "type": "text",
+          "label": {
+            "en": "Shipping city"
+          },
+          "colSpan": 6
+        },
+        {
+          "id": "iban",
+          "type": "text",
+          "label": {
+            "en": "IBAN"
+          },
+          "colSpan": 6,
+          "criticalField": true
+        }
+      ]
+    },
+    {
+      "id": "delivery",
+      "label": {
+        "en": "Delivery"
+      },
+      "fields": [
+        {
+          "id": "country",
+          "type": "entity-ref",
+          "label": {
+            "en": "Country"
+          },
+          "colSpan": 6,
+          "entityReference": {
+            "enabled": true,
+            "linkedEntityKey": "countries"
+          }
+        },
+        {
+          "id": "city",
+          "type": "entity-ref",
+          "label": {
+            "en": "City"
+          },
+          "colSpan": 6,
+          "entityReference": {
+            "enabled": true,
+            "linkedEntityKey": "cities",
+            "parentField": "country",
+            "lookupFilter": "country"
+          }
+        }
+      ]
+    }
+  ]
+}

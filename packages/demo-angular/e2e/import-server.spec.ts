@@ -154,15 +154,27 @@ test.describe('an import that happens on a server', () => {
     await expect(page.locator('[data-testid="import-mapper"]')).toHaveCount(0);
   });
 
-  test('404s an entity the server does not serve, in language a user can act on', async ({ page }) => {
-    // `clients` is overridden by the demo app, so the server deliberately does not serve it.
-    // Refusing clearly beats importing against a config the user never saw.
+  test('404s an entity it has no config for, without echoing the key back', async ({ page }) => {
+    /**
+     * Driven through the API rather than the wizard, because no entity in the picker can
+     * reach this any more — and that is the point.
+     *
+     * This used to select `clients`, which the server refused because the demo app overrode
+     * it with a different schema. Both halves now read one set of JSON configs, so every
+     * entity the browser offers is an entity the server serves. The refusal still matters for
+     * a key that genuinely does not exist, and it must not reflect that key back: doing so
+     * turns a 404 into a way to enumerate which entities a deployment has.
+     */
     await openServerWizard(page);
-    await chooseEntity(page, 'clients');
-    await choose(page, 'anything.csv', 'Name\r\nAda\r\n');
 
-    await expect(page.locator('[data-testid="import-problem"]')).toBeVisible();
-    await expect(page.locator('[data-testid="import-mapper"]')).toHaveCount(0);
+    const response = await page.request.post('/api/import/no-such-entity/preview', {
+      multipart: {
+        file: { name: 'anything.csv', mimeType: 'text/csv', buffer: Buffer.from('Name\r\nAda\r\n') },
+      },
+    });
+
+    expect(response.status()).toBe(404);
+    expect(JSON.stringify(await response.json())).not.toContain('no-such-entity');
   });
 
   test('downloads a template from the server, and that template imports', async ({ page }) => {

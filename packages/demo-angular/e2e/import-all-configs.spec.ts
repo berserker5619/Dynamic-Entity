@@ -56,20 +56,17 @@ const CONFIGS: EntityFormConfig[] = (() => {
 })();
 
 /**
- * The entities `import-server.mjs` actually serves — and the rule it serves them by, not a
- * copy of its list.
+ * Everything the demo offers now goes through the server too.
  *
- * It refuses any entity the demo app overrides with a different schema, because serving one
- * would hand the browser one config and the server another. That set is exactly the overlap
- * between `test_data.json` and the demo's TypeScript configs, so it is computed here from the
- * same two sources rather than restated. The other four entities 404 on purpose —
- * `import-server.spec.ts` asserts that refusal; this loop skips them rather than papering
- * over it.
+ * This used to be `test_data.json` minus the four entities the app overrode: the server
+ * refused those, because serving them from a second copy would have handed the browser one
+ * schema and the server another. Both halves now read one set of JSON configs under
+ * `src/app/mock/configs/`, so the refusal has nothing left to protect against and the server
+ * leg covers the same nine entities the browser leg does — including `employees`, whose
+ * repeating `addresses` array becomes numbered columns, and `extensions`, whose `file` field
+ * a sheet cannot carry at all.
  */
-const OVERRIDDEN = new Set(
-  [CLIENTS_CONFIG, EMPLOYEES_CONFIG, ORDERS_CONFIG, EXTENSIONS_CONFIG].map(config => config.entity),
-);
-const SERVED = TEST_DATA_CONFIGS.filter(config => !OVERRIDDEN.has(config.entity));
+const SERVED = CONFIGS;
 
 /** The same list the app and `import-server.mjs` both resolve `clientTier` from. */
 const LOOKUPS: ImportLookups = {

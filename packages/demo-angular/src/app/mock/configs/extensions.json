@@ -1,0 +1,89 @@
+{
+  "entity": "extensions",
+  "version": 2,
+  "name": {
+    "en": "Developer Extensions",
+    "de": "Erweiterungen"
+  },
+  "permissions": {
+    "edit": [
+      "admin",
+      "manager",
+      "IT_SUPPORT"
+    ]
+  },
+  "tabs": [
+    {
+      "id": "main",
+      "flatData": true,
+      "label": {
+        "en": "Main",
+        "de": "Allgemein"
+      },
+      "fields": [
+        {
+          "id": "title",
+          "type": "text",
+          "label": {
+            "en": "Title",
+            "de": "Titel"
+          },
+          "validators": {
+            "required": true,
+            "minLength": 4,
+            "custom": [
+              "noShouting"
+            ]
+          },
+          "table": {
+            "visible": true,
+            "isName": true
+          },
+          "visibility": true
+        },
+        {
+          "id": "email",
+          "type": "email",
+          "label": {
+            "en": "Email",
+            "de": "E-Mail"
+          },
+          "validators": {
+            "customAsync": [
+              "uniqueEmail"
+            ]
+          },
+          "visibility": true
+        },
+        {
+          "id": "rating",
+          "type": "rating",
+          "label": {
+            "en": "Rating",
+            "de": "Bewertung"
+          },
+          "visibility": true
+        },
+        {
+          "id": "reviewedOn",
+          "type": "date",
+          "label": {
+            "en": "Reviewed On",
+            "de": "Geprüft am"
+          },
+          "showOnMinimize": true,
+          "visibility": true
+        },
+        {
+          "id": "attachment",
+          "type": "file",
+          "label": {
+            "en": "Attachment",
+            "de": "Anhang"
+          },
+          "visibility": true
+        }
+      ]
+    }
+  ]
+}

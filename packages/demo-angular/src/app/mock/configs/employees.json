@@ -1,0 +1,187 @@
+{
+  "entity": "employees",
+  "name": {
+    "en": "Employees"
+  },
+  "tabs": [
+    {
+      "id": "personal",
+      "label": {
+        "en": "Personal"
+      },
+      "fields": [
+        {
+          "id": "firstName",
+          "type": "text",
+          "label": {
+            "en": "First Name"
+          },
+          "table": {
+            "visible": true,
+            "isName": true
+          }
+        },
+        {
+          "id": "lastName",
+          "type": "text",
+          "label": {
+            "en": "Last Name"
+          },
+          "table": {
+            "visible": true
+          }
+        },
+        {
+          "id": "status",
+          "type": "dropdown",
+          "label": {
+            "en": "Status"
+          },
+          "options": [
+            {
+              "en": "Active"
+            },
+            {
+              "en": "Inactive"
+            },
+            {
+              "en": "On Leave"
+            }
+          ],
+          "table": {
+            "visible": true
+          }
+        },
+        {
+          "id": "contact",
+          "type": "group",
+          "label": {
+            "en": "Contact"
+          },
+          "children": [
+            {
+              "id": "email",
+              "type": "email",
+              "label": {
+                "en": "Email"
+              },
+              "table": {
+                "visible": true
+              }
+            },
+            {
+              "id": "phone",
+              "type": "text",
+              "label": {
+                "en": "Phone"
+              },
+              "table": {
+                "visible": true
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "employment",
+      "label": {
+        "en": "Employment"
+      },
+      "flatData": true,
+      "fields": [
+        {
+          "id": "department",
+          "type": "dropdown",
+          "label": {
+            "en": "Department"
+          },
+          "options": [
+            {
+              "en": "Engineering"
+            },
+            {
+              "en": "Sales"
+            },
+            {
+              "en": "HR"
+            }
+          ],
+          "table": {
+            "visible": true
+          }
+        },
+        {
+          "id": "salary",
+          "type": "number",
+          "label": {
+            "en": "Salary"
+          },
+          "table": {
+            "visible": true
+          }
+        },
+        {
+          "id": "joined",
+          "type": "date",
+          "label": {
+            "en": "Joined"
+          },
+          "table": {
+            "visible": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "addressesTab",
+      "label": {
+        "en": "Addresses"
+      },
+      "fields": [
+        {
+          "id": "addresses",
+          "type": "array",
+          "label": {
+            "en": "Addresses"
+          },
+          "table": {
+            "visible": true
+          },
+          "children": [
+            {
+              "id": "street",
+              "type": "text",
+              "label": {
+                "en": "Street"
+              },
+              "table": {
+                "visible": true
+              }
+            },
+            {
+              "id": "city",
+              "type": "text",
+              "label": {
+                "en": "City"
+              },
+              "table": {
+                "visible": true
+              }
+            },
+            {
+              "id": "zip",
+              "type": "text",
+              "label": {
+                "en": "ZIP"
+              },
+              "table": {
+                "visible": true
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import type { EntityFormConfig, RichFieldType } from 'ngx-dynamic-entity';
+import extensionsConfig from './configs/extensions.json';
 
 /**
  * `extensions` — the entity that exists so the remaining extension points have somewhere to
@@ -47,65 +48,23 @@ export const REJECTED_TITLE = 'reject';
 /** How long the mock uniqueness check takes. Fixed, so the pending window is assertable. */
 export const ASYNC_CHECK_MS = 800;
 
-export const EXTENSIONS_CONFIG: EntityFormConfig = {
-  entity: EXTENSIONS_ENTITY,
-  version: EXTENSIONS_VERSION,
-  name: { en: 'Developer Extensions', de: 'Erweiterungen' },
-  permissions: { edit: ['admin', 'manager', 'IT_SUPPORT'] },
-  tabs: [
-    {
-      id: 'main',
-      // Flat, so a record's values sit at the root and the seeds below read as records
-      // rather than as a nesting puzzle.
-      flatData: true,
-      label: { en: 'Main', de: 'Allgemein' },
-      fields: [
-        {
-          id: 'title',
-          type: 'text',
-          label: { en: 'Title', de: 'Titel' },
-          // `custom` names a validator registered through `provideNgxDynamicEntity`.
-          // `required` and `minLength` are the built-ins, and they are here so the
-          // `validationMessages` pack has something to translate.
-          validators: { required: true, minLength: 4, custom: ['noShouting'] },
-          table: { visible: true, isName: true },
-          visibility: true,
-        },
-        {
-          id: 'email',
-          type: 'email',
-          label: { en: 'Email', de: 'E-Mail' },
-          // Async validators are a separate key because Angular applies them separately:
-          // they run only once the synchronous ones pass, and hold the control `pending`
-          // meanwhile — which is what gates Save.
-          validators: { customAsync: ['uniqueEmail'] },
-          visibility: true,
-        },
-        {
-          id: 'rating',
-          type: RATING_TYPE,
-          label: { en: 'Rating', de: 'Bewertung' },
-          visibility: true,
-        },
-        {
-          id: 'reviewedOn',
-          type: 'date',
-          label: { en: 'Reviewed On', de: 'Geprüft am' },
-          // Summary fields render through core's `formatDisplayValue`, which is the path
-          // `setDateFormatters` replaces.
-          showOnMinimize: true,
-          visibility: true,
-        },
-        {
-          id: 'attachment',
-          type: 'file',
-          label: { en: 'Attachment', de: 'Anhang' },
-          visibility: true,
-        },
-      ],
-    },
-  ],
-};
+/**
+ * The schema itself, in `configs/extensions.json` so the demo's import server reads the same
+ * file the browser does. See the note on `CLIENTS_CONFIG` for why that matters.
+ *
+ * What the JSON cannot say, and is worth knowing:
+ *
+ * - `title` declares `validators.custom: ['noShouting']` and `email` declares
+ *   `validators.customAsync: ['uniqueEmail']`. Both are **names**, resolved through
+ *   `provideNgxDynamicEntity` — the schema stays data the builder can author, the rule stays
+ *   code. An import runs neither: `applyMapping` checks the built-in validators only, on both
+ *   transports alike, which is the validation-parity gap EXTENDING.md describes.
+ * - `rating` is `RATING_TYPE`, a field type the library does not ship. It needs registering
+ *   twice — once for the renderer (`provideFieldTypes`) and once for the builder's catalog.
+ * - `attachment` is a `file`, which no spreadsheet cell can carry. It is what makes this
+ *   entity the one that demonstrates unsupported-column reporting in the import wizard.
+ */
+export const EXTENSIONS_CONFIG = extensionsConfig as EntityFormConfig;
 
 /**
  * Two records, deliberately at different config versions.

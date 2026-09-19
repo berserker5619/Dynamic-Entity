@@ -1,0 +1,108 @@
+{
+  "entity": "clients",
+  "version": 1,
+  "maskData": false,
+  "permissions": {
+    "edit": [
+      "admin",
+      "manager",
+      "IT_SUPPORT"
+    ]
+  },
+  "tabs": [
+    {
+      "id": "general",
+      "flatData": true,
+      "label": {
+        "en": "General"
+      },
+      "fields": [
+        {
+          "id": "name",
+          "type": "text",
+          "label": {
+            "en": "Name"
+          },
+          "validators": {
+            "required": true
+          },
+          "visibility": true
+        },
+        {
+          "id": "email",
+          "type": "email",
+          "label": {
+            "en": "Email"
+          },
+          "hint": {
+            "en": "We use this for billing notices — a shared inbox is fine."
+          },
+          "validators": {
+            "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+          },
+          "visibility": true
+        },
+        {
+          "id": "company",
+          "type": "text",
+          "label": {
+            "en": "Company"
+          },
+          "hint": {
+            "en": "The registered legal name, not the trading name."
+          },
+          "visibility": true
+        },
+        {
+          "id": "status",
+          "type": "dropdown",
+          "label": {
+            "en": "Status"
+          },
+          "options": [
+            {
+              "en": "Active"
+            },
+            {
+              "en": "Inactive"
+            }
+          ],
+          "visibility": true
+        },
+        {
+          "id": "tier",
+          "type": "dropdown",
+          "label": {
+            "en": "Tier"
+          },
+          "listName": "clientTier",
+          "visibility": true
+        },
+        {
+          "id": "salary",
+          "type": "number",
+          "label": {
+            "en": "Salary"
+          },
+          "visibility": true,
+          "maskData": true
+        },
+        {
+          "id": "notes",
+          "type": "textarea",
+          "label": {
+            "en": "Notes"
+          },
+          "visibility": true
+        }
+      ]
+    },
+    {
+      "id": "documentsTab",
+      "label": {
+        "en": "Documents"
+      },
+      "moduleName": "documents-view"
+    }
+  ]
+}
