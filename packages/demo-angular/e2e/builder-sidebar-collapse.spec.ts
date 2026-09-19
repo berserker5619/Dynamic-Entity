@@ -1,6 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import { gotoDemo, safeClick, safeSelect } from './test-helpers';
 
+/** What `Locator.boundingBox()` resolves to, minus the null a visible element never returns. */
+type BoundingBox = { x: number; y: number; width: number; height: number };
+
 /**
  * The builder's two side rails collapse, to give the canvas the screen on a laptop.
  *
@@ -36,6 +39,42 @@ test.describe('builder sidebars collapse and reopen', () => {
       await page.waitForTimeout(80);
     }
     return last;
+  }
+
+  /**
+   * A whole box, read once the shell has stopped moving.
+   *
+   * `entity-builder.component.css` transitions `grid-template-columns` over 250ms, so a box
+   * read straight after a collapse toggle is mid-animation geometry — the rail has not
+   * reached its final `x` yet. That is exactly how `a collapsed side leaves a narrow rail`
+   * failed on CI while passing on a developer's machine: the assertion was right and the
+   * measurement was early, so the failure followed whichever machine was slower that day.
+   *
+   * Polls until two consecutive reads agree rather than sleeping for the transition's
+   * declared duration — a fixed sleep is a guess that goes stale the moment the duration
+   * changes, and costs its full length even when nothing is moving.
+   */
+  async function settledBox(page: Page, testId: string): Promise<BoundingBox> {
+    const locator = page.getByTestId(testId);
+    await expect(locator).toBeVisible();
+
+    let last: BoundingBox | null = null;
+    for (let i = 0; i < 25; i++) {
+      const now = await locator.boundingBox();
+      if (
+        last &&
+        now &&
+        Math.abs(now.x - last.x) < 0.5 &&
+        Math.abs(now.y - last.y) < 0.5 &&
+        Math.abs(now.width - last.width) < 0.5 &&
+        Math.abs(now.height - last.height) < 0.5
+      ) {
+        return now;
+      }
+      last = now;
+      await page.waitForTimeout(60);
+    }
+    throw new Error(`settledBox: "${testId}" never stopped moving`);
   }
 
   /*
@@ -133,9 +172,10 @@ test.describe('builder sidebars collapse and reopen', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openBuilder(page);
     await safeClick(page.getByTestId('toggle-left-sidebar'));
+    await expect(page.getByTestId('builder-left-sidebar')).toBeHidden();
 
-    const canvas = (await page.getByTestId('builder-canvas-column').boundingBox())!;
-    const inspector = (await page.getByTestId('builder-right-sidebar').boundingBox())!;
+    const canvas = await settledBox(page, 'builder-canvas-column');
+    const inspector = await settledBox(page, 'builder-right-sidebar');
 
     expect(inspector.x).toBeGreaterThan(canvas.x + canvas.width - 1);
     expect(Math.abs(inspector.y - canvas.y)).toBeLessThan(40);
@@ -145,10 +185,13 @@ test.describe('builder sidebars collapse and reopen', () => {
     await openBuilder(page);
     await safeClick(page.getByTestId('toggle-left-sidebar'));
     await safeClick(page.getByTestId('toggle-right-sidebar'));
+    // Both sides are mid-transition here, and this test used to measure straight through it.
+    await expect(page.getByTestId('builder-left-sidebar')).toBeHidden();
+    await expect(page.getByTestId('builder-right-sidebar')).toBeHidden();
 
-    const canvas = (await page.getByTestId('builder-canvas-column').boundingBox())!;
-    const railLeft = (await page.getByTestId('expand-left-sidebar').boundingBox())!;
-    const railRight = (await page.getByTestId('expand-right-sidebar').boundingBox())!;
+    const canvas = await settledBox(page, 'builder-canvas-column');
+    const railLeft = await settledBox(page, 'expand-left-sidebar');
+    const railRight = await settledBox(page, 'expand-right-sidebar');
 
     // Rails flank the canvas rather than floating over it.
     expect(railLeft.x).toBeLessThan(canvas.x);
@@ -185,10 +228,9 @@ test.describe('builder sidebars collapse and reopen', () => {
 
     await safeClick(page.getByTestId('toggle-right-sidebar'));
     await expect(page.getByTestId('builder-right-sidebar')).toBeHidden();
-    await page.waitForTimeout(400);
 
-    const canvas = (await page.getByTestId('builder-canvas-column').boundingBox())!;
-    const rail = (await page.getByTestId('expand-right-sidebar').boundingBox())!;
+    const canvas = await settledBox(page, 'builder-canvas-column');
+    const rail = await settledBox(page, 'expand-right-sidebar');
     expect(rail.x).toBeGreaterThan(canvas.x + canvas.width - 1);
     expect(rail.y).toBeLessThan(canvas.y + 80);
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(overflowBefore);

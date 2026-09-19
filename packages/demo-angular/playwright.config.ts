@@ -43,8 +43,19 @@ export default defineConfig({
       reuseExistingServer: !env['CI'],
       timeout: 60 * 1000,
     },
+    /**
+     * `--live-reload false` is load-bearing, not tidiness.
+     *
+     * The dev server reloads the browser whenever it rebuilds, and a reload part-way through
+     * a test detaches whatever the test was about to click. That surfaced as
+     * `form-builder-employees.spec.ts` failing on "element was detached from the DOM …
+     * waiting for navigation to finish" — a builder flow that passes on its own in 1.1
+     * minutes and took 5.6 under the full suite, which is what a rebuild storm looks like
+     * from inside a test. Nothing here edits application source, so a reload during a run is
+     * never something the suite wanted.
+     */
     {
-      command: `npx ng serve --port ${PORT}`,
+      command: `npx ng serve --port ${PORT} --live-reload false`,
       url: BASE_URL,
       reuseExistingServer: !env['CI'],
       timeout: 120 * 1000,
