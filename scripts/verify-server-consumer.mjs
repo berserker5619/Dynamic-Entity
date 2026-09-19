@@ -346,14 +346,26 @@ run('node', ['check.mjs'], { cwd: proj, stdio: 'inherit' });
  * Every ```ts block, not a hand-picked few.
  *
  * A snippet added later has to be checked too, or the guard silently stops covering the thing
- * it was added for. The README's one Angular snippet is fenced ```typescript instead and is
- * compiled by verify-consumer.mjs, where `ngx-dynamic-entity` is what is installed.
+ * it was added for. The server README's one Angular snippet is fenced ```typescript instead and
+ * is compiled by verify-consumer.mjs, where `ngx-dynamic-entity` is what is installed.
+ *
+ * The **root** README is read here as well, and that is not tidiness. Its ```typescript blocks
+ * go to verify-consumer.mjs, which installs the Angular packages and not this one — so a
+ * server-side snippet there could be compiled by neither script and nobody would notice. That
+ * is exactly what happened to the import section's `createImportRouter` example. Two fences
+ * split every file by which project can actually check it; nothing may fall between them.
  */
-const readme = fs.readFileSync(path.join(ROOT, 'packages/server/README.md'), 'utf8');
-const snippets = [...readme.matchAll(new RegExp('```ts\\n([\\s\\S]*?)```', 'g'))].map(m => m[1]);
+const SNIPPET_SOURCES = ['packages/server/README.md', 'README.md'];
+const snippets = SNIPPET_SOURCES.flatMap(file =>
+  [
+    ...fs
+      .readFileSync(path.join(ROOT, file), 'utf8')
+      .matchAll(new RegExp('```ts\\n([\\s\\S]*?)```', 'g')),
+  ].map(match => match[1]),
+);
 
 if (!snippets.length) {
-  console.error('error: no ```ts snippets found in packages/server/README.md');
+  console.error(`error: no \`\`\`ts snippets found in ${SNIPPET_SOURCES.join(' or ')}`);
   process.exit(1);
 }
 

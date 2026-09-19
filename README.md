@@ -305,18 +305,34 @@ Both paths end at code you write. Seam 2 is where it stops:
 ```
 
 ```typescript
-// The wizard has stored nothing of its own. If you don't handle this, the import is a no-op.
-onImported(result: ImportResult): void {
-  for (const record of result.records) this.store.create(entity, record);
+import type { ImportResult } from '@dynamic-entity/core';
+
+declare const store: { create(entity: string, record: Record<string, unknown>): void };
+
+export class ImportPageComponent {
+  entity = 'clients';
+
+  // The wizard has stored nothing of its own. If you don't handle this, the import is a no-op.
+  onImported(result: ImportResult): void {
+    for (const record of result.records) store.create(this.entity, record);
+  }
 }
 ```
 
-```typescript
+```ts
 // On a server — a function you hand the router.
-// Called once per batch and awaited; `request` is where your auth context lives.
-createImportRouter({
+import { createImportRouter } from '@dynamic-entity/server/express';
+import type { EntityFormConfig, ImportLookups } from '@dynamic-entity/core';
+
+// Your own — the configs you authored, the lists they resolve against, your database.
+declare const configs: Record<string, EntityFormConfig>;
+declare const lookups: ImportLookups;
+declare const db: { insertMany(entity: string, rows: Record<string, unknown>[]): Promise<void> };
+
+export const importRouter = createImportRouter({
   configs,
   lookups,
+  // Called once per batch and awaited; `request` is where your auth context lives.
   async onImport(records, { entity, request }) {
     await db.insertMany(entity, records);
   },
