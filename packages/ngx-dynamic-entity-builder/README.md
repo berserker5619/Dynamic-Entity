@@ -46,10 +46,12 @@ export const appConfig: ApplicationConfig = {
 ```html
 <ngx-entity-builder
   [config]="initialConfig"
+  [rules]="initialRules"
   [languages]="['en', 'de']"
   [uiLanguage]="'en'"
   [availableRoles]="['admin', 'editor']"
   (configChange)="onConfigUpdated($event)"
+  (rulesChange)="onRulesUpdated($event)"
   (save)="onSave($event)"
 />
 ```
@@ -59,6 +61,7 @@ export const appConfig: ApplicationConfig = {
 | Input | Type | Notes |
 |---|---|---|
 | `config` | `EntityFormConfig \| undefined` | Omit to start from an empty schema. |
+| `rules` | `FormRule[] \| undefined` | The rules that belong with `config`. They arrive together as one snapshot, so opening a builder is not itself an undoable step. Omit and it opens with none. |
 | `languages` | `string[]` | Locales offered for localized labels. Defaults to `['en']`. |
 | `uiLanguage` | `string` | Locale for the builder's **own** chrome, not the labels being authored. Defaults to `'en'`. |
 | `availableRoles` | `string[]` | Roles offered in the permissions editor. |
@@ -69,7 +72,42 @@ export const appConfig: ApplicationConfig = {
 | Output | Payload |
 |---|---|
 | `configChange` | `EntityFormConfig` — emitted on every edit. |
+| `rulesChange` | `FormRule[]` — emitted on every edit, the mirror of `configChange`. |
 | `save` | `EntityFormConfig` — emitted when the user saves. |
+
+### Rules are stored beside the config, not inside it
+
+`EntityFormConfig` has no `rules` property: the renderer takes them as a separate `[rules]`
+input, and so does this component. A host therefore has to save both.
+
+`save` carries the config alone, for compatibility. Keep the latest `rulesChange` and write
+it alongside:
+
+```typescript
+import type { EntityFormConfig, FormRule } from '@dynamic-entity/core';
+
+declare const api: {
+  saveConfig(config: EntityFormConfig): void;
+  saveRules(entity: string, rules: FormRule[]): void;
+};
+
+let authored: FormRule[] = [];
+
+export function onRulesUpdated(rules: FormRule[]): void {
+  authored = rules;
+}
+
+export function onSave(config: EntityFormConfig): void {
+  api.saveConfig(config);
+  // Saving the config alone drops every rule the user just authored.
+  api.saveRules(config.entity, authored);
+}
+```
+
+Keeping the pair together matters beyond persistence: renaming a field repoints the rules
+that named it, so a host that saved the config from a later edit and the rules from an
+earlier one would write a rule pointing at a field that no longer exists. The undo history
+stores the two together for the same reason.
 
 ---
 

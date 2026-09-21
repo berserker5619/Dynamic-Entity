@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { fieldByLabel, gotoDemo, safeClick } from './test-helpers';
 
-test.describe('Dynamic Entity E2E - Phase 1 Rules Engine & Record Form', () => {
+test.describe('Rules engine and the record form', () => {
   test.beforeEach(async ({ page }) => {
     await gotoDemo(page);
   });

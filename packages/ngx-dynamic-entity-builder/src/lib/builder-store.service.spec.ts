@@ -127,12 +127,33 @@ describe('BuilderStore', () => {
       store.addOption(id);
       expect(store.fields()[0].options?.length).toBe(2);
 
-      // One canonical shape: the displayed text is the stored value.
+      // The displayed text is what the user edits; the key is what the record stores.
       store.setOptionLabel(id, 0, 'en', 'Active');
-      expect(store.fields()[0].options?.[0]).toEqual({ en: 'Active' });
+      expect(store.fields()[0].options?.[0]).toMatchObject({ en: 'Active' });
 
       store.removeOption(id, 0);
       expect(store.fields()[0].options?.length).toBe(1);
+    });
+
+    it('mints a stable key on create and never rewrites it on rename', () => {
+      store.addOption(id);
+      const key = store.optionKey(store.fields()[0].options![0]);
+      expect(key).toBeTruthy();
+
+      store.setOptionLabel(id, 0, 'en', 'Active');
+      store.setOptionLabel(id, 0, 'en', 'Enabled');
+      store.setOptionLabel(id, 0, 'de', 'Freigegeben');
+
+      // The whole point: a rename changes what the option reads, not what it is, so every
+      // record already holding it keeps matching.
+      expect(store.optionKey(store.fields()[0].options![0])).toBe(key);
+    });
+
+    it('gives two options distinct keys', () => {
+      store.addOption(id);
+      store.addOption(id);
+      const [a, b] = store.fields()[0].options!;
+      expect(store.optionKey(a)).not.toBe(store.optionKey(b));
     });
 
     it('adds a translation without dropping the existing language', () => {
@@ -140,7 +161,7 @@ describe('BuilderStore', () => {
       store.setOptionLabel(id, 0, 'en', 'Active');
       store.setOptionLabel(id, 0, 'de', 'Aktiv');
 
-      expect(store.fields()[0].options?.[0]).toEqual({ en: 'Active', de: 'Aktiv' });
+      expect(store.fields()[0].options?.[0]).toMatchObject({ en: 'Active', de: 'Aktiv' });
     });
 
     it('merges language keys via updateOption', () => {
@@ -148,6 +169,50 @@ describe('BuilderStore', () => {
       store.updateOption(id, 0, { en: 'Active', de: 'Aktiv' });
 
       expect(store.fields()[0].options?.[0]).toMatchObject({ en: 'Active', de: 'Aktiv' });
+    });
+
+    it('refuses to let updateOption rewrite an established key', () => {
+      store.addOption(id);
+      const key = store.optionKey(store.fields()[0].options![0]);
+      store.updateOption(id, 0, { $key: 'something-else', en: 'Active' });
+
+      expect(store.optionKey(store.fields()[0].options![0])).toBe(key);
+    });
+  });
+
+  describe('assigning keys to an existing config', () => {
+    let id: string;
+    beforeEach(() => {
+      store.setEntityName('clients');
+      id = store.addField('dropdown');
+    });
+
+    it('reports options with no key, and keys them all', () => {
+      store.updateField(id, { options: [{ en: 'Active' }, { en: 'Closed' }] });
+      expect(store.hasUnkeyedOptions()).toBe(true);
+
+      store.assignOptionKeys();
+
+      expect(store.hasUnkeyedOptions()).toBe(false);
+      expect(store.fields()[0].options).toEqual([
+        { $key: 'active', en: 'Active' },
+        { $key: 'closed', en: 'Closed' },
+      ]);
+    });
+
+    it('leaves an established key exactly as it is', () => {
+      store.updateField(id, { options: [{ $key: 'legacy-code', en: 'Active' }, { en: 'Closed' }] });
+      store.assignOptionKeys();
+
+      expect(store.fields()[0].options?.[0]).toEqual({ $key: 'legacy-code', en: 'Active' });
+    });
+
+    it('does not collide with a key already taken in the same field', () => {
+      store.updateField(id, { options: [{ $key: 'active', en: 'Closed' }, { en: 'Active' }] });
+      store.assignOptionKeys();
+
+      const keys = store.fields()[0].options!.map(o => store.optionKey(o));
+      expect(new Set(keys).size).toBe(2);
     });
   });
 
@@ -209,7 +274,7 @@ describe('BuilderStore', () => {
 
       store.setFieldDataSource(id, 'manual');
 
-      expect(store.fields()[0].options).toEqual([{ en: 'Active' }]);
+      expect(store.fields()[0].options).toMatchObject([{ en: 'Active' }]);
     });
 
     it('clears both when the source is set back to none', () => {
@@ -354,6 +419,115 @@ describe('BuilderStore', () => {
 
       expect(store.fields()[0].id).toBe('given_name');
       expect(store.hasManualId('given_name')).toBe(true);
+    });
+
+    it('follows a rename through a rule that names the field by path', () => {
+      // The builder authors rules by path, because a bare id cannot name one of two fields
+      // that share one. The repoint matched bare ids alone, so renaming a field orphaned
+      // every rule the builder itself had written — the rule kept pointing at a path
+      // nothing resolved to, and nothing said so.
+      store.load({
+        entity: 'clients',
+        tabs: [
+          {
+            id: 'main',
+            label: { en: 'Main' },
+            fields: [
+              { id: 'status', type: 'text', label: { en: 'Status' } },
+              { id: 'reason', type: 'text', label: { en: 'Reason' } },
+            ],
+          },
+        ],
+      });
+      store.loadRules([
+        {
+          id: 'r1',
+          formConfigId: 'clients',
+          fieldId: '[main.status]',
+          conditions: [
+            { operator: 'EQUAL', compareType: 'field', compareToField: '[main.status]' },
+          ],
+          action: { type: 'visibility', value: false },
+          targets: [{ id: '[main.reason]', type: 'field' }],
+          enabled: true,
+          priority: 1,
+        },
+      ]);
+
+      store.renameField('status', 'state');
+
+      const [rule] = store.rules();
+      expect(rule.fieldId).toBe('[main.state]');
+      expect(rule.conditions[0].compareToField).toBe('[main.state]');
+      // The target named a different field and must not move.
+      expect(rule.targets[0].id).toBe('[main.reason]');
+    });
+
+    it('still follows a rename through a bare id', () => {
+      store.load({
+        entity: 'clients',
+        tabs: [
+          {
+            id: 'main',
+            label: { en: 'Main' },
+            fields: [{ id: 'status', type: 'text', label: { en: 'Status' } }],
+          },
+        ],
+      });
+      store.loadRules([
+        {
+          id: 'r1',
+          formConfigId: 'clients',
+          fieldId: 'status',
+          conditions: [{ operator: 'EQUAL', compareType: 'value', value: 'x' }],
+          action: { type: 'visibility', value: false },
+          targets: [{ id: 'status', type: 'field' }],
+          enabled: true,
+          priority: 1,
+        },
+      ]);
+
+      store.renameField('status', 'state');
+
+      const [rule] = store.rules();
+      expect(rule.fieldId).toBe('state');
+      expect(rule.targets[0].id).toBe('state');
+    });
+
+    it('matches a path segment exactly, not as a substring', () => {
+      store.load({
+        entity: 'clients',
+        tabs: [
+          {
+            id: 'status',
+            label: { en: 'Status' },
+            fields: [
+              { id: 'city', type: 'text', label: { en: 'City' } },
+              { id: 'statusCode', type: 'text', label: { en: 'Code' } },
+            ],
+          },
+        ],
+      });
+      store.loadRules([
+        {
+          id: 'r1',
+          formConfigId: 'clients',
+          // A tab called `status`, and a field whose id merely starts with it. Neither is
+          // the field being renamed.
+          fieldId: '[status.city]',
+          conditions: [{ operator: 'EQUAL', compareType: 'value', value: 'x' }],
+          action: { type: 'visibility', value: false },
+          targets: [{ id: '[status.statusCode]', type: 'field' }],
+          enabled: true,
+          priority: 1,
+        },
+      ]);
+
+      store.renameField('city', 'town');
+
+      const [rule] = store.rules();
+      expect(rule.fieldId).toBe('[status.town]');
+      expect(rule.targets[0].id).toBe('[status.statusCode]');
     });
 
     it('never rewrites ids of a config loaded from storage', () => {

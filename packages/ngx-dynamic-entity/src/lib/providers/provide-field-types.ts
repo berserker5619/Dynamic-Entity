@@ -28,7 +28,7 @@ import { FileFieldComponent } from '../field-types/file-field.component';
  *
  * `FieldRegistryService` imports no components. Whatever you register here is what gets
  * bundled, so an app that only uses text/number/dropdown pays for three components and
- * their imports, not nineteen.
+ * their imports, not twenty-one.
  *
  * ```ts
  * // Everything (convenient; bundles all built-ins):
@@ -75,7 +75,7 @@ export function provideFieldTypes(types: Record<string, Type<any>>): Environment
   ]);
 }
 
-/** Register all 19 built-in field type keys. Convenience for apps that use most of them. */
+/** Register all 21 built-in field type keys. Convenience for apps that use most of them. */
 export function provideBuiltInFieldTypes(): EnvironmentProviders {
   return provideFieldTypes(builtInFieldTypes());
 }

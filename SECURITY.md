@@ -4,22 +4,13 @@
 
 | Version | Supported |
 |---|---|
-| 1.14.x | Yes |
-| 1.13.x | Yes |
-| 1.12.x | Yes |
-| 1.11.x | Yes |
-| 1.10.x | Yes |
-| 1.9.x | Yes |
-| 1.8.x | Yes |
-| 1.7.x | Yes |
-| 1.6.x | Yes |
-| 1.5.x | Yes |
-| 1.4.x | Yes |
-| 1.3.x | Yes |
-| 1.2.x | Yes |
-| 1.1.x | Yes |
-| 1.0.x | No — upgrade to the latest 1.x |
+| 2.0.x | Yes |
+| 1.x | Security fixes only |
 | < 1.0 | No |
+
+A row per minor was fifteen lines saying one thing. The policy is: the current major gets
+fixes of every kind, the previous major gets security fixes, and anything before 1.0 gets
+neither.
 
 1.0.0 cannot be installed on any Angular newer than 17 and shipped a dependency fault that
 breaks dependency injection. If you are on it, upgrading is the fix.

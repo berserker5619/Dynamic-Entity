@@ -254,7 +254,9 @@ describe('HttpImportTransport.commit', () => {
     await new HttpImportTransport({ baseUrl: '/api/import', fetch }).commit(file(), PLAN, CONTEXT);
 
     const body = calls[0].init.body as FormData;
-    expect([...body.keys()]).toEqual(['plan', 'file']);
+    // `FormData.keys()` is in the DOM lib but not in the `lib` this package compiles
+    // against; the runtime under jsdom has it.
+    expect([...(body as unknown as { keys(): Iterable<string> }).keys()]).toEqual(['plan', 'file']);
     expect(JSON.parse(body.get('plan') as string)).toEqual(PLAN);
   });
 

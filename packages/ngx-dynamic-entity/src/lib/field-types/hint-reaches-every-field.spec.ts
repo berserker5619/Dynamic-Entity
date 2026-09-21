@@ -12,7 +12,7 @@ import { builtInFieldTypes } from '../providers/provide-field-types';
  * exactly that happened to `validationMessages`.
  *
  * The second half — `aria-describedby` — is the half that cannot be seen. Sixteen of the
- * nineteen leaf components named nothing at all before this, so their *error* messages were on
+ * twenty-one leaf components named nothing at all before this, so their *error* messages were on
  * screen and unannounced; the hint would have inherited the same gap. This walks the real
  * registry, so a field type added later is covered the day it is registered.
  */

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, isDevMode } from '@angular/core';
 import { AsyncValidatorFn, ValidatorFn, Validators } from '@angular/forms';
 import type { FieldValidators } from '@dynamic-entity/core';
 import { ASYNC_VALIDATOR_REGISTRY, VALIDATOR_REGISTRY } from '../tokens/injection-tokens';
@@ -50,7 +50,22 @@ export class ValidatorRegistryService {
     if (config.max !== undefined) fnList.push(Validators.max(config.max));
     if (config.minLength !== undefined) fnList.push(Validators.minLength(config.minLength));
     if (config.maxLength !== undefined) fnList.push(Validators.maxLength(config.maxLength));
-    if (config.pattern) fnList.push(Validators.pattern(config.pattern));
+    if (config.pattern) {
+      // `Validators.pattern` compiles the string, so an unparseable one threw here — during
+      // control construction, which takes the whole form down rather than one field's format
+      // check. `validateConfig` reports it as an error; at runtime the field degrades to no
+      // pattern validation, which is exactly what the server-side import path already does.
+      try {
+        fnList.push(Validators.pattern(config.pattern));
+      } catch (err) {
+        this.warnOnce(
+          `pattern:${config.pattern}`,
+          `The pattern "${config.pattern}" is not a valid regular expression ` +
+            `(${err instanceof Error ? err.message : String(err)}), so no format check is ` +
+            `applied to this field. Run "dynamic-entity validate" over the config to find it.`,
+        );
+      }
+    }
     if (config.email) fnList.push(Validators.email);
 
     // Named validators from the consumer registry. This branch previously hardcoded the
@@ -60,6 +75,7 @@ export class ValidatorRegistryService {
     for (const key of config.custom ?? []) {
       const fn = this.resolve(key);
       if (fn) fnList.push(fn);
+      else this.warnUnresolved('custom', key);
     }
 
     return fnList;
@@ -82,7 +98,39 @@ export class ValidatorRegistryService {
     for (const key of config.customAsync ?? []) {
       const fn = this.asyncRegistry.get(key);
       if (fn) out.push(fn);
+      else this.warnUnresolved('customAsync', key);
     }
     return out;
+  }
+
+  /**
+   * Say when a named validator resolved to nothing.
+   *
+   * It used to be dropped in silence, which is the worst failure mode this library has: the
+   * schema says the field is checked, the field is not checked, the form saves, and nothing
+   * anywhere said so. For `customAsync` that is typically a uniqueness check, so the duplicate
+   * lands in the database.
+   *
+   * Dev only, once per name — this runs while controls are built, which happens on every
+   * config change. `validateConfig` with `knownValidators` is the build-time version of the
+   * same check, and it fails CI rather than a console.
+   */
+  private warnUnresolved(kind: 'custom' | 'customAsync', key: string): void {
+    this.warnOnce(
+      `${kind}:${key}`,
+      `No validator named "${key}" is registered, so validators.${kind} drops it and it never ` +
+        `runs. Register it with provideNgxDynamicEntity({ ${
+          kind === 'customAsync' ? 'asyncValidators' : 'validators'
+        }: { '${key}': ... } }).`,
+    );
+  }
+
+  /** Per service instance, which is per injector — so a test gets a clean slate. */
+  private readonly warned = new Set<string>();
+
+  private warnOnce(id: string, message: string): void {
+    if (!isDevMode() || this.warned.has(id)) return;
+    this.warned.add(id);
+    console.warn(`[ngx-dynamic-entity] ${message}`);
   }
 }

@@ -44,13 +44,19 @@ const published = {
   module: 'index.mjs',
   types: 'index.d.ts',
   bin: {
-    'dynamic-entity': 'cli.mjs',
+    'dynamic-entity': 'bin.mjs',
   },
   exports: {
     '.': {
       types: './index.d.ts',
       import: './index.mjs',
       require: './index.js',
+    },
+    // The CLI's own entry point: reachable, and absent from the root bundle.
+    './cli': {
+      types: './cli.d.ts',
+      import: './cli.mjs',
+      require: './cli.js',
     },
     './schema': './entity-form-config.schema.json',
     './package.json': './package.json',
@@ -61,17 +67,23 @@ fs.writeFileSync(path.join(DIST, 'package.json'), JSON.stringify(published, null
 
 // The README and the JSON Schema are part of what ships, so they are copied in rather than
 // referenced out of the package root.
-for (const file of ['README.md', 'entity-form-config.schema.json', 'cli.mjs']) {
+// `cli.mjs` is the bin wrapper and `cli.js`/`cli.mjs` are the bundled subpath — the wrapper
+// would overwrite the bundle, so it ships under its own name.
+for (const file of ['README.md', 'entity-form-config.schema.json']) {
   const from = path.join(HERE, file);
   if (fs.existsSync(from)) fs.copyFileSync(from, path.join(DIST, file));
 }
+
+fs.copyFileSync(path.join(HERE, 'bin.mjs'), path.join(DIST, 'bin.mjs'));
 
 const missing = [
   'index.js',
   'index.mjs',
   'index.d.ts',
-  'entity-form-config.schema.json',
   'cli.mjs',
+  'cli.d.ts',
+  'bin.mjs',
+  'entity-form-config.schema.json',
 ].filter(
   f => !fs.existsSync(path.join(DIST, f)),
 );

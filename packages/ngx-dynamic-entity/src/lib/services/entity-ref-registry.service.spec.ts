@@ -20,11 +20,11 @@ describe('EntityRefRegistryService', () => {
 
   it('should resolve registered loaders', () => {
     expect(service.resolve('loader1')).toBeDefined();
-    expect(service.has('loader1')).toBeTrue();
+    expect(service.has('loader1')).toBe(true);
   });
 
   it('should return null for unknown loaders', () => {
     expect(service.resolve('missing')).toBeNull();
-    expect(service.has('missing')).toBeFalse();
+    expect(service.has('missing')).toBe(false);
   });
 });

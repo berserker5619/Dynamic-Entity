@@ -23,7 +23,7 @@ describe('MultiSelectFieldComponent', () => {
 
   it('should render multiple select', () => {
     const el = fixture.nativeElement.querySelector('select');
-    expect(el.multiple).toBeTrue();
+    expect(el.multiple).toBe(true);
   });
 
   it('should join labels in readonly mode', () => {

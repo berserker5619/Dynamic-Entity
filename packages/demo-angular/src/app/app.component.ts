@@ -11,6 +11,7 @@ import {
 import { BuilderPageComponent } from './builder-page.component';
 import { ImportPageComponent } from './import-page.component';
 import { LocalStore } from './mock/local-store.service';
+import { demoRulesFor } from './mock/demo-rules';
 
 @Component({
   selector: 'app-root',
@@ -37,6 +38,23 @@ export class AppComponent implements OnInit {
   readonly language = signal<'en' | 'de'>('en');
   readonly view = signal<'list' | 'form' | 'config' | 'builder' | 'import'>('list');
   readonly config = signal<EntityFormConfig | null>(null);
+  /**
+   * The rules the selected entity's form is rendered with.
+   *
+   * A host supplies these beside the config rather than inside it — `[rules]` on both form
+   * components. The demo binds them so the two behaviours that only a round trip can show
+   * are reachable: a rule that *shows* a field the config hides, and a per-section save that
+   * a rule on a field inside a `group` refuses. See `demo-rules.ts`.
+   */
+  readonly rules = computed(() => {
+    // `rulesRevision` is read for its dependency, not its value: `demoRulesFor` reads
+    // storage, which no signal tracks, so saving in the builder has to say so explicitly or
+    // the record form keeps rendering with the rules it computed before.
+    this.rulesRevision();
+    return demoRulesFor(this.selectedEntity());
+  });
+
+  private readonly rulesRevision = signal(0);
   readonly allConfigs = signal<EntityFormConfig[]>([]);
   readonly records = signal<VersionedRecord[]>([]);
   readonly selectedRecord = signal<VersionedRecord | null>(null);
@@ -235,6 +253,8 @@ export class AppComponent implements OnInit {
 
   onBuilderSave(entityKey: string) {
     this.loadAllConfigs();
+    // The builder may have authored or deleted rules; they are stored beside the config.
+    this.rulesRevision.update(n => n + 1);
     this.onEntityChange(entityKey);
   }
 

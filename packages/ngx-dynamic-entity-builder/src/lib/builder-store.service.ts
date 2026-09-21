@@ -11,7 +11,16 @@ import type {
   PatchOnTrueMapping,
   RichFieldType,
 } from '@dynamic-entity/core';
-import { findTab, labelToId, normalizeConfigOptions, computeFieldDrift, createFieldSnapshot } from '@dynamic-entity/core';
+import {
+  OPTION_KEY,
+  computeFieldDrift,
+  createFieldSnapshot,
+  findTab,
+  labelToId,
+  normalizeConfigOptions,
+  optionKeyOf,
+  resolveLabel,
+} from '@dynamic-entity/core';
 import { assignFieldRefs, collectFieldScopes, fieldRefFor, parseFieldRef, toRefToken } from '@dynamic-entity/core';
 import { createFieldConfig, getFieldTypeMeta, humanizeId, type FlagValidator, type ParamValidator } from './field-catalog';
 import { deepClone } from './clone';
@@ -48,6 +57,28 @@ interface BuilderSnapshot {
   readonly rules: FormRule[];
   /** Tab / field / rule counts, used to decide whether two edits may be coalesced. */
   readonly shape: string;
+}
+
+/**
+ * Follow a field rename through a rule reference, in either spelling.
+ *
+ * This matched the bare id alone, while the builder authors rules by **path** —
+ * `[personal.address.city]`, because a bare id cannot name one of two fields that share
+ * one. So renaming a field silently orphaned every rule the builder itself had written: the
+ * rule kept pointing at a path nothing resolved to, and nothing said so.
+ *
+ * A path's last segment is the field id, which is what makes this exact rather than a
+ * substring replace — `[work.status]` must not be rewritten by renaming `statusCode`, and
+ * `[status.city]` must not be rewritten by renaming `status`.
+ */
+function repointRef(reference: string, oldId: string, newId: string): string {
+  const parsed = parseFieldRef(reference);
+  if (parsed.kind === 'id') return parsed.value === oldId ? newId : reference;
+
+  const segments = parsed.value.split('.');
+  if (segments[segments.length - 1] !== oldId) return reference;
+  segments[segments.length - 1] = newId;
+  return toRefToken(segments.join('.'));
 }
 
 @Injectable()
@@ -147,10 +178,22 @@ export class BuilderStore {
     // A new edit after an undo discards the redo branch, which is what every editor does.
     this.history.length = at + 1;
     this.history.push(snapshot);
+
+    // Bounded, because a builder session is long and every keystroke that does not coalesce
+    // earns an entry. Snapshots hold references and share unchanged subtrees, so an entry is
+    // cheap — but unbounded is unbounded, and the oldest steps are the ones nobody walks
+    // back to. Dropping from the front keeps the most recent 200.
+    if (this.history.length > BuilderStore.MAX_HISTORY) {
+      this.history.splice(0, this.history.length - BuilderStore.MAX_HISTORY);
+    }
+
     this.cursor.set(this.history.length - 1);
     this.historyLength.set(this.history.length);
     this.lastEditAt = now;
   }
+
+  /** How many undo steps are kept. */
+  private static readonly MAX_HISTORY = 200;
 
   /** Counts that distinguish a structural edit from a value edit. */
   private shapeOf(config: EntityFormConfig, rules: FormRule[]): string {
@@ -262,7 +305,7 @@ export class BuilderStore {
 
   // ─── Initialisation ─────────────────────────────────────────────────────────
 
-  load(config: EntityFormConfig): void {
+  load(config: EntityFormConfig, rules: readonly FormRule[] = []): void {
     // Remember the paths the config declared before filling in the rest, so a deliberate
     // binding override is never mistaken for one of ours and rewritten.
     this.authoredRefs.clear();
@@ -298,6 +341,11 @@ export class BuilderStore {
     // Editing a label must never rewrite one, so freeze every id the config arrived with.
     this.manualIds.clear();
     for (const field of this.getAllFields(next.tabs)) this.manualIds.add(field.id);
+    // Set before the baseline is taken, not after. A snapshot is a `{config, rules}` pair —
+    // that is why history stores them together — so seeding them as two recorded operations
+    // would put a step on the stack for a load nobody performed, and leave a fresh builder
+    // offering to undo the act of opening it.
+    this._rules.set(clone(rules as FormRule[]));
     this._isDirty.set(false);
     this.resetHistory();
   }
@@ -584,8 +632,15 @@ export class BuilderStore {
     this._rules.update(rules =>
       rules.map(rule => ({
         ...rule,
-        fieldId: rule.fieldId === oldId ? newId : rule.fieldId,
-        targets: rule.targets.map(t => (t.type === 'field' && t.id === oldId ? { ...t, id: newId } : t)),
+        fieldId: repointRef(rule.fieldId, oldId, newId),
+        conditions: rule.conditions?.map(c =>
+          c?.compareToField
+            ? { ...c, compareToField: repointRef(c.compareToField, oldId, newId) }
+            : c,
+        ),
+        targets: rule.targets.map(t =>
+          t.type === 'field' ? { ...t, id: repointRef(t.id, oldId, newId) } : t,
+        ),
       })),
     );
 
@@ -984,11 +1039,98 @@ export class BuilderStore {
       const options = field.options ?? [];
       const n = options.length + 1;
       const lang = draft.defaultLanguage ?? 'en';
-      options.push({ [lang]: `Option ${n}` });
+      const label = `Option ${n}`;
+      // The key is minted here, at creation, from the label the option starts with — and
+      // then never rewritten, which is the entire point. Renaming an option afterwards
+      // changes what it *reads*; the key is what it *is*, so every record already holding it
+      // keeps matching. See `DropdownOption`.
+      options.push({ [OPTION_KEY]: this.mintOptionKey(options, label), [lang]: label });
       field.options = options;
       // Authoring an inline option makes this a manual field — see `setFieldDataSource`.
       delete field.listName;
     });
+  }
+
+  /**
+   * A key for a new option: the label slugified, made unique within its own field.
+   *
+   * Unique within the field and nowhere wider, because that is the scope the key has to
+   * distinguish within — two fields may both offer "Active" and they are the same value.
+   * A label that slugifies to nothing (punctuation, a script `labelToId` strips) falls back
+   * to a positional name rather than an empty key, which `optionKeyOf` would ignore.
+   */
+  private mintOptionKey(existing: readonly DropdownOption[], label: string): string {
+    const taken = new Set(existing.map(optionKeyOf).filter(Boolean) as string[]);
+    const base = labelToId(label) || `option${existing.length + 1}`;
+    if (!taken.has(base)) return base;
+    let n = 2;
+    while (taken.has(`${base}${n}`)) n += 1;
+    return `${base}${n}`;
+  }
+
+  /**
+   * Give every option in the config a key, leaving the ones that already have one alone.
+   *
+   * The counterpart to `optionKeyMigration` in core: that one keys stored *records* against
+   * a keyed config, this one keys the config. Run this first, then ship the migration — the
+   * other order leaves the migration with no keys to attach.
+   *
+   * Existing keys are never rewritten, so this is safe to run again on a config that is
+   * already half-keyed, which is what happens as options are added to an older schema.
+   */
+  assignOptionKeys(): void {
+    this.mutate(draft => {
+      const visitFields = (fields: NestedFieldConfig[] | undefined): void => {
+        for (const field of fields ?? []) {
+          if (Array.isArray(field.options)) {
+            const keyed: DropdownOption[] = [];
+            for (const option of field.options) {
+              if (!option || typeof option !== 'object' || optionKeyOf(option) !== undefined) {
+                keyed.push(option);
+                continue;
+              }
+              const label = resolveLabel(option, draft.defaultLanguage ?? 'en');
+              keyed.push({ [OPTION_KEY]: this.mintOptionKey(keyed, label), ...option });
+            }
+            field.options = keyed;
+          }
+          visitFields(field.children);
+        }
+      };
+      const visitTabs = (tabs: NestedTabConfig[] | undefined): void => {
+        for (const tab of tabs ?? []) {
+          visitFields(tab.fields);
+          visitTabs(tab.children);
+        }
+      };
+      visitTabs(draft.tabs);
+    });
+  }
+
+  /** Whether any option in the config is still without a key — gates the action in the UI. */
+  readonly hasUnkeyedOptions = computed(() => {
+    let found = false;
+    const visitFields = (fields: NestedFieldConfig[] | undefined): void => {
+      for (const field of fields ?? []) {
+        if (Array.isArray(field.options) && field.options.some(o => optionKeyOf(o) === undefined)) {
+          found = true;
+        }
+        visitFields(field.children);
+      }
+    };
+    const visitTabs = (tabs: NestedTabConfig[] | undefined): void => {
+      for (const tab of tabs ?? []) {
+        visitFields(tab.fields);
+        visitTabs(tab.children);
+      }
+    };
+    visitTabs(this._config().tabs);
+    return found;
+  });
+
+  /** An option's stable key, for the inspector to show read-only. */
+  optionKey(option: DropdownOption): string {
+    return optionKeyOf(option) ?? '';
   }
 
   /** Merge language keys into an option. `setOptionLabel` is the usual single-language path. */
@@ -997,7 +1139,13 @@ export class BuilderStore {
       const field = this.findFieldInTabs(draft.tabs, fieldId);
       const option = field?.options?.[index];
       if (!option) return;
-      field.options![index] = { ...option, ...patch };
+      // A patch may add translations; it may not change what the option *is*. Letting one
+      // rewrite an established key would orphan every record holding it, which is exactly
+      // the failure the key exists to prevent.
+      const existing = optionKeyOf(option);
+      const merged: DropdownOption = { ...option, ...patch };
+      if (existing !== undefined) merged[OPTION_KEY] = existing;
+      field.options![index] = merged;
     });
   }
 
@@ -1147,6 +1295,11 @@ export class BuilderStore {
     return this._rules().filter(r => names.has(r.fieldId) || r.targets.some(t => names.has(t.id)));
   });
 
+  /**
+   * Replace the rules without touching the config — for a host whose rules changed on their
+   * own. It records a step, because from the author's side it is an edit. Loading a config
+   * passes its rules to `load` instead, so the pair arrives as one snapshot.
+   */
   loadRules(rules: FormRule[]): void {
     this._rules.set(clone(rules));
     this.record();

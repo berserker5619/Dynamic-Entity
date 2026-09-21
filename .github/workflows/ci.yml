@@ -82,6 +82,29 @@ jobs:
       - name: Verify a consumer can install and compile
         run: node scripts/verify-consumer.mjs --angular ${{ matrix.angular }}
 
+  tree-shaking:
+    name: Tree-shaking budget
+    runs-on: ubuntu-latest
+    needs: consumer
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # "An app that uses three field types pays for three" is the README's headline
+      # packaging claim, and until this job it rested entirely on a bundler eliding one
+      # unused exported function in a module that statically references all 21 components.
+      # Builds a consumer app twice — three types registered, then all of them — and asserts
+      # both a ceiling on each and a minimum gap between them.
+      - name: Assert the field types are separable
+        run: node scripts/verify-consumer.mjs --angular 20 --size
+
   server-consumer:
     name: Server consumer install + routes
     runs-on: ubuntu-latest

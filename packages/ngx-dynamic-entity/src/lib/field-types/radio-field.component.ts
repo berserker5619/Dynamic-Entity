@@ -4,7 +4,6 @@ import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import {
-  getOptionStoredValue,
   resolveLabel,
   resolveOptionLabel,
   resolveOptionValue,
@@ -127,8 +126,17 @@ export class RadioFieldComponent {
     return resolveLabel(this.field?.label, this.language);
   }
 
+  /**
+   * The value this option stores — the option object itself.
+   *
+   * Kept as a method rather than binding `option` straight into the template, because it is
+   * the one place that says *why* the two are the same thing. It used to delegate to
+   * `getOptionStoredValue`, an exported identity function whose two branches returned their
+   * argument unchanged; naming a transformation that does not happen is worse than naming
+   * nothing, because a reader has to go and check.
+   */
   getOptStoredVal(option: DropdownOption): unknown {
-    return getOptionStoredValue(option);
+    return option;
   }
 
   /**
@@ -167,7 +175,7 @@ export class RadioFieldComponent {
     // `typeof null === 'object'`, so without this guard an empty value fell through to
     // `resolveLabel(null)` and rendered as blank — dropdown and multiSelect both show an em dash.
     if (value === null || value === undefined || value === '') return '—';
-    const selected = this.options().find(o => valuesMatch(getOptionStoredValue(o), value, this.language));
+    const selected = this.options().find(o => valuesMatch(o, value, this.language));
     if (selected) return this.getOptLabel(selected);
     const cached = this.lookups.labelFor(this.field?.listName, value, this.language);
     if (cached) return cached;

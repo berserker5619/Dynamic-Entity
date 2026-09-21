@@ -18,28 +18,24 @@ import type {
 
 const EMPTY = '—';
 
-/** Resolve a localized text to a display string: `lang` → `en` → first value → ''. */
+/**
+ * Resolve a localized text to a display string: `lang` → `en` → first language → ''.
+ *
+ * The last fallback skips `$key`. An option carries its key in the same object as its
+ * translations, so for a keyed option authored in a language the caller does not have,
+ * `Object.values(...).find(Boolean)` returned the key — and the slug was rendered to a user
+ * as the option's label.
+ *
+ * It is `Object.entries` with the key filtered out rather than `languageEntries`, which is
+ * stricter: this fallback deliberately answers for shapes that are not language maps at all
+ * (`UiTextService` leans on it for an array-valued override), and narrowing it here would
+ * make an override resolve by a different rule from the field label beside it.
+ */
 export function resolveLabel(text: LocalizedText | undefined | null, lang = 'en'): string {
   if (!text) return '';
   if (typeof text === 'string') return text;
-  return text[lang] ?? text['en'] ?? Object.values(text).find(Boolean) ?? '';
-}
-
-/**
- * The value an option stores. For the canonical shape that is the option object itself —
- * the displayed text **is** the value.
- *
- * There is deliberately no `{ value, label }` branch here: options are normalised to one
- * shape when a config enters the library (`normalizeConfigOptions`), so honouring a legacy
- * wrapper at this depth would let un-normalised input produce scalar values alongside
- * object values in the same form — the ambiguity the single shape exists to remove.
- */
-export function getOptionStoredValue(option: unknown): unknown {
-  if (option == null) return null;
-  if (typeof option === 'string' || typeof option === 'number' || typeof option === 'boolean') {
-    return option;
-  }
-  return option;
+  const fallback = Object.entries(text).find(([key, value]) => key !== OPTION_KEY && !!value)?.[1];
+  return text[lang] ?? text['en'] ?? fallback ?? '';
 }
 
 /**
@@ -57,9 +53,20 @@ export function normalizeOption(option: RawDropdownOption | null | undefined): D
   }
   if (typeof option === 'object') {
     const o = option as Record<string, unknown>;
-    if ('label' in o && o['label'] !== undefined) return normalizeLocalizedText(o['label']);
-    if ('value' in o && o['value'] !== undefined) return normalizeLocalizedText(o['value']);
-    return normalizeLocalizedText(o);
+    // An authored `$key` survives normalisation, and one is never invented here.
+    //
+    // Minting at runtime would be worse than having no key at all: two deployments
+    // normalising the same config would each slug the label they happen to hold, and two
+    // slugs for one option is not an identity. Keys come from the builder (on create) or
+    // from a lookup list's `code`/`_id` — both places where a human or a database has
+    // already decided what the value *is*.
+    const key = optionKeyOf(o);
+    const withKey = (text: DropdownOption): DropdownOption =>
+      key === undefined ? text : { [OPTION_KEY]: key, ...text };
+
+    if ('label' in o && o['label'] !== undefined) return withKey(normalizeLocalizedText(o['label']));
+    if ('value' in o && o['value'] !== undefined) return withKey(normalizeLocalizedText(o['value']));
+    return withKey(normalizeLocalizedText(o));
   }
   return { en: String(option) };
 }
@@ -152,13 +159,152 @@ export function normalizeConfigOptions(config: EntityFormConfig): EntityFormConf
   return { ...config, tabs: tabs ?? [] };
 }
 
-/** Check if two values (scalars or LocalizedText objects) match. */
+/**
+ * The reserved key carrying an option's stable identity, inside the option object itself.
+ *
+ * `$` cannot begin a BCP-47 subtag, so this cannot collide with a language. Every read of a
+ * localized text's languages goes through `languageEntries` so the key is never mistaken for
+ * one — see that function.
+ */
+export const OPTION_KEY = '$key';
+
+/**
+ * An option value's stable identity, or `undefined` when it carries none.
+ *
+ * Keys are authored, never invented: a value that has one was written by the builder or
+ * projected from a lookup list's `code`/`_id`. `undefined` is the answer for every record
+ * saved before keys existed, and it is what makes the matching rule in `valuesEqual` and
+ * `valuesMatch` degrade to exactly the pre-2.0 text comparison.
+ */
+export function optionKeyOf(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const key = (value as Record<string, unknown>)[OPTION_KEY];
+  return typeof key === 'string' && key !== '' ? key : undefined;
+}
+
+/**
+ * The language entries of a localized text, with the reserved `$key` removed.
+ *
+ * `DropdownOption` is a language map with one non-language key in it, and TypeScript cannot
+ * tell the two apart — both are `string`. So every read that treats the object as "a set of
+ * translations" has to drop `$key` first, or the key leaks out as a label: `resolveLabel`
+ * falls back to the first truthy value, and for a keyed option authored in a language the
+ * caller does not have, that value would be the key.
+ *
+ * One accessor rather than the same filter written at eight call sites, because the failure
+ * mode of missing one is a slug rendered to a user.
+ */
+export function languageEntries(text: unknown): [string, string][] {
+  if (!text || typeof text !== 'object' || Array.isArray(text)) return [];
+  return Object.entries(text as Record<string, unknown>).filter(
+    (entry): entry is [string, string] => entry[0] !== OPTION_KEY && typeof entry[1] === 'string',
+  );
+}
+
+/**
+ * Equality for rule operators — "does this rule fire", as against `valuesMatch`'s "did the
+ * user pick this option".
+ *
+ * The two questions have different right answers and this library answered both with the
+ * lenient one. `valuesMatch` ends in `String(a) === String(b)`, so a rule reading `EQUAL 0`
+ * fired on the string `'0'` and `EQUAL false` fired on the string `'false'`; and it compares
+ * objects through `resolveLabel`, which falls back to the first available language, so two
+ * options with no language in common matched whenever they happened to be spelled the same.
+ *
+ * What this tightens, and nothing more:
+ *
+ *   - **Scalars never coerce.** `0 ≠ '0'`, `false ≠ 'false'`, `1 ≠ true`.
+ *   - **Objects never match across languages.** `{ en: 'A' }` and `{ de: 'A' }` are two
+ *     different options that happen to be spelled alike; they agree on no language, so they
+ *     are not equal. They *are* equal under `valuesMatch`, and that is correct there.
+ *   - **A `$key` on both sides settles it alone.** That is what a key is for: a renamed
+ *     option keeps firing the rules that named it.
+ *   - **`VALUE_CHANGED` becomes answerable.** The engine compared with `!==`, so every
+ *     object-valued field — which is every choice field, the displayed text being the stored
+ *     value — read as changed on every evaluation.
+ *
+ * What it deliberately keeps:
+ *
+ *   - **An option object equals the text that names it, in any of its languages.** The
+ *     builder's condition editor is a free-text box, so *every* rule authored against a
+ *     dropdown compares a string to a language-keyed object. Refusing that comparison would
+ *     not be strictness; it would switch off every choice-field rule ever written and leave
+ *     the builder unable to author a working one. A non-string scalar names no option.
+ *   - **Two keyless option objects match on a shared language.** A record saved before a
+ *     translation was added carries fewer languages than the option does, and it is still
+ *     the same option.
+ *
+ * Deliberately not built on `canonicalizeValue`, which projects to a string and so re-admits
+ * the coercion above: `{ n: 1 }` and `{ n: '1' }` canonicalize identically.
+ */
+export function valuesEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  // Both sides absent is equal; one side absent never is. `==` is the deliberate idiom.
+  // eslint-disable-next-line eqeqeq
+  if (a == null || b == null) return a == null && b == null;
+
+  const aKey = optionKeyOf(a);
+  const bKey = optionKeyOf(b);
+  if (aKey !== undefined && bKey !== undefined) return aKey === bKey;
+
+  const aIsObject = typeof a === 'object';
+  const bIsObject = typeof b === 'object';
+
+  // Two scalars, and `a === b` already failed: only a coercion could rescue this, and a rule
+  // must not be rescued by one.
+  if (!aIsObject && !bIsObject) return false;
+
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    return a.every((item, i) => valuesEqual(item, b[i]));
+  }
+
+  // Without this two Dates would both project to `{}` and compare equal.
+  if (a instanceof Date || b instanceof Date) {
+    return a instanceof Date && b instanceof Date && a.getTime() === b.getTime();
+  }
+
+  if (aIsObject !== bIsObject) {
+    const [obj, scalar] = aIsObject ? [a, b] : [b, a];
+    if (typeof scalar !== 'string' || scalar === '') return false;
+    return languageEntries(obj).some(([, text]) => text === scalar);
+  }
+
+  if (matchesInAnyLanguage(a, b)) return true;
+
+  // Otherwise structural: the same keys, and every value equal under this same comparator.
+  // Key *order* is irrelevant; key *presence* is not.
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  const keys = Object.keys(left);
+  if (keys.length !== Object.keys(right).length) return false;
+  return keys.every(
+    key => Object.prototype.hasOwnProperty.call(right, key) && valuesEqual(left[key], right[key]),
+  );
+}
+
+/**
+ * Lenient match: "did the user pick this option".
+ *
+ * Kept lenient on purpose, and kept where leniency is the feature — display formatting, the
+ * choice components' `compareFn`, import cell coercion, the lookup-list integrity report and
+ * entity-reference selection. All of those are asking whether a stored value and an option
+ * are *the same option*, across a rename, a missing language, or a record saved as a bare
+ * string years ago. A rule asks a different question; it uses `valuesEqual`.
+ */
 export function valuesMatch(val1: unknown, val2: unknown, lang = 'en'): boolean {
   if (val1 === val2) return true;
   // At this point at least one side is null or undefined, and `==` is deliberate: a record
   // holding `null` and one holding `undefined` are both "no value" and must compare equal.
   // eslint-disable-next-line eqeqeq
   if (val1 == null || val2 == null) return val1 == val2;
+  // When both sides carry a stable key, the key *is* the identity and the text is display
+  // only — which is what makes renaming an option safe. When either side lacks one, every
+  // rule below this line is exactly what 1.x did, so a keyless config and a record saved
+  // before keys existed behave identically.
+  const key1 = optionKeyOf(val1);
+  const key2 = optionKeyOf(val2);
+  if (key1 !== undefined && key2 !== undefined) return key1 === key2;
   if (typeof val1 === 'object' || typeof val2 === 'object') {
     const l1 = resolveOptionLabel(val1, lang);
     const l2 = resolveOptionLabel(val2, lang);
@@ -195,17 +341,15 @@ function matchesInAnyLanguage(val1: unknown, val2: unknown): boolean {
     typeof v === 'object' && v !== null && !Array.isArray(v);
 
   if (isPlainObject(val1) && isPlainObject(val2)) {
-    return Object.keys(val1).some(key => {
-      const a = val1[key];
-      const b = val2[key];
-      return typeof a === 'string' && a !== '' && a === b;
-    });
+    // `languageEntries` rather than `Object.keys`, so a shared `$key` is not mistaken for a
+    // shared language — two options with different keys must not match on them.
+    return languageEntries(val1).some(([key, text]) => text !== '' && val2[key] === text);
   }
 
   const [obj, scalar] = isPlainObject(val1) ? [val1, val2] : isPlainObject(val2) ? [val2, val1] : [];
   if (!obj || scalar === undefined || typeof scalar === 'object') return false;
   const text = String(scalar);
-  return text !== '' && Object.values(obj).some(v => typeof v === 'string' && v === text);
+  return text !== '' && languageEntries(obj).some(([, v]) => v === text);
 }
 
 /**
@@ -222,6 +366,7 @@ export function canonicalizeValue(value: unknown): string {
 
   const obj = value as Record<string, unknown>;
   return Object.keys(obj)
+    .filter(key => key !== OPTION_KEY)
     .sort()
     .map(key => `${key}:${canonicalizeValue(obj[key])}`)
     .join('|');
@@ -229,12 +374,11 @@ export function canonicalizeValue(value: unknown): string {
 
 /** Resolve option value for dropdown/radio/multiSelect options as a display string. */
 export function resolveOptionValue(option: unknown, lang = 'en'): string | number | boolean {
-  const stored = getOptionStoredValue(option);
-  if (stored == null) return '';
-  if (typeof stored === 'object') {
-    return resolveLabel(stored as LocalizedText, lang);
+  if (option == null) return '';
+  if (typeof option === 'object') {
+    return resolveLabel(option as LocalizedText, lang);
   }
-  return stored as string | number | boolean;
+  return option as string | number | boolean;
 }
 
 /** Resolve option display label for dropdown/radio/multiSelect options. Handles {value, label}, LocalizedText, or primitives. */
@@ -334,7 +478,7 @@ export function formatDisplayValue(
 
     case 'dropdown':
     case 'radio': {
-      const opt = (options ?? []).find(o => valuesMatch(getOptionStoredValue(o), raw, lang));
+      const opt = (options ?? []).find(o => valuesMatch(o, raw, lang));
       if (opt) return resolveOptionLabel(opt, lang);
       if (typeof raw === 'object') return resolveLabel(raw as LocalizedText, lang);
       return String(raw);
@@ -344,7 +488,7 @@ export function formatDisplayValue(
       if (!Array.isArray(raw)) return typeof raw === 'object' ? resolveLabel(raw as LocalizedText, lang) : String(raw);
       return raw
         .map(item => {
-          const opt = (options ?? []).find(o => valuesMatch(getOptionStoredValue(o), item, lang));
+          const opt = (options ?? []).find(o => valuesMatch(o, item, lang));
           if (opt) return resolveOptionLabel(opt, lang);
           if (typeof item === 'object') return resolveLabel(item as LocalizedText, lang);
           return String(item);
@@ -368,10 +512,21 @@ export function formatDisplayValue(
  * path of `__proto__.isAdmin` would otherwise write onto `Object.prototype` and affect
  * every object in the running application.
  */
-const UNSAFE_PATH_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+export const UNSAFE_PATH_KEYS: ReadonlySet<string> = new Set([
+  '__proto__',
+  'constructor',
+  'prototype',
+]);
 
-/** True when a dot-path contains a segment that could reach an object's prototype. */
-export function isUnsafePath(path: string): boolean {
+/**
+ * True when a dot-path contains a segment that could reach an object's prototype.
+ *
+ * Takes `unknown` rather than `string` because every caller hands it config data — a
+ * mapping target, a `refererField`, a tab id — and config is JSON, so the value may be a
+ * number, an array or absent. Anything that is not a string names no path at all.
+ */
+export function isUnsafePath(path: unknown): boolean {
+  if (typeof path !== 'string') return false;
   return path.split('.').some(part => UNSAFE_PATH_KEYS.has(part));
 }
 
@@ -573,7 +728,14 @@ export function getLocaleLang(locale: string): string {
   return supported.includes(prefix) ? prefix : 'en';
 }
 
-/** Coerces a value into a valid LocalizedText map ({ en: string }). */
+/**
+ * Coerces a value into a valid LocalizedText map ({ en: string }).
+ *
+ * The result is translations and nothing else: `$key` is dropped here, because a
+ * `LocalizedText` has no identity of its own — only a `DropdownOption` does. `normalizeOption`
+ * reads the key before calling this and puts it back, which keeps the one place that knows
+ * about option identity to one place.
+ */
 export function normalizeLocalizedText(value: unknown): LocalizedText {
   if (!value) return { en: '' };
   if (typeof value === 'string') return { en: value };
@@ -581,6 +743,7 @@ export function normalizeLocalizedText(value: unknown): LocalizedText {
     const obj = value as Record<string, unknown>;
     const out: LocalizedText = {};
     for (const [k, v] of Object.entries(obj)) {
+      if (k === OPTION_KEY) continue;
       if (typeof v === 'string') out[k] = v;
       else if (v != null) out[k] = String(v);
     }
@@ -738,7 +901,13 @@ export function applyAutoPatch(
   selectedRecord: Record<string, unknown>,
 ): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
-  for (const mapping of config.mappings) {
+  for (const mapping of config.mappings ?? []) {
+    // A mapping target is config data, so it may name `__proto__`. Nothing propagates
+    // today because `Object.entries` skips the key at the call site — but SECURITY.md
+    // states the invariant absolutely ("a config cannot reach an object's prototype"), and
+    // an invariant that holds only because of a caller's choice of iterator is not one.
+    // `validateConfig` reports such a mapping as an error; this is the runtime half.
+    if (!mapping || isUnsafePath(mapping.target)) continue;
     if (mapping.source in selectedRecord) {
       patch[mapping.target] = selectedRecord[mapping.source];
     }
@@ -755,7 +924,9 @@ export function applyPatchOnTrue(
   record: Record<string, unknown>,
 ): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
-  for (const mapping of mappings) {
+  for (const mapping of mappings ?? []) {
+    // Same guard, same reason — see `applyAutoPatch`.
+    if (!mapping || isUnsafePath(mapping.to)) continue;
     if (mapping.from in record) {
       patch[mapping.to] = record[mapping.from];
     }

@@ -18,6 +18,7 @@
  *   node scripts/verify-consumer.mjs --angular 22 --readme
  *   node scripts/verify-consumer.mjs --angular 20 --ssr
  *   node scripts/verify-consumer.mjs --angular 20 --ssr --zoneless
+ *   node scripts/verify-consumer.mjs --angular 20 --size
  *
  *   --angular <major>  Angular major to install (required).
  *   --readme           Compile the snippets from the README files instead of the built-in
@@ -26,6 +27,12 @@
  *                      Proves the renderer produces markup under SSR, not merely compiles.
  *   --zoneless         Angular 20+: `provideZonelessChangeDetection()`, and no `zone.js`.
  *                      Combine with `--ssr` to prove the renderer under zoneless SSR.
+ *   --size             Bundle twice — once registering three field types, once registering
+ *                      all of them — and assert both a ceiling and the gap between them.
+ *                      This is the tree-shaking claim: "an app that uses three field types
+ *                      pays for three" rested entirely on a bundler eliding one unused
+ *                      exported function, in a module that statically references all 21
+ *                      components. Nothing tested it.
  *   --keep             Leave the temporary project on disk for inspection.
  */
 import { execFileSync } from 'node:child_process';
@@ -47,8 +54,26 @@ const angularMajor = arg('angular');
 const useReadme = !!arg('readme');
 const ssr = !!arg('ssr');
 const zoneless = !!arg('zoneless');
+const size = !!arg('size');
 const keep = !!arg('keep');
 
+/*
+ * Byte budgets, in kilobytes of the optimised browser bundle.
+ *
+ * The **delta** is the real assertion. An absolute ceiling drifts with every Angular minor
+ * and every dependency bump, so both are set generously: they catch a regression of *kind* —
+ * a barrel re-export that drags the world in, a `sideEffects: false` lost from a manifest —
+ * not one of degree. The gap between the two builds is what actually proves the components
+ * are separable, and it cannot be satisfied by accident.
+ */
+const SIZE_BUDGET = {
+  // Measured on Angular 20: 245 kB / 327 kB / 82 kB. The ceilings carry enough headroom for
+  // an Angular minor; the floor is set at well under the measured gap so that shrinking a
+  // component does not fail the build, while losing the seam entirely does.
+  narrowMaxKb: 420,
+  wideMaxKb: 520,
+  minDeltaKb: 50,
+};
 if (!angularMajor || angularMajor === true) {
   console.error('error: --angular <major> is required, e.g. --angular 20');
   process.exit(2);
@@ -56,6 +81,19 @@ if (!angularMajor || angularMajor === true) {
 
 if (useReadme && (ssr || zoneless)) {
   console.error('error: --readme cannot be combined with --ssr or --zoneless');
+  process.exit(2);
+}
+
+if (size && (useReadme || ssr || zoneless)) {
+  console.error('error: --size cannot be combined with --readme, --ssr or --zoneless');
+  process.exit(2);
+}
+
+if (size && Number(angularMajor) < 18) {
+  // `@angular/build` is the application builder; before 18 it was
+  // `@angular-devkit/build-angular`. The tree-shaking claim does not vary by Angular major,
+  // so the gate measures it on one and does not carry a second builder to do it.
+  console.error('error: --size requires Angular 18+ (the @angular/build application builder)');
   process.exit(2);
 }
 
@@ -98,15 +136,30 @@ const sources = {
   renderer: path.join(ROOT, 'packages/ngx-dynamic-entity/dist'),
   builder: path.join(ROOT, 'packages/ngx-dynamic-entity-builder/dist'),
 };
+/*
+ * Keyed by each package's own name and version, not by a filename prefix.
+ *
+ * `npm pack` writes `<flattened-name>-<version>.tgz`, and `ngx-dynamic-entity` is a prefix
+ * of `ngx-dynamic-entity-builder`. This used to tell them apart by matching
+ * `ngx-dynamic-entity-1`, borrowing the leading digit of the version — which stopped
+ * matching anything the moment the packages went to 2.0.0.
+ */
+const packed = new Map();
 for (const [name, dir] of Object.entries(sources)) {
   run('npm', ['pack', dir], { cwd: tarballs });
-  console.log(`  packed ${name}`);
+  const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+  const file = `${manifest.name.replace('@', '').replace('/', '-')}-${manifest.version}.tgz`;
+  if (!fs.existsSync(path.join(tarballs, file))) {
+    throw new Error(`npm pack did not produce ${file} for ${manifest.name}`);
+  }
+  packed.set(manifest.name, `file:${path.join(tarballs, file).replace(/\\/g, '/')}`);
+  console.log(`  packed ${name} as ${file}`);
 }
 
 const tgz = name => {
-  const match = fs.readdirSync(tarballs).find(f => f.startsWith(name) && f.endsWith('.tgz'));
-  if (!match) throw new Error(`no tarball found for ${name}`);
-  return `file:${path.join(tarballs, match).replace(/\\/g, '/')}`;
+  const spec = packed.get(name);
+  if (!spec) throw new Error(`no tarball packed for ${name}`);
+  return spec;
 };
 
 // ─── Consumer project ───────────────────────────────────────────────────────
@@ -128,8 +181,8 @@ const dependencies = {
   '@angular/material': ng,
   '@angular/platform-browser': ng,
   rxjs: '^7.8.0',
-  '@dynamic-entity/core': tgz('dynamic-entity-core'),
-  'ngx-dynamic-entity': tgz('ngx-dynamic-entity-1'),
+  '@dynamic-entity/core': tgz('@dynamic-entity/core'),
+  'ngx-dynamic-entity': tgz('ngx-dynamic-entity'),
   'ngx-dynamic-entity-builder': tgz('ngx-dynamic-entity-builder'),
 };
 if (ssr) {
@@ -252,7 +305,7 @@ if (useReadme) {
     [
       "import { Component } from '@angular/core';",
       importLine,
-      "import type { EntityFormConfig } from '@dynamic-entity/core';",
+      "import type { EntityFormConfig, FormRule } from '@dynamic-entity/core';",
       '@Component({',
       `  selector: '${selector}',`,
       '  standalone: true,',
@@ -292,7 +345,9 @@ if (useReadme) {
       html(builderMd)[0],
       [
         '  initialConfig?: EntityFormConfig;',
+        '  initialRules?: FormRule[];',
         '  onConfigUpdated(c: EntityFormConfig): void { console.log(c); }',
+        '  onRulesUpdated(r: FormRule[]): void { console.log(r); }',
         '  onSave(c: EntityFormConfig): void { console.log(c); }',
       ].join('\n'),
     ),
@@ -378,6 +433,67 @@ if (!html.includes('First Name') || !html.includes('Alice')) {
 console.log('PASS: renderApplication produced markup containing the text field${zoneless ? ' (zoneless)' : ''}.');
 `,
   );
+} else if (size) {
+  step('Writing two apps: one registering three field types, one registering all of them');
+
+  /*
+   * Both bootstrap a real application, because that is what makes the question meaningful:
+   * a bundler only drops a component when nothing reachable from the entry point mentions
+   * it, and `provideBuiltInFieldTypes()` mentions all 21 in one statically-analysable map.
+   * Everything else about the two files is identical, so the difference in output is the
+   * field components and nothing else.
+   */
+  const app = (name, importLine, providerCall) =>
+    `import { Component } from '@angular/core';
+import { bootstrapApplication } from '@angular/platform-browser';
+import {
+  DynamicFormComponent,
+  provideNgxDynamicEntity,
+${importLine}
+} from 'ngx-dynamic-entity';
+import type { EntityFormConfig } from '@dynamic-entity/core';
+
+@Component({
+  selector: 'size-root',
+  standalone: true,
+  imports: [DynamicFormComponent],
+  template: '<ngx-dynamic-form [config]="config" />',
+})
+export class ${name} {
+  config: EntityFormConfig = {
+    entity: 'client',
+    version: 1,
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        flatData: true,
+        fields: [{ id: 'name', type: 'text', label: { en: 'Name' } }],
+      },
+    ],
+  };
+}
+
+void bootstrapApplication(${name}, {
+  providers: [provideNgxDynamicEntity({}), ${providerCall}],
+});
+`;
+
+  write(
+    'app-narrow.ts',
+    app(
+      'SizeNarrowComponent',
+      `  provideFieldTypes,
+  TextFieldComponent,
+  NumberFieldComponent,
+  DropdownFieldComponent,`,
+      'provideFieldTypes({ text: TextFieldComponent, number: NumberFieldComponent, dropdown: DropdownFieldComponent })',
+    ),
+  );
+  write(
+    'app-wide.ts',
+    app('SizeWideComponent', '  provideBuiltInFieldTypes,', 'provideBuiltInFieldTypes()'),
+  );
 } else {
   step('Writing a consumer component');
   const zonelessImport = zoneless
@@ -461,6 +577,107 @@ console.log(
   `\nPASS: Angular ${resolved} installs the packed tarballs and compiles ` +
     `${useReadme ? 'every README snippet' : ssr ? 'an SSR bootstrap' : 'a consumer component'} under strictTemplates.`,
 );
+
+if (size) {
+  step('Building each app with the Angular application builder');
+
+  /*
+   * A real `ng build`, not a bare bundler pass.
+   *
+   * esbuild over `node_modules` measures nothing here: ng-packagr publishes
+   * partial-compiled output (`ɵɵngDeclareComponent`), and it is the Angular **linker** —
+   * which only the application builder runs — that turns those declarations into the
+   * pure-annotated definitions a bundler can drop. Bundling the FESM directly produced two
+   * builds 0.2 kB apart, not because the components are inseparable but because nothing had
+   * made them separable yet. A gate that cannot fail for the right reason is worse than none.
+   */
+  run('npm', ['install', '--no-save', '--no-audit', '--no-fund', `@angular/build@${ng}`, `@angular/cli@${ng}`], {
+    cwd: proj,
+    stdio: 'inherit',
+  });
+
+  const target = entry => ({
+    projectType: 'application',
+    root: '',
+    sourceRoot: '',
+    architect: {
+      build: {
+        builder: '@angular/build:application',
+        options: {
+          browser: `app-${entry}.ts`,
+          tsConfig: 'tsconfig.json',
+          outputPath: `dist-${entry}`,
+          // Optimised, because an unoptimised build keeps every export alive and would
+          // report the two apps as identical whatever the truth is.
+          optimization: true,
+          sourceMap: false,
+          extractLicenses: false,
+          index: false,
+          polyfills: [],
+        },
+      },
+    },
+  });
+
+  fs.writeFileSync(
+    path.join(proj, 'angular.json'),
+    JSON.stringify(
+      { version: 1, projects: { narrow: target('narrow'), wide: target('wide') } },
+      null,
+      2,
+    ),
+  );
+
+  const buildKb = entry => {
+    run('npx', ['ng', 'build', entry], { cwd: proj, stdio: 'inherit' });
+    const dir = path.join(proj, `dist-${entry}`, 'browser');
+    // Every chunk, not just the entry: lazy chunks are still bytes the app ships.
+    return fs
+      .readdirSync(dir)
+      .filter(f => f.endsWith('.js'))
+      .reduce((total, f) => total + fs.statSync(path.join(dir, f)).size, 0) / 1024;
+  };
+
+  const narrowKb = buildKb('narrow');
+  const wideKb = buildKb('wide');
+  const deltaKb = wideKb - narrowKb;
+
+  const kb = n => `${n.toFixed(1)} kB`;
+  console.log(`\n  three field types : ${kb(narrowKb)}`);
+  console.log(`  all field types   : ${kb(wideKb)}`);
+  console.log(`  difference        : ${kb(deltaKb)}`);
+
+  const failures = [];
+  if (narrowKb > SIZE_BUDGET.narrowMaxKb) {
+    failures.push(
+      `the three-type app is ${kb(narrowKb)}, over its ${SIZE_BUDGET.narrowMaxKb} kB ceiling`,
+    );
+  }
+  if (wideKb > SIZE_BUDGET.wideMaxKb) {
+    failures.push(`the all-types app is ${kb(wideKb)}, over its ${SIZE_BUDGET.wideMaxKb} kB ceiling`);
+  }
+  if (deltaKb < SIZE_BUDGET.minDeltaKb) {
+    failures.push(
+      `registering all field types costs only ${kb(deltaKb)} more than registering three ` +
+        `(expected at least ${SIZE_BUDGET.minDeltaKb} kB). Either the narrow app is dragging ` +
+        `in components it never registered — check for a barrel re-export or a lost ` +
+        `"sideEffects": false — or the components have shrunk below the floor, in which case ` +
+        `lower it deliberately.`,
+    );
+  }
+
+  if (failures.length) {
+    console.error('\nFAIL: the tree-shaking budget was not met.');
+    for (const f of failures) console.error(`      - ${f}`);
+    console.error(`      Project kept at ${proj}`);
+    process.exit(1);
+  }
+
+  console.log(
+    `\nPASS: registering three field types costs ${kb(deltaKb)} less than registering all of ` +
+      `them, so an app really does pay only for the types it uses.`,
+  );
+}
 
 if (ssr) {
   step('Rendering the form with renderApplication');

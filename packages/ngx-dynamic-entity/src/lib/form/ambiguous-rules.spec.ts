@@ -49,8 +49,10 @@ describe('a rule that names an ambiguous field id', () => {
   }
 
   beforeEach(() => {
-    // The warning is emitted once per id per process, so each test needs a clean slate.
-    (DynamicFormComponent as unknown as { warnedAmbiguousIds: Set<string> }).warnedAmbiguousIds.clear();
+    // Once per form, not once per process: the set is instance state, so a fresh fixture is
+    // a clean slate and nothing has to be reached into and cleared. It used to be `static`,
+    // which under SSR meant one process-wide set that grew forever and let the first render
+    // of a config silence the warning for every render after it.
     warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     TestBed.configureTestingModule({
       imports: [DynamicFormComponent],

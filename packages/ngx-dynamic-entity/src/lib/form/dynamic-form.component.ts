@@ -27,6 +27,7 @@ import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule
 import { Subscription } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import type { AutoPatchConfig, EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
+import type { FieldScopeEntry } from '@dynamic-entity/core';
 import {
   ambiguousFieldIds,
   collectFieldScopes,
@@ -34,21 +35,17 @@ import {
   parseFieldRef,
   refOf,
   toRefToken,
+  valuesEqual,
   applyAutoPatch,
   applyPatchOnTrue,
+  fieldsUnderTab,
   migrateRecord,
-  evaluateFieldVisibility,
   findTab,
-  getTabData,
-  getTabPath,
-  getValueByPath,
-  normalizeArrayStructures,
   normalizeConfigOptions,
   resolveLabel,
-  setTabData,
-  setValueByPath,
 } from '@dynamic-entity/core';
 import { DynamicFieldComponent } from './dynamic-field/dynamic-field.component';
+import { FormStructureService } from './form-structure.service';
 import { COMMON_MODULES_REGISTRY, RECORD_MIGRATIONS } from '../tokens/injection-tokens';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
 import { HookRegistryService } from '../services/hook-registry.service';
@@ -110,8 +107,9 @@ export interface InvalidField {
   selector: 'ngx-dynamic-form',
   standalone: true,
   imports: [ReactiveFormsModule, DynamicFieldComponent, NgComponentOutlet],
-  // Scoped per form instance: entity-ref selections must not leak between concurrent forms.
-  providers: [EntityRefSelectionService],
+  // Scoped per form instance: entity-ref selections must not leak between concurrent forms,
+  // and the structure service is deliberately per form rather than shared.
+  providers: [EntityRefSelectionService, FormStructureService],
   templateUrl: './dynamic-form.component.html',
   /*
    * The grid is structural, so it lives here rather than in the optional stylesheet.
@@ -272,6 +270,8 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   private readonly hookRegistry = inject(HookRegistryService);
   private readonly rbacService = inject(RbacService);
   private readonly rulesEvaluation = inject(RulesEvaluationService);
+  /** config ⇄ FormGroup: where a value lives. See `FormStructureService`. */
+  private readonly structure = inject(FormStructureService);
   /** Resolves what is wrong with a field, for the error summary — see `resolveForField`. */
   private readonly messages = inject(ValidationMessagesService);
   private readonly entityRefSelection = inject(EntityRefSelectionService);
@@ -318,12 +318,32 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
       // invalid form is what produces the error summary. Guarding here instead meant Ctrl+S
       // on an incomplete form did nothing at all — and unlike the button, a shortcut cannot
       // even look disabled.
-      if (!this.readonly && this.canSubmit) this.submit();
+      // `void`, not an `await`: a `@HostListener` cannot be async without changing what
+      // Angular does with its return value, and `submit()` reports its own failures through
+      // `saveRejected`. Nothing here would have anywhere to put a rejection.
+      if (!this.readonly && this.canSubmit) void this.submit();
     }
   }
 
   // ─── Computed ─────────────────────────────────────────────────────────────
-  readonly ruleResult = computed(() => this.rulesEvaluation.evaluate(this.rules, this.formValues(), this.baseline()));
+  readonly ruleResult = computed(() =>
+    this.rulesEvaluation.evaluate(this.rules, this.formValues(), this.baseline(), {
+      // The engine reports rather than logs, because it also runs on a server. This is the
+      // client's answer: say it once per distinct problem, in dev only. A rule the author
+      // half-finished used to throw out of change detection; now it is skipped, and a
+      // silently skipped rule is exactly as hard to diagnose as a thrown one.
+      onProblem: message => this.warnOnce(message),
+    }),
+  );
+
+  /** Warned-about rule problems, per component instance — see `warnedAmbiguousIds`. */
+  private readonly warnedProblems = new Set<string>();
+
+  private warnOnce(message: string): void {
+    if (!isDevMode() || this.warnedProblems.has(message)) return;
+    this.warnedProblems.add(message);
+    console.warn(`[ngx-dynamic-entity] ${message}`);
+  }
 
   /**
    * Critical fields whose value differs from the session baseline.
@@ -342,8 +362,11 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   get visibleTabs(): NestedTabConfig[] {
-    const hidden = this.ruleResult().hiddenTabs;
-    return this.tabs.filter(tab => tab.visibility !== false && !hidden.includes(tab.id));
+    return this.tabs.filter(tab => this.isTabVisible(tab));
+  }
+
+  private isTabVisible(tab: NestedTabConfig): boolean {
+    return this.rulesEvaluation.isTabVisible(this.ruleResult(), tab);
   }
 
   get activeTabConfig(): NestedTabConfig | null {
@@ -355,8 +378,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   get visibleSubTabs(): NestedTabConfig[] {
     const active = this.activeTabConfig;
     if (!active?.children || active.children.length === 0) return [];
-    const hidden = this.ruleResult().hiddenTabs;
-    return active.children.filter(tab => tab.visibility !== false && !hidden.includes(tab.id));
+    return active.children.filter(tab => this.isTabVisible(tab));
   }
 
   get activeSubTabConfig(): NestedTabConfig | null {
@@ -408,9 +430,17 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     if (active?.moduleName) return [];
     const rawFields = active ? active.fields || [] : (this.config?.tabs || []).flatMap(t => t.fields || []);
     const currentValues = this.formValues();
-    const hiddenFields = new Set<string>(this.ruleResult().hiddenFields);
 
-    return rawFields.filter(field => evaluateFieldVisibility(field, currentValues) && !this.namesField(hiddenFields, field));
+    return rawFields.filter(field => this.isFieldVisible(field, currentValues));
+  }
+
+  /**
+   * Whether a field renders. Precedence lives in `RulesEvaluationService`, which is also
+   * what `syncHiddenFieldState` asks — so what is on screen and what counts toward validity
+   * cannot drift apart.
+   */
+  private isFieldVisible(field: NestedFieldConfig, values: Record<string, unknown>): boolean {
+    return this.rulesEvaluation.isFieldVisible(this.ruleResult(), field, this.namesOf(field), values);
   }
 
   /**
@@ -654,20 +684,39 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     if (this.invalidFieldsCache) return this.invalidFieldsCache;
 
     const out: InvalidField[] = [];
-    const collect = (tab: NestedTabConfig, parentId?: string) => {
-      for (const field of tab.fields ?? []) {
-        const control = this.getControl(field.id, tab.id);
-        if (!control || control.disabled || control.valid || control.pending) continue;
-        // The same message the field renders under itself — see `resolveForField`. Saying
-        // only *which* field is wrong leaves the user to go and look at each one; saying what
-        // is wrong with it is usually enough to fix it without leaving the summary.
-        const message = this.messages.resolveForField(control.errors, this.language, field.type);
-        out.push(
-          parentId
-            ? { field, message, tabId: parentId, subTabId: tab.id }
-            : { field, message, tabId: tab.id },
-        );
+
+    /*
+     * Descends into `group` children rather than stopping at the container.
+     *
+     * A `FormGroup` is invalid whenever any descendant is, so reporting the container said
+     * "Contacts is invalid" and left the user to open it and hunt. The offending leaf is
+     * both the useful answer and the one `jumpToField` can actually move focus to.
+     *
+     * An `array` is reported as itself: its rows are built and destroyed at runtime, so
+     * there is no configured child to name and nothing stable to jump to.
+     */
+    const collectField = (field: NestedFieldConfig, tab: NestedTabConfig, parentId?: string) => {
+      const control = this.getControl(field.id, tab.id);
+      if (!control || control.disabled || control.valid || control.pending) return;
+
+      if (field.type === 'group' && field.children?.length) {
+        for (const child of field.children) collectField(child, tab, parentId);
+        return;
       }
+
+      // The same message the field renders under itself — see `resolveForField`. Saying
+      // only *which* field is wrong leaves the user to go and look at each one; saying what
+      // is wrong with it is usually enough to fix it without leaving the summary.
+      const message = this.messages.resolveForField(control.errors, this.language, field.type);
+      out.push(
+        parentId
+          ? { field, message, tabId: parentId, subTabId: tab.id }
+          : { field, message, tabId: tab.id },
+      );
+    };
+
+    const collect = (tab: NestedTabConfig, parentId?: string) => {
+      for (const field of tab.fields ?? []) collectField(field, tab, parentId);
       for (const child of tab.children ?? []) collect(child, parentId ?? tab.id);
     };
     for (const tab of this.visibleTabs) collect(tab);
@@ -725,14 +774,33 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     );
   }
 
+  /**
+   * Which tab (and sub-tab) holds a field.
+   *
+   * Descends into `group`/`array` children: this compared top-level fields only, so "jump to
+   * the first invalid field" found nothing for a nested one and silently did nothing. Only
+   * sub-tabs one level deep are named, because that is what the tab strip can select —
+   * anything deeper resolves to the ancestor it renders under.
+   */
   private locateField(fieldId: string): { tabId: string; subTabId?: string } | null {
-    for (const tab of this.tabs) {
-      if ((tab.fields ?? []).some(f => f.id === fieldId)) return { tabId: tab.id };
-      for (const child of tab.children ?? []) {
-        if ((child.fields ?? []).some(f => f.id === fieldId)) return { tabId: tab.id, subTabId: child.id };
+    const holds = (fields: NestedFieldConfig[] | undefined): boolean =>
+      (fields ?? []).some(f => f?.id === fieldId || holds(f?.children));
+
+    const search = (tabs: NestedTabConfig[] | undefined, tabId?: string, subTabId?: string):
+      | { tabId: string; subTabId?: string }
+      | null => {
+      for (const tab of tabs ?? []) {
+        if (!tab?.id) continue;
+        const at = tabId ?? tab.id;
+        const sub = tabId ? (subTabId ?? tab.id) : undefined;
+        if (holds(tab.fields)) return sub ? { tabId: at, subTabId: sub } : { tabId: at };
+        const found = search(tab.children, at, sub);
+        if (found) return found;
       }
-    }
-    return null;
+      return null;
+    };
+
+    return search(this.tabs);
   }
 
   // ─── criticalField locking ────────────────────────────────────────────────
@@ -798,28 +866,9 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
 
   private buildForm(): void {
     if (!this.config) return;
-    const group: Record<string, AbstractControl> = {};
-
-    const buildTabControls = (tabs: NestedTabConfig[], parentGroup: Record<string, AbstractControl>) => {
-      for (const tab of tabs) {
-        if (tab.flatData) {
-          for (const field of tab.fields || []) {
-            this.buildFieldControl(field, parentGroup);
-          }
-          if (tab.children) buildTabControls(tab.children, parentGroup);
-        } else {
-          const tabGroup: Record<string, AbstractControl> = {};
-          for (const field of tab.fields || []) {
-            this.buildFieldControl(field, tabGroup);
-          }
-          if (tab.children) buildTabControls(tab.children, tabGroup);
-          parentGroup[tab.id] = this.fb.group(tabGroup);
-        }
-      }
-    };
-
-    buildTabControls(this.config.tabs || [], group);
-    this.form = this.fb.group(group);
+    this.form = this.structure.buildForm(this.config);
+    // A rebuild replaces every control, and the scope index is keyed by config identity.
+    this.scopeCache = undefined;
     this.warnAmbiguousRuleReferences();
 
     if (this.initialData) {
@@ -870,27 +919,6 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     });
   }
 
-  private buildFieldControl(field: NestedFieldConfig, group: Record<string, AbstractControl>): void {
-    if (field.type === 'group') {
-      const subGroup: Record<string, AbstractControl> = {};
-      for (const child of field.children || []) {
-        this.buildFieldControl(child, subGroup);
-      }
-      group[field.id] = this.fb.group(subGroup);
-    } else if (field.type === 'array') {
-      group[field.id] = this.fb.array([]);
-    } else {
-      const validators = this.validatorRegistry.resolveFromConfig(field.validators);
-      const asyncValidators = this.validatorRegistry.resolveAsyncFromConfig(field.validators);
-      group[field.id] = this.fb.control(
-        { value: field.defaultValue ?? null, disabled: field.disabled ?? false },
-        validators,
-        asyncValidators,
-      );
-    }
-  }
-
-  /** One row of an `array` field: a FormGroup when the field declares columns, else a bare control. */
   /**
    * The `FormArray` behind an `array` field, for callers that manage rows themselves —
    * the record editor's inline row drawer.
@@ -909,15 +937,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private buildArrayRow(field: NestedFieldConfig | undefined, item: unknown): AbstractControl {
-    if (!field?.children?.length) return this.fb.control(item);
-
-    const rowGroup: Record<string, AbstractControl> = {};
-    for (const child of field.children) {
-      this.buildFieldControl(child, rowGroup);
-    }
-    const group = this.fb.group(rowGroup);
-    if (item && typeof item === 'object') group.patchValue(item as Record<string, unknown>);
-    return group;
+    return this.structure.buildArrayRow(field, item);
   }
 
   /**
@@ -955,40 +975,10 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private patchForm(data: Record<string, any>): void {
-    if (!data || !this.form) return;
+    if (!data || !this.form || !this.config) return;
     const fieldsById = new Map(this.allFields().map(f => [f.id, f]));
-    const patchedFieldIds = new Set<string>();
-
-    const walkTabs = (tabs: NestedTabConfig[]) => {
-      for (const tab of tabs) {
-        const tabData = getTabData(tab.id, data, this.config);
-        for (const field of tab.fields || []) {
-          let val = tabData && typeof tabData === 'object' ? tabData[field.id] : undefined;
-          if (field.refererField) {
-            const refVal = getValueByPath(data, field.refererField);
-            if (refVal !== undefined) val = refVal;
-          }
-          if (val === undefined) continue;
-
-          const ctrl = this.getControl(field.id, tab.id);
-          if (!ctrl) continue;
-
-          if (ctrl instanceof FormArray && Array.isArray(val)) {
-            ctrl.clear();
-            for (const item of val) {
-              ctrl.push(this.buildArrayRow(fieldsById.get(field.id), item));
-            }
-          } else {
-            ctrl.patchValue(val, { emitEvent: false });
-          }
-          patchedFieldIds.add(field.id);
-        }
-        if (tab.children) walkTabs(tab.children);
-      }
-    };
-
-    walkTabs(this.config.tabs || []);
-    this.warnUnconsumedInitialData(data, fieldsById, patchedFieldIds);
+    const unconsumed = this.structure.patchForm(this.form, this.config, data, fieldsById);
+    this.warnUnconsumedInitialData(unconsumed);
   }
 
   /**
@@ -997,41 +987,18 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
    * stay empty — with no error and no clue. That silent miss is the most expensive way to
    * lose an hour with this library, so name it in dev builds.
    *
-   * Only top-level keys that match a known field id are reported: anything else is assumed
-   * to be the consumer's own record metadata (ids, timestamps, `_configVersion`) and is not
-   * our business.
+   * Which keys were missed is `FormStructureService`'s answer; warning once per key per form
+   * is this component's, because it is the thing that lives as long as the form does.
    */
-  private warnUnconsumedInitialData(
-    data: Record<string, any>,
-    fieldsById: Map<string, NestedFieldConfig>,
-    patchedFieldIds: Set<string>,
-  ): void {
-    if (!isDevMode() || !this.config) return;
+  private warnUnconsumedInitialData(keys: readonly string[]): void {
+    const fresh = keys.filter(key => !this.warnedUnconsumedKeys.has(key));
+    if (!fresh.length) return;
 
-    const tabIds = new Set<string>();
-    const collectTabIds = (tabs: NestedTabConfig[]) => {
-      for (const tab of tabs) {
-        tabIds.add(tab.id);
-        if (tab.children) collectTabIds(tab.children);
-      }
-    };
-    collectTabIds(this.config.tabs || []);
+    for (const key of fresh) this.warnedUnconsumedKeys.add(key);
 
-    const unconsumed = Object.keys(data).filter(
-      key =>
-        !tabIds.has(key) && // a tab id at the root is the nested container, not a stray field
-        data[key] !== undefined &&
-        fieldsById.has(key) &&
-        !patchedFieldIds.has(key) &&
-        !this.warnedUnconsumedKeys.has(key),
-    );
-    if (!unconsumed.length) return;
-
-    for (const key of unconsumed) this.warnedUnconsumedKeys.add(key);
-
-    const shown = unconsumed.slice(0, 5).join(', ');
-    const more = unconsumed.length > 5 ? ` (+${unconsumed.length - 5} more)` : '';
-    const plural = unconsumed.length === 1;
+    const shown = fresh.slice(0, 5).join(', ');
+    const more = fresh.length > 5 ? ` (+${fresh.length - 5} more)` : '';
+    const plural = fresh.length === 1;
     console.warn(
       `[ngx-dynamic-entity] initialData has top-level ${plural ? 'key' : 'keys'} matching ` +
         `${plural ? 'a field that was' : 'fields that were'} not populated: ${shown}${more}. ` +
@@ -1046,37 +1013,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
 
   /** Assemble full nested record from per-tab FormGroups, respecting flatData, refererField & arrays. */
   extractRecord(): Record<string, any> {
-    if (!this.form || !this.config) return {};
-    let record: Record<string, any> = {};
-
-    const walkTabs = (tabs: NestedTabConfig[]) => {
-      for (const tab of tabs) {
-        const fieldValBag: Record<string, unknown> = {};
-        for (const field of tab.fields || []) {
-          const ctrl = this.getControl(field.id, tab.id);
-          if (ctrl) {
-            fieldValBag[field.id] = ctrl.value;
-          }
-        }
-
-        setTabData(record, tab.id, fieldValBag, this.config);
-
-        for (const field of tab.fields || []) {
-          if (field.refererField) {
-            const ctrl = this.getControl(field.id, tab.id);
-            if (ctrl) {
-              setValueByPath(record, field.refererField, ctrl.value);
-            }
-          }
-        }
-
-        if (tab.children) walkTabs(tab.children);
-      }
-    };
-
-    walkTabs(this.config.tabs || []);
-    record = normalizeArrayStructures(record, this.config);
-    return record;
+    return this.structure.extractRecord(this.form, this.config);
   }
 
   /**
@@ -1112,8 +1049,8 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
       if (parsed.kind === 'ref') continue;
       const id = parsed.value;
       const scopes = ambiguous.get(id);
-      if (!scopes || DynamicFormComponent.warnedAmbiguousIds.has(id)) continue;
-      DynamicFormComponent.warnedAmbiguousIds.add(id);
+      if (!scopes || this.warnedAmbiguousIds.has(id)) continue;
+      this.warnedAmbiguousIds.add(id);
       console.warn(
         `[ngx-dynamic-entity] A rule references field "${id}", which is defined in ${scopes.join(' and ')}. ` +
           `A bare id cannot say which one is meant, so the rule will read whichever the form finds first. ` +
@@ -1122,7 +1059,16 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
-  private static readonly warnedAmbiguousIds = new Set<string>();
+  /**
+   * Ids already warned about, per component instance.
+   *
+   * This was `private static`, so it was module-global mutable state that nothing ever
+   * cleared: under SSR every render of every form in the process accumulated into one set
+   * that lived as long as the server did, and the first request to render a config
+   * suppressed the warning for every request after it. Per instance, the warning is once per
+   * form — which is what "warn once" was meant to mean.
+   */
+  private readonly warnedAmbiguousIds = new Set<string>();
 
   /**
    * The value map rules and `showWhen` are evaluated against.
@@ -1137,23 +1083,87 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
    * unknown>` and needs no knowledge of refs at all — the extra keys simply resolve.
    */
   /**
-   * Whether a rule result names this field.
+   * Every name a rule may address this field by.
    *
    * A rule target is either a bare field id — how every config so far addresses a field — or
-   * a bracketed path, which is the only way to name one of two fields that share an id.
-   * Both have to match, or a rule written either way would fail to hide what it targeted.
+   * a bracketed path, which is the only way to name one of two fields that share an id. Both
+   * have to match, or a rule written either way would fail to hide what it targeted.
+   *
+   * The path comes last, and `syncHiddenFieldState` relies on that: it uses the last entry
+   * as the field's address when deciding whether a hidden container already covers it.
    */
-  private namesField(names: ReadonlySet<string>, field: NestedFieldConfig): boolean {
-    if (names.has(field.id)) return true;
-    const ref = field.refererField ?? this.pathFor(field);
-    return ref ? names.has(toRefToken(ref)) : false;
+  private namesOf(field: NestedFieldConfig): readonly string[] {
+    const path = field.refererField ?? this.pathFor(field);
+    return path ? [field.id, toRefToken(path)] : [field.id];
+  }
+
+  /**
+   * The field's dotted address, unbracketed.
+   *
+   * The positional path rather than an authored `refererField`: this is compared as a prefix
+   * to decide whether a hidden container already covers a field, and containment is a fact
+   * about where the field *is*. A `refererField` is a binding override — it says where the
+   * value goes, not which group renders it.
+   */
+  private addressOf(field: NestedFieldConfig): string {
+    return this.pathFor(field) ?? field.id;
   }
 
   /** The field's declared path, or the one its position implies when it carries none. */
   private pathFor(field: NestedFieldConfig): string | null {
-    const entry = collectFieldScopes(this.config).find(e => e.field === field);
+    const entry = this.scopeEntryFor(field);
     return entry ? fieldRefFor(entry.scope, field.id) : null;
   }
+
+  /**
+   * Every field in the config with the scope its value is stored under, cached per config.
+   *
+   * `collectFieldScopes` walks the whole tree. It was called once per field from `pathFor`,
+   * which `namesField` calls, which the render filter calls for every field on the active
+   * tab — a quadratic walk on every change-detection pass. Keyed by config identity, so a
+   * new config invalidates it without an explicit lifecycle hook to forget.
+   */
+  private fieldScopes(): FieldScopeEntry[] {
+    if (this.scopeCache?.config !== this.config) {
+      const entries = collectFieldScopes(this.config);
+      this.scopeCache = {
+        config: this.config,
+        entries,
+        byField: new Map(entries.map(entry => [entry.field, entry])),
+      };
+    }
+    return this.scopeCache.entries;
+  }
+
+  private scopeEntryFor(field: NestedFieldConfig): FieldScopeEntry | undefined {
+    this.fieldScopes();
+    return this.scopeCache?.byField.get(field);
+  }
+
+  private scopeCache?: {
+    config: EntityFormConfig | null | undefined;
+    entries: FieldScopeEntry[];
+    byField: Map<NestedFieldConfig, FieldScopeEntry>;
+  };
+
+  /**
+   * The control a scope entry addresses, named by path rather than by bare id.
+   *
+   * `getControl(field.id)` with no tab falls through to a first-match recursive search of the
+   * whole form, so with `address` on two tabs, hiding one disabled the other. The control
+   * tree mirrors the scope path exactly — `buildTabControls` nests by tab id and
+   * `buildFieldControl` nests a `group` under its own id — so a `[path]` ref resolves through
+   * `form.get()` on `getControl`'s first branch and names exactly one control.
+   *
+   * A field inside an `array` has no static path: its controls live in `FormArray` rows built
+   * per row. `form.get()` returns null for those and they are left alone, which is correct —
+   * a row's controls are created and destroyed with the row.
+   */
+  private controlForEntry(entry: FieldScopeEntry): AbstractControl | null {
+    return this.getControl(toRefToken(fieldRefFor(entry.scope, entry.field.id)));
+  }
+
+
 
   private flattenFormValues(): Record<string, any> {
     const out: Record<string, any> = {};
@@ -1166,17 +1176,6 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
       out[toRefToken(refOf(field, entry.scope))] = ctrl.value;
     }
     return out;
-  }
-
-  private getTabGroup(tabId: string): FormGroup | null {
-    const path = getTabPath(this.config?.tabs, tabId);
-    if (!path || path.length === 0) return this.form;
-    let curr: AbstractControl | null = this.form;
-    for (const p of path) {
-      if (!curr || !(curr instanceof FormGroup)) return null;
-      curr = curr.get(p);
-    }
-    return curr instanceof FormGroup ? curr : null;
   }
 
   // ─── autoPatch / patchOnTrue ──────────────────────────────────────────────
@@ -1222,67 +1221,48 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
-  /** Prefer a control declared on the configured target tab; fall back to a top-level control. */
+  /**
+   * Prefer a control declared on the configured target tab; fall back to a top-level control.
+   *
+   * "Declared on the tab" now means anywhere under it, sub-tabs and `group` children
+   * included. It meant the tab's own top-level fields only, so an `autoPatch` mapping onto a
+   * field inside a group resolved to `null` and copied nothing, silently.
+   */
   private resolveTargetControl(autoPatch: AutoPatchConfig, targetId: string): AbstractControl | null {
     const tab = findTab(this.tabs, autoPatch.targetTab);
-    const inTargetTab = (tab?.fields ?? []).some(f => f.id === targetId);
-    if (tab && !inTargetTab) return null;
-    return this.getControl(targetId, autoPatch.targetTab);
+    if (!tab) return this.getControl(targetId, autoPatch.targetTab);
+
+    const entry = fieldsUnderTab(this.config, autoPatch.targetTab).find(e => {
+      if (!e.field?.id) return false;
+      const parsed = parseFieldRef(targetId);
+      return parsed.kind === 'ref'
+        ? fieldRefFor(e.scope, e.field.id) === parsed.value
+        : e.field.id === parsed.value;
+    });
+    if (!entry) return null;
+    return this.controlForEntry(entry);
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
   /**
-   * The fields the render filter operates on — a tab's own fields, at every tab depth.
-   * Deliberately not `allFields()`: `group` and `array` children are shown or hidden with
-   * their parent, and toggling a child's state independently would fight the parent's.
-   */
-  private tabFields(): NestedFieldConfig[] {
-    const out: NestedFieldConfig[] = [];
-    const walk = (tabs: NestedTabConfig[] | undefined) => {
-      for (const tab of tabs ?? []) {
-        out.push(...(tab.fields ?? []));
-        walk(tab.children);
-      }
-    };
-    walk(this.config?.tabs);
-    return out;
-  }
-
-  /**
-   * Keep a hidden field's control out of form validity.
+   * Keep a hidden field's control out of form validity — see
+   * `RulesEvaluationService.syncHiddenFieldState`, which owns the rule and the reasoning.
    *
-   * A field hidden by a rule or a `showWhen` condition is filtered out of the render, but
-   * its validators stay attached — so a hidden *required* field holds `form.invalid` true
-   * forever, permanently disabling Save with nothing on screen to explain why.
-   *
-   * Disabling is the fix rather than stripping validators: Angular excludes disabled
-   * controls from validity, and the field's own validators survive intact for when it
-   * comes back. Values are untouched — `flattenFormValues` and `extractRecord` both read
-   * `control.value`, which a disabled control still carries, so rule evaluation and the
-   * emitted record see exactly what they saw before. That also keeps this from feeding
-   * back on itself: hiding a field cannot change the values the rules are evaluated over.
-   *
-   * The visibility predicate is the same one `fieldsForActiveTab` filters with, so what is
-   * rendered and what counts toward validity cannot drift apart.
+   * This supplies the three things it cannot know: which fields exist and in what order
+   * (`collectFieldScopes`, parent-first), what each one is called, and which control each
+   * one addresses.
    */
   private syncHiddenFieldState(values: Record<string, any>): void {
     if (this.preview) return; // preview freezes the whole form on purpose
 
-    const hiddenByRule = new Set<string>(this.ruleResult().hiddenFields);
-
-    for (const field of this.tabFields()) {
-      const ctrl = this.getControl(field.id);
-      if (!ctrl) continue;
-
-      const hidden = this.namesField(hiddenByRule, field) || !evaluateFieldVisibility(field, values);
-
-      if (hidden) {
-        if (ctrl.enabled) ctrl.disable({ emitEvent: false });
-      } else if (ctrl.disabled && !field.disabled) {
-        ctrl.enable({ emitEvent: false });
-      }
-    }
+    this.rulesEvaluation.syncHiddenFieldState(this.fieldScopes(), {
+      result: this.ruleResult(),
+      values,
+      namesOf: field => this.namesOf(field),
+      addressOf: field => this.addressOf(field),
+      controlFor: entry => this.controlForEntry(entry),
+    });
   }
 
   /** Every field in the config, including `group`/`array` children. */
@@ -1311,49 +1291,31 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     return this.sessionBaseline();
   }
 
+  /**
+   * Whether a critical field still holds what it held when the session started.
+   *
+   * The same question `VALUE_CHANGED` asks, so it is answered by the same comparator rather
+   * than by a third one. The local version compared objects through `JSON.stringify`, which
+   * is key-order sensitive — two serialisers writing the same option in a different key
+   * order made the field read as edited — and had its own idea of which values count as
+   * empty. `valuesEqual` is order-independent and treats `null` and `undefined` as the same
+   * absence; the empty-string case is kept here, because a cleared text input is not an edit.
+   */
   private sameValue(a: unknown, b: unknown): boolean {
-    if (a === b) return true;
     const aEmpty = a === null || a === undefined || a === '';
     const bEmpty = b === null || b === undefined || b === '';
     if (aEmpty && bEmpty) return true;
-    if (typeof a === 'object' || typeof b === 'object') {
-      return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
-    }
-    return false;
+    return valuesEqual(a, b);
   }
 
+  /**
+   * Find a control by a bracketed path or a bare field id.
+   *
+   * Public API, so it stays on the component and delegates — see `FormStructureService`,
+   * which owns the resolution rule and is where the behaviour is documented.
+   */
   getControl(fieldId: string, currentTabId?: string): AbstractControl | null {
-    if (!this.form) return null;
-
-    // A bracketed path names exactly one control, and the form nests by tab exactly as the
-    // path does — so `form.get('work.address')` walks straight to it. Anything that names a
-    // field can therefore use a path: `showWhen` keys, `patchOnTrue` mappings and `autoPatch`
-    // targets, not only rules.
-    const parsed = parseFieldRef(fieldId);
-    if (parsed.kind === 'ref') return this.form.get(parsed.value);
-
-    if (currentTabId) {
-      const tabGrp = this.getTabGroup(currentTabId);
-      const ctrl = tabGrp?.get(fieldId);
-      if (ctrl) return ctrl;
-    }
-
-    const rootCtrl = this.form.get(fieldId);
-    if (rootCtrl) return rootCtrl;
-
-    const findInGroup = (group: FormGroup): AbstractControl | null => {
-      for (const key of Object.keys(group.controls)) {
-        const c = group.controls[key];
-        if (key === fieldId) return c;
-        if (c instanceof FormGroup) {
-          const found = findInGroup(c);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-
-    return findInGroup(this.form);
+    return this.structure.getControl(this.form, this.config, fieldId, currentTabId);
   }
 
   /**

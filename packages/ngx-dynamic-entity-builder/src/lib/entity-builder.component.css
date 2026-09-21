@@ -991,6 +991,28 @@ mat-toolbar.deb-toolbar {
   align-items: center;
   gap: 8px;
 }
+/*
+ * The key sits beside the text it is deliberately independent of, and is not a control.
+ * Narrow and fixed, so the editable field keeps the width: the text is what an author
+ * works on, the key is something they only ever need to read.
+ */
+.deb-option-key {
+  flex: 0 0 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--deb-surface-2, rgba(0, 0, 0, 0.05));
+  color: var(--deb-muted);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+}
+.deb-row__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 .deb-flags-row {
   display: flex;
   gap: 16px;

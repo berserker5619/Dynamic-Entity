@@ -1,9 +1,11 @@
 import { Component, EventEmitter, Input, Output, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EntityBuilderComponent, EntityFormConfig } from 'ngx-dynamic-entity-builder';
+import type { FormRule } from '@dynamic-entity/core';
 import { DynamicFormComponent } from 'ngx-dynamic-entity';
 import { COMMON_MODULES } from '@dynamic-entity/core';
 import { LocalStore } from './mock/local-store.service';
+import { demoRulesFor, saveDemoRules } from './mock/demo-rules';
 
 /**
  * BuilderPageComponent — demo host for <ngx-entity-builder>.
@@ -88,7 +90,9 @@ function writePanel(panel: 'left' | 'right' | 'fields' | 'preview', open: boolea
       [(rightSidebarOpen)]="rightSidebarOpen"
       [(fieldsOpen)]="fieldsOpen"
       [(previewOpen)]="previewOpen"
+      [rules]="rules()"
       (configChange)="draft.set($event)"
+      (rulesChange)="authoredRules.set($event)"
       (save)="onSave($event)"
     >
       @if (draft(); as c) {
@@ -266,8 +270,18 @@ export class BuilderPageComponent {
     const next = saved ? (JSON.parse(JSON.stringify(saved)) as EntityFormConfig) : this.blankConfig();
     this.editing.set(next);
     this.draft.set(next);
+    // The rules that belong with this config. Opening an entity for editing without them
+    // showed an empty rules list for a config that had rules, and saving wrote that back.
+    const loaded = entity ? demoRulesFor(entity) : [];
+    this.rules.set(loaded);
+    this.authoredRules.set(loaded);
     this.message.set(null);
   }
+
+  /** The rules handed to the builder when an entity is opened. */
+  readonly rules = signal<FormRule[]>([]);
+  /** The rules as the user has edited them — what Save persists. Bound in the template. */
+  readonly authoredRules = signal<FormRule[]>([]);
 
   onSave(config: EntityFormConfig): void {
     try {
@@ -277,6 +291,10 @@ export class BuilderPageComponent {
       } else {
         this.store.saveConfig(config);
       }
+      // Rules live beside the config, so saving the config alone would drop every rule the
+      // user just authored — which is what happened before the builder had a `rulesChange`
+      // output at all, when there was no supported way to get them out of it.
+      saveDemoRules(config.entity, this.authoredRules());
       this.isError.set(false);
       this.message.set(`Saved "${config.entity}" ✓`);
       this.savedEntities.set(

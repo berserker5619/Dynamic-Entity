@@ -19,7 +19,7 @@ describe('CheckboxFieldComponent', () => {
   it('should render checked input', () => {
     const input = fixture.nativeElement.querySelector('input');
     expect(input.type).toBe('checkbox');
-    expect(input.checked).toBeTrue();
+    expect(input.checked).toBe(true);
   });
 
   it('should render Yes/No in readonly mode', () => {

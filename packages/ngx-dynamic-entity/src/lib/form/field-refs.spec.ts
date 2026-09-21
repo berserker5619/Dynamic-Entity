@@ -135,7 +135,7 @@ describe('addressing a field by its path', () => {
 
   it('hides a field whose showWhen names the watched field by path', () => {
     const config = CONFIG();
-    config.tabs[1].fields[1].showWhen = { '[personal.address]': 'secret' };
+    config.tabs[1].fields![1].showWhen = { '[personal.address]': 'secret' };
 
     const fixture = TestBed.createComponent(DynamicFormComponent);
     const c = fixture.componentInstance;

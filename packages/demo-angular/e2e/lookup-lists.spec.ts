@@ -10,12 +10,12 @@ import {
 } from './test-helpers';
 
 /**
- * Phase 6 — named lookup lists (`listName`).
+ * Named lookup lists (`listName`).
  *
  * The demo's `tier` field carries no options at all: they arrive from the `clientTier` list
  * registered through `LOOKUP_REGISTRY` in app.config.ts.
  */
-test.describe('Dynamic Entity E2E - Phase 6 Named Lookup Lists', () => {
+test.describe('Named lookup lists', () => {
   test.beforeEach(async ({ page }) => {
     await gotoDemo(page);
   });

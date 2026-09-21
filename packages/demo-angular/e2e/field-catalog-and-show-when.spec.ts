@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { builderPaletteButton, gotoDemo, safeClick } from './test-helpers';
 
-test.describe('Dynamic Entity E2E - Phase 0 Catalog Parity & Conditional Visibility', () => {
+test.describe('Field catalogue parity and conditional visibility', () => {
   test.beforeEach(async ({ page }) => {
     await gotoDemo(page);
   });

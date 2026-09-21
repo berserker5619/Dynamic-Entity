@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoDemo, safeClick, safeSelect } from './test-helpers';
 
-test.describe('Dynamic Entity E2E - Phase 3 Tab Model Completeness', () => {
+test.describe('Tab model completeness', () => {
   test.beforeEach(async ({ page }) => {
     await gotoDemo(page);
   });

@@ -2,7 +2,7 @@ import { Component, Input, inject, signal, ChangeDetectionStrategy } from '@angu
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
-import { getOptionStoredValue, resolveLabel, resolveOptionLabel, valuesMatch } from '@dynamic-entity/core';
+import { resolveLabel, resolveOptionLabel, valuesMatch } from '@dynamic-entity/core';
 import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-registry.service';
 import { ValidationMessagesService } from '../services/validation-messages.service';
 import { UiTextService } from '../services/ui-text.service';
@@ -130,8 +130,7 @@ export class DropdownFieldComponent {
   readonly compareFn = (o1: unknown, o2: unknown): boolean => valuesMatch(o1, o2, this.language);
 
   isObjectVal(option: DropdownOption): boolean {
-    const val = getOptionStoredValue(option);
-    return typeof val === 'object' && val !== null;
+    return typeof option === 'object' && option !== null;
   }
 
   get label(): string {
@@ -142,8 +141,17 @@ export class DropdownFieldComponent {
     return resolveLabel(this.field?.placeholder, this.language);
   }
 
+  /**
+   * The value this option stores — the option object itself.
+   *
+   * Kept as a method rather than binding `option` straight into the template, because it is
+   * the one place that says *why* the two are the same thing. It used to delegate to
+   * `getOptionStoredValue`, an exported identity function whose two branches returned their
+   * argument unchanged; naming a transformation that does not happen is worse than naming
+   * nothing, because a reader has to go and check.
+   */
   getOptStoredVal(option: DropdownOption): unknown {
-    return getOptionStoredValue(option);
+    return option;
   }
 
   getOptLabel(option: DropdownOption): string {
@@ -157,7 +165,7 @@ export class DropdownFieldComponent {
    */
   getLabel(value: unknown): string {
     if (value == null || value === '') return '—';
-    const option = this.options().find(o => valuesMatch(getOptionStoredValue(o), value, this.language));
+    const option = this.options().find(o => valuesMatch(o, value, this.language));
     if (option) return this.getOptLabel(option);
     const cached = this.lookups.labelFor(this.field?.listName, value, this.language);
     if (cached) return cached;

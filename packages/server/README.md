@@ -129,6 +129,16 @@ console.log(`imported ${result.imported}, skipped ${result.skipped}`);
 **awaits** `onBatch`, and drops the batch. Peak memory is a function of `batchSize`, not of the
 file's size — which is the entire reason this package exists.
 
+**One qualification, for xlsx.** That statement is exact for CSV, which is read as a byte
+stream from first row to last. An `.xlsx` file is a zip archive, and exceljs cannot be handed
+a stream of one: `guardZip` validates the archive and rebuilds it in memory before exceljs is
+constructed, so the *compressed* file is resident for the length of the import. It is bounded
+by `maxBytes` rather than by `batchSize`, and it is the compressed size — a fifty-megabyte
+workbook is fifty megabytes here, not the several hundred its rows would occupy expanded. The
+row-by-row half above still holds: what scales with `batchSize` is everything downstream of
+the reader. `xlsx-source.ts` has always said this in its own header; it belongs where a
+reader meets the claim first.
+
 ---
 
 ## Four things to know before you deploy this
@@ -222,9 +232,10 @@ flowchart LR
 ```
 
 The dashed edge back to `readSheet` is the whole package. A batch is mapped, handed to your
-writer, **awaited**, and dropped before the next is pulled — so peak memory is a function of
-`batchSize` and not of the file. Not awaiting would turn bounded memory into an unbounded queue
-of pending writes, which is the same failure arrived at from the other side.
+writer, **awaited**, and dropped before the next is pulled — so peak memory downstream of the
+reader is a function of `batchSize` and not of the file. Not awaiting would turn bounded memory
+into an unbounded queue of pending writes, which is the same failure arrived at from the other
+side. For xlsx, add the rebuilt archive `guardZip` holds — see the qualification above.
 
 Measured on a fifty-thousand-row, thirty-five-column sheet: **2.7 MB** of collected heap, against
 163 MB with the per-batch flush removed. `stress.spec.ts` asserts it at 16 MB, chosen to

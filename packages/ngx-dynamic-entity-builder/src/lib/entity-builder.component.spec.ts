@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SimpleChange } from '@angular/core';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import type { EntityFormConfig } from '@dynamic-entity/core';
+import type { EntityFormConfig, FormRule } from '@dynamic-entity/core';
 import { ConfigSourceService } from 'ngx-dynamic-entity';
 import { EntityBuilderComponent } from './entity-builder.component';
 import { BuilderStore } from './builder-store.service';
@@ -365,6 +365,122 @@ describe('EntityBuilderComponent', () => {
       component.ngOnChanges({ config: new SimpleChange(cfg, cfg, false) });
 
       expect(store.config().entity).toBe('edited-by-the-user');
+    });
+  });
+
+  describe('rules input and output', () => {
+    const configOf = (entity: string): EntityFormConfig => ({
+      entity,
+      tabs: [
+        {
+          id: 'main',
+          label: { en: 'Main' },
+          fields: [{ id: 'status', type: 'text', label: { en: 'Status' } }],
+        },
+      ],
+    });
+
+    const ruleOf = (id: string): FormRule => ({
+      id,
+      formConfigId: 'clients',
+      fieldId: '[main.status]',
+      conditions: [{ operator: 'EQUAL', compareType: 'value', value: 'x' }],
+      action: { type: 'visibility', value: false },
+      targets: [{ id: '[main.status]', type: 'field' }],
+      enabled: true,
+      priority: 1,
+    });
+
+    function apply(config: EntityFormConfig | undefined, rules: FormRule[] | undefined, previous?: {
+      config?: EntityFormConfig;
+      rules?: FormRule[];
+    }): void {
+      component.config = config;
+      component.rules = rules;
+      component.ngOnChanges({
+        config: new SimpleChange(previous?.config, config, previous === undefined),
+        rules: new SimpleChange(previous?.rules, rules, previous === undefined),
+      });
+      fixture.detectChanges();
+    }
+
+    it('loads the rules that belong with the config', () => {
+      // Without this input, opening a config for editing dropped every rule already
+      // authored against it — and saving put that emptiness back.
+      apply(configOf('clients'), [ruleOf('r1')]);
+      expect(store.rules().map(r => r.id)).toEqual(['r1']);
+    });
+
+    it('clears them when a config arrives with none', () => {
+      apply(configOf('clients'), [ruleOf('r1')]);
+      apply(configOf('other'), undefined, { config: configOf('clients'), rules: [ruleOf('r1')] });
+      expect(store.rules()).toEqual([]);
+    });
+
+    it('puts them back when the config changes but the rules array does not', () => {
+      // `load` clears the store's rules, so a host that keeps one array and swaps the config
+      // beside it would otherwise lose them without ever changing the input.
+      const rules = [ruleOf('r1')];
+      apply(configOf('clients'), rules);
+      apply(configOf('second'), rules, { config: configOf('clients'), rules });
+      expect(store.rules().map(r => r.id)).toEqual(['r1']);
+    });
+
+    it('takes new rules on their own, without a config change', () => {
+      // A host whose rules changed while the config did not — loading a saved set, say.
+      // This is a separate branch from the config swap, because that one re-seeds the pair
+      // as a single snapshot and this one is an edit in its own right.
+      apply(configOf('clients'), []);
+
+      const next = [ruleOf('later')];
+      component.rules = next;
+      component.ngOnChanges({ rules: new SimpleChange([], next, false) });
+      fixture.detectChanges();
+
+      expect(store.rules().map(r => r.id)).toEqual(['later']);
+      expect(store.canUndo()).toBe(true);
+    });
+
+    it('ignores a rules change whose value did not actually change', () => {
+      const rules = [ruleOf('r1')];
+      apply(configOf('clients'), rules);
+
+      component.ngOnChanges({ rules: new SimpleChange(rules, rules, false) });
+      fixture.detectChanges();
+
+      // Angular reports a change on every pass for object inputs; the guard is what stops a
+      // stable array putting an undo step on the stack each time.
+      expect(store.canUndo()).toBe(false);
+    });
+
+    it('emits every change, so a rule can leave the component at all', () => {
+      // `BuilderStore` is provided by the component, so its instance is private to this
+      // injector, and `save` carries a config alone. Before this output a host could not
+      // persist an authored rule, and so could never hand it back to the renderer.
+      apply(configOf('clients'), []);
+
+      const seen: FormRule[][] = [];
+      component.rulesChange.subscribe(r => seen.push(r));
+
+      store.addRule(ruleOf('authored'));
+      fixture.detectChanges();
+
+      expect(seen.at(-1)?.map(r => r.id)).toEqual(['authored']);
+    });
+
+    it('emits a rule the store repointed after a field rename', () => {
+      apply(configOf('clients'), [ruleOf('r1')]);
+
+      const seen: FormRule[][] = [];
+      component.rulesChange.subscribe(r => seen.push(r));
+
+      store.renameField('status', 'state');
+      fixture.detectChanges();
+
+      // The host's copy has to follow the rename, or it would write back a rule pointing at
+      // a field that no longer exists.
+      const last = seen.at(-1);
+      expect(last?.[0].fieldId).toBe('[main.state]');
     });
   });
 

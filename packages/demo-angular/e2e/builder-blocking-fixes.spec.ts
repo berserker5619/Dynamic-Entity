@@ -9,11 +9,11 @@ import {
 } from './test-helpers';
 
 /**
- * Phase 7.0 — End-to-end verification of Phase 7.0 fixes:
- * 1. Object-value rule evaluation with LocalizedText choice values.
- * 2. Option/list exclusivity in the builder data source switcher.
+ * Two authoring paths that used to leave a config that could not be saved or evaluated:
+ * 1. Rule evaluation against a choice field, whose stored value is a LocalizedText object.
+ * 2. Inline options and a list name being set at once, in the builder's source switcher.
  */
-test.describe('Dynamic Entity E2E - Phase 7.0 Fixes & Edge Cases', () => {
+test.describe('Builder authoring paths that used to block a save', () => {
   test.beforeEach(async ({ page }) => {
     await gotoDemo(page);
   });

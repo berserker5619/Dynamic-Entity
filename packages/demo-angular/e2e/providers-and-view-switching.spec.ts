@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoDemo, safeClick } from './test-helpers';
 
-test.describe('Dynamic Entity E2E - Phase 2 Packaging, Providers & Registration', () => {
+test.describe('Providers, registration, and switching views', () => {
   test.beforeEach(async ({ page }) => {
     await gotoDemo(page);
   });

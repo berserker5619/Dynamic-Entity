@@ -73,20 +73,38 @@ describe('normalizeLookupValues', () => {
 });
 
 describe('lookupValuesToOptions', () => {
-  it('projects each value onto its name — the name is the option', () => {
+  it('projects each value onto its name, keyed by its code', () => {
     const values: LookupListValue[] = [
       { _id: '1', code: 'A', name: { en: 'Active', de: 'Aktiv' } },
       { _id: '2', code: 'I', name: { en: 'Inactive' } },
     ];
     expect(lookupValuesToOptions(values)).toEqual([
-      { en: 'Active', de: 'Aktiv' },
-      { en: 'Inactive' },
+      { $key: 'A', en: 'Active', de: 'Aktiv' },
+      { $key: 'I', en: 'Inactive' },
     ]);
+  });
+
+  it('falls back to _id when a value carries no code', () => {
+    expect(lookupValuesToOptions([{ _id: '64f1', name: { en: 'Active' } }])).toEqual([
+      { $key: '64f1', en: 'Active' },
+    ]);
+  });
+
+  it('leaves a value with neither keyless, so it still matches by text', () => {
+    expect(lookupValuesToOptions([{ name: { en: 'Active' } }])).toEqual([{ en: 'Active' }]);
   });
 
   it('drops no language — the whole LocalizedText survives (unlike the reference mapper)', () => {
     const [option] = lookupValuesToOptions(normalizeLookupValues([{ en: 'Active', de: 'Aktiv' }]));
     expect(option).toEqual({ en: 'Active', de: 'Aktiv' });
+  });
+
+  it('matches a stored value to its list option after the list value was renamed', () => {
+    // The orphaning a centrally-managed list causes across every entity using it: one admin
+    // edit, and every record holding the old text stops matching. A key ends that.
+    const [stored] = lookupValuesToOptions([{ code: 'A', name: { en: 'Active' } }]);
+    const [renamed] = lookupValuesToOptions([{ code: 'A', name: { en: 'Enabled' } }]);
+    expect(valuesMatch(stored, renamed)).toBe(true);
   });
 });
 

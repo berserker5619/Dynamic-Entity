@@ -25,6 +25,7 @@ Exit 2 when the command, the file, or the JSON is unusable.
 
 Options:
   --additional-field-types <a,b>  Types registered with provideFieldTypes
+  --validators <a,b>              Validator names registered with provideNgxDynamicEntity
   --rules <file.json>             FormRule[] to check against the config
   --fail-on-warnings              Treat warnings as errors
   -h, --help                      Show this message
@@ -52,8 +53,15 @@ export function runValidateCli(argv: readonly string[], io: ValidateCliIo): numb
 
   let file: string | undefined;
   let additionalFieldTypes: string[] | undefined;
+  let knownValidators: string[] | undefined;
   let rulesFile: string | undefined;
   let failOnWarnings = false;
+
+  const splitList = (value: string): string[] =>
+    value
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
 
   const takeValue = (flag: string, i: number): string | undefined => {
     const next = argv[i + 1];
@@ -73,19 +81,29 @@ export function runValidateCli(argv: readonly string[], io: ValidateCliIo): numb
         io.stderr('--additional-field-types needs a comma-separated list.');
         return 2;
       }
-      additionalFieldTypes = value
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean);
+      additionalFieldTypes = splitList(value);
       i += 1;
       continue;
     }
     if (arg.startsWith('--additional-field-types=')) {
-      additionalFieldTypes = arg
-        .slice('--additional-field-types='.length)
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean);
+      additionalFieldTypes = splitList(arg.slice('--additional-field-types='.length));
+      continue;
+    }
+    // The names `provideNgxDynamicEntity({ validators, asyncValidators })` registers. Without
+    // them `validators.custom` cannot be checked, and an unresolved name is dropped in
+    // silence — which for an async uniqueness check means the duplicate saves.
+    if (arg === '--validators') {
+      const value = takeValue(arg, i);
+      if (!value) {
+        io.stderr('--validators needs a comma-separated list.');
+        return 2;
+      }
+      knownValidators = splitList(value);
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith('--validators=')) {
+      knownValidators = splitList(arg.slice('--validators='.length));
       continue;
     }
     if (arg === '--rules') {
@@ -167,7 +185,7 @@ export function runValidateCli(argv: readonly string[], io: ValidateCliIo): numb
     rules = rulesParsed as FormRule[];
   }
 
-  const options = { additionalFieldTypes, rules };
+  const options = { additionalFieldTypes, knownValidators, rules };
   const problems = validateConfig(parsed as Parameters<typeof validateConfig>[0], options);
 
   if (problems.length) io.stdout(formatConfigProblems(problems));

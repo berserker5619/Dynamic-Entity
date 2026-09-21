@@ -23,7 +23,7 @@ import type {
   NestedFieldConfig,
   NestedTabConfig,
 } from './form-model.types';
-import { getTabPath, normalizeLocalizedText, valuesMatch } from './form-logic';
+import { OPTION_KEY, getTabPath, normalizeLocalizedText, valuesMatch } from './form-logic';
 
 /** Field types whose stored value comes from an option list. */
 const CHOICE_TYPES = new Set(['dropdown', 'radio', 'multiSelect']);
@@ -83,9 +83,22 @@ export function normalizeLookupValues(
     .sort(bySortOrder);
 }
 
-/** Project normalised list values onto the canonical option shape — the `name` *is* the option. */
+/**
+ * Project normalised list values onto the canonical option shape — the `name` *is* the
+ * option, and `code ?? _id` becomes its stable key.
+ *
+ * A master list is exactly where identity already exists and was being thrown away: the
+ * backend has decided this value is `ACTIVE` or `64f1…`, and the module note used to say
+ * both were carried but never read. Reading `code` first is deliberate — it is the stable,
+ * human-authored identifier, while `_id` changes if a list is rebuilt in another database.
+ *
+ * A list value with neither produces a keyless option, which matches by text as before.
+ */
 export function lookupValuesToOptions(values: readonly LookupListValue[]): DropdownOption[] {
-  return values.map(value => value.name);
+  return values.map(value => {
+    const key = value.code ?? value._id;
+    return typeof key === 'string' && key ? { [OPTION_KEY]: key, ...value.name } : value.name;
+  });
 }
 
 /** One raw value → `LookupListValue`. */

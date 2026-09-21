@@ -8,5 +8,7 @@
     "isolatedModules": true,
     "types": ["jest", "node"]
   },
-  "include": ["src/**/*.spec.ts", "src/**/*.d.ts", "setup-jest.ts"]
+  "include": ["src/**/*.spec.ts", "src/**/*.d.ts", "setup-jest.ts"],
+  "//": "The base config excludes src/**/*.spec.ts, and `exclude` is inherited — so this config included the specs and then excluded every one of them. `tsc --noEmit -p tsconfig.spec.json` ran over an empty file list, which is why the lint script never once failed on a spec.",
+  "exclude": ["node_modules", "dist"]
 }

@@ -150,6 +150,30 @@ describe('runValidateCli', () => {
     ).toBe(0);
   });
 
+  it('checks named validators when --validators is given', () => {
+    const custom = {
+      ...ok,
+      tabs: [
+        {
+          ...ok.tabs![0],
+          fields: [
+            { id: 'email', type: 'email', label: { en: 'Email' }, validators: { customAsync: ['uniqueEmail'] } },
+          ],
+        },
+      ],
+    };
+    const { impl } = io({ 'v.json': JSON.stringify(custom) });
+    // Not passed: the check does not run, exactly like `--rules`.
+    expect(runValidateCli(['validate', 'v.json'], impl)).toBe(0);
+    expect(runValidateCli(['validate', '--validators', 'somethingElse', 'v.json'], impl)).toBe(1);
+    expect(runValidateCli(['validate', '--validators=uniqueEmail', 'v.json'], impl)).toBe(0);
+  });
+
+  it('exits 2 when --validators has no value', () => {
+    const { impl } = io({});
+    expect(runValidateCli(['validate', '--validators'], impl)).toBe(2);
+  });
+
   it('checks rules when --rules is given', () => {
     const two: EntityFormConfig = {
       ...ok,

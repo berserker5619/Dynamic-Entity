@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import type { FormRule } from '@dynamic-entity/core';
+import type { FormRule, RuleAction } from '@dynamic-entity/core';
 import { BuilderStore } from '../builder-store.service';
 import { FieldRulesListComponent } from './field-rules-list.component';
 
@@ -229,9 +229,12 @@ describe('FieldRulesListComponent', () => {
     });
 
     it('summarises a non-visibility action by naming it', () => {
-      expect(
-        api().summarize(rule('status', { action: { type: 'required', value: true } })),
-      ).toBe('status EQUAL "archived" → required: true');
+      // An action type the model does not declare — which is the case this covers: the
+      // summary must name whatever it is handed rather than render an empty arrow.
+      const unknownAction = { type: 'required', value: true } as unknown as RuleAction;
+      expect(api().summarize(rule('status', { action: unknownAction }))).toBe(
+        'status EQUAL "archived" → required: true',
+      );
     });
 
     it('renders a field comparison that names no field without a trailing space', () => {

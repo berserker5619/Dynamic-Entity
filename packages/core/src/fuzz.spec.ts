@@ -4,6 +4,8 @@ import {
   assignFieldRefs,
 } from './field-scopes';
 import {
+  applyAutoPatch,
+  applyPatchOnTrue,
   formatDisplayValue,
   getValueByPath,
   isUnsafePath,
@@ -253,6 +255,48 @@ describe('fuzz — nested record paths', () => {
     forEachGenerated(RUNS, r => ({ obj: generateConfig(r), path: pick(r, ['a', 'a.b', '__proto__.x', '', 'tabs.0.fields']) }), input => {
       const { obj, path } = input as { obj: unknown; path: string };
       getValueByPath(obj, path);
+    });
+  });
+});
+
+/**
+ * SECURITY.md states without qualification that a config cannot reach an object's prototype.
+ *
+ * `setValueByPath` and `getValueByPath` are guarded and covered above. `applyAutoPatch` and
+ * `applyPatchOnTrue` were not: both write a config-supplied key into a fresh object. Nothing
+ * propagated in practice, because `Object.entries` skips `__proto__` at the call site — but
+ * an invariant that holds only because of a caller's choice of iterator is not one, and the
+ * claim is absolute.
+ */
+describe('a mapping cannot reach a prototype', () => {
+  const KEYS = ['__proto__', 'constructor', 'prototype', 'a.__proto__.b', 'safe'];
+
+  it('applyAutoPatch drops a mapping that names a reserved key', () => {
+    forEachGenerated(RUNS, r => ({ target: pick(r, KEYS), value: pick(r, NASTY) }), input => {
+      const { target, value } = input as { target: string; value: unknown };
+      const patch = applyAutoPatch(
+        { targetTab: 'personal', mappings: [{ source: 'src', target }] },
+        { src: value },
+      );
+
+      if (isUnsafePath(target)) {
+        expect(Object.keys(patch)).toHaveLength(0);
+      } else {
+        expect(patch[target]).toEqual(value);
+      }
+      expect(({} as Record<string, unknown>)['b']).toBeUndefined();
+      expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
+    });
+  });
+
+  it('applyPatchOnTrue drops a mapping that names a reserved key', () => {
+    forEachGenerated(RUNS, r => ({ to: pick(r, KEYS), value: pick(r, NASTY) }), input => {
+      const { to, value } = input as { to: string; value: unknown };
+      const patch = applyPatchOnTrue([{ from: 'src', to }], { src: value });
+
+      if (isUnsafePath(to)) expect(Object.keys(patch)).toHaveLength(0);
+      else expect(patch[to]).toEqual(value);
+      expect(({} as Record<string, unknown>)['b']).toBeUndefined();
     });
   });
 });

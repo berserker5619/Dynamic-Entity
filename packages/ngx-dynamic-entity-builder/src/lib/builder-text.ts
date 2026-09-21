@@ -132,6 +132,9 @@ export const DEFAULT_BUILDER_TEXT = {
   optionInLanguage: 'Option ({language})',
   removeOption: 'Remove option',
   noOptionsYet: 'No options yet — add at least one.',
+  optionKey: 'Key',
+  optionKeyHint: 'Set once, when the option was created. Records store it, so renaming the text above is safe.',
+  assignOptionKeys: 'Assign stable keys',
 
   // Field inspector — display flags
   display: 'Display',

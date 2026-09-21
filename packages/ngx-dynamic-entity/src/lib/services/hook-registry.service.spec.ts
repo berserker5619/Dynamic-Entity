@@ -20,7 +20,7 @@ describe('HookRegistryService', () => {
 
   it('should run registered hook', async () => {
     const result = await service.run('test:hook', { val: 1 });
-    expect(result.ran).toBeTrue();
+    expect(result.ran).toBe(true);
     expect(result.val).toBe(1);
   });
 
@@ -31,7 +31,7 @@ describe('HookRegistryService', () => {
   });
 
   it('should check existence', () => {
-    expect(service.has('test:hook')).toBeTrue();
-    expect(service.has('missing')).toBeFalse();
+    expect(service.has('test:hook')).toBe(true);
+    expect(service.has('missing')).toBe(false);
   });
 });

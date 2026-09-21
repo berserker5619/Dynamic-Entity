@@ -177,8 +177,8 @@ describe('DynamicFormComponent', () => {
       component.getControl('title')?.patchValue('Senior Engineer');
 
       const rec = component.extractRecord();
-      expect(rec.firstName).toBe('Bob');
-      expect(rec.employment?.jobTitle).toBe('Senior Engineer');
+      expect(rec['firstName']).toBe('Bob');
+      expect(rec['employment']?.jobTitle).toBe('Senior Engineer');
     });
 
     it('does not stack valueChanges subscriptions across rebuilds', () => {
@@ -200,21 +200,21 @@ describe('DynamicFormComponent', () => {
 
     it('submits a valid form the user may edit', () => {
       build();
-      const submit = jest.spyOn(component, 'submit').mockImplementation(() => undefined);
+      const submit = jest.spyOn(component, 'submit').mockResolvedValue(undefined);
       press();
       expect(submit).toHaveBeenCalledTimes(1);
     });
 
     it('accepts the Meta key so the shortcut works on a Mac', () => {
       build();
-      const submit = jest.spyOn(component, 'submit').mockImplementation(() => undefined);
+      const submit = jest.spyOn(component, 'submit').mockResolvedValue(undefined);
       press({ ctrlKey: false, metaKey: true });
       expect(submit).toHaveBeenCalledTimes(1);
     });
 
     it('ignores S without a modifier and other keys with one', () => {
       build();
-      const submit = jest.spyOn(component, 'submit').mockImplementation(() => undefined);
+      const submit = jest.spyOn(component, 'submit').mockResolvedValue(undefined);
       press({ ctrlKey: false });
       component.handleKeyboardEvent(new KeyboardEvent('keydown', { key: 'a', ctrlKey: true }));
       expect(submit).not.toHaveBeenCalled();
@@ -223,7 +223,7 @@ describe('DynamicFormComponent', () => {
     it('does not submit a read-only form', () => {
       build();
       component.readonly = true;
-      const submit = jest.spyOn(component, 'submit').mockImplementation(() => undefined);
+      const submit = jest.spyOn(component, 'submit').mockResolvedValue(undefined);
       press();
       // The keyboard must not reach a save the buttons deliberately withhold.
       expect(submit).not.toHaveBeenCalled();
@@ -303,8 +303,8 @@ describe('DynamicFormComponent', () => {
     const twoTabs = (): EntityFormConfig => ({
       entity: 'people',
       tabs: [
-        { id: 'personal', label: { en: 'Personal' }, fields: [{ id: 'fullName', type: 'text' }] },
-        { id: 'work', label: { en: 'Work' }, fields: [{ id: 'deskNumber', type: 'text' }] },
+        { id: 'personal', label: { en: 'Personal' }, fields: [{ id: 'fullName', type: 'text', label: { en: 'Full name' } }] },
+        { id: 'work', label: { en: 'Work' }, fields: [{ id: 'deskNumber', type: 'text', label: { en: 'Desk number' } }] },
       ],
     });
 

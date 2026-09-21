@@ -18,7 +18,9 @@ const CASES: Record<RuleOperator, Case[]> = {
   EQUAL: [
     { compare: 'active', actual: 'active', expected: true, why: 'identical strings' },
     { compare: 'active', actual: 'inactive', expected: false, why: 'different strings' },
-    { compare: '5', actual: 5, expected: true, why: 'coerces across types' },
+    { compare: '5', actual: 5, expected: false, why: 'a rule operator does not coerce across types' },
+    { compare: '0', actual: 0, expected: false, why: "'0' is not the number zero" },
+    { compare: 'false', actual: false, expected: false, why: "'false' is not the boolean" },
     { compare: null, actual: undefined, expected: true, why: 'both nullish stringify equal' },
     { compare: { en: 'Active' }, actual: { en: 'Active' }, expected: true, why: 'matching object values' },
     { compare: { en: 'Active', de: 'Aktiv' }, actual: { de: 'Aktiv' }, expected: true, why: 'object values matching on shared language key' },
@@ -29,7 +31,7 @@ const CASES: Record<RuleOperator, Case[]> = {
   NOT_EQUAL: [
     { compare: 'active', actual: 'inactive', expected: true, why: 'different strings' },
     { compare: 'active', actual: 'active', expected: false, why: 'identical strings' },
-    { compare: '5', actual: 5, expected: false, why: 'coerced equal is not "not equal"' },
+    { compare: '5', actual: 5, expected: true, why: 'different types are not equal, so they are NOT_EQUAL' },
     { compare: { en: 'Active' }, actual: { en: 'Inactive' }, expected: true, why: 'different object values' },
     { compare: { en: 'Active' }, actual: { en: 'Active' }, expected: false, why: 'matching object values' },
   ],
@@ -121,7 +123,10 @@ const CASES: Record<RuleOperator, Case[]> = {
   NOT_IN: [
     { compare: ['a', 'b'], actual: 'z', expected: true, why: 'not a member' },
     { compare: ['a', 'b'], actual: 'a', expected: false, why: 'member of list' },
-    { compare: 'not-an-array', actual: 'a', expected: false, why: 'compare must be an array' },
+    // Vacuously true: a value is not in a thing that is not a list. This returned false,
+    // so IN and NOT_IN were both false for the same target and a rule and its negation
+    // could not partition anything.
+    { compare: 'not-an-array', actual: 'a', expected: true, why: 'nothing is in a non-list' },
     { compare: [{ en: 'Active' }], actual: { en: 'Inactive' }, expected: true, why: 'object value not in list' },
     { compare: [{ en: 'Active' }], actual: { en: 'Active' }, expected: false, why: 'object value in list' },
   ],
@@ -159,8 +164,24 @@ describe('evaluateCondition — operator table', () => {
       expect(evaluateCondition(condition, 'same', {}, 'same')).toBe(false);
     });
 
-    it('does not match when there is no baseline to compare against', () => {
-      expect(evaluateCondition(condition, 'anything', {})).toBe(false);
+    // The commonest change there is: the record had no value for the field and the user has
+    // just typed one. It was the only change that could not fire, because the operator
+    // required a defined baseline before it would compare anything.
+    it('matches when a field with no baseline has been filled in', () => {
+      expect(evaluateCondition(condition, 'anything', {})).toBe(true);
+    });
+
+    it('does not match when a field with no baseline is still empty', () => {
+      expect(evaluateCondition(condition, undefined, {})).toBe(false);
+      expect(evaluateCondition(condition, null, {})).toBe(false);
+    });
+
+    // Identity comparison called every choice field changed on every evaluation, because the
+    // displayed text *is* the stored object and no two reads are the same object.
+    it('compares object values by value, not identity', () => {
+      const baseline = { en: 'Active', de: 'Aktiv' };
+      expect(evaluateCondition(condition, { ...baseline }, {}, baseline)).toBe(false);
+      expect(evaluateCondition(condition, { en: 'Inactive' }, {}, baseline)).toBe(true);
     });
 
     it('treats a null baseline as a real baseline', () => {

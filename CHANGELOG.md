@@ -8,12 +8,200 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Unreleased]
+## [2.0.0]
 
-No published API changes. The import feature gained the coverage its shipped surface always
-implied, and the half of it a person could not reach became reachable.
+The rules engine — the feature the README leads with — was the least finished part of the
+system, and the docs described behaviour the code did not have. This release makes the
+documented behaviour real, makes nested fields first-class everywhere, gives options an
+identity independent of their text, and puts CI gates under the two headline claims that
+nothing tested.
+
+### Breaking changes
+
+Read these first. Most configs need no edit; the first one changes what a running
+application does.
+
+- **Per-section save now enforces rules.** `filterRulesForTab` compared bare ids against a
+  tab's *top-level* fields only, while the builder writes bracketed refs (`[personal.city]`)
+  — so for every builder-authored config it matched **zero** rules, and
+  `DynamicRecordFormComponent.saveSection()` applied no rule validation at all. It now
+  resolves both spellings and reaches every field a tab owns, at any depth. **A section save
+  that succeeded yesterday can be refused today**, by a `validation` rule that was always
+  meant to apply. This is the highest-blast-radius change in the release: check your rules
+  before upgrading a deployment that uses per-tab save.
+- **Rule operators no longer coerce across types.** `EQUAL`, `NOT_EQUAL`, `CONTAINS`,
+  `NOT_CONTAINS`, `IN`, `NOT_IN` and `VALUE_CHANGED` use a new `valuesEqual` instead of
+  `valuesMatch`. `0` no longer equals `'0'`, `false` no longer equals `'false'`, and two
+  options spelled alike in *different* languages no longer match. An option still matches the
+  text that names it in any of its languages, which is how the builder's condition editor
+  authors one, so ordinary rules are unaffected. `valuesMatch` is unchanged and stays where
+  leniency is the feature — display, the choice components' `compareFn`, import coercion,
+  lookup-list integrity, entity-reference selection.
+- **`VALUE_CHANGED` fires differently.** It compared with `!==`, so every object-valued field
+  — which is every choice field — read as changed on every evaluation, and a field the record
+  had no value for could never fire at all. It now compares by value and treats filling in an
+  empty field as a change.
+- **`NOT_IN` against a non-array is now `true`.** It was `false`, so `IN` and `NOT_IN` against
+  the same malformed target were both false and a rule and its negation could not partition
+  anything.
+- **`visibility: true` is no longer a no-op.** A rule that shows now overrides static hiding
+  (`visibility: false`, an unmet `showWhen`). An explicit hide still beats a show, in either
+  order. A config that used `value: true` expecting nothing to happen will now show fields.
+- **`RuleEvaluationResult` gained `shownFields` and `shownTabs`.** Anything constructing one
+  by hand must add them.
+- **`getOptionStoredValue` is removed.** It was an exported identity function whose two
+  branches returned their argument unchanged. Pass the option itself.
+- **`@dynamic-entity/core` no longer exports the CLI.** `runValidateCli` and `ValidateCliIo`
+  moved to the `@dynamic-entity/core/cli` subpath, so importing the library in a browser
+  cannot pull in argv parsing. The `dynamic-entity` bin is unchanged; its wrapper is
+  `bin.mjs` now, because `cli.mjs` is the subpath bundle. The cost of the split, stated: the
+  subpath re-bundles the validator rather than sharing a chunk with the root, so the
+  published tarball carries about 30 kB of duplicated code. The point was to keep it out of
+  a browser bundle, and it is.
+- **Both root barrels are now explicit.** `export *` made every helper semver surface the
+  moment it was written. Dropped from `@dynamic-entity/core`: `compactArrays`, `getByPath`,
+  `arrayBoundOf`, `parseArrayHeader`, `formatArrayHeader`, `MAX_ARRAY_BOUND` — import-engine
+  plumbing with no external consumer and no documentation. `@dynamic-entity/server` still
+  exports everything it did; each name is simply listed now.
+- **New `validateConfig` errors.** A config that passed before can fail now: an unparseable
+  `validators.pattern`, `min` above `max`, `minLength` above `maxLength`, a `defaultValue` a
+  `number`/`boolean` field cannot hold, a field or tab id that is a reserved object key
+  (`__proto__`, `constructor`, `prototype`), a rule missing `conditions`/`targets`/`action`,
+  an option key starting with `$` other than `$key`, and a duplicate `$key`. These describe
+  configs that already misbehaved at runtime.
+- **Peer ranges move to `^2.0.0`** between the four packages.
+- **Supported versions collapse to a policy**: 2.0.x supported, 1.x security fixes only.
+
+### Fixed
+
+- **A malformed rule no longer takes down the form.** `evaluateFormRules` called
+  `rule.conditions.every` unguarded, so a rule authored without conditions threw from inside
+  change detection. Such a rule is now skipped and reported through a new
+  `onProblem` callback; the renderer turns that into one dev-mode warning per problem.
+  `validateConfig` reports the same shapes — the loop there used `rule.conditions?.forEach`,
+  which validated clean for exactly the shape that crashed.
+- **A rule can reach a nested field.** `filterRulesForTab` never walked `group`/`array`
+  children or sub-tabs. A new `fieldsUnderTab` in `field-scopes.ts` is the single walk both
+  it and `collectFieldScopes` use.
+- **A required field inside a `group`, hidden by a rule, no longer pins `form.invalid`
+  forever.** `syncHiddenFieldState` walked a tab's own fields only — the exact bug its own
+  docblock said it fixed. It and the render filter now share one predicate over
+  `collectFieldScopes`, and a container's children are skipped once the container is hidden
+  so a child's `enable()` cannot fight its parent.
+- **Hiding a field no longer disables its namesake on another tab.** Controls were resolved
+  by bare id with no tab, falling through to a first-match search of the whole form. They are
+  addressed by path now.
+- **"Jump to the first invalid field" finds a nested one**, and the error summary names the
+  offending child rather than the `group` containing it.
+- **An `autoPatch` target inside a `group` or on a sub-tab now resolves.** It matched a tab's
+  top-level fields only and silently copied nothing otherwise.
+- **`validators.pattern` is checked.** An unparseable one was silently skipped server-side and
+  **threw** client-side while the control was built, taking the whole form with it. It is a
+  `validateConfig` error, and at runtime the field degrades to no format check with a warning.
+- **An unresolved named validator says so.** `validators.custom` / `customAsync` naming
+  something unregistered was dropped in silence — for an async uniqueness check, a duplicate
+  saved with nothing anywhere having said so.
+- **A field named `__proto__` is reported.** It passed `ID_PATTERN` and then every path guard
+  refused to read or write it: a field that rendered, accepted input, and could never hold a
+  value.
+- **SECURITY.md's prototype claim is now true without qualification.** `applyAutoPatch` and
+  `applyPatchOnTrue` wrote config-supplied keys into a fresh object unguarded. Nothing
+  propagated, because `Object.entries` skips `__proto__` at the call site — but an invariant
+  that holds because of a caller's choice of iterator is not one. Both skip such a mapping,
+  `validateConfig` reports it, and `fuzz.spec.ts` covers it.
+- **A field rename follows the rules that named it by path.** `renameField` repointed rules
+  matching a *bare id* only, while the builder authors them by path — so renaming a field
+  orphaned every rule the builder itself had written, leaving it pointing at a path nothing
+  resolved to. A path's last segment is the field id, which is what makes the repoint exact:
+  renaming `city` rewrites `[status.city]` and leaves `[status.statusCode]` alone.
+- **`resolveLabel` cannot return a slug.** Its last fallback was `Object.values(...).find(Boolean)`,
+  which for a keyed option authored in a language the caller does not have would have returned
+  the `$key`.
+- **Undo history is bounded.** The builder kept every step for the life of the session; it now
+  caps at 200 and drops the oldest.
+- **A markdown field no longer re-parses on every change-detection pass.** `rendered()` is
+  called from the template, so the consumer's parser ran over the whole document on every pass
+  of every markdown field. Memoised on the source.
+- **`warnedAmbiguousIds` is per form, not per process.** It was `private static`: under SSR it
+  accumulated for the life of the server, and the first render of a config silenced the
+  warning for every request after it.
+- **`tsc --noEmit -p tsconfig.spec.json` checked zero files** in both Angular packages. The
+  base config excludes `src/**/*.spec.ts` and `exclude` is inherited, so the spec config
+  included the specs and then excluded every one of them. Fixing it surfaced 27 type errors in
+  specs that had never been checked — including two Jasmine matchers (`toBeTrue`,
+  `toBeFalse`) that jest does not have, so those assertions were dead.
+- **`verify-consumer.mjs` matched tarballs by filename prefix**, disambiguating
+  `ngx-dynamic-entity` from `ngx-dynamic-entity-builder` with the leading digit of the version
+  (`ngx-dynamic-entity-1`). It matched nothing at 2.0.0. Keyed by name and version now.
 
 ### Added
+
+- **Stable option identity.** `DropdownOption` gains a reserved `$key`. When both sides of a
+  comparison carry one the key decides and the text is display only, so renaming an option no
+  longer orphans records; when either lacks one, matching is exactly what 1.x did. The builder
+  mints a key on option create and never rewrites it on rename, shows it read-only in the
+  inspector, and offers **Assign stable keys** for an existing config. `normalizeLookupValues`
+  projects a list value's `code ?? _id`. `optionKeyMigration(config)` attaches keys to stored
+  records, reaching choice values inside `group`s and in every row of an `array`. Every read
+  of an option's translations routes through a new `languageEntries`, so the key is never
+  mistaken for a language. See the README's *Option identity*.
+- **`valuesEqual`, `optionKeyOf`, `languageEntries`, `OPTION_KEY`, `UNSAFE_PATH_KEYS`,
+  `fieldsUnderTab`, `applyOptionKeys`, `optionKeyMigration`** are exported from core.
+- **`validateConfig` takes `knownValidators`**, and the CLI takes `--validators a,b`.
+- **`evaluateFormRules` takes an options object** with `onProblem`.
+- **A tree-shaking CI gate.** `verify-consumer.mjs --size` builds a real consumer application
+  twice — three field types registered, then all of them — and asserts a ceiling on each plus
+  a minimum gap between them. "An app that uses three field types pays for three" previously
+  rested entirely on a bundler eliding one unused exported function in a module that
+  statically references all 21 components, and nothing tested it. Measured on Angular 20:
+  **245 kB against 327 kB.** Wired into `ci.yml` as its own job.
+- **Type-aware ESLint.** `parserOptions.project` across every package, with
+  `@typescript-eslint/no-floating-promises` and `no-misused-promises`, plus `@angular-eslint`
+  for components and templates. `no-unnecessary-condition` is deliberately left off, and the
+  config says why: this codebase guards typed-but-untrusted config data on purpose, and that
+  rule flags exactly those guards.
+- **The builder can hand its rules to a host.** `EntityBuilderComponent` gained `[rules]` and
+  `(rulesChange)`, and `BuilderStore.load` now takes the rules that belong with the config so
+  the pair arrives as one snapshot — a builder is not undoable back past the act of opening
+  it. It provides `BuilderStore` itself and emitted only an `EntityFormConfig`,
+  so a rule authored in the builder **could not leave the component**: loading a config for
+  editing dropped every rule already on it, and there was no supported way to persist a new
+  one — which made per-section rule validation unreachable for anyone using the builder as
+  shipped. The demo now stores rules beside each config, so the round trip has end-to-end
+  coverage instead of being a manual step.
+- **`FormStructureService`** — config ⇄ `FormGroup`, extracted from `DynamicFormComponent` and
+  testable without a TestBed. Rule *interpretation* moved into `RulesEvaluationService`, which
+  was a two-method passthrough: visibility precedence and the hidden-state sync now have one
+  owner, because the bug above was two methods forty lines apart disagreeing about what
+  "every field" meant. The component's public API is unchanged and delegates.
+
+### Documentation
+
+- A **Rules** section: how to name a field (bare id or `[path]`, never a bare dotted string),
+  the visibility precedence, what `priority` does and in which direction, what happens to a
+  malformed rule, and how a host round-trips rules through the builder.
+- The builder README documents `[rules]` / `(rulesChange)`, and says plainly that saving the
+  config alone drops what the user just authored.
+- An **Option identity** section with the migration sequence.
+- The server README qualifies "peak memory is a function of `batchSize`": exact for CSV, while
+  for xlsx `guardZip` holds the rebuilt archive — compressed, bounded by `maxBytes` — before
+  exceljs is constructed. `xlsx-source.ts` already said so in its own header.
+- `provide-field-types.ts`, `field-registry.service.ts` and `field-dom-id.ts` said "nineteen"
+  and "all 19"; there are 21.
+- The `phase0`…`phase8` e2e specs are renamed to what they assert, and the demo now binds
+  `[rules]` on both form components so the two behaviours only a round trip can show — a rule
+  that *shows* a statically hidden field, and a per-section save a rule on a field inside a
+  `group` refuses — have end-to-end coverage.
+
+---
+
+### Also in this release
+
+The import work that had accumulated since 1.14.0 and was never published on its own. No
+published API changes of its own: the import feature gained the coverage its shipped surface
+always implied, and the half of it a person could not reach became reachable.
+
+#### Added
 
 - **`templateFormat` is reachable from the demo.** The wizard's `[templateFormat]` input
   shipped in 1.14.0 and the demo never set it, so `write-template.ts` — the xlsx writer —
@@ -42,7 +230,7 @@ implied, and the half of it a person could not reach became reachable.
   the wizard and the real server, which is the only place the "the tab never holds the file"
   claim is made in a tab.
 
-### Changed
+#### Changed
 
 - **`check-timezones.mjs` sweeps the server's config matrix too.** The gate watched the string
   path in `core` and nothing else, so the typed path — a `Date` out of a workbook — had never
@@ -63,7 +251,7 @@ implied, and the half of it a person could not reach became reachable.
   four published packages declare no runtime dependencies at all, which is the number that
   actually matters to a consumer and is now a table in `SECURITY.md`.
 
-### Fixed
+#### Fixed
 
 - **`LocalStore.createRecords`, in the demo.** Saving imported records one at a time re-read
   and re-serialised the whole table per record — O(n²), and the reason a 1,200-row in-browser
@@ -79,7 +267,7 @@ implied, and the half of it a person could not reach became reachable.
   method (a syntax error) and a call naming three undeclared identifiers. CI compiles every
   documented snippet and had been red since they landed.
 
-### Internal
+#### Internal
 
 - **`check-lockfile-platforms.mjs`**, first in `npm run lint`. A lockfile regenerated on one
   platform carries only that platform's optional binaries, so `npm ci` fails everywhere else —

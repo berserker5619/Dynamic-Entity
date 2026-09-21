@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoDemo, openInspectorSection, safeClick, safeFill } from './test-helpers';
 
-test.describe('Dynamic Entity E2E - Phase 8 Referenced Fields & Drift Detection', () => {
+test.describe('Referenced fields and drift detection', () => {
   test('links a field to a source entity field, detects drift on source change, and syncs', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', err => errors.push(err.message));

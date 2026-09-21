@@ -134,4 +134,52 @@ describe('BuilderStore — undo / redo', () => {
     store.reset('fresh');
     expect(store.canUndo()).toBe(false);
   });
+
+  it('has nothing to undo after loading a config with its rules', () => {
+    // The pair is one snapshot. Seeding the rules as a second recorded operation put a step
+    // on the stack for a load nobody performed, so a freshly opened builder offered to undo
+    // the act of opening it — and the Undo button started enabled.
+    store.load(config(), [
+      {
+        id: 'r1',
+        formConfigId: 'clients',
+        fieldId: 'name',
+        conditions: [{ operator: 'EQUAL', compareType: 'value', value: 'x' }],
+        action: { type: 'visibility', value: false },
+        targets: [{ id: 'name', type: 'field' }],
+        enabled: true,
+        priority: 1,
+      },
+    ]);
+
+    expect(store.canUndo()).toBe(false);
+    expect(store.canRedo()).toBe(false);
+    expect(store.rules()).toHaveLength(1);
+  });
+
+  it('records a step when the rules change on their own', () => {
+    store.load(config());
+    store.loadRules([]);
+    // An edit from the author's side, even though nothing about the config moved.
+    expect(store.canUndo()).toBe(true);
+  });
+
+  it('caps the history and drops the oldest steps', () => {
+    // A builder session is long and every structural edit earns an entry, so unbounded
+    // history is an unbounded array. The oldest steps are the ones nobody walks back to.
+    for (let i = 0; i < 260; i++) store.addField('text');
+
+    let steps = 0;
+    while (store.canUndo()) {
+      store.undo();
+      steps += 1;
+      // A cap that did not hold would loop here rather than fail an assertion.
+      if (steps > 400) throw new Error('history is not bounded');
+    }
+    expect(steps).toBe(199);
+
+    // The state the oldest surviving entry holds is still coherent, not a stump: undoing to
+    // it leaves the fields those 61 dropped steps had already added.
+    expect(fieldIds().length).toBeGreaterThan(1);
+  });
 });

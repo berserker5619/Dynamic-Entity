@@ -46,11 +46,22 @@
             },
             {
               "en": "On Leave"
+            },
+            {
+              "en": "Terminated"
             }
           ],
           "table": {
             "visible": true
           }
+        },
+        {
+          "id": "terminationReason",
+          "type": "text",
+          "label": {
+            "en": "Termination Reason"
+          },
+          "visibility": false
         },
         {
           "id": "contact",

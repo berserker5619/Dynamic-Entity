@@ -34,11 +34,12 @@ cannot hold.
 - **21 field types** — `text`, `textarea`, `markdown`, `number`, `currency`, `email`, `password`, `date`, `datetime`, `time`, `monthYear`, `dropdown`, `radio`, `checkbox`, `boolean`, `multiSelect`, `entity-ref`, `group`, `array`, `image`, `file`. Every type is a standalone component you can register individually, or swap for your own.
 - **Field help text** — `hint` on any field puts an info icon beside its label, with the text on hover and for as long as the field has focus. It is wired to the control through `aria-describedby`, so a screen reader gets it without hovering anything. Unlike a `placeholder` it does not vanish at the first keystroke, which is what makes it usable for a format or a rule rather than an example. `LocalizedText`, like every other authored string.
 - **A refused save explains itself** — pressing Save on an invalid form names every field at fault *and what is wrong with it*, badges each tab with its count, and jumps to the first. Save stays clickable while a form is merely invalid: a disabled button cannot say why.
-- **Reactive rules engine** — three action types (`visibility` to show/hide a field or tab, `validation` to attach an error or warning, `info` to raise a banner) driven by 18 condition operators including `EQUAL`, `CONTAINS`, `IN`, `DATE_BEFORE`, `HAS_ITEMS` and `VALUE_CHANGED`. Conditions within a rule are ANDed; rules apply in `priority` order.
+- **Reactive rules engine** — three action types (`visibility` to show **or hide** a field or tab, `validation` to attach an error or warning, `info` to raise a banner) driven by 18 condition operators including `EQUAL`, `CONTAINS`, `IN`, `DATE_BEFORE`, `HAS_ITEMS` and `VALUE_CHANGED`. Conditions within a rule are ANDed; rules apply in ascending `priority`, so the highest number wins. A rule reaches a field at any depth and addresses one by path. See [Rules](#-rules).
 - **Role-based field visibility & masking** — per-entity `view`/`edit`/`delete` role lists, plus `maskData` to render a field as `XXXXXXXXX` for configured roles (override the text with `MASKED_PLACEHOLDER`). **This is presentational only — see [Security](#-security).**
 - **Cross-entity referenced fields** — link a field to a source entity, snapshot what was copied, and detect drift when the source changes. Drift is surfaced in the builder.
 - **Sync and async validation** — built-in validators, your own by name, and async checks against a server. A form cannot be submitted while an async check is pending, and a `beforeSave` hook can abort the save outright — from the whole-record Save and the record view's per-tab save alike, with `(saveRejected)` saying why.
-- **Named lookup lists** — sync or async master lists resolved by name, with localized labels, fallbacks, and an integrity report for values that no longer match any option.
+- **Named lookup lists** — sync or async master lists resolved by name, with localized labels, fallbacks, and an integrity report for values that no longer match any option. A list value's `code` becomes the option's stable key, so renaming one does not orphan records.
+- **Stable option identity** — an option may carry a reserved `$key` alongside its translations. When both sides of a comparison have one, the key decides and the text is display only, so renaming "Active" to "Enabled" costs nothing. Configs and records without keys behave exactly as they did in 1.x. See [Option identity](#-option-identity).
 - **Spreadsheet import** — a four-step wizard that derives its own columns from the config, generates a matching CSV or `.xlsx` template, suggests a mapping and reports every row it could not take. Works with **no backend**; add `@dynamic-entity/server` and the identical wizard streams a fifty-thousand-row workbook a tab could never hold. See [Spreadsheet import](#-spreadsheet-import).
 - **Visual builder** — click-to-add palette, drag-and-drop reordering, and a recursive tree editor for tabs, sub-tabs, groups, and arrays.
 - **Localizable end to end** — config labels, placeholders and options are `LocalizedText` keyed by language; the libraries' own chrome (Save, Reset, "No rows yet.", every builder panel) resolves through `uiText` / `BUILDER_TEXT`, either as `LocalizedText` per key or through a resolver into an existing i18n layer.
@@ -169,9 +170,12 @@ ${formatConfigProblems(problems)}`);
 It reports every problem rather than stopping at the first, and catches what a type cannot:
 a field type absent from the catalog, two fields sharing an id **in the same scope**, a
 `showWhen` naming a field that does not exist, a cascade whose `parentField` is missing,
-and — when you pass them — a rule whose trigger, comparison field or field target cannot
-resolve. Bracketed paths (`[work.address]`) name one field; a bare id is still accepted
-while only one scope defines it.
+an unparseable `validators.pattern`, a `min` above its `max`, a default value the field
+cannot hold, an id that is a reserved object key (`__proto__`, `constructor`), two options
+that read the same in the active language, and — when you pass them — a rule whose trigger,
+comparison field or field target cannot resolve, or whose `conditions`, `targets` or
+`action` are missing. Bracketed paths (`[work.address]`) name one field; a bare id is still
+accepted while only one scope defines it.
 
 Field ids are unique per scope, not globally — a record nests by tab, so `address` on
 Personal Details and `address` on Work Details are two different fields and store as
@@ -182,7 +186,11 @@ and (when supplied) rules name a field by id with no scope, so an id defined in 
 is reported as ambiguous the moment a reference uses it. Name it by path instead. `warning`
 means usable but suspicious; `error` means it will not render correctly.
 
-Pass `additionalFieldTypes` for any type you registered yourself.
+Pass `additionalFieldTypes` for any type you registered yourself, and `knownValidators` for
+the names you registered with `provideNgxDynamicEntity({ validators, asyncValidators })` —
+without it, a `validators.custom` or `validators.customAsync` entry naming something
+unregistered is dropped at render time and never runs. For an async uniqueness check, that
+is a duplicate saved in silence.
 
 The same check is a command, so a consumer CI job can fail a bad config before it is stored:
 
@@ -190,7 +198,8 @@ The same check is a command, so a consumer CI job can fail a bad config before i
 npx dynamic-entity validate ./form-config.json
 ```
 
-`--additional-field-types signature,rating` matches `additionalFieldTypes`. `--rules rules.json`
+`--additional-field-types signature,rating` matches `additionalFieldTypes`, and
+`--validators noDisposable,uniqueEmail` matches `knownValidators`. `--rules rules.json`
 passes a `FormRule[]` so CI can gate rule references the same way. `--fail-on-warnings`
 treats a warning as a failure. Exit `0` means no errors, `1` means the config is unusable,
 `2` means the file or the JSON itself is.
@@ -200,6 +209,150 @@ For editor completion, a JSON Schema ships too:
 ```json
 { "$schema": "./node_modules/@dynamic-entity/core/entity-form-config.schema.json", "entity": "clients", "tabs": [] }
 ```
+
+---
+
+## 🧭 Rules
+
+A rule watches one field and, when every one of its conditions holds, acts on one or more
+targets. Rules live beside the config rather than in it, and reach the renderer through
+`[rules]`.
+
+```typescript
+import type { FormRule } from '@dynamic-entity/core';
+
+const rules: FormRule[] = [
+  {
+    formConfigId: 'employees',
+    // The trigger. A bracketed path names exactly one field; a bare id is the legacy form.
+    fieldId: '[personal.status]',
+    conditions: [{ operator: 'EQUAL', compareType: 'value', value: 'Active' }],
+    action: { type: 'visibility', value: false },
+    targets: [{ id: '[personal.terminationReason]', type: 'field' }],
+    enabled: true,
+    priority: 1,
+  },
+];
+```
+
+### Naming a field
+
+Anywhere a rule names a field — `fieldId`, `conditions[].compareToField`, a `targets[].id`
+of type `field` — the value is **either a bare field id or a bracketed path**, and nothing
+else. A bare dotted string such as `personal.status` is neither: it is read as an id, no
+field is called that, and the rule silently never fires.
+
+| Form | Means | Use it when |
+|---|---|---|
+| `status` | the field with this id, wherever it is | only one scope defines the id |
+| `[personal.status]` | the field at this exact path | always, if you can — it cannot be ambiguous |
+
+The same spelling applies to `showWhen` keys, `patchOnTrue` mappings and `autoPatch` targets.
+`validateConfig({ rules })` reports a reference that resolves to nothing, or to two things.
+
+A rule reaches a field at **any depth** — inside a `group`, on a sub-tab — provided it names
+it by path. Per-section save in `DynamicRecordFormComponent` applies the rules for the tab
+being saved, and "the tab's fields" means everything under it.
+
+### Visibility precedence
+
+`{ type: 'visibility', value: false }` hides; `value: true` shows. When more than one thing
+has an opinion about a field:
+
+1. **An explicit hide wins**, whatever else says — including a `show` rule, in either order.
+   Refusing to show something is the safer of the two mistakes.
+2. **A show beats static hiding** — `visibility: false` on the field, or a `showWhen` that
+   does not currently hold. This is the whole point of the action: a rule that could only
+   hide what the config already hides would have nothing to say.
+3. **Otherwise the config decides.**
+
+A hidden field's control is *disabled*, not stripped, so it stays out of `form.valid` while
+keeping its validators and its value for when it comes back. That is why a required field a
+rule has hidden does not block Save.
+
+### Priority
+
+`priority` sorts **ascending, so the highest number is applied last and wins.** It matters
+only for `validation` and `info`, which are keyed by target: two rules writing a message for
+the same field leave the higher-priority one's message. Hidden and shown lists accumulate, so
+priority does not affect visibility.
+
+### Authoring rules in the builder
+
+`ngx-entity-builder` takes `[rules]` and emits `(rulesChange)`, mirroring `[config]` /
+`(configChange)`. Rules live *beside* a config rather than inside it, so a host saves both —
+see the [builder README](packages/ngx-dynamic-entity-builder/README.md#rules-are-stored-beside-the-config-not-inside-it).
+Renaming a field repoints every rule that named it, in either spelling.
+
+### When a rule is malformed
+
+A rule missing `conditions`, `targets` or `action` is skipped, the rest still apply, and the
+renderer warns once in dev mode. It used to throw from inside change detection and take the
+form down. `validateConfig({ rules })` is the build-time version of the same check.
+
+---
+
+## 🔑 Option identity
+
+A `dropdown` / `radio` / `multiSelect` option is a language-keyed object, and the whole
+object is what a record stores:
+
+```json
+{ "en": "Active", "de": "Aktiv" }
+```
+
+The consequence is that **the text is the identity**: rename the option to "Enabled" and every
+record already saved as `{ "en": "Active" }` stops matching any current option, and falls back
+to displaying its stored text.
+
+`$key` separates the two:
+
+```json
+{ "$key": "active", "en": "Enabled", "de": "Freigegeben" }
+```
+
+When **both** sides of a comparison carry a key, the key decides and the text is display only
+— so a rename is free, and two options that happen to read alike stay distinct. When either
+side lacks one, matching is exactly what 1.x did. Old records and keyless configs are
+therefore unaffected; this is additive at the data layer.
+
+`$` cannot begin a BCP-47 subtag, so the key cannot collide with a language, and
+`validateConfig` rejects any other `$`-prefixed key on an option.
+
+### Where keys come from
+
+They are authored, never invented at runtime — two deployments normalising the same config
+must not disagree about what an option is called.
+
+- **The builder** mints one when an option is created, from its label, and never rewrites it
+  on rename. The inspector shows it read-only beside the text.
+- **Lookup lists** project a value's `code ?? _id`, which is identity the backend already had
+  and the library used to discard.
+- **`normalizeOption`** preserves a key it is given and mints nothing.
+
+### Giving an existing schema keys
+
+1. In the builder, run **Assign stable keys**. Existing keys are left alone, so it is safe to
+   run again as options are added.
+2. Raise `config.version`.
+3. Register `optionKeyMigration(config)` as the step into the new version:
+
+```typescript
+import { optionKeyMigration } from '@dynamic-entity/core';
+import { provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+import type { EntityFormConfig } from '@dynamic-entity/core';
+
+declare const config: EntityFormConfig;
+
+provideNgxDynamicEntity({ migrations: [optionKeyMigration(config)] });
+```
+
+Records upgrade the next time they are read. The migration matches each stored choice value
+against the config's current options by text and attaches that option's key; it never invents
+a key, never rewrites a value that already has one, and leaves an unmatched value exactly as
+it is. Run `findUnmatchedValues` first to find the records that were already orphaned — those
+cannot be matched to an option by definition, and which one was meant is a decision for a
+person with the old config in front of them.
 
 ---
 

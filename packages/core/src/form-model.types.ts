@@ -14,23 +14,36 @@ import type { EntityPermissions } from './rbac.types';
 export type LocalizedText = Record<string, string>;
 
 /**
- * A dropdown / radio / multiSelect option is a language-keyed object, and nothing else.
- * The displayed text **is** the stored value — there is no separate value/label wrapper,
- * and no generic on the field for an open-typed `value`. A generic would describe a
- * contract this library does not have.
+ * A dropdown / radio / multiSelect option: a language-keyed object, plus an optional stable
+ * key. The whole object is what a record stores — there is no separate value/label wrapper,
+ * and no generic on the field for an open-typed `value`.
  *
- *   { en: 'Active', de: 'Aktiv' }
+ *   { $key: 'active', en: 'Active', de: 'Aktiv' }
  *
- * One canonical shape means a rule comparing `EQUAL 'Active'` compares one thing, not
- * whichever of four shapes a config happened to be authored in.
+ * ### `$key` — identity, as distinct from text
  *
- * **There is no referential integrity between a record and its option list.** Because the
- * text is the value, renaming an option in the builder ("Active" → "Enabled") does not
- * migrate records already saved as `{ en: 'Active' }`. Those records keep the old object,
- * stop matching any current option, and fall back to displaying their stored text. That is
- * inherent to this contract, not a defect — treat an option rename as a data migration.
+ * Without a key the displayed text *is* the identity, so renaming an option in the builder
+ * ("Active" → "Enabled") orphans every record already saved as `{ en: 'Active' }`: the old
+ * object stops matching any current option and falls back to displaying its stored text.
+ * `$key` is what separates the two. When **both** sides of a comparison carry one, the key
+ * decides and the text is display only, so a rename is free. When either side lacks one,
+ * matching is exactly what 1.x did — so old records and keyless configs are unaffected, and
+ * this is additive at the data layer.
+ *
+ * It lives inside the same object rather than in a `{ key, label }` wrapper because a
+ * wrapper changes the shape of the value every existing consumer already has in its
+ * database. The cost, stated plainly: a language map with one non-language key in it. `$`
+ * cannot begin a BCP-47 subtag, so the namespace is safe, `validateConfig` rejects any other
+ * `$`-prefixed key, and every read of the translations goes through `languageEntries` so the
+ * key is never mistaken for one.
+ *
+ * **Keys are authored, never invented at runtime.** The builder mints one when an option is
+ * created and never rewrites it on rename — that is the whole point. `normalizeLookupValues`
+ * projects a list value's `code ?? _id`. `normalizeOption` preserves what it is given and
+ * mints nothing: two deployments normalising the same config must not disagree about what an
+ * option is called. To key an existing config, run `optionKeyMigration` over its records.
  */
-export type DropdownOption = LocalizedText;
+export type DropdownOption = LocalizedText & { $key?: string };
 
 /**
  * What a *raw* option may look like before `normalizeField` runs — configs written against
@@ -325,13 +338,38 @@ export interface FormRule {
   action: RuleAction;
   targets: RuleTarget[];
   enabled: boolean;
+  /**
+   * Application order, **ascending — so the highest number is applied last and wins.**
+   *
+   * It matters only for `validation` and `info` actions, which are keyed by target: two
+   * rules writing a message for the same field leave the higher-priority one's message. The
+   * hidden and shown lists accumulate, so priority does not affect visibility at all.
+   */
   priority: number;
 }
 
 /** Result of evaluating a config's rules against a record's form values. */
 export interface RuleEvaluationResult {
+  /** Fields a rule hid. A hide always wins, over both static visibility and a `show` rule. */
   hiddenFields: string[];
+  /** Tabs a rule hid, under the same precedence. */
   hiddenTabs: string[];
+  /**
+   * Fields a rule *showed* — `{ type: 'visibility', value: true }`.
+   *
+   * **Precedence.** A show overrides static hiding: a field carrying `visibility: false`, or
+   * a `showWhen` that does not currently hold, renders anyway while a show rule names it.
+   * That is the point of the action — a rule that could only ever hide something already
+   * hidden has nothing to say. An explicit hide beats a show, whichever order the two rules
+   * are in, because refusing to show something is the safer of the two mistakes.
+   *
+   * Static visibility is therefore weaker than a rule, and a show rule is weaker than a hide
+   * rule. Nothing below this is ambiguous: every field is in exactly one of the three states.
+   */
+  shownFields: string[];
+  /** Tabs a rule showed, under the same precedence. */
+  shownTabs: string[];
+  /** Keyed by target id — the last rule to write one wins; see `FormRule.priority`. */
   validationErrors: Record<string, string>;
   validationWarnings: Record<string, string>;
   infoBanners: Record<string, string>;

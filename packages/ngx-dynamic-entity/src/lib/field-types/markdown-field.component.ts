@@ -203,15 +203,28 @@ export class MarkdownFieldComponent implements OnChanges {
    * A renderer is consumer code and may throw on input it does not like. Letting that
    * escape would take down the whole form over one malformed field, so it falls back to the
    * source text — which is what the field would have shown with no renderer at all.
+   *
+   * Memoised on the source, because this is called from the template: without it the
+   * consumer's markdown parser ran on every change-detection pass, for every markdown field
+   * on screen, over the whole document — which on a form holding a few long ones is a parse
+   * per keystroke *elsewhere* in the form. The cache is keyed by the exact source string,
+   * so a value that comes back to something already rendered is free too.
    */
+  private cached?: { source: string; html: string | null };
+
   protected rendered(): string | null {
     const source = this.control?.value;
     if (!this.render || typeof source !== 'string' || source === '') return null;
+    if (this.cached?.source === source) return this.cached.html;
+
+    let html: string | null;
     try {
-      return this.render(source);
+      html = this.render(source);
     } catch {
-      return null;
+      html = null;
     }
+    this.cached = { source, html };
+    return html;
   }
   /**
    * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({

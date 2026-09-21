@@ -12,7 +12,13 @@
  * migration set runs in the browser before rendering and on a server before persisting.
  */
 
-import type { EntityFormConfig } from './form-model.types';
+import { OPTION_KEY, optionKeyOf, valuesMatch } from './form-logic';
+import type {
+  DropdownOption,
+  EntityFormConfig,
+  NestedFieldConfig,
+  NestedTabConfig,
+} from './form-model.types';
 import type { VersionedRecord } from './versioning.types';
 
 /** The version assumed for a config that does not declare one. */
@@ -196,4 +202,143 @@ export function migrateRecord(
   }
 
   return { ...base, applied, record: stampRecord(working, config) };
+}
+
+// ─── Option keys ─────────────────────────────────────────────────────────────
+
+/** Field types whose stored value comes from an option list. */
+const CHOICE_TYPES = new Set(['dropdown', 'radio', 'multiSelect']);
+
+/**
+ * Attach the config's current `$key`s to the choice values a record already holds.
+ *
+ * Keys are authored, not invented, so a config that gains them does not retroactively key
+ * the records saved under it — and until a record carries one, a rename still orphans it.
+ * This is the one-time step that closes that gap: for every choice field, each stored value
+ * is matched against the field's current options by text (`valuesMatch`, the same lenient
+ * match the form uses) and, on a hit, rewritten to carry that option's key.
+ *
+ * What it deliberately does not do:
+ *
+ *   - **It never invents a key.** An option with none leaves its records alone.
+ *   - **It never rewrites a value that already has one.** A record migrated once, or written
+ *     by a form after keys existed, is already correct; re-deriving it from text would undo
+ *     exactly the rename the key exists to survive.
+ *   - **It leaves an unmatched value exactly as it is.** A value orphaned before the keys
+ *     were added cannot be matched to an option by definition, and guessing which one was
+ *     meant is a decision for a human with the old config in front of them. Run
+ *     `findUnmatchedValues` to find those first.
+ *
+ * Usage: bump `config.version`, register this as the step into the new version, and records
+ * upgrade the next time they are read.
+ *
+ *     const migrations = [optionKeyMigration(config)];  // from: 1, to: 2
+ */
+export function optionKeyMigration(
+  config: EntityFormConfig,
+  versions: { from?: number; to?: number } = {},
+): RecordMigration {
+  const to = versions.to ?? configVersion(config);
+  const from = versions.from ?? to - 1;
+
+  return {
+    from,
+    to,
+    description: 'Attach stable option keys to stored choice values',
+    migrate: record => applyOptionKeys(record, config),
+  };
+}
+
+/** The rewrite `optionKeyMigration` performs, exposed for a one-off run over stored data. */
+export function applyOptionKeys(
+  record: Record<string, any>,
+  config: EntityFormConfig,
+): Record<string, any> {
+  if (!record || typeof record !== 'object') return record;
+  const next = structuredCloneish(record);
+
+  /*
+   * Walked against the record rather than addressed by path.
+   *
+   * A `group` nests one object deep, but an `array` holds a *list* of row objects — there is
+   * no single path to `contacts.type`, there is one per row. Walking both structures together
+   * is the only shape that reaches a choice field inside a repeating section, which is
+   * exactly where an unkeyed value is hardest to find by hand.
+   */
+  const visitFields = (fields: NestedFieldConfig[] | undefined, container: unknown): void => {
+    if (!container || typeof container !== 'object' || Array.isArray(container)) return;
+    const holder = container as Record<string, unknown>;
+
+    for (const field of Array.isArray(fields) ? fields : []) {
+      if (!field?.id) continue;
+      const current = holder[field.id];
+      if (current === undefined || current === null) continue;
+
+      if (field.type === 'group') {
+        visitFields(field.children, current);
+        continue;
+      }
+      if (field.type === 'array') {
+        if (Array.isArray(current)) for (const row of current) visitFields(field.children, row);
+        continue;
+      }
+      if (!CHOICE_TYPES.has(field.type)) continue;
+
+      const options = keyedOptions(field);
+      if (!options.length) continue;
+
+      holder[field.id] = Array.isArray(current)
+        ? current.map(item => withKeyFromOptions(item, options))
+        : withKeyFromOptions(current, options);
+    }
+  };
+
+  const visitTabs = (tabs: NestedTabConfig[] | undefined, container: unknown): void => {
+    for (const tab of Array.isArray(tabs) ? tabs : []) {
+      if (!tab?.id) continue;
+      // `flatData` stores a tab's fields at the parent's level rather than under the tab id.
+      const scope = tab.flatData ? container : (container as Record<string, unknown>)?.[tab.id];
+      if (!scope) continue;
+      visitFields(tab.fields, scope);
+      visitTabs(tab.children, scope);
+    }
+  };
+
+  visitTabs(config?.tabs, next);
+  return next;
+}
+
+/** The field's options that actually carry a key; the rest cannot contribute one. */
+function keyedOptions(field: NestedFieldConfig): DropdownOption[] {
+  if (!Array.isArray(field.options)) return [];
+  return field.options.filter(option => optionKeyOf(option) !== undefined);
+}
+
+/** One stored value, keyed from the option it matches — or returned untouched. */
+function withKeyFromOptions(value: unknown, options: readonly DropdownOption[]): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  if (optionKeyOf(value) !== undefined) return value;
+
+  const match = options.find(option => valuesMatch(option, value));
+  const key = match ? optionKeyOf(match) : undefined;
+  return key === undefined ? value : { [OPTION_KEY]: key, ...(value as Record<string, unknown>) };
+}
+
+/**
+ * A deep copy of the plain data a record holds.
+ *
+ * `structuredClone` is not available on every runtime this package supports, and a record is
+ * JSON by construction — it came from storage or a form. Nested objects are copied because
+ * `migrate` must not mutate its input: callers keep the original as an undo baseline.
+ */
+function structuredCloneish<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(structuredCloneish) as unknown as T;
+  if (value && typeof value === 'object' && !(value instanceof Date)) {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = structuredCloneish(v);
+    }
+    return out as T;
+  }
+  return value;
 }

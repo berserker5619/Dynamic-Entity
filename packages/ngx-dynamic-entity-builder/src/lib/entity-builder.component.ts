@@ -26,7 +26,12 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { COMMON_MODULES, type CommonModuleEntry, type EntityFormConfig } from '@dynamic-entity/core';
+import {
+  COMMON_MODULES,
+  type CommonModuleEntry,
+  type EntityFormConfig,
+  type FormRule,
+} from '@dynamic-entity/core';
 import { ConfigSourceService } from 'ngx-dynamic-entity';
 import { BuilderStore, type BuilderProblem } from './builder-store.service';
 import { FieldInspectorComponent } from './components/field-inspector.component';
@@ -108,6 +113,15 @@ export class EntityBuilderComponent implements OnChanges {
 
   /** Existing config to edit. When omitted, the builder starts blank. */
   @Input() config?: EntityFormConfig;
+  /**
+   * The rules that belong with `config`.
+   *
+   * Rules live beside a config rather than inside it — that is the shape the renderer takes
+   * them in, and the shape a host stores them in. Without this input, loading a config for
+   * editing silently dropped every rule already authored against it: the builder opened on
+   * the right fields with an empty rules list, and saving put that emptiness back.
+   */
+  @Input() rules?: FormRule[];
   /** Languages available for label/placeholder editing. First entry is the default. */
   @Input() languages: string[] = ['en'];
   /**
@@ -133,6 +147,21 @@ export class EntityBuilderComponent implements OnChanges {
 
   /** Emitted on every change to the working config. */
   @Output() configChange = new EventEmitter<EntityFormConfig>();
+  /**
+   * Emitted on every change to the working rules — the mirror of `configChange`.
+   *
+   * Without it a rule authored here could not leave this component. `BuilderStore` is
+   * provided by the component, so its instance is private to this injector, and `save`
+   * carries an `EntityFormConfig` alone. The builder could author a rule and hand it to
+   * nobody: a host had no supported way to persist one, and therefore no way to pass it
+   * back to the renderer as `[rules]`.
+   *
+   * A host that persists on Save keeps the latest emission and writes it alongside the
+   * config `save` carries — the same pairing `configChange`/`save` already implies, and the
+   * pairing the undo history has always stored, because undoing a field rename without the
+   * rule that follows it would leave the rule pointing at a field that no longer exists.
+   */
+  @Output() rulesChange = new EventEmitter<FormRule[]>();
   /** Emitted when the user clicks Save. Carries a clean, deep-cloned config. */
   @Output() save = new EventEmitter<EntityFormConfig>();
 
@@ -237,6 +266,7 @@ export class EntityBuilderComponent implements OnChanges {
 
   constructor() {
     effect(() => this.configChange.emit(this.store.config()), { allowSignalWrites: true });
+    effect(() => this.rulesChange.emit(this.store.rules()), { allowSignalWrites: true });
   }
 
   /**
@@ -260,8 +290,12 @@ export class EntityBuilderComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['config'] && changes['config'].currentValue !== changes['config'].previousValue) {
-      if (this.config) this.store.load(this.config);
+      // The rules go in with the config, as one snapshot: `load` seeds both before taking
+      // the history baseline, so opening a builder is not itself an undoable step.
+      if (this.config) this.store.load(this.config, this.rules ?? []);
       else if (changes['config'].isFirstChange()) this.store.reset();
+    } else if (changes['rules'] && changes['rules'].currentValue !== changes['rules'].previousValue) {
+      this.store.loadRules(this.rules ?? []);
     }
     if (changes['languages'] && this.languages.length) {
       const active = this.store.activeLanguage();

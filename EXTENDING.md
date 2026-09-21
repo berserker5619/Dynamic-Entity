@@ -265,6 +265,19 @@ form cannot be submitted while anything is pending — `submitBlocked`, `submitD
 `isValidating` all reflect it — so there is no window in which a half-checked record can be
 saved, and Save is genuinely unavailable for that window rather than merely refusing.
 
+**Name one that is not registered and it is dropped.** The renderer warns once per name in
+dev mode, because for an async uniqueness check the alternative is a duplicate saved with
+nothing anywhere having said so. To catch it before it ships, hand `validateConfig` the names
+you registered:
+
+```ts
+validateConfig(config, { knownValidators: ['noShouting', 'uniqueEmail'] });
+```
+
+or `npx dynamic-entity validate config.json --validators noShouting,uniqueEmail` in CI. The
+built-ins the registry resolves on its own — `required`, `email`, and `min:`/`max:`/
+`minLength:`/`maxLength:` with a numeric argument — never need listing.
+
 ---
 
 ## Validation messages and i18n

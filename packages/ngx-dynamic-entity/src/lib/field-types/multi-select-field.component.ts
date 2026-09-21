@@ -3,7 +3,7 @@ import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
-import { getOptionStoredValue, resolveLabel, resolveOptionLabel, valuesMatch } from '@dynamic-entity/core';
+import { resolveLabel, resolveOptionLabel, valuesMatch } from '@dynamic-entity/core';
 import { LookupRegistryService, refreshChoiceOptions } from '../services/lookup-registry.service';
 import { fieldDescribedBy, fieldDomId, nextFieldInstanceId } from './field-dom-id';
 
@@ -117,16 +117,24 @@ export class MultiSelectFieldComponent {
   readonly compareFn = (o1: unknown, o2: unknown): boolean => valuesMatch(o1, o2, this.language);
 
   isObjectVal(option: DropdownOption): boolean {
-    const val = getOptionStoredValue(option);
-    return typeof val === 'object' && val !== null;
+    return typeof option === 'object' && option !== null;
   }
 
   get label(): string {
     return resolveLabel(this.field?.label, this.language);
   }
 
+  /**
+   * The value this option stores — the option object itself.
+   *
+   * Kept as a method rather than binding `option` straight into the template, because it is
+   * the one place that says *why* the two are the same thing. It used to delegate to
+   * `getOptionStoredValue`, an exported identity function whose two branches returned their
+   * argument unchanged; naming a transformation that does not happen is worse than naming
+   * nothing, because a reader has to go and check.
+   */
   getOptStoredVal(option: DropdownOption): unknown {
-    return getOptionStoredValue(option);
+    return option;
   }
 
   getOptLabel(option: DropdownOption): string {
@@ -138,7 +146,7 @@ export class MultiSelectFieldComponent {
     if (!Array.isArray(values) || !values.length) return '—';
     return values
       .map(v => {
-        const opt = this.options().find(o => valuesMatch(getOptionStoredValue(o), v, this.language));
+        const opt = this.options().find(o => valuesMatch(o, v, this.language));
         if (opt) return this.getOptLabel(opt);
         const cached = this.lookups.labelFor(this.field?.listName, v, this.language);
         if (cached) return cached;

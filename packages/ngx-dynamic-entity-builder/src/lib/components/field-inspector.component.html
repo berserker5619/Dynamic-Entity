@@ -223,14 +223,27 @@
           @if (store.fieldDataSource(f) !== 'lookup') {
             <div class="deb-row deb-row--split">
               <span class="deb-section-title">{{ ui.text('options') }}</span>
-              <button
-                mat-stroked-button
-                type="button"
-                data-testid="add-option"
-                (click)="store.addOption(store.keyOf(f))"
-              >
-                <mat-icon>add</mat-icon> {{ ui.text('option') }}
-              </button>
+              <span class="deb-row__actions">
+                @if (store.hasUnkeyedOptions()) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    data-testid="assign-option-keys"
+                    (click)="store.assignOptionKeys()"
+                    [matTooltip]="ui.text('optionKeyHint')"
+                  >
+                    <mat-icon>key</mat-icon> {{ ui.text('assignOptionKeys') }}
+                  </button>
+                }
+                <button
+                  mat-stroked-button
+                  type="button"
+                  data-testid="add-option"
+                  (click)="store.addOption(store.keyOf(f))"
+                >
+                  <mat-icon>add</mat-icon> {{ ui.text('option') }}
+                </button>
+              </span>
             </div>
             @for (opt of f.options ?? []; track $index) {
               <div class="deb-option-row" data-testid="option-row">
@@ -244,6 +257,21 @@
                     (ngModelChange)="store.setOptionLabel(store.keyOf(f), $index, lang(), $event)"
                   />
                 </mat-form-field>
+                <!--
+                  Not a control. A key is the option's identity and every record already
+                  holding it matches on it, so a text box here — even a read-only one —
+                  would be a data migration disguised as a field. It is shown because an
+                  author needs to be able to read it, and for no other reason.
+                -->
+                @if (store.optionKey(opt); as key) {
+                  <code
+                    class="deb-option-key"
+                    [attr.data-testid]="'option-key-' + $index"
+                    [attr.aria-label]="ui.text('optionKey')"
+                    [matTooltip]="ui.text('optionKeyHint')"
+                    >{{ key }}</code
+                  >
+                }
                 <button
                   mat-icon-button
                   type="button"

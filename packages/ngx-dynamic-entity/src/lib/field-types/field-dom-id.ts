@@ -48,7 +48,7 @@ export function fieldDomId(field: { id?: string } | undefined, instance: string,
  * is read first. `null` rather than an empty string when there is nothing to describe — an
  * empty `aria-describedby` is a dangling reference, not an absent one.
  *
- * Shared rather than written into each of the nineteen field components, because the rule is
+ * Shared rather than written into each of the twenty-one field components, because the rule is
  * the same everywhere and getting it wrong is invisible until somebody uses a screen reader.
  */
 export function fieldDescribedBy(

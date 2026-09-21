@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, isDevMode } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -105,13 +105,17 @@ export class ReferencedFieldConfigComponent {
   protected updateEntityKey(field: NestedFieldConfig, key: string): void {
     const trimmed = key.trim();
     this.store.updateField(this.store.keyOf(field), { referencedEntityKey: trimmed || undefined });
-    this.checkDriftForField(field.id);
+    // Fire-and-forget on purpose: the edit has already landed, and the drift check is a
+    // decoration on top of it. `void` says so, and `checkDriftForField` swallows its own
+    // failures — a source config that cannot be fetched must not reject out of a keystroke
+    // handler, where nothing would catch it.
+    void this.checkDriftForField(field.id);
   }
 
   protected updateFieldId(field: NestedFieldConfig, fieldId: string): void {
     const trimmed = fieldId.trim();
     this.store.updateField(this.store.keyOf(field), { referencedFieldId: trimmed || undefined });
-    this.checkDriftForField(field.id);
+    void this.checkDriftForField(field.id);
   }
 
   protected async syncWithSource(field: NestedFieldConfig): Promise<void> {
@@ -134,9 +138,24 @@ export class ReferencedFieldConfigComponent {
   private async checkDriftForField(fieldId: string): Promise<void> {
     const f = this.store.fields().find(field => field.id === fieldId);
     if (!f || !f.isReferenced || !f.referencedEntityKey || !f.referencedFieldId || !this.configSource) return;
-    const sourceConfig = await this.configSource.getConfig(f.referencedEntityKey);
-    if (sourceConfig) {
-      this.store.checkDrift({ [f.referencedEntityKey]: sourceConfig });
+
+    // The callers are keystroke handlers that cannot await this, so a rejection here has
+    // nowhere to go but the console as an unhandled promise. `getConfig` is consumer code
+    // reaching for a source entity that may not load; failing to *check* drift is not a
+    // reason to interrupt the edit that was already applied.
+    try {
+      const sourceConfig = await this.configSource.getConfig(f.referencedEntityKey);
+      if (sourceConfig) {
+        this.store.checkDrift({ [f.referencedEntityKey]: sourceConfig });
+      }
+    } catch (err) {
+      if (isDevMode()) {
+        console.warn(
+          `[ngx-dynamic-entity-builder] Could not load "${f.referencedEntityKey}" to check ` +
+            `drift on "${fieldId}". The field's link is saved; the drift flag is stale.`,
+          err,
+        );
+      }
     }
   }
 

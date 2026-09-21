@@ -39,7 +39,15 @@ const rule = (over: Partial<FormRule> = {}): FormRule => ({
 });
 
 describe('evaluateFormRules', () => {
-  const empty = { hiddenFields: [], hiddenTabs: [], validationErrors: {}, validationWarnings: {}, infoBanners: {} };
+  const empty = {
+    hiddenFields: [],
+    hiddenTabs: [],
+    shownFields: [],
+    shownTabs: [],
+    validationErrors: {},
+    validationWarnings: {},
+    infoBanners: {},
+  };
 
   it('returns an empty result for missing or empty rules', () => {
     expect(evaluateFormRules(undefined, {})).toEqual(empty);

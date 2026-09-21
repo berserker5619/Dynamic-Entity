@@ -629,7 +629,7 @@ describe('DynamicRecordFormComponent — section editing', () => {
 
     expect(saved.length).toBe(1);
     expect(saved[0].tabId).toBe('main');
-    expect(saved[0].record.main.name).toBe('Acme');
+    expect(saved[0].record['main'].name).toBe('Acme');
     expect(component.editingTabId()).toBeNull();
   });
 
@@ -790,7 +790,7 @@ describe('DynamicRecordFormComponent — array row drawer', () => {
     component.saveRow();
 
     expect(component.rowsOf(arrayField()).length).toBe(1);
-    expect(component.rowsOf(arrayField())[0].street).toBe('2 Oak Ave');
+    expect(component.rowsOf(arrayField())[0]['street']).toBe('2 Oak Ave');
   });
 
   it('leaves the array untouched on cancel', () => {
@@ -800,7 +800,7 @@ describe('DynamicRecordFormComponent — array row drawer', () => {
 
     component.cancelRow();
 
-    expect(component.rowsOf(arrayField())[0].street).toBe('1 Main St');
+    expect(component.rowsOf(arrayField())[0]['street']).toBe('1 Main St');
     expect(component.inlineRowField()).toBeNull();
   });
 
@@ -808,7 +808,7 @@ describe('DynamicRecordFormComponent — array row drawer', () => {
     build({ main: { addresses: [{ street: 'A' }, { street: 'B' }] } });
     component.deleteRow(arrayField(), 0);
 
-    expect(component.rowsOf(arrayField()).map(r => r.street)).toEqual(['B']);
+    expect(component.rowsOf(arrayField()).map(r => r['street'])).toEqual(['B']);
   });
 
   it('closes the drawer when the row being edited is deleted', () => {
@@ -837,7 +837,7 @@ describe('DynamicRecordFormComponent — array row drawer', () => {
     component.saveRow();
 
     const record = component.dynamicFormComp!.extractRecord();
-    expect(record.main.addresses).toEqual([{ street: '9 Elm', city: 'Munich' }]);
+    expect(record['main'].addresses).toEqual([{ street: '9 Elm', city: 'Munich' }]);
   });
 });
 

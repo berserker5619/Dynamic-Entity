@@ -6,7 +6,7 @@ import { FIELD_TYPE_REGISTRY, FIELD_TYPE_SETS } from '../tokens/injection-tokens
  *
  * **Tree-shaking contract:** this service holds *no* static imports of field components.
  * Nothing is bundled until something registers it, which is what makes the built-ins
- * opt-in. Register them with `provideBuiltInFieldTypes()` (all 19 keys) or a narrower
+ * opt-in. Register them with `provideBuiltInFieldTypes()` (all 21 keys) or a narrower
  * subset via `provideFieldTypes({ ... })` — see `providers/provide-field-types.ts`.
  *
  * Resolution order: consumer token registry → runtime registrations → nothing.

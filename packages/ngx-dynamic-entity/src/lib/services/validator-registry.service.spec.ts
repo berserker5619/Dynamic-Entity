@@ -172,8 +172,34 @@ describe('ValidatorRegistryService — typed config reaches custom validators', 
     expect(fns[0](control)).toBeNull();
   });
 
-  it('ignores an unknown validator name rather than throwing', () => {
+  it('ignores an unknown validator name rather than throwing, and says so', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     expect(service.resolveFromConfig({ custom: ['doesNotExist'] })).toEqual([]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain('"doesNotExist"');
+
+    // Once per name: this runs every time controls are built.
+    service.resolveFromConfig({ custom: ['doesNotExist'] });
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it('says when an async validator name resolves to nothing', () => {
+    // A uniqueness check that quietly does not run is how the duplicate gets saved.
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    expect(service.resolveAsyncFromConfig({ customAsync: ['uniqueEmail'] })).toEqual([]);
+    expect(warn.mock.calls[0][0]).toContain('asyncValidators');
+    warn.mockRestore();
+  });
+
+  it('skips an unparseable pattern instead of throwing while the control is built', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    // `Validators.pattern` compiles the string, so this threw and took the whole form with
+    // it. The server-side import path already degraded to no format check; now both do.
+    expect(() => service.resolveFromConfig({ required: true, pattern: '[' })).not.toThrow();
+    expect(service.resolveFromConfig({ required: true, pattern: '[' })).toHaveLength(1);
+    expect(warn.mock.calls[0][0]).toContain('not a valid regular expression');
+    warn.mockRestore();
   });
 
   it('combines custom validators with the built-ins', () => {

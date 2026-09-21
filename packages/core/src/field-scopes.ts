@@ -31,33 +31,100 @@ export const ROOT_SCOPE = '(root)';
 
 const scopeKey = (segments: readonly string[]): string => segments.join('.') || ROOT_SCOPE;
 
-/** Every field in the config, each tagged with the scope its value is stored under. */
-export function collectFieldScopes(
+/**
+ * The one walk over a config's fields.
+ *
+ * `collectFieldScopes` and `fieldsUnderTab` are the same traversal asked two questions, and
+ * the second one existing as its own copy is exactly how a nested field ends up visible to
+ * one caller and invisible to another. `keep` decides which entries are collected; the walk
+ * always descends everything, because a tab's scope depends on every tab above it.
+ */
+function walkFieldScopes(
   config: EntityFormConfig | null | undefined,
+  keep: (tabChain: readonly string[]) => boolean,
 ): FieldScopeEntry[] {
   const entries: FieldScopeEntry[] = [];
   if (!config || !Array.isArray(config.tabs)) return entries;
 
-  const visitField = (field: NestedFieldConfig, path: string, scope: readonly string[]): void => {
+  const visitField = (
+    field: NestedFieldConfig,
+    path: string,
+    scope: readonly string[],
+    collect: boolean,
+  ): void => {
     if (!field || typeof field !== 'object') return;
-    entries.push({ field, scope: scopeKey(scope), path });
+    if (collect) entries.push({ field, scope: scopeKey(scope), path });
 
     // A container stores its children under itself, so they are not siblings of the field.
     const isContainer = field.type === 'group' || field.type === 'array';
     const childScope = isContainer && field.id ? [...scope, field.id] : scope;
-    asArray(field.children).forEach((child, i) => visitField(child, `${path}.children[${i}]`, childScope));
+    asArray(field.children).forEach((child, i) =>
+      visitField(child, `${path}.children[${i}]`, childScope, collect),
+    );
   };
 
-  const visitTab = (tab: NestedTabConfig, path: string, scope: readonly string[]): void => {
+  const visitTab = (
+    tab: NestedTabConfig,
+    path: string,
+    scope: readonly string[],
+    tabChain: readonly string[],
+  ): void => {
     if (!tab || typeof tab !== 'object') return;
     // `flatData` puts the tab's fields at the parent's level rather than under the tab id.
     const tabScope = tab.flatData || !tab.id ? scope : [...scope, tab.id];
-    asArray(tab.fields).forEach((f, i) => visitField(f, `${path}.fields[${i}]`, tabScope));
-    asArray(tab.children).forEach((t, i) => visitTab(t, `${path}.children[${i}]`, tabScope));
+    const chain = tab.id ? [...tabChain, tab.id] : tabChain;
+    const collect = keep(chain);
+    asArray(tab.fields).forEach((f, i) => visitField(f, `${path}.fields[${i}]`, tabScope, collect));
+    asArray(tab.children).forEach((t, i) => visitTab(t, `${path}.children[${i}]`, tabScope, chain));
   };
 
-  config.tabs.forEach((tab, i) => visitTab(tab, `tabs[${i}]`, []));
+  config.tabs.forEach((tab, i) => visitTab(tab, `tabs[${i}]`, [], []));
   return entries;
+}
+
+/** Every field in the config, each tagged with the scope its value is stored under. */
+export function collectFieldScopes(
+  config: EntityFormConfig | null | undefined,
+): FieldScopeEntry[] {
+  return walkFieldScopes(config, () => true);
+}
+
+/**
+ * Every field a tab owns — its own, its sub-tabs', and every `group`/`array` child of either.
+ *
+ * "Owns" is the render question, not the storage question: a field inside a `group` on a
+ * sub-tab is saved when that tab is saved, so it is a field the tab's rules apply to. The
+ * scope on each entry is still the storage scope, which is what `refOf` needs to build the
+ * address a rule addresses the field by.
+ *
+ * Returns an empty array for a tab id that does not exist, which is indistinguishable from a
+ * tab holding no fields — callers that need to tell those apart check `findTab` themselves.
+ */
+export function fieldsUnderTab(
+  config: EntityFormConfig | null | undefined,
+  tabId: string,
+): FieldScopeEntry[] {
+  if (!tabId) return [];
+  return walkFieldScopes(config, chain => chain.includes(tabId));
+}
+
+/** Every tab id at or below `tabId` — the tab itself and its sub-tabs, however deep. */
+export function tabIdsUnderTab(
+  config: EntityFormConfig | null | undefined,
+  tabId: string,
+): Set<string> {
+  const out = new Set<string>();
+  if (!tabId) return out;
+  const visit = (tabs: NestedTabConfig[] | undefined, inside: boolean): void => {
+    for (const tab of Array.isArray(tabs) ? tabs : []) {
+      if (!tab || typeof tab !== 'object') continue;
+      const within = inside || tab.id === tabId;
+      if (within && tab.id) out.add(tab.id);
+      visit(tab.children, within);
+    }
+  };
+  visit(config?.tabs, false);
+  return out;
 }
 
 /**

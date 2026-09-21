@@ -1,6 +1,6 @@
 {
   "name": "@dynamic-entity/core",
-  "version": "1.14.0",
+  "version": "2.0.0",
   "description": "Shared model + framework-agnostic form logic for the dynamic-entity ecosystem.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -11,20 +11,25 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.mjs",
+      "require": "./dist/cli.js"
+    },
     "./schema": "./entity-form-config.schema.json"
   },
   "bin": {
-    "dynamic-entity": "dist/cli.mjs"
+    "dynamic-entity": "dist/bin.mjs"
   },
   "files": [
     "dist",
     "entity-form-config.schema.json"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts && node build-manifest.mjs",
+    "build": "tsup --format cjs,esm --dts && node build-manifest.mjs",
     "test": "jest",
     "lint": "tsc --noEmit",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "dev": "tsup --format cjs,esm --dts --watch",
     "test:coverage": "jest --coverage"
   },
   "devDependencies": {
