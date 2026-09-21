@@ -110,4 +110,20 @@ describe('MonthYearFieldComponent', () => {
       expect(component.formatValue('nonsense')).toBe('nonsense');
     });
   });
+
+  it('displays hint and error message when invalid and touched', () => {
+    fixture.componentRef.setInput('field', { ...mockField, hint: { en: 'Month and year required' } });
+    const invalidControl = new FormControl(null);
+    invalidControl.setErrors({ required: true });
+    invalidControl.markAsTouched();
+    fixture.componentRef.setInput('control', invalidControl);
+    fixture.detectChanges();
+
+    const hintEl = fixture.nativeElement.querySelector('.ngx-field__hint');
+    expect(hintEl?.textContent).toContain('Month and year required');
+
+    const errorEl = fixture.nativeElement.querySelector('.ngx-field__error');
+    expect(errorEl?.textContent).toContain('This field is required');
+  });
 });
+

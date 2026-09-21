@@ -116,4 +116,41 @@ describe('RadioFieldComponent', () => {
     const inputs: HTMLInputElement[] = Array.from(fixture.nativeElement.querySelectorAll('input[type="radio"]'));
     expect(inputs.every(i => i.disabled)).toBe(true);
   });
+
+  it('updates control value and marks touched and dirty when an option is selected', () => {
+    const inputs: HTMLInputElement[] = Array.from(fixture.nativeElement.querySelectorAll('input[type="radio"]'));
+    inputs[0].click();
+    fixture.detectChanges();
+
+    expect(component.control.value).toEqual({ en: 'Small' });
+    expect(component.control.touched).toBe(true);
+    expect(component.control.dirty).toBe(true);
+    expect(inputs[0].checked).toBe(true);
+  });
+
+  it('updates checked radio when control value changes externally', () => {
+    component.control.setValue({ en: 'Small' });
+    fixture.detectChanges();
+
+    const inputs: HTMLInputElement[] = Array.from(fixture.nativeElement.querySelectorAll('input[type="radio"]'));
+    expect(inputs[0].checked).toBe(true);
+    expect(inputs[1].checked).toBe(false);
+  });
+
+  it('displays error message when control is touched and invalid', () => {
+    const invalidControl = new FormControl(null);
+    invalidControl.setErrors({ required: true });
+    invalidControl.markAsTouched();
+    fixture.componentRef.setInput('control', invalidControl);
+    fixture.detectChanges();
+
+    const errorEl = fixture.nativeElement.querySelector('.ngx-field__error');
+    expect(errorEl).toBeTruthy();
+    expect(errorEl.textContent).toContain('This field is required');
+  });
+
+  it('unsubscribes from control on destroy without errors', () => {
+    expect(() => fixture.destroy()).not.toThrow();
+  });
 });
+
