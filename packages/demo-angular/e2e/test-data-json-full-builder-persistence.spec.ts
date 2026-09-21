@@ -1,13 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { builderFieldRows, builderTabInputs, gotoDemo, safeClick } from './test-helpers';
+import { builderFieldRows, builderTabInputs, capturePageErrors, gotoDemo, safeClick } from './test-helpers';
 
 test.describe('Dynamic Entity E2E - Full Builder Authoring & Full Data Entry Persistence', () => {
   test('builds custom entity config via Form Builder UI, saves, renders form, fills fields across all tabs, submits, and verifies persistence', async ({
     page,
   }) => {
     test.setTimeout(90_000);
-    const jsErrors: string[] = [];
-    page.on('pageerror', err => jsErrors.push(err.message));
+    const errorMonitor = capturePageErrors(page);
 
     // ─── Step 1: Open Form Builder ──────────────────────────────────────────
     await gotoDemo(page);
@@ -29,7 +28,7 @@ test.describe('Dynamic Entity E2E - Full Builder Authoring & Full Data Entry Per
     const tab2Input = builderTabInputs(page).nth(1);
     await tab2Input.fill('Additional Details');
 
-    // Add fields via Palette
+    // Add fields via Palette (added to first tab by default)
     const textBtn = page.locator('[data-testid^="palette-"]').filter({ hasText: 'Text' }).first();
     await textBtn.click();
 
@@ -41,6 +40,13 @@ test.describe('Dynamic Entity E2E - Full Builder Authoring & Full Data Entry Per
 
     // Verify fields added to builder canvas
     await expect(builderFieldRows(page)).toHaveCount(3);
+
+    // Move Date field to Tab 2 (Additional Details) via Field Inspector
+    // Since Date was the last added field, it is currently selected
+    const tabSelect = page.locator('[data-testid="field-tab"]');
+    await expect(tabSelect).toBeVisible();
+    await tabSelect.click();
+    await page.locator('mat-option').filter({ hasText: 'Additional Details' }).click();
 
     // ─── Step 2: Save Config in Form Builder Toolbar ──────────────────────
     const saveBtn = page.locator('mat-toolbar button').filter({ hasText: 'Save' });
@@ -60,28 +66,28 @@ test.describe('Dynamic Entity E2E - Full Builder Authoring & Full Data Entry Per
     await expect(page.getByRole('heading', { level: 2, name: /New Record \(custom_full_coverage\)/i })).toBeVisible();
 
     // ─── Step 4: Fill All Fields Across All Tabs ─────────────────────────
-    await expect(page.getByRole('tab', { name: 'General Info' })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'Additional Details' })).toBeVisible();
+    const tab1Button = page.getByRole('tab', { name: 'General Info' });
+    const tab2Button = page.getByRole('tab', { name: 'Additional Details' });
+    await expect(tab1Button).toBeVisible();
+    await expect(tab2Button).toBeVisible();
 
     // Fill inputs on Tab 1
     const textInput = page.locator('[data-testid$="-input"][type="text"]').first();
-    if (await textInput.isVisible()) {
-      await textInput.fill('Johnathan Doe');
-    }
+    await expect(textInput).toBeVisible();
+    await textInput.fill('Johnathan Doe');
 
     const numberInput = page.locator('[data-testid$="-input"][type="number"]').first();
-    if (await numberInput.isVisible()) {
-      await numberInput.fill('75000');
-    }
-
-    const dateInput = page.locator('[data-testid$="-input"][type="date"]').first();
-    if (await dateInput.isVisible()) {
-      await dateInput.fill('2026-08-11');
-    }
+    await expect(numberInput).toBeVisible();
+    await numberInput.fill('75000');
 
     // Switch to Tab 2
-    await safeClick(page.getByRole('tab', { name: 'Additional Details' }));
-    await expect(page.getByRole('tab', { name: 'Additional Details' })).toHaveAttribute('aria-selected', 'true');
+    await safeClick(tab2Button);
+    await expect(tab2Button).toHaveAttribute('aria-selected', 'true');
+
+    // Fill Date input on Tab 2
+    const dateInput = page.locator('[data-testid$="-input"][type="date"]').first();
+    await expect(dateInput).toBeVisible();
+    await dateInput.fill('2026-08-11');
 
     // ─── Step 5: Save Record & Verify Data Persistence ───────────────────
     const recordSaveBtn = page.getByRole('button', { name: 'Save' });
@@ -90,9 +96,6 @@ test.describe('Dynamic Entity E2E - Full Builder Authoring & Full Data Entry Per
 
     // Verify record saved and returned to list view
     await expect(page.getByRole('button', { name: /\+ Add/i })).toBeVisible();
-    // `.record-card`, not the inline `flex-direction: column` the list used to carry: the
-    // list is a grid of cards now, and a selector keyed to a style attribute was only ever
-    // going to survive until somebody moved that style into a stylesheet.
     const recordBtn = page.locator('.record-list .record-card').first();
     await expect(recordBtn).toBeVisible({ timeout: 5000 });
 
@@ -103,6 +106,11 @@ test.describe('Dynamic Entity E2E - Full Builder Authoring & Full Data Entry Per
     await expect(textInput).toHaveValue('Johnathan Doe');
     await expect(numberInput).toHaveValue('75000');
 
-    expect(jsErrors).toEqual([]);
+    // Switch to Tab 2 to verify persisted date
+    await safeClick(tab2Button);
+    await expect(tab2Button).toHaveAttribute('aria-selected', 'true');
+    await expect(dateInput).toHaveValue('2026-08-11');
+
+    errorMonitor.assertNoErrors();
   });
 });

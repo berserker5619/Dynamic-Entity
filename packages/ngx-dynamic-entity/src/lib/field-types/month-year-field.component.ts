@@ -85,7 +85,7 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
           >
             <option value="">{{ ui.text('month', language) }}</option>
             @for (m of months; track m.value) {
-              <option [value]="m.value">{{ m.label }}</option>
+              <option [value]="m.value" [selected]="m.value === selectedMonth">{{ m.label }}</option>
             }
           </select>
           <select
@@ -100,7 +100,7 @@ const YEARS = Array.from({ length: 80 }, (_, i) => CURRENT_YEAR - i);
           >
             <option value="">{{ ui.text('year', language) }}</option>
             @for (y of years; track y) {
-              <option [value]="y">{{ y }}</option>
+              <option [value]="y" [selected]="y.toString() === selectedYear">{{ y }}</option>
             }
           </select>
         </div>

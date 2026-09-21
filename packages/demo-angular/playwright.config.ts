@@ -19,9 +19,9 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!env['CI'],
-  retries: 0,
-  workers: 1,
-  reporter: 'list',
+  retries: env['CI'] ? 1 : 0,
+  workers: Number(env['PLAYWRIGHT_WORKERS'] ?? 1),
+  reporter: env['CI'] ? [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]] : 'list',
   use: {
     baseURL: BASE_URL,
     trace: 'retain-on-failure',

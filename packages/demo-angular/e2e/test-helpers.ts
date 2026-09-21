@@ -208,3 +208,43 @@ export async function addInspectorOption(page: Page, label: string): Promise<voi
   await expect(rows).toHaveCount(before + 1);
   await safeFill(rows.nth(before).locator('input'), label);
 }
+
+export interface PageErrorMonitor {
+  readonly errors: string[];
+  readonly libraryWarnings: string[];
+  assertNoErrors(): void;
+}
+
+/**
+ * Monitors the page for unhandled exceptions, console errors, and [ngx-dynamic-entity] warnings.
+ */
+export function capturePageErrors(page: Page): PageErrorMonitor {
+  const errors: string[] = [];
+  const libraryWarnings: string[] = [];
+
+  page.on('pageerror', err => errors.push(err.message));
+  page.on('console', msg => {
+    const text = msg.text();
+    if (msg.type() === 'error') {
+      errors.push(`Console error: ${text}`);
+    } else if (msg.type() === 'warning' && text.includes('[ngx-dynamic-entity]')) {
+      libraryWarnings.push(text);
+    }
+  });
+
+  return {
+    errors,
+    libraryWarnings,
+    assertNoErrors() {
+      expect(errors, `Expected no page errors or console errors, but found: ${errors.join('; ')}`).toEqual([]);
+      expect(libraryWarnings, `Expected no [ngx-dynamic-entity] warnings, but found: ${libraryWarnings.join('; ')}`).toEqual([]);
+    },
+  };
+}
+
+/** Fills an input or textarea identified by testId. */
+export async function fillMatInput(page: Page, testId: string, value: string): Promise<void> {
+  const locator = page.getByTestId(testId);
+  const target = (await locator.locator('input,textarea').count()) > 0 ? locator.locator('input,textarea').first() : locator;
+  await safeFill(target, value);
+}

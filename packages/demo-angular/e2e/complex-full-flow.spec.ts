@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { fieldPart, gotoDemo, safeClick, safeSelect } from './test-helpers';
+import {
+  capturePageErrors,
+  fieldPart,
+  gotoDemo,
+  safeClick,
+  safeSelect,
+} from './test-helpers';
 
 test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Types & Multi-Tab Configuration)', () => {
   const COMPLEX_CONFIG = {
@@ -62,9 +68,12 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
           { id: 'attachment', type: 'file', label: { en: 'Contract Document' }, colSpan: 6 },
           {
             id: 'primaryRef',
-            type: 'entityReference',
+            type: 'entity-ref',
             label: { en: 'Primary Contact Ref' },
-            refEntity: 'individuals',
+            entityReference: {
+              enabled: true,
+              linkedEntityKey: 'clients',
+            },
             colSpan: 12,
           },
         ],
@@ -92,9 +101,7 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
     page,
   }) => {
     test.setTimeout(60000);
-    // Listen for JS errors
-    const jsErrors: string[] = [];
-    page.on('pageerror', err => jsErrors.push(err.message));
+    const errorMonitor = capturePageErrors(page);
 
     // ─── Step 1: Save Complex Entity Config in Entity Manager ───────────────
     await gotoDemo(page);
@@ -128,12 +135,13 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
     await safeSelect(fieldPart(page, 'industry', 'input'), 'Healthcare');
     await fieldPart(page, 'startDate', 'input').fill('2026-08-07');
 
-    // monthYear renders as two separate selects (no id) inside field-container-contractMonth
-    const monthYearContainer = page.locator('#field-container-contractMonth');
-    if (await monthYearContainer.isVisible()) {
-      await monthYearContainer.locator('[data-testid$="-month"]').selectOption('08');
-      await monthYearContainer.locator('[data-testid$="-year"]').selectOption('2026');
-    }
+    // monthYear renders as two separate selects (month and year)
+    const monthSelect = fieldPart(page, 'contractMonth', 'month');
+    const yearSelect = fieldPart(page, 'contractMonth', 'year');
+    await expect(monthSelect).toBeVisible();
+    await expect(yearSelect).toBeVisible();
+    await monthSelect.selectOption({ label: 'August' });
+    await yearSelect.selectOption('2026');
 
     // ─── Step 5: Fill Tab 2 (Advanced Profile) ──────────────────────────────
     await safeClick(page.getByRole('tab', { name: 'Advanced Profile' }));
@@ -145,29 +153,24 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
     await newsletterCheckbox.check();
 
     const emailRadio = page.getByTestId('field-contactMethod-option-email');
-    if (await emailRadio.isVisible()) {
-      await emailRadio.check();
-    }
+    await expect(emailRadio).toBeVisible();
+    await emailRadio.check();
 
-    // MultiSelect rendered as <select multiple>. Angular [value] sets DOM property not HTML attribute,
-    // so we must select by label text instead of value.
+    // MultiSelect rendered as <select multiple>.
     const servicesSelect = fieldPart(page, 'services', 'input');
-    if (await servicesSelect.isVisible()) {
-      await servicesSelect.selectOption([{ label: 'Cloud Storage' }, { label: 'Dedicated Support' }]);
-    }
+    await expect(servicesSelect).toBeVisible();
+    await servicesSelect.selectOption([{ label: 'Cloud Storage' }, { label: 'Dedicated Support' }]);
 
     // ─── Step 6: Fill Tab 3 (Nested Data & Groups) ──────────────────────────
     await safeClick(page.getByRole('tab', { name: 'Nested Data & Groups' }));
 
     const compNameInput = fieldPart(page, 'companyName', 'input');
-    if (await compNameInput.isVisible()) {
-      await compNameInput.fill('Akshya IT Enterprise Systems');
-    }
+    await expect(compNameInput).toBeVisible();
+    await compNameInput.fill('Akshya IT Enterprise Systems');
 
     const taxIdInput = fieldPart(page, 'taxId', 'input');
-    if (await taxIdInput.isVisible()) {
-      await taxIdInput.fill('DE-TAX-998822');
-    }
+    await expect(taxIdInput).toBeVisible();
+    await taxIdInput.fill('DE-TAX-998822');
 
     // ─── Step 7: Submit Form (Save Record) ──────────────────────────────────
     const saveButton = page.getByRole('button', { name: 'Save' });
@@ -190,6 +193,8 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
     await expect(fieldPart(page, 'annualBudget', 'input')).toHaveValue('500000');
     await expect(fieldPart(page, 'industry', 'input').locator('option:checked')).toHaveText('Healthcare');
     await expect(fieldPart(page, 'startDate', 'input')).toHaveValue('2026-08-07');
+    await expect(fieldPart(page, 'contractMonth', 'month')).toHaveValue('08');
+    await expect(fieldPart(page, 'contractMonth', 'year')).toHaveValue('2026');
 
     // Verify Tab 2 data retained
     await safeClick(page.getByRole('tab', { name: 'Advanced Profile' }));
@@ -197,8 +202,14 @@ test.describe('Dynamic Entity E2E - Full End-to-End Working Flow (All Field Type
       'Senior Staff UI/UX Systems Architect with 15 years experience across enterprise systems.',
     );
     await expect(fieldPart(page, 'subscribeNewsletter', 'input')).toBeChecked();
+    await expect(emailRadio).toBeChecked();
 
-    // Verify no JS errors occurred during full workflow execution
-    expect(jsErrors).toEqual([]);
+    // Verify Tab 3 data retained
+    await safeClick(page.getByRole('tab', { name: 'Nested Data & Groups' }));
+    await expect(compNameInput).toHaveValue('Akshya IT Enterprise Systems');
+    await expect(taxIdInput).toHaveValue('DE-TAX-998822');
+
+    // Verify no JS errors or library warnings occurred during full workflow execution
+    errorMonitor.assertNoErrors();
   });
 });

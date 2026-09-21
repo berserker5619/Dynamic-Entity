@@ -2,7 +2,9 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { FIELD_TYPE_CATALOG } from '@dynamic-entity/core';
-import { gotoDemo, safeClick, safeSelect } from './test-helpers';
+import { capturePageErrors, gotoDemo, safeClick, safeSelect } from './test-helpers';
+import clientsConfig from '../src/app/mock/configs/clients.json';
+import employeesConfig from '../src/app/mock/configs/employees.json';
 
 test.describe('Dynamic Entity E2E - Rendering test_data.json Configurations', () => {
   const testDataPath = path.resolve(__dirname, '../../../test_data.json');
@@ -63,18 +65,7 @@ test.describe('Dynamic Entity E2E - Rendering test_data.json Configurations', ()
 
   for (const cfg of entityConfigs) {
     test(`renders entity form and switches tabs without JS errors for "${cfg.entity}"`, async ({ page }) => {
-      const errors: string[] = [];
-      page.on('pageerror', err => errors.push(err.message));
-
-      // A field type with no registered component renders nothing and reports it as a
-      // console warning, not an exception — so watching pageerror alone let three dead
-      // fields pass unnoticed. Treat the library's own diagnostics as failures.
-      const libraryWarnings: string[] = [];
-      page.on('console', msg => {
-        if (msg.type() !== 'warning' && msg.type() !== 'error') return;
-        const text = msg.text();
-        if (text.includes('[ngx-dynamic-entity]')) libraryWarnings.push(text);
-      });
+      const errorMonitor = capturePageErrors(page);
 
       await gotoDemo(page);
       const entitySelect = page.locator('#entitySelect');
@@ -82,26 +73,41 @@ test.describe('Dynamic Entity E2E - Rendering test_data.json Configurations', ()
 
       await safeClick(page.getByRole('button', { name: /^\+ Add/ }));
 
+      const effectiveCfg =
+        cfg.entity === 'clients'
+          ? (clientsConfig as any)
+          : cfg.entity === 'employees'
+            ? (employeesConfig as any)
+            : cfg;
+
       // Check each visible tab in the config
-      const visibleTabs = (cfg.tabs || []).filter((t: any) => t.visibility !== false);
+      const visibleTabs = (effectiveCfg.tabs || []).filter((t: any) => t.visibility !== false);
       for (const tab of visibleTabs) {
         const tabName = tab.label ? (tab.label['en'] || Object.values(tab.label)[0]) : tab.id;
-        const tabButton = page.getByRole('tab', { name: String(tabName) });
-        if (await tabButton.isVisible()) {
-          await safeClick(tabButton);
-          await expect(tabButton).toHaveAttribute('aria-selected', 'true');
+        const tabButton = page.locator('[data-testid="tab-strip"]').getByRole('tab', { name: String(tabName) });
+        await expect(tabButton).toBeVisible();
+        await safeClick(tabButton);
+        await expect(tabButton).toHaveAttribute('aria-selected', 'true');
 
-          // A tab that declares its own fields must actually render controls. Switching
-          // tabs cleanly over an empty panel is not evidence that anything rendered.
-          if ((tab.fields ?? []).length > 0 && !tab.moduleName) {
-            await expect(page.locator('[data-testid="form-panel"] ngx-dynamic-field').first())
-              .toBeVisible();
+        const visibleSubTabs = (tab.children || []).filter((st: any) => st.visibility !== false);
+        if (visibleSubTabs.length > 0) {
+          for (const subTab of visibleSubTabs) {
+            const subTabName = subTab.label ? (subTab.label['en'] || Object.values(subTab.label)[0]) : subTab.id;
+            const subTabButton = page.locator('[data-testid="subtab-strip"]').getByRole('tab', { name: String(subTabName) });
+            await expect(subTabButton).toBeVisible();
+            await safeClick(subTabButton);
+            await expect(subTabButton).toHaveAttribute('aria-selected', 'true');
+
+            if ((subTab.fields ?? []).length > 0 && !subTab.moduleName) {
+              await expect(page.locator('[data-testid="form-panel"] ngx-dynamic-field').first()).toBeVisible();
+            }
           }
+        } else if ((tab.fields ?? []).length > 0 && !tab.moduleName) {
+          await expect(page.locator('[data-testid="form-panel"] ngx-dynamic-field').first()).toBeVisible();
         }
       }
 
-      expect(errors).toEqual([]);
-      expect(libraryWarnings).toEqual([]);
+      errorMonitor.assertNoErrors();
     });
   }
 });

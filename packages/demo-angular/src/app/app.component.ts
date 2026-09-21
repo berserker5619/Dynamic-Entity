@@ -11,7 +11,7 @@ import {
 import { BuilderPageComponent } from './builder-page.component';
 import { ImportPageComponent } from './import-page.component';
 import { LocalStore } from './mock/local-store.service';
-import { demoRulesFor } from './mock/demo-rules';
+import { demoRulesFor, saveDemoRules } from './mock/demo-rules';
 
 @Component({
   selector: 'app-root',
@@ -245,6 +245,10 @@ export class AppComponent implements OnInit {
       this.store.updateConfig(config.entity, config);
     } else {
       this.store.saveConfig(config);
+    }
+    if (Array.isArray(config.rules)) {
+      saveDemoRules(config.entity, config.rules);
+      this.rulesRevision.update(r => r + 1);
     }
     this.loadAllConfigs();
     this.onEntityChange(config.entity);

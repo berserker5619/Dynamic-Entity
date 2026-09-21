@@ -1,5 +1,6 @@
-import { Component, Input, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, inject, signal, ChangeDetectionStrategy, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import type { DropdownOption, NestedFieldConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
 import { ValidationMessagesService } from '../services/validation-messages.service';
@@ -61,10 +62,12 @@ import { fieldDescribedBy, fieldDomId, nextFieldInstanceId } from './field-dom-i
                   [attr.data-testid]="'field-' + field.id + '-option-' + optionSlug(option)"
                   type="radio"
                   class="ngx-field__radio-input"
-                  [formControl]="$any(control)"
+                  [name]="domId()"
                   [attr.aria-describedby]="describedBy()"
                   [value]="getOptStoredVal(option)"
+                  [checked]="isChecked(option)"
                   [attr.disabled]="field.disabled ? true : null"
+                  (change)="onSelect(option)"
                 />
                 <span class="ngx-field__radio-label">{{ getOptLabel(option) }}</span>
               </label>
@@ -80,7 +83,7 @@ import { fieldDescribedBy, fieldDomId, nextFieldInstanceId } from './field-dom-i
     </div>
   `,
 })
-export class RadioFieldComponent {
+export class RadioFieldComponent implements OnDestroy {
   /**
    * Unique to this component instance: an `array` renders the same field once per row, and a
    * DOM id may not repeat. See `field-dom-id.ts`.
@@ -94,9 +97,16 @@ export class RadioFieldComponent {
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
   private readonly messages = inject(ValidationMessagesService);
   private readonly lookups = inject(LookupRegistryService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   private _field!: NestedFieldConfig;
   private _language = 'en';
+  private _control!: AbstractControl;
+  private _controlSub?: Subscription;
+
+  ngOnDestroy(): void {
+    this._controlSub?.unsubscribe();
+  }
 
   /** Setter-based so options resolve however the input is set — see `refreshChoiceOptions`. */
   @Input() set field(value: NestedFieldConfig) {
@@ -115,12 +125,28 @@ export class RadioFieldComponent {
     return this._language;
   }
 
-  @Input() control!: AbstractControl;
+  @Input() set control(value: AbstractControl) {
+    this._control = value;
+    this._controlSub?.unsubscribe();
+    this._controlSub = this._control?.valueChanges?.subscribe(() => {
+      this.cdr.markForCheck();
+    });
+  }
+  get control(): AbstractControl {
+    return this._control;
+  }
+
   @Input() readonly: boolean = false;
   @Input() masked: boolean = false;
 
   /** Inline `options`, or the field's named list resolved through the registry (§6.3). */
   readonly options = signal<DropdownOption[]>([]);
+
+  onSelect(option: DropdownOption): void {
+    this.control?.setValue(option);
+    this.control?.markAsTouched();
+    this.control?.markAsDirty();
+  }
 
   get label(): string {
     return resolveLabel(this.field?.label, this.language);
@@ -167,6 +193,11 @@ export class RadioFieldComponent {
 
   getOptLabel(option: DropdownOption): string {
     return resolveOptionLabel(option, this.language);
+  }
+
+  /** Whether the given option matches the control's current value. */
+  isChecked(option: DropdownOption): boolean {
+    return valuesMatch(this.control?.value, option, this.language);
   }
 
   /** Read-only display — synchronous, per §6.2. See `DropdownFieldComponent.getLabel`. */
