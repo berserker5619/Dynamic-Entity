@@ -160,8 +160,8 @@
   --ngx-color-border-strong: #3b4d63;
   --ngx-color-surface: #111927;
   --ngx-color-surface-alt: #172233;
-  --ngx-color-accent: #6366f1;
-  --ngx-color-accent-text: #ffffff;
+  --ngx-color-accent: #818cf8;
+  --ngx-color-accent-text: #090d16;
   --ngx-color-accent-soft: rgba(99, 102, 241, 0.16);
   --ngx-color-success: #34d399;
   --ngx-color-disabled-bg: #1a2434;
@@ -190,8 +190,8 @@
     --ngx-color-border-strong: #3b4d63;
     --ngx-color-surface: #111927;
     --ngx-color-surface-alt: #172233;
-    --ngx-color-accent: #6366f1;
-    --ngx-color-accent-text: #ffffff;
+    --ngx-color-accent: #818cf8;
+    --ngx-color-accent-text: #090d16;
     --ngx-color-accent-soft: rgba(99, 102, 241, 0.16);
     --ngx-color-success: #34d399;
     --ngx-color-disabled-bg: #1a2434;
@@ -636,6 +636,77 @@ main .ngx-field__input {
 :root[data-theme='dark'] .demo-nav,
 :root[data-theme='dark'] .mode-switch {
   background: #172233;
+}
+
+:root[data-theme='dark'] .nav-link--active {
+  color: #818cf8;
+}
+
+:root[data-theme='dark'] .record-card__cta {
+  color: #818cf8;
+}
+
+:root[data-theme='dark'] .builder-load__icon {
+  color: var(--primary-500);
+}
+
+:root[data-theme='dark'] .builder-preview h3 {
+  color: #566579 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .nav-link--active {
+    color: #818cf8;
+  }
+
+  :root:not([data-theme='light']) .record-card__cta {
+    color: #818cf8;
+  }
+
+  :root:not([data-theme='light']) .builder-load__icon {
+    color: var(--primary-500);
+  }
+
+  :root:not([data-theme='light']) .builder-preview h3 {
+    color: #566579 !important;
+  }
+}
+
+.builder-preview h3 {
+  color: #566579 !important;
+}
+
+/*
+ * The Form Builder is built on Angular Material's light indigo-pink theme with a white canvas.
+ * Its components and embedded form preview must remain light-themed with dark text even when
+ * the demo outer chrome is in dark mode, avoiding white-on-white text contrast failure.
+ */
+ngx-entity-builder,
+app-builder-page ngx-entity-builder {
+  color: #0f172a;
+}
+
+ngx-entity-builder .ngx-form,
+.builder-preview .ngx-form {
+  --ngx-font: var(--font-body);
+  --ngx-color-text: #0f172a !important;
+  --ngx-color-muted: #566579 !important;
+  --ngx-color-border: #e2e8f0 !important;
+  --ngx-color-border-strong: #cbd5e1 !important;
+  --ngx-color-surface: #ffffff !important;
+  --ngx-color-surface-alt: #f8fafc !important;
+  --ngx-color-accent: #4f46e5 !important;
+  --ngx-color-accent-text: #ffffff !important;
+  --ngx-color-accent-soft: #eef2ff !important;
+  --ngx-color-success: #1c6b52 !important;
+  --ngx-color-disabled-bg: #eef1f4 !important;
+  --ngx-shadow-sm: 0 1px 2px rgba(15, 25, 35, 0.06) !important;
+  --ngx-color-error: #dc2626 !important;
+  --ngx-color-error-soft: #fef2f2 !important;
+  --ngx-color-warning: #b45309 !important;
+  --ngx-color-warning-soft: #fffbeb !important;
+  --ngx-radius: 12px;
+  --ngx-radius-sm: 8px;
 }
 
 :root[data-theme='dark'] .nav-link:hover {
