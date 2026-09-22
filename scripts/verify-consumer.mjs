@@ -406,7 +406,7 @@ export class SsrRootComponent {
           { id: 'textareaField', type: 'textarea', label: { en: 'Textarea' }, visibility: true },
           { id: 'markdownField', type: 'markdown', label: { en: 'Markdown' }, visibility: true },
           { id: 'numberField', type: 'number', label: { en: 'Number' }, visibility: true },
-          { id: 'currencyField', type: 'currency', label: { en: 'Currency' }, currencyCode: 'USD', visibility: true },
+          { id: 'currencyField', type: 'currency', label: { en: 'Currency' }, visibility: true },
           { id: 'emailField', type: 'email', label: { en: 'Email' }, visibility: true },
           { id: 'passwordField', type: 'password', label: { en: 'Password' }, visibility: true },
           { id: 'dateField', type: 'date', label: { en: 'Date' }, visibility: true },
@@ -418,13 +418,13 @@ export class SsrRootComponent {
           { id: 'checkboxField', type: 'checkbox', label: { en: 'Checkbox' }, visibility: true },
           { id: 'booleanField', type: 'boolean', label: { en: 'Boolean' }, visibility: true },
           { id: 'multiSelectField', type: 'multiSelect', label: { en: 'MultiSelect' }, options: [{ en: 'Item 1' }, { en: 'Item 2' }], visibility: true },
-          { id: 'entityRefField', type: 'entity-ref', label: { en: 'EntityRef' }, entityName: 'clients', visibility: true },
+          { id: 'entityRefField', type: 'entity-ref', label: { en: 'EntityRef' }, entityReference: { enabled: true, linkedEntityKey: 'clients' }, visibility: true },
           {
             id: 'groupField',
             type: 'group',
             label: { en: 'Group' },
             visibility: true,
-            fields: [
+            children: [
               { id: 'subText', type: 'text', label: { en: 'Sub Text' }, visibility: true },
             ],
           },
@@ -433,7 +433,7 @@ export class SsrRootComponent {
             type: 'array',
             label: { en: 'Array' },
             visibility: true,
-            fields: [
+            children: [
               { id: 'rowText', type: 'text', label: { en: 'Row Text' }, visibility: true },
             ],
           },
