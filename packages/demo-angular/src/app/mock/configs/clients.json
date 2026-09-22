@@ -84,6 +84,7 @@
           "label": {
             "en": "Salary"
           },
+          "colSpan": 6,
           "visibility": true,
           "maskData": true
         },

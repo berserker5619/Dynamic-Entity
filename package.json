@@ -7,8 +7,10 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "lint": "node scripts/check-lockfile-platforms.mjs && node scripts/check-control-chars.mjs && node scripts/check-build-graph.mjs && node scripts/check-demo-coverage.mjs && eslint \"packages/*/src/**/*.ts\" \"packages/*/src/**/*.html\" \"scripts/**/*.mjs\" \"packages/core/bin.mjs\" && turbo run lint",
+    "lint": "node scripts/check-lockfile-platforms.mjs && node scripts/check-control-chars.mjs && node scripts/check-build-graph.mjs && node scripts/check-demo-coverage.mjs && node scripts/check-ssr.mjs && eslint \"packages/*/src/**/*.ts\" \"packages/*/src/**/*.html\" \"scripts/**/*.mjs\" \"packages/core/bin.mjs\" && turbo run lint",
     "test": "turbo run test",
+    "benchmark": "node scripts/run-benchmarks.mjs",
+    "check:ssr": "node scripts/check-ssr.mjs",
     "check:timezones": "node scripts/check-timezones.mjs",
     "dev": "turbo run dev",
     "test:coverage": "turbo run test:coverage",

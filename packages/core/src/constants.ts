@@ -15,7 +15,7 @@ export const DEFAULT_LANGUAGE = 'en';
  * Kept in step by `build-manifest.mjs`, which refuses to publish when it disagrees with
  * package.json — a hand-maintained constant nobody verifies is worse than no constant.
  */
-export const CORE_VERSION = '2.0.0';
+export const CORE_VERSION = '2.0.1';
 
 export const SUPPORTED_LANGUAGES: ReadonlyArray<{ code: string; label: string }> = [
   { code: 'en', label: 'English' },

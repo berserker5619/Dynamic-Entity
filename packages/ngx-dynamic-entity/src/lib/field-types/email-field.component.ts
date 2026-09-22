@@ -41,7 +41,11 @@ import { fieldDescribedBy, fieldDomId, nextFieldInstanceId } from './field-dom-i
         }}</span>
       } @else if (readonly) {
         <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">
-          <a [href]="'mailto:' + control.value" class="ngx-field__email-link">{{ control.value || '—' }}</a>
+          @if (control.value) {
+            <a [href]="'mailto:' + control.value" class="ngx-field__email-link">{{ control.value }}</a>
+          } @else {
+            —
+          }
         </span>
       } @else {
         <input

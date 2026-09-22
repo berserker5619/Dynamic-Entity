@@ -224,6 +224,7 @@
   flex-direction: column;
   gap: var(--ngx-field-gap);
   min-width: 0;
+  width: 100%;
 }
 
 .ngx-field__label {
@@ -1057,18 +1058,7 @@ textarea.ngx-field__input:focus {
 }
 
 /*
- * A read-only record is a table of values, not a form.
- *
- * With every field at `span 12` the record view spent a full screen on six values — and no
- * control is being sized here, so the width a text input needs is not the width a value
- * needs. `auto-fit` packs them, and a long note still takes its own row when the content
- * demands one.
- */
-/*
- * Nothing is being asked of the reader, so nothing is required of them.
- *
- * The matching `.ngx-form--readonly` *grid* rule lives in the component's own styles, next to
- * the grid it overrides — see the Layout note above.
+ * In read-only mode, required markers are suppressed since no user input is expected.
  */
 .ngx-form--readonly .ngx-field__req {
   display: none;

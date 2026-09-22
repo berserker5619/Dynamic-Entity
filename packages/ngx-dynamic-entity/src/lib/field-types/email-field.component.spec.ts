@@ -38,6 +38,16 @@ describe('EmailFieldComponent', () => {
     expect(link.getAttribute('href')).toBe('mailto:a@b.com');
   });
 
+  it('renders a plain dash when readonly and empty without mailto link', () => {
+    fixture.componentRef.setInput('control', new FormControl(''));
+    fixture.componentRef.setInput('readonly', true);
+    fixture.detectChanges();
+    const link = fixture.nativeElement.querySelector('a.ngx-field__email-link');
+    expect(link).toBeNull();
+    const value = fixture.nativeElement.querySelector('.ngx-field__value');
+    expect(value.textContent.trim()).toBe('—');
+  });
+
   it('shows the email-specific error once touched', () => {
     fixture.componentRef.setInput('control', new FormControl('nope', [Validators.email]));
     component.control.markAsTouched();

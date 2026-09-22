@@ -132,21 +132,6 @@ export interface InvalidField {
         gap: var(--ngx-gap, 18px);
         align-items: start;
       }
-      /*
-       * A read-only record is a table of values, not a form.
-       *
-       * With every field at its authored span the record view spent a screen on six values —
-       * and no control is being sized here, so the width a text input needs is not the width
-       * a value needs. auto-fit packs them, and a long note still takes its own row when the
-       * content demands one.
-       */
-      .ngx-form--readonly .ngx-form__panel {
-        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-        gap: 2px var(--ngx-gap, 18px);
-      }
-      .ngx-form--readonly .ngx-form__field-slot {
-        grid-column: auto;
-      }
       .ngx-form__field-slot {
         display: flex;
         align-items: flex-start;
@@ -174,8 +159,7 @@ export interface InvalidField {
       }
       /* Matches the stylesheet's own breakpoint — a 12-column grid is unreadable below it. */
       @media (max-width: 640px) {
-        .ngx-form__panel,
-        .ngx-form--readonly .ngx-form__panel {
+        .ngx-form__panel {
           grid-template-columns: minmax(0, 1fr);
         }
         .ngx-form__field-slot {

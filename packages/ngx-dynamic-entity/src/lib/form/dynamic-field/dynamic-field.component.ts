@@ -32,6 +32,15 @@ import { RbacService } from '../../services/rbac.service';
   selector: 'ngx-dynamic-field',
   standalone: true,
   template: `<ng-container #fieldHost></ng-container>`,
+  styles: [
+    `
+      :host {
+        display: block;
+        width: 100%;
+        min-width: 0;
+      }
+    `,
+  ],
 })
 export class DynamicFieldComponent implements OnChanges, OnDestroy {
   @Input() field!: NestedFieldConfig;

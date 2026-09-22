@@ -402,12 +402,70 @@ export class SsrRootComponent {
         visibility: true,
         flatData: true,
         fields: [
-          { id: 'firstName', type: 'text', label: { en: 'First Name' }, visibility: true },
+          { id: 'textField', type: 'text', label: { en: 'Text' }, visibility: true },
+          { id: 'textareaField', type: 'textarea', label: { en: 'Textarea' }, visibility: true },
+          { id: 'markdownField', type: 'markdown', label: { en: 'Markdown' }, visibility: true },
+          { id: 'numberField', type: 'number', label: { en: 'Number' }, visibility: true },
+          { id: 'currencyField', type: 'currency', label: { en: 'Currency' }, currencyCode: 'USD', visibility: true },
+          { id: 'emailField', type: 'email', label: { en: 'Email' }, visibility: true },
+          { id: 'passwordField', type: 'password', label: { en: 'Password' }, visibility: true },
+          { id: 'dateField', type: 'date', label: { en: 'Date' }, visibility: true },
+          { id: 'datetimeField', type: 'datetime', label: { en: 'Datetime' }, visibility: true },
+          { id: 'timeField', type: 'time', label: { en: 'Time' }, visibility: true },
+          { id: 'monthYearField', type: 'monthYear', label: { en: 'MonthYear' }, visibility: true },
+          { id: 'dropdownField', type: 'dropdown', label: { en: 'Dropdown' }, options: [{ en: 'Opt 1' }, { en: 'Opt 2' }], visibility: true },
+          { id: 'radioField', type: 'radio', label: { en: 'Radio' }, options: [{ en: 'Rad 1' }, { en: 'Rad 2' }], visibility: true },
+          { id: 'checkboxField', type: 'checkbox', label: { en: 'Checkbox' }, visibility: true },
+          { id: 'booleanField', type: 'boolean', label: { en: 'Boolean' }, visibility: true },
+          { id: 'multiSelectField', type: 'multiSelect', label: { en: 'MultiSelect' }, options: [{ en: 'Item 1' }, { en: 'Item 2' }], visibility: true },
+          { id: 'entityRefField', type: 'entity-ref', label: { en: 'EntityRef' }, entityName: 'clients', visibility: true },
+          {
+            id: 'groupField',
+            type: 'group',
+            label: { en: 'Group' },
+            visibility: true,
+            fields: [
+              { id: 'subText', type: 'text', label: { en: 'Sub Text' }, visibility: true },
+            ],
+          },
+          {
+            id: 'arrayField',
+            type: 'array',
+            label: { en: 'Array' },
+            visibility: true,
+            fields: [
+              { id: 'rowText', type: 'text', label: { en: 'Row Text' }, visibility: true },
+            ],
+          },
+          { id: 'imageField', type: 'image', label: { en: 'Image' }, visibility: true },
+          { id: 'fileField', type: 'file', label: { en: 'File' }, visibility: true },
         ],
       },
     ],
   };
-  record: Record<string, unknown> = { firstName: 'Alice' };
+  record: Record<string, unknown> = {
+    textField: 'Alice',
+    textareaField: 'Detailed notes',
+    markdownField: '# Markdown Title',
+    numberField: 42,
+    currencyField: 1250.5,
+    emailField: 'alice@example.com',
+    passwordField: 'secret123',
+    dateField: '2024-06-01',
+    datetimeField: '2024-06-01T12:00:00Z',
+    timeField: '14:30',
+    monthYearField: '2024-06',
+    dropdownField: { en: 'Opt 1' },
+    radioField: { en: 'Rad 1' },
+    checkboxField: true,
+    booleanField: true,
+    multiSelectField: [{ en: 'Item 1' }],
+    entityRefField: 'client-1',
+    groupField: { subText: 'Group nested value' },
+    arrayField: [{ rowText: 'Array item 1' }],
+    imageField: 'https://example.com/avatar.png',
+    fileField: 'document.pdf',
+  };
   roles: string[] = ['editor'];
 }
 
@@ -426,11 +484,20 @@ const html = await renderApplication(
   },
 );
 
-if (!html.includes('First Name') || !html.includes('Alice')) {
-  throw new Error('SSR HTML missing expected field markup\\n' + html.slice(0, 4000));
+const expectedFieldIds = [
+  'textField', 'textareaField', 'markdownField', 'numberField', 'currencyField',
+  'emailField', 'passwordField', 'dateField', 'datetimeField', 'timeField',
+  'monthYearField', 'dropdownField', 'radioField', 'checkboxField', 'booleanField',
+  'multiSelectField', 'entityRefField', 'groupField', 'arrayField', 'imageField', 'fileField',
+];
+
+for (const fieldId of expectedFieldIds) {
+  if (!html.includes('data-testid="field-' + fieldId + '"')) {
+    throw new Error('SSR HTML missing expected field markup for ' + fieldId + '\\n' + html.slice(0, 4000));
+  }
 }
 
-console.log('PASS: renderApplication produced markup containing the text field${zoneless ? ' (zoneless)' : ''}.');
+console.log('PASS: renderApplication produced markup containing all 21 field types${zoneless ? ' (zoneless)' : ''}.');
 `,
   );
 } else if (size) {

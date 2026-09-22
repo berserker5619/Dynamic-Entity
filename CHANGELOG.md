@@ -8,6 +8,21 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.0.1]
+
+### Fixed
+- **Record View, Data Only View & Form View Alignment**: Unified layout under the standard 12-column CSS Grid. Removed the `.ngx-form--readonly` auto-fit grid override that clashed with inline `grid-column: span` definitions, restoring symmetrical 50%/50% two-column layouts across all presentation modes.
+- **Readonly Email Field Underline**: Prevented empty/null email fields from rendering an active `<a href="mailto:null">` link, eliminating the double-line artifact over the field baseline.
+- **Field Component Block Display**: Added `:host { display: block; width: 100%; min-width: 0; }` to `DynamicFieldComponent` and `width: 100%;` to `.ngx-field` so all controls expand cleanly within their assigned grid tracks.
+- **Radio & Month-Year Field Deserialization**: Fixed month/year dropdown option selection bindings and radio button comparison against deserialized records.
+
+### Added
+- **Visual Regression Test Suite**: Automated Playwright snapshot testing across Form, Record View, Data Only, List View, Form Builder, and Spreadsheet Import wizard modes.
+- **Automated Performance Benchmarks**: Benchmark suite measuring rule evaluation (>440k ops/s), schema validation (>9k configs/s), record migration (>11M records/s), and streaming CSV parsing (>2k ops/s).
+- **SSR Hygiene & Safety Gates**: Static AST check ensuring zero browser-specific global leaks across all 54 renderer source files and 21 field types, plus verification in both Zone.js and zoneless modes.
+
+---
+
 ## [2.0.0]
 
 The rules engine — the feature the README leads with — was the least finished part of the
