@@ -54,6 +54,21 @@
       <button class="role-btn" [class.role-btn--active]="currentRole() === 'viewer'" (click)="setRole('viewer')">Viewer
         (Readonly)</button>
     </div>
+
+    <div class="role-switcher" data-testid="theme-switcher">
+      <span>Theme:</span>
+      <button class="role-btn" data-testid="theme-light" [class.role-btn--active]="theme() === 'light'"
+        [attr.aria-pressed]="theme() === 'light'" (click)="setTheme('light')" title="Light Theme">☀️ Light</button>
+      <button class="role-btn" data-testid="theme-dark" [class.role-btn--active]="theme() === 'dark'"
+        [attr.aria-pressed]="theme() === 'dark'" (click)="setTheme('dark')" title="Dark Theme">🌙 Dark</button>
+      <button class="role-btn" data-testid="theme-auto" [class.role-btn--active]="theme() === 'auto'"
+        [attr.aria-pressed]="theme() === 'auto'" (click)="setTheme('auto')" title="Follow System Theme">💻 Auto</button>
+    </div>
+
+    <button class="role-btn role-btn--inspector" data-testid="json-inspector-btn" (click)="toggleJsonInspector()"
+      [class.role-btn--active]="showJsonInspector()" title="Open live JSON schema and record data inspector">
+      <span>&#123; &#125;</span> Inspect JSON
+    </button>
   </header>
 
   <main>
@@ -213,4 +228,75 @@
       (entitySaved)="onBuilderSave($event)"></app-builder-page>
     }
   </main>
+
+  <!-- ─── Live JSON Schema & Record Data Inspector Drawer ─── -->
+  @if (showJsonInspector()) {
+  <div class="json-inspector-backdrop" (click)="closeJsonInspector()" data-testid="json-inspector-backdrop">
+    <aside class="json-inspector-drawer" (click)="$event.stopPropagation()" role="dialog" aria-label="JSON Inspector" data-testid="json-inspector-drawer">
+      <div class="json-inspector-header">
+        <div class="json-inspector-title">
+          <span class="json-inspector-icon">&#123; &#125;</span>
+          <h3>JSON Inspector</h3>
+          <span class="json-inspector-badge">{{ selectedEntity() }}</span>
+        </div>
+        <div class="json-inspector-tabs">
+          <button
+            type="button"
+            class="json-tab-btn"
+            data-testid="json-tab-schema"
+            [class.json-tab-btn--active]="jsonInspectorTab() === 'config'"
+            (click)="jsonInspectorTab.set('config')"
+          >
+            Entity Schema
+          </button>
+          <button
+            type="button"
+            class="json-tab-btn"
+            data-testid="json-tab-record"
+            [class.json-tab-btn--active]="jsonInspectorTab() === 'record'"
+            (click)="jsonInspectorTab.set('record')"
+          >
+            Record Data {{ selectedRecord() ? '(' + selectedRecord()!['_id'] + ')' : '(None)' }}
+          </button>
+        </div>
+        <div class="json-inspector-actions">
+          <button
+            type="button"
+            class="json-action-btn"
+            data-testid="json-copy-btn"
+            (click)="copyJson()"
+            [title]="copiedFeedback() ? 'Copied to clipboard' : 'Copy JSON to clipboard'"
+          >
+            @if (copiedFeedback()) {
+              ✓ Copied!
+            } @else {
+              📋 Copy
+            }
+          </button>
+          <button
+            type="button"
+            class="json-action-btn"
+            data-testid="json-download-btn"
+            (click)="downloadJson()"
+            title="Download JSON file"
+          >
+            ⬇ Download
+          </button>
+          <button
+            type="button"
+            class="json-close-btn"
+            data-testid="json-close-btn"
+            (click)="closeJsonInspector()"
+            aria-label="Close JSON Inspector"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+      <div class="json-inspector-body">
+        <pre class="json-inspector-code" data-testid="json-inspector-content"><code>{{ activeJsonContent() }}</code></pre>
+      </div>
+    </aside>
+  </div>
+  }
 </div>

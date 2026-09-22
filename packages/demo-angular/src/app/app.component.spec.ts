@@ -29,4 +29,44 @@ describe('AppComponent', () => {
     fixture.detectChanges();
     expect(app.view()).toBe('builder');
   });
+
+  it('should toggle theme between light, dark, and auto', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    const app = fixture.componentInstance;
+    fixture.detectChanges();
+
+    app.setTheme('dark');
+    expect(app.theme()).toBe('dark');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    expect(localStorage.getItem('demo-theme')).toBe('dark');
+
+    app.setTheme('light');
+    expect(app.theme()).toBe('light');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(localStorage.getItem('demo-theme')).toBe('light');
+  });
+
+  it('should toggle JSON Inspector drawer and switch between schema and record data tabs', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    const app = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(app.showJsonInspector()).toBe(false);
+    app.toggleJsonInspector();
+    expect(app.showJsonInspector()).toBe(true);
+
+    // default is config tab
+    expect(app.jsonInspectorTab()).toBe('config');
+    expect(app.activeJsonFilename()).toContain('-config.json');
+    expect(app.activeJsonContent()).toContain('"entity"');
+
+    // switch to record tab
+    app.jsonInspectorTab.set('record');
+    expect(app.jsonInspectorTab()).toBe('record');
+    expect(app.activeJsonFilename()).toContain('-record.json');
+
+    // close via close method
+    app.closeJsonInspector();
+    expect(app.showJsonInspector()).toBe(false);
+  });
 });

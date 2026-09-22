@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   DynamicFormComponent,
@@ -26,6 +26,17 @@ export class AppComponent implements OnInit {
   // ─── Signals ──────────────────────────────────────────────────────────────
   readonly selectedEntity = signal<string>('clients');
   readonly userRoles = signal<string[]>(['admin']);
+  /**
+   * The active demo theme: 'light', 'dark', or 'auto' (system media query).
+   */
+  readonly theme = signal<'light' | 'dark' | 'auto'>('auto');
+
+  /**
+   * State for the Live JSON Inspector drawer.
+   */
+  readonly showJsonInspector = signal(false);
+  readonly jsonInspectorTab = signal<'config' | 'record'>('config');
+  readonly copiedFeedback = signal(false);
   /**
    * The interface language, passed to `[language]` on the forms and `[uiLanguage]` on the
    * builder.
@@ -99,9 +110,117 @@ export class AppComponent implements OnInit {
   // ─── Computed ─────────────────────────────────────────────────────────────
   readonly currentRole = computed(() => this.userRoles()[0]);
 
+  readonly activeJsonContent = computed(() => {
+    if (this.jsonInspectorTab() === 'config') {
+      return JSON.stringify(this.config() ?? {}, null, 2);
+    }
+    return JSON.stringify(this.selectedRecord() ?? {}, null, 2);
+  });
+
+  readonly activeJsonFilename = computed(() => {
+    const entity = this.selectedEntity() || 'entity';
+    return this.jsonInspectorTab() === 'config'
+      ? `${entity}-config.json`
+      : `${entity}-record.json`;
+  });
+
   ngOnInit() {
+    this.initTheme();
     this.loadAllConfigs();
     this.loadEntity(this.selectedEntity());
+  }
+
+  // ─── Theme Management ──────────────────────────────────────────────────────
+
+  private initTheme() {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem('demo-theme') as 'light' | 'dark' | 'auto' | null;
+      if (saved && (saved === 'light' || saved === 'dark' || saved === 'auto')) {
+        this.theme.set(saved);
+      }
+    } catch {
+      // Ignore localStorage access failures in restricted frames/environments
+    }
+    this.applyTheme(this.theme());
+
+    if (window.matchMedia) {
+      const query = window.matchMedia('(prefers-color-scheme: dark)');
+      const listener = () => {
+        if (this.theme() === 'auto') {
+          this.applyTheme('auto');
+        }
+      };
+      if (query.addEventListener) {
+        query.addEventListener('change', listener);
+      } else if ((query as any).addListener) {
+        (query as any).addListener(listener);
+      }
+    }
+  }
+
+  setTheme(theme: 'light' | 'dark' | 'auto') {
+    this.theme.set(theme);
+    try {
+      localStorage.setItem('demo-theme', theme);
+    } catch {
+      // Ignore
+    }
+    this.applyTheme(theme);
+  }
+
+  private applyTheme(theme: 'light' | 'dark' | 'auto') {
+    if (typeof document === 'undefined') return;
+    const prefersDark =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = theme === 'dark' || (theme === 'auto' && prefersDark);
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  }
+
+  // ─── JSON Inspector ────────────────────────────────────────────────────────
+
+  toggleJsonInspector() {
+    this.showJsonInspector.update(v => !v);
+  }
+
+  closeJsonInspector() {
+    this.showJsonInspector.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape() {
+    if (this.showJsonInspector()) {
+      this.closeJsonInspector();
+    }
+  }
+
+  async copyJson() {
+    const content = this.activeJsonContent();
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(content);
+        this.copiedFeedback.set(true);
+        setTimeout(() => this.copiedFeedback.set(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy to clipboard', err);
+      }
+    }
+  }
+
+  downloadJson() {
+    if (typeof document === 'undefined') return;
+    const content = this.activeJsonContent();
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = this.activeJsonFilename();
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   // ─── Data Loading ──────────────────────────────────────────────────────────

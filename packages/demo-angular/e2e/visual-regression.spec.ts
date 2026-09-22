@@ -130,4 +130,49 @@ test.describe('Dynamic Entity E2E - Visual Regression Testing', () => {
 
     errorMonitor.assertNoErrors();
   });
+
+  test('toggles theme to dark mode and back', async ({ page }) => {
+    test.setTimeout(60000);
+    const errorMonitor = capturePageErrors(page);
+
+    await gotoDemo(page);
+    const darkBtn = page.getByTestId('theme-dark');
+    await safeClick(darkBtn);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+    const lightBtn = page.getByTestId('theme-light');
+    await safeClick(lightBtn);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+
+    errorMonitor.assertNoErrors();
+  });
+
+  test('opens live JSON inspector drawer and switches tabs', async ({ page }) => {
+    test.setTimeout(60000);
+    const errorMonitor = capturePageErrors(page);
+
+    await gotoDemo(page);
+    const inspectorBtn = page.getByTestId('json-inspector-btn');
+    await safeClick(inspectorBtn);
+
+    const drawer = page.getByTestId('json-inspector-drawer');
+    await expect(drawer).toBeVisible();
+
+    const codeContent = page.getByTestId('json-inspector-content');
+    await expect(codeContent).toContainText('"entity": "clients"');
+
+    // Switch to record tab
+    await safeClick(page.getByTestId('json-tab-record'));
+    await expect(page.getByTestId('json-tab-record')).toHaveClass(/json-tab-btn--active/);
+
+    // Switch back to schema tab
+    await safeClick(page.getByTestId('json-tab-schema'));
+    await expect(page.getByTestId('json-tab-schema')).toHaveClass(/json-tab-btn--active/);
+
+    // Close drawer via close button
+    await safeClick(page.getByTestId('json-close-btn'));
+    await expect(drawer).not.toBeVisible();
+
+    errorMonitor.assertNoErrors();
+  });
 });

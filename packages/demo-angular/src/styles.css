@@ -59,6 +59,60 @@
   --transition-normal: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+:root[data-theme='dark'] {
+  --primary-50: #1e1b4b;
+  --primary-100: #312e81;
+  --primary-500: #818cf8;
+  --primary-600: #6366f1;
+  --primary-700: #4f46e5;
+  --primary-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  --primary-glow: rgba(99, 102, 241, 0.4);
+
+  --bg: #090d16;
+  --bg-gradient: radial-gradient(circle at 50% 0%, #111927 0%, #090d16 100%);
+  --surface: #111927;
+  --surface-glass: rgba(17, 25, 39, 0.88);
+  --surface-hover: #1a2436;
+
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-light: #64748b;
+  --border: #233044;
+  --border-focus: #818cf8;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.5), 0 2px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --primary-50: #1e1b4b;
+    --primary-100: #312e81;
+    --primary-500: #818cf8;
+    --primary-600: #6366f1;
+    --primary-700: #4f46e5;
+    --primary-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    --primary-glow: rgba(99, 102, 241, 0.4);
+
+    --bg: #090d16;
+    --bg-gradient: radial-gradient(circle at 50% 0%, #111927 0%, #090d16 100%);
+    --surface: #111927;
+    --surface-glass: rgba(17, 25, 39, 0.88);
+    --surface-hover: #1a2436;
+
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+    --text-light: #64748b;
+    --border: #233044;
+    --border-focus: #818cf8;
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.5), 0 2px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  }
+}
+
 /*
  * Re-skin the library to this app's palette.
  *
@@ -77,19 +131,6 @@
   --ngx-color-surface: var(--surface);
   --ngx-color-surface-alt: #f8fafc;
   --ngx-color-accent: var(--primary-600);
-  /*
-   * Pinned, not inherited — and the reason is worth the line.
-   *
-   * The library re-declares its whole palette under `prefers-color-scheme: dark`, on these
-   * very selectors, at this very specificity. This block wins only for the tokens it names;
-   * any it leaves out keep the library's *dark* value while everything around them keeps
-   * this app's light one. Leaving `accent-text` out paired near-black `#08121c` with the
-   * indigo above it and put Save at 3:1 on any machine set to dark — the one combination a
-   * reader would describe as black text on a blue button.
-   *
-   * This demo is a light-only app, so it pins every token the dark block touches. Supporting
-   * dark properly would mean a `prefers-color-scheme` block of its own, not a partial one.
-   */
   --ngx-color-accent-text: #ffffff;
   --ngx-color-accent-soft: var(--primary-50);
   --ngx-color-success: #1c6b52;
@@ -101,6 +142,67 @@
   --ngx-color-warning-soft: #fffbeb;
   --ngx-radius: 12px;
   --ngx-radius-sm: 8px;
+}
+
+/* Dark mode token overrides for library and chrome-borrowed inputs */
+:root[data-theme='dark'] .ngx-form,
+:root[data-theme='dark'] .ngx-record-editor,
+:root[data-theme='dark'] .demo-header .ngx-field__input,
+:root[data-theme='dark'] .view-toggle .ngx-form__submit,
+:root[data-theme='dark'] .view-toggle .ngx-form__reset,
+:root[data-theme='dark'] .config-manager .ngx-form__submit,
+:root[data-theme='dark'] main > .ngx-field__input,
+:root[data-theme='dark'] main .ngx-field__input {
+  --ngx-font: var(--font-body);
+  --ngx-color-text: #e6edf3;
+  --ngx-color-muted: #9bb0c4;
+  --ngx-color-border: #243347;
+  --ngx-color-border-strong: #3b4d63;
+  --ngx-color-surface: #111927;
+  --ngx-color-surface-alt: #172233;
+  --ngx-color-accent: #6366f1;
+  --ngx-color-accent-text: #ffffff;
+  --ngx-color-accent-soft: rgba(99, 102, 241, 0.16);
+  --ngx-color-success: #34d399;
+  --ngx-color-disabled-bg: #1a2434;
+  --ngx-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --ngx-color-error: #f87171;
+  --ngx-color-error-soft: rgba(239, 68, 68, 0.15);
+  --ngx-color-warning: #fbbf24;
+  --ngx-color-warning-soft: rgba(245, 158, 11, 0.15);
+  --ngx-radius: 12px;
+  --ngx-radius-sm: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ngx-form,
+  :root:not([data-theme='light']) .ngx-record-editor,
+  :root:not([data-theme='light']) .demo-header .ngx-field__input,
+  :root:not([data-theme='light']) .view-toggle .ngx-form__submit,
+  :root:not([data-theme='light']) .view-toggle .ngx-form__reset,
+  :root:not([data-theme='light']) .config-manager .ngx-form__submit,
+  :root:not([data-theme='light']) main > .ngx-field__input,
+  :root:not([data-theme='light']) main .ngx-field__input {
+    --ngx-font: var(--font-body);
+    --ngx-color-text: #e6edf3;
+    --ngx-color-muted: #9bb0c4;
+    --ngx-color-border: #243347;
+    --ngx-color-border-strong: #3b4d63;
+    --ngx-color-surface: #111927;
+    --ngx-color-surface-alt: #172233;
+    --ngx-color-accent: #6366f1;
+    --ngx-color-accent-text: #ffffff;
+    --ngx-color-accent-soft: rgba(99, 102, 241, 0.16);
+    --ngx-color-success: #34d399;
+    --ngx-color-disabled-bg: #1a2434;
+    --ngx-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --ngx-color-error: #f87171;
+    --ngx-color-error-soft: rgba(239, 68, 68, 0.15);
+    --ngx-color-warning: #fbbf24;
+    --ngx-color-warning-soft: rgba(245, 158, 11, 0.15);
+    --ngx-radius: 12px;
+    --ngx-radius-sm: 8px;
+  }
 }
 
 /* The field label wants the heading face here; the library leaves the choice to the app. */
@@ -189,7 +291,7 @@ h6 {
   background: var(--surface-glass);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   flex-wrap: wrap;
@@ -522,4 +624,255 @@ main .ngx-field__input {
   font-size: 13px;
   color: var(--text-muted);
   font-weight: 500;
+}
+
+/* ─── Dark Mode Specific Chrome Refinements ─── */
+:root[data-theme='dark'] .demo-header h1 {
+  background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+:root[data-theme='dark'] .demo-nav,
+:root[data-theme='dark'] .mode-switch {
+  background: #172233;
+}
+
+:root[data-theme='dark'] .nav-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .ngx-table__th,
+:root[data-theme='dark'] .ngx-table__row:hover {
+  background: #172233;
+}
+
+:root[data-theme='dark'] .ngx-table__action {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+:root[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+:root[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* ─── Inspector Button ─── */
+.role-btn--inspector {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  color: var(--primary-600);
+  border: 1px solid var(--border);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.role-btn--inspector:hover {
+  border-color: var(--primary-500);
+  background: var(--primary-50);
+}
+
+:root[data-theme='dark'] .role-btn--inspector {
+  color: var(--primary-500);
+}
+:root[data-theme='dark'] .role-btn--inspector:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+/* ─── JSON Inspector Drawer & Backdrop ─── */
+.json-inspector-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.json-inspector-drawer {
+  width: 680px;
+  max-width: 95vw;
+  height: 100vh;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.json-inspector-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.json-inspector-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.json-inspector-icon {
+  font-family: monospace;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--primary-500);
+  background: var(--primary-50);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+:root[data-theme='dark'] .json-inspector-icon {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.json-inspector-title h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+}
+
+.json-inspector-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+}
+
+.json-inspector-tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--bg);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.json-tab-btn {
+  flex: 1;
+  padding: 7px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.json-tab-btn:hover {
+  color: var(--text);
+}
+
+.json-tab-btn--active {
+  background: var(--surface);
+  color: var(--primary-600);
+  box-shadow: var(--shadow-sm);
+}
+
+:root[data-theme='dark'] .json-tab-btn--active {
+  color: var(--primary-500);
+}
+
+.json-inspector-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.json-action-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition-fast);
+}
+
+.json-action-btn:hover {
+  background: var(--bg);
+  border-color: var(--primary-500);
+  color: var(--primary-600);
+}
+
+:root[data-theme='dark'] .json-action-btn:hover {
+  color: var(--primary-500);
+}
+
+.json-close-btn {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.json-close-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.json-inspector-body {
+  flex: 1;
+  padding: 16px;
+  overflow: auto;
+  background: #0b0f19;
+}
+
+.json-inspector-code {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #e2e8f0;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
