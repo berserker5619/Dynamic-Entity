@@ -1,0 +1,272 @@
+{
+  "entity": "itAssets",
+  "name": {
+    "en": "IT Asset & Fleet Lifecycle",
+    "de": "IT-Asset & Geräteverwaltung"
+  },
+  "version": 1,
+  "permissions": {
+    "view": ["admin", "manager", "IT_SUPPORT", "viewer"],
+    "edit": ["admin", "IT_SUPPORT"],
+    "delete": ["admin"],
+    "detailedView": ["admin", "manager", "IT_SUPPORT"]
+  },
+  "tabs": [
+    {
+      "id": "assetSpecs",
+      "label": {
+        "en": "Hardware & Identification",
+        "de": "Hardware & Gerätedaten"
+      },
+      "isPrimaryTab": true,
+      "fields": [
+        {
+          "id": "assetTag",
+          "type": "text",
+          "label": {
+            "en": "Asset Tag (Internal ID)",
+            "de": "Inventarnummer"
+          },
+          "required": true,
+          "colSpan": 4,
+          "validators": {
+            "pattern": "^AST-[0-9]{5}$"
+          },
+          "hint": {
+            "en": "Barcode / Tag format: AST-00000",
+            "de": "Format: AST-00000"
+          },
+          "table": {
+            "visible": true,
+            "isName": true
+          }
+        },
+        {
+          "id": "deviceType",
+          "type": "dropdown",
+          "label": {
+            "en": "Device Category",
+            "de": "Gerätekategorie"
+          },
+          "required": true,
+          "colSpan": 4,
+          "options": [
+            { "en": "Workstation / Laptop", "de": "Notebook / Arbeitsplatz" },
+            { "en": "Rack Server / Host", "de": "Server / Host" },
+            { "en": "Network Switch / Router", "de": "Netzwerk Switch / Router" },
+            { "en": "Mobile / Tablet", "de": "Mobilgerät / Tablet" }
+          ],
+          "table": {
+            "visible": true
+          }
+        },
+        {
+          "id": "manufacturer",
+          "type": "dropdown",
+          "label": {
+            "en": "Manufacturer / OEM",
+            "de": "Hersteller"
+          },
+          "required": true,
+          "colSpan": 4,
+          "options": [
+            { "en": "Apple Inc." },
+            { "en": "Dell Technologies" },
+            { "en": "Lenovo" },
+            { "en": "Cisco Systems" },
+            { "en": "Hewlett Packard Enterprise" }
+          ],
+          "table": {
+            "visible": true
+          }
+        },
+        {
+          "id": "modelName",
+          "type": "text",
+          "label": {
+            "en": "Hardware Model",
+            "de": "Modellbezeichnung"
+          },
+          "required": true,
+          "colSpan": 6
+        },
+        {
+          "id": "serialNumber",
+          "type": "text",
+          "label": {
+            "en": "OEM Serial Number",
+            "de": "Seriennummer"
+          },
+          "required": true,
+          "colSpan": 6,
+          "table": {
+            "visible": true
+          }
+        },
+        {
+          "id": "purchasePrice",
+          "type": "number",
+          "label": {
+            "en": "Capital Cost ($ / €)",
+            "de": "Anschaffungskosten (€)"
+          },
+          "colSpan": 6,
+          "validators": {
+            "min": 100,
+            "max": 100000
+          }
+        },
+        {
+          "id": "purchaseDate",
+          "type": "date",
+          "label": {
+            "en": "Acquisition Date",
+            "de": "Kaufdatum"
+          },
+          "colSpan": 6
+        }
+      ]
+    },
+    {
+      "id": "assignmentLifecycle",
+      "label": {
+        "en": "Assignment & Operational Status",
+        "de": "Zuweisung & Betriebsstatus"
+      },
+      "fields": [
+        {
+          "id": "operationalStatus",
+          "type": "dropdown",
+          "label": {
+            "en": "Lifecycle Status",
+            "de": "Status"
+          },
+          "required": true,
+          "colSpan": 6,
+          "options": [
+            { "en": "In Service / Deployed", "de": "Im Einsatz" },
+            { "en": "Spare / Inventory", "de": "Im Lager / Reserve" },
+            { "en": "Under Maintenance / RMA", "de": "In Reparatur" },
+            { "en": "Decommissioned / Retired", "de": "Ausgemustert" }
+          ],
+          "table": {
+            "visible": true
+          }
+        },
+        {
+          "id": "assignedEmployee",
+          "type": "text",
+          "label": {
+            "en": "Assigned Custodian / User",
+            "de": "Zugewiesener Benutzer"
+          },
+          "colSpan": 6,
+          "showWhen": {
+            "operationalStatus": "In Service / Deployed"
+          }
+        },
+        {
+          "id": "department",
+          "type": "dropdown",
+          "label": {
+            "en": "Cost Center / Department",
+            "de": "Kostenstelle / Abteilung"
+          },
+          "colSpan": 6,
+          "options": [
+            { "en": "Engineering & Product", "de": "Entwicklung & Produkt" },
+            { "en": "Infrastructure & SecOps", "de": "IT & Sicherheit" },
+            { "en": "Sales & Marketing", "de": "Vertrieb & Marketing" },
+            { "en": "Finance & Legal", "de": "Finanzen & Recht" }
+          ]
+        },
+        {
+          "id": "officeLocation",
+          "type": "text",
+          "label": {
+            "en": "Physical Location / Desk / Rack",
+            "de": "Standort / Arbeitsplatz / Rack"
+          },
+          "colSpan": 6
+        }
+      ]
+    },
+    {
+      "id": "decommissionTab",
+      "label": {
+        "en": "Decommissioning & Data Sanitization",
+        "de": "Ausmusterung & Datenlöschung"
+      },
+      "fields": [
+        {
+          "id": "sanitizationStandard",
+          "type": "dropdown",
+          "label": {
+            "en": "Data Wipe Standard (NIST / DoD)",
+            "de": "Löschstandard (NIST / BSI)"
+          },
+          "colSpan": 6,
+          "options": [
+            { "en": "NIST SP 800-88 Clear (Cryptographic Erase)" },
+            { "en": "NIST SP 800-88 Purge (Overwrite)" },
+            { "en": "Physical Shredding / Degaussing" }
+          ],
+          "showWhen": {
+            "operationalStatus": "Decommissioned / Retired"
+          }
+        },
+        {
+          "id": "sanitizationCertified",
+          "type": "boolean",
+          "label": {
+            "en": "Certified Destruction / Wipe Certificate on File",
+            "de": "Löschzertifikat liegt vor"
+          },
+          "colSpan": 6,
+          "showWhen": {
+            "operationalStatus": "Decommissioned / Retired"
+          }
+        },
+        {
+          "id": "retirementNotes",
+          "type": "textarea",
+          "label": {
+            "en": "Retirement Reason & Disposal Manifest",
+            "de": "Begründung & Entsorgungsnachweis"
+          },
+          "colSpan": 12,
+          "showWhen": {
+            "operationalStatus": "Decommissioned / Retired"
+          }
+        }
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "id": "rule_decommission_requires_wipe_cert",
+      "formConfigId": "itAssets",
+      "fieldId": "operationalStatus",
+      "conditions": [
+        {
+          "operator": "EQUAL",
+          "value": "Decommissioned / Retired",
+          "compareType": "static"
+        }
+      ],
+      "action": {
+        "type": "validation",
+        "value": "Decommissioned assets require documented retirement reason.",
+        "severity": "warning"
+      },
+      "targets": [
+        {
+          "id": "retirementNotes",
+          "type": "field"
+        }
+      ],
+      "enabled": true,
+      "priority": 1
+    }
+  ]
+}

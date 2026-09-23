@@ -20,6 +20,12 @@ import {
   PEOPLE_RECORDS,
   VISIT_NOTES_RECORDS,
 } from './seed-records';
+import {
+  PATIENT_INTAKE_CONFIG,
+  PATIENT_INTAKE_RECORDS,
+  IT_ASSETS_CONFIG,
+  IT_ASSETS_RECORDS,
+} from './seed-enterprise';
 
 const CONFIGS_KEY = 'de_demo_configs';
 const recordsKey = (entity: string) => `de_demo_records_${entity}`;
@@ -249,6 +255,8 @@ export class LocalStore {
     // in this file; editing test_data.json instead would put the eight existing entities and
     // every spec that asserts on them at risk for nothing.
     mergedMap.set(EXTENSIONS_CONFIG.entity, EXTENSIONS_CONFIG);
+    mergedMap.set(PATIENT_INTAKE_CONFIG.entity, PATIENT_INTAKE_CONFIG);
+    mergedMap.set(IT_ASSETS_CONFIG.entity, IT_ASSETS_CONFIG);
 
     // User modifications take precedence
     for (const ex of existing) {
@@ -272,6 +280,8 @@ export class LocalStore {
       ['complexFullTest', COMPLEX_FULL_TEST_RECORDS],
       ['insuranceClaims', INSURANCE_CLAIMS_RECORDS],
       ['extensions', EXTENSIONS_RECORDS],
+      ['patientIntake', PATIENT_INTAKE_RECORDS],
+      ['itAssets', IT_ASSETS_RECORDS],
     ];
     for (const [entity, records] of seeds) {
       if (!localStorage.getItem(recordsKey(entity))) this.write(recordsKey(entity), records);

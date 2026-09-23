@@ -43,9 +43,14 @@ const PORT = Number(process.env['IMPORT_PORT'] ?? 4300);
  *
  * The order matters: the demo's own configs win, exactly as they do in `ensureSeed`.
  */
-const DEMO_CONFIGS = ['clients', 'employees', 'orders', 'extensions'].map(name =>
-  read(`src/app/mock/configs/${name}.json`),
-);
+const DEMO_CONFIGS = [
+  'clients',
+  'employees',
+  'orders',
+  'extensions',
+  'patient-intake',
+  'it-assets',
+].map(name => read(`src/app/mock/configs/${name}.json`));
 
 const configs = Object.fromEntries(
   [...read('../../test_data.json'), ...DEMO_CONFIGS].map(config => [config.entity, config]),

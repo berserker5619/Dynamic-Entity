@@ -1,0 +1,381 @@
+{
+  "entity": "patientIntake",
+  "name": {
+    "en": "Patient Intake & Clinical Triage",
+    "de": "Patientenaufnahme & Triage"
+  },
+  "version": 1,
+  "permissions": {
+    "view": ["admin", "manager", "IT_SUPPORT", "viewer"],
+    "edit": ["admin", "manager"],
+    "delete": ["admin"],
+    "detailedView": ["admin", "manager", "IT_SUPPORT"]
+  },
+  "tabs": [
+    {
+      "id": "demographics",
+      "label": {
+        "en": "Demographics & Vitals",
+        "de": "Stammdaten & Vitalwerte"
+      },
+      "isPrimaryTab": true,
+      "fields": [
+        {
+          "id": "fullName",
+          "type": "text",
+          "label": {
+            "en": "Full Name",
+            "de": "Vollständiger Name"
+          },
+          "required": true,
+          "colSpan": 6,
+          "table": {
+            "visible": true,
+            "isName": true
+          }
+        },
+        {
+          "id": "dateOfBirth",
+          "type": "date",
+          "label": {
+            "en": "Date of Birth",
+            "de": "Geburtsdatum"
+          },
+          "required": true,
+          "colSpan": 6,
+          "table": {
+            "visible": true
+          }
+        },
+        {
+          "id": "gender",
+          "type": "dropdown",
+          "label": {
+            "en": "Gender",
+            "de": "Geschlecht"
+          },
+          "colSpan": 4,
+          "options": [
+            { "en": "Female", "de": "Weiblich" },
+            { "en": "Male", "de": "Männlich" },
+            { "en": "Non-Binary", "de": "Divers" },
+            { "en": "Prefer not to say", "de": "Keine Angabe" }
+          ],
+          "table": {
+            "visible": true
+          }
+        },
+        {
+          "id": "bloodType",
+          "type": "dropdown",
+          "label": {
+            "en": "Blood Type",
+            "de": "Blutgruppe"
+          },
+          "colSpan": 4,
+          "options": [
+            { "en": "A+" },
+            { "en": "A-" },
+            { "en": "B+" },
+            { "en": "B-" },
+            { "en": "AB+" },
+            { "en": "AB-" },
+            { "en": "O+" },
+            { "en": "O-" }
+          ]
+        },
+        {
+          "id": "ssn",
+          "type": "text",
+          "label": {
+            "en": "SSN / National ID",
+            "de": "Sozialversicherungsnummer"
+          },
+          "colSpan": 4,
+          "maskData": true,
+          "validators": {
+            "pattern": "^[0-9]{3}-[0-9]{2}-[0-9]{4}$"
+          },
+          "hint": {
+            "en": "Format: 000-00-0000 (Protected Health Info)",
+            "de": "Format: 000-00-0000"
+          },
+          "table": {
+            "visible": true
+          }
+        },
+        {
+          "id": "triageLevel",
+          "type": "dropdown",
+          "label": {
+            "en": "Triage Acuity",
+            "de": "Triage-Dringlichkeit"
+          },
+          "required": true,
+          "colSpan": 4,
+          "options": [
+            { "en": "1 - Immediate / Resuscitation", "de": "1 - Sofort / Wiederbelebung" },
+            { "en": "2 - Emergent", "de": "2 - Sehr dringend" },
+            { "en": "3 - Urgent", "de": "3 - Dringend" },
+            { "en": "4 - Less Urgent", "de": "4 - Normal" },
+            { "en": "5 - Non-Urgent", "de": "5 - Nicht dringend" }
+          ],
+          "table": {
+            "visible": true
+          }
+        },
+        {
+          "id": "systolicBP",
+          "type": "number",
+          "label": {
+            "en": "Systolic BP (mmHg)",
+            "de": "Systolischer Blutdruck (mmHg)"
+          },
+          "colSpan": 4,
+          "validators": {
+            "min": 60,
+            "max": 260
+          }
+        },
+        {
+          "id": "heartRate",
+          "type": "number",
+          "label": {
+            "en": "Heart Rate (bpm)",
+            "de": "Puls (bpm)"
+          },
+          "colSpan": 4,
+          "validators": {
+            "min": 30,
+            "max": 240
+          }
+        },
+        {
+          "id": "emergencyContact",
+          "type": "text",
+          "label": {
+            "en": "Emergency Contact & Phone",
+            "de": "Notfallkontakt & Telefon"
+          },
+          "colSpan": 12,
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "clinicalHistory",
+      "label": {
+        "en": "Clinical History & Allergies",
+        "de": "Anamnese & Allergien"
+      },
+      "fields": [
+        {
+          "id": "hasAllergies",
+          "type": "boolean",
+          "label": {
+            "en": "Known Drug or Environmental Allergies",
+            "de": "Bekannte Medikamenten- oder Umweltallergien"
+          },
+          "colSpan": 6
+        },
+        {
+          "id": "allergySeverity",
+          "type": "dropdown",
+          "label": {
+            "en": "Allergy Severity Level",
+            "de": "Schweregrad der Allergie"
+          },
+          "colSpan": 6,
+          "options": [
+            { "en": "Mild (Rash / Sneezing)", "de": "Leicht (Ausschlag)" },
+            { "en": "Moderate (Hives / Swelling)", "de": "Mittel (Schwellung)" },
+            { "en": "Severe / Anaphylaxis Risk", "de": "Schwer / Anaphylaxie-Risiko" }
+          ],
+          "showWhen": {
+            "hasAllergies": true
+          }
+        },
+        {
+          "id": "allergyDetails",
+          "type": "textarea",
+          "label": {
+            "en": "Allergen Substances & Adverse Reactions",
+            "de": "Allergene Substanzen & Reaktionen"
+          },
+          "colSpan": 12,
+          "showWhen": {
+            "hasAllergies": true
+          },
+          "hint": {
+            "en": "List specific medications (e.g. Penicillin, Sulfa) or latex/food allergies.",
+            "de": "Genaue Wirkstoffe oder Substanzen angeben."
+          }
+        },
+        {
+          "id": "chiefComplaint",
+          "type": "textarea",
+          "label": {
+            "en": "Chief Medical Complaint",
+            "de": "Hauptbeschwerde"
+          },
+          "required": true,
+          "colSpan": 12
+        },
+        {
+          "id": "currentMedications",
+          "type": "textarea",
+          "label": {
+            "en": "Current Active Prescriptions & Dosages",
+            "de": "Aktuelle Dauermedikation & Dosierung"
+          },
+          "colSpan": 12
+        }
+      ]
+    },
+    {
+      "id": "billingInsurance",
+      "label": {
+        "en": "Insurance & Coverage",
+        "de": "Versicherung & Abrechnung"
+      },
+      "fields": [
+        {
+          "id": "insuranceType",
+          "type": "dropdown",
+          "label": {
+            "en": "Coverage Type",
+            "de": "Versicherungsart"
+          },
+          "required": true,
+          "colSpan": 6,
+          "options": [
+            { "en": "Commercial / Private", "de": "Privatversicherung" },
+            { "en": "Statutory / Public (GKV)", "de": "Gesetzlich (GKV)" },
+            { "en": "Self-Pay / Uninsured", "de": "Selbstzahler" }
+          ],
+          "table": {
+            "visible": true
+          }
+        },
+        {
+          "id": "insuranceProvider",
+          "type": "text",
+          "label": {
+            "en": "Insurance Provider / Carrier",
+            "de": "Krankenkasse / Versicherungsträger"
+          },
+          "colSpan": 6
+        },
+        {
+          "id": "policyNumber",
+          "type": "text",
+          "label": {
+            "en": "Policy / Member Number",
+            "de": "Versichertennummer"
+          },
+          "colSpan": 6,
+          "validators": {
+            "pattern": "^[A-Z0-9-]{6,15}$"
+          }
+        },
+        {
+          "id": "copayAmount",
+          "type": "number",
+          "label": {
+            "en": "Applicable Co-Pay ($ / €)",
+            "de": "Zuzahlung (€)"
+          },
+          "colSpan": 6,
+          "validators": {
+            "min": 0,
+            "max": 500
+          }
+        }
+      ]
+    },
+    {
+      "id": "consentSignoff",
+      "label": {
+        "en": "Consent & Authorization",
+        "de": "Einwilligung & Freigabe"
+      },
+      "fields": [
+        {
+          "id": "hipaaConsent",
+          "type": "boolean",
+          "label": {
+            "en": "HIPAA / GDPR Data Processing Acknowledged",
+            "de": "Datenschutzerklärung (DSGVO) zur Kenntnis genommen"
+          },
+          "required": true,
+          "colSpan": 12
+        },
+        {
+          "id": "treatmentConsent",
+          "type": "boolean",
+          "label": {
+            "en": "Consent for Examination & Diagnostic Testing",
+            "de": "Einwilligung in Untersuchung und Diagnostik"
+          },
+          "required": true,
+          "colSpan": 12
+        },
+        {
+          "id": "admittingClinician",
+          "type": "text",
+          "label": {
+            "en": "Admitting Clinician / Triage Nurse",
+            "de": "Aufnehmende Fachkraft / Pflegekraft"
+          },
+          "required": true,
+          "colSpan": 6
+        },
+        {
+          "id": "intakeStatus",
+          "type": "dropdown",
+          "label": {
+            "en": "Admission Status",
+            "de": "Aufnahmestatus"
+          },
+          "colSpan": 6,
+          "options": [
+            { "en": "Waiting in Triage", "de": "Wartebereich" },
+            { "en": "Assigned to Treatment Bay", "de": "Behandlungszimmer" },
+            { "en": "Admitted to Ward", "de": "Stationär aufgenommen" },
+            { "en": "Discharged", "de": "Entlassen" }
+          ],
+          "table": {
+            "visible": true
+          }
+        }
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "id": "rule_immediate_triage_alert",
+      "formConfigId": "patientIntake",
+      "fieldId": "triageLevel",
+      "conditions": [
+        {
+          "operator": "EQUAL",
+          "value": "1 - Immediate / Resuscitation",
+          "compareType": "static"
+        }
+      ],
+      "action": {
+        "type": "validation",
+        "value": "Level 1 Resuscitation requires immediate physician dispatch and documented vital sign collapse.",
+        "severity": "warning"
+      },
+      "targets": [
+        {
+          "id": "chiefComplaint",
+          "type": "field"
+        }
+      ],
+      "enabled": true,
+      "priority": 1
+    }
+  ]
+}

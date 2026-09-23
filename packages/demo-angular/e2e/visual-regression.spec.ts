@@ -131,47 +131,67 @@ test.describe('Dynamic Entity E2E - Visual Regression Testing', () => {
     errorMonitor.assertNoErrors();
   });
 
-  test('toggles theme to dark mode and back', async ({ page }) => {
+  test('matches visual snapshot for Dark Mode Records List view', async ({ page }) => {
     test.setTimeout(60000);
     const errorMonitor = capturePageErrors(page);
 
     await gotoDemo(page);
-    const darkBtn = page.getByTestId('theme-dark');
-    await safeClick(darkBtn);
+    await safeClick(page.getByTestId('theme-dark'));
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
-    const lightBtn = page.getByTestId('theme-light');
-    await safeClick(lightBtn);
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    const recordList = page.locator('.record-list');
+    await expect(recordList).toBeVisible();
+
+    await page.evaluate(() => document.fonts.ready);
+
+    await expect(recordList).toHaveScreenshot('dark-mode-record-list.png', {
+      maxDiffPixelRatio: 0.05,
+      animations: 'disabled',
+      caret: 'hide',
+    });
 
     errorMonitor.assertNoErrors();
   });
 
-  test('opens live JSON inspector drawer and switches tabs', async ({ page }) => {
+  test('matches visual snapshot for Dark Mode Form view', async ({ page }) => {
     test.setTimeout(60000);
     const errorMonitor = capturePageErrors(page);
 
     await gotoDemo(page);
-    const inspectorBtn = page.getByTestId('json-inspector-btn');
-    await safeClick(inspectorBtn);
+    await safeClick(page.getByTestId('theme-dark'));
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
+    await safeClick(page.getByRole('button', { name: '+ Add Client' }));
+    const formWrapper = page.locator('.form-wrapper');
+    await expect(formWrapper).toBeVisible();
+
+    await page.evaluate(() => document.fonts.ready);
+
+    await expect(formWrapper).toHaveScreenshot('dark-mode-form.png', {
+      maxDiffPixelRatio: 0.05,
+      animations: 'disabled',
+      caret: 'hide',
+    });
+
+    errorMonitor.assertNoErrors();
+  });
+
+  test('matches visual snapshot for Live JSON Inspector drawer', async ({ page }) => {
+    test.setTimeout(60000);
+    const errorMonitor = capturePageErrors(page);
+
+    await gotoDemo(page);
+    await safeClick(page.getByTestId('json-inspector-btn'));
     const drawer = page.getByTestId('json-inspector-drawer');
     await expect(drawer).toBeVisible();
 
-    const codeContent = page.getByTestId('json-inspector-content');
-    await expect(codeContent).toContainText('"entity": "clients"');
+    await page.evaluate(() => document.fonts.ready);
 
-    // Switch to record tab
-    await safeClick(page.getByTestId('json-tab-record'));
-    await expect(page.getByTestId('json-tab-record')).toHaveClass(/json-tab-btn--active/);
-
-    // Switch back to schema tab
-    await safeClick(page.getByTestId('json-tab-schema'));
-    await expect(page.getByTestId('json-tab-schema')).toHaveClass(/json-tab-btn--active/);
-
-    // Close drawer via close button
-    await safeClick(page.getByTestId('json-close-btn'));
-    await expect(drawer).not.toBeVisible();
+    await expect(drawer).toHaveScreenshot('json-inspector-drawer.png', {
+      maxDiffPixelRatio: 0.05,
+      animations: 'disabled',
+      caret: 'hide',
+    });
 
     errorMonitor.assertNoErrors();
   });
