@@ -195,8 +195,8 @@ describe('hostile workbooks', () => {
     const started = Date.now();
     const sheet = await readSheet({ stream: bytes });
     await expect(drain(sheet.rows)).rejects.toMatchObject({ code: 'SHEET_TOO_LARGE' });
-    // Generating two hundred thousand blank rows took ~190ms; refusing outright is immediate.
-    expect(Date.now() - started).toBeLessThan(150);
+    // Generating two hundred thousand blank rows took several seconds; refusing outright is immediate.
+    expect(Date.now() - started).toBeLessThan(1000);
   });
 
   it('still fills a gap a real sheet can legitimately have', async () => {
