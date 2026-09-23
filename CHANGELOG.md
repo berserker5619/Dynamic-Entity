@@ -8,6 +8,18 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.0.2]
+
+### Added
+- **Dark Mode Theme Switcher (`Light` / `Dark` / `Auto`)**: Dynamic OS theme sync via `prefers-color-scheme: dark` media query listeners and `localStorage` persistence (`demo-theme`). Added curated dark theme palette tokens for `.ngx-form` and `.ngx-record-editor`.
+- **Live JSON Schema & Record Data Inspector**: Integrated slide-over drawer in the demo app with real-time formatted preview of `EntityFormConfig` and current `VersionedRecord` data, 1-click clipboard copy with animated state feedback, and entity-specific `.json` file download.
+
+### Fixed
+- **WCAG AA Color Contrast**: Adjusted dark mode token pairings (`--ngx-color-accent: #818cf8; --ngx-color-accent-text: #090d16;`) to guarantee >= 6:1 contrast ratio across buttons, active tab headings, and navigation links.
+- **Form Builder Canvas Theme Isolation**: Preserved light palette on the Angular Material builder canvas and live form preview, preventing dark theme text bleed on white surfaces and passing automated light/dark contrast audit sweeps with 0 violations.
+
+---
+
 ## [2.0.1]
 
 ### Fixed

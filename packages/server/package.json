@@ -1,6 +1,6 @@
 {
   "name": "@dynamic-entity/server",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Streaming spreadsheet import for @dynamic-entity/core, with an Express adapter.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -28,11 +28,11 @@
     "test:coverage": "jest --coverage"
   },
   "peerDependencies": {
-    "@dynamic-entity/core": "^2.0.1",
+    "@dynamic-entity/core": "^2.0.2",
     "express": "^4.18.0 || ^5.0.0"
   },
   "devDependencies": {
-    "@dynamic-entity/core": "^2.0.1",
+    "@dynamic-entity/core": "^2.0.2",
     "@types/busboy": "^1.5.4",
     "@types/express": "^5.0.6",
     "@types/jest": "^29.5.12",
