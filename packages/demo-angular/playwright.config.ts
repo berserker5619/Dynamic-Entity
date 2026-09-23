@@ -127,6 +127,7 @@ export default defineConfig({
         // column here — which is where a translated button first overflows its own row.
         /ui-text-i18n-widgets\.spec\.ts/,
         /ui-ux-enhancements\.spec\.ts/,
+        /theme-and-json-inspector\.spec\.ts/,
       ],
     },
   ],
