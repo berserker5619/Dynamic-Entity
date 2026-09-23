@@ -509,4 +509,143 @@ describe('FieldInspectorComponent — moving a field between tabs', () => {
     api().moveToTab(selected(), '');
     expect(store.config()).toBe(before);
   });
+
+  describe('validation pattern playground', () => {
+    let hostEl: HTMLElement;
+
+    beforeEach(() => {
+      hostEl = fixture.nativeElement as HTMLElement;
+      store.load({
+        entity: 'contacts',
+        tabs: [
+          {
+            id: 'main',
+            label: { en: 'Main' },
+            fields: [
+              {
+                id: 'username',
+                type: 'text',
+                label: { en: 'Username' },
+              },
+            ],
+          },
+        ],
+      });
+      fixture.detectChanges();
+    });
+
+    it('renders the pattern input and playground for text-capable fields', () => {
+      const playground = hostEl.querySelector('[data-testid="pattern-playground"]');
+      expect(playground).toBeTruthy();
+
+      const patternInput = hostEl.querySelector('[data-testid="field-pattern-input"]') as HTMLInputElement;
+      expect(patternInput).toBeTruthy();
+    });
+
+    it('applies a preset pattern when clicked', () => {
+      const presetBtn = hostEl.querySelector('[data-testid="preset-alphanumeric"]') as HTMLButtonElement;
+      expect(presetBtn).toBeTruthy();
+
+      presetBtn.click();
+      fixture.detectChanges();
+
+      const field = store.fields().find(f => f.id === 'username');
+      expect(field?.validators?.pattern).toBe('^[a-zA-Z0-9]+$');
+    });
+
+    it('interactively evaluates test samples against the pattern', () => {
+      const component = fixture.componentInstance as any;
+      store.setPatternValidator(store.fields()[0].id, '^[A-Z][0-9]{3}$');
+      fixture.detectChanges();
+
+      // Empty sample -> idle
+      component.testSample.set('');
+      fixture.detectChanges();
+      expect(component.regexEvaluation().status).toBe('idle');
+
+      // Mismatch
+      component.testSample.set('abc');
+      fixture.detectChanges();
+      expect(component.regexEvaluation().status).toBe('no-match');
+
+      // Match
+      component.testSample.set('A123');
+      fixture.detectChanges();
+      expect(component.regexEvaluation().status).toBe('match');
+
+      // Syntax error
+      store.setPatternValidator(store.fields()[0].id, '[');
+      fixture.detectChanges();
+      expect(component.regexEvaluation().status).toBe('invalid');
+    });
+  });
+
+  describe('field dependencies section', () => {
+    let hostEl: HTMLElement;
+
+    beforeEach(() => {
+      hostEl = fixture.nativeElement as HTMLElement;
+      store.load(
+        {
+          entity: 'orders',
+          tabs: [
+            {
+              id: 'main',
+              label: { en: 'Main' },
+              fields: [
+                {
+                  id: 'isExpress',
+                  type: 'boolean',
+                  label: { en: 'Express Delivery' },
+                },
+                {
+                  id: 'deliveryTime',
+                  type: 'text',
+                  label: { en: 'Delivery Time' },
+                  showWhen: { isExpress: true },
+                },
+              ],
+            },
+          ],
+        },
+        [
+          {
+            id: 'r1',
+            formConfigId: 'orders',
+            fieldId: 'isExpress',
+            action: { type: 'visibility', value: true },
+            conditions: [{ operator: 'EQUAL', compareType: 'value', value: true }],
+            targets: [{ id: 'deliveryTime', type: 'field' }],
+            enabled: true,
+            priority: 1,
+          },
+        ],
+      );
+      fixture.detectChanges();
+    });
+
+    it('shows outgoing dependencies on the source field', () => {
+      store.selectField('isExpress');
+      fixture.detectChanges();
+
+      const component = fixture.componentInstance as any;
+      expect(component.outgoingDependencies().length).toBeGreaterThan(0);
+      expect(component.incomingDependencies().length).toBe(0);
+
+      const outgoing = hostEl.querySelector('[data-testid="outgoing-dependencies"]');
+      expect(outgoing?.textContent).toContain('Delivery Time');
+    });
+
+    it('shows incoming dependencies on the target field', () => {
+      store.selectField('deliveryTime');
+      fixture.detectChanges();
+
+      const component = fixture.componentInstance as any;
+      expect(component.incomingDependencies().length).toBeGreaterThan(0);
+      expect(component.outgoingDependencies().length).toBe(0);
+
+      const incoming = hostEl.querySelector('[data-testid="incoming-dependencies"]');
+      expect(incoming?.textContent).toContain('Express Delivery');
+    });
+  });
 });

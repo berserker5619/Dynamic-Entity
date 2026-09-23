@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -14,6 +14,7 @@ import { resolveLabel, resolveOptionLabel, toRefToken } from '@dynamic-entity/co
 import { fieldPathOptions, withExistingOptions, type FieldPathOption } from '../field-path-options';
 import { BuilderStore } from '../builder-store.service';
 import { getFieldTypeMeta, type FieldTypeMeta } from '../field-catalog';
+import { computeRuleDependencies, type RuleDependencyEdge } from '../rule-dependencies';
 import { EntityReferenceConfigComponent } from './entity-reference-config.component';
 import { FieldRulesListComponent } from './field-rules-list.component';
 import { ReferencedFieldConfigComponent } from './referenced-field-config.component';
@@ -81,6 +82,92 @@ import { BuilderTextService } from '../builder-text';
         display: flex;
         gap: 6px;
         align-items: center;
+      }
+      .deb-pattern-box {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 8px;
+        padding: 12px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+      }
+      .deb-pattern-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .deb-pattern-status--match {
+        background: #dcfce7;
+        color: #15803d;
+      }
+      .deb-pattern-status--no-match {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+      .deb-pattern-status--invalid {
+        background: #fef3c7;
+        color: #b45309;
+      }
+      .deb-pattern-status--idle,
+      .deb-pattern-status--empty {
+        background: #f1f5f9;
+        color: #64748b;
+      }
+      .deb-pattern-presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+      }
+      .deb-preset-btn {
+        padding: 2px 8px;
+        border-radius: 4px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        font-size: 11px;
+        color: #334155;
+        cursor: pointer;
+        transition: background 0.1s ease;
+      }
+      .deb-preset-btn:hover {
+        background: #e2e8f0;
+      }
+      .deb-dep-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 4px;
+        margin-bottom: 12px;
+      }
+      .deb-dep-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 6px 10px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+      }
+      .deb-dep-info {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      .deb-dep-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: #0f172a;
+      }
+      .deb-dep-detail {
+        font-size: 11px;
+        color: #64748b;
       }
     `,
   ],
@@ -290,5 +377,77 @@ export class FieldInspectorComponent {
     if (value === null) return 'null';
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
+  }
+
+  // ─── Pattern Playground ────────────────────────────────────────────────────
+
+  protected readonly testSample = signal<string>('');
+
+  protected readonly regexEvaluation = computed<{
+    status: 'empty' | 'idle' | 'match' | 'no-match' | 'invalid';
+    error?: string;
+  }>(() => {
+    const f = this.field();
+    const pattern = f?.validators?.pattern?.trim();
+    if (!pattern) return { status: 'empty' };
+
+    let regex: RegExp;
+    try {
+      regex = new RegExp(pattern);
+    } catch (e) {
+      return { status: 'invalid', error: (e as Error).message };
+    }
+
+    const sample = this.testSample();
+    if (!sample) return { status: 'idle' };
+
+    return { status: regex.test(sample) ? 'match' : 'no-match' };
+  });
+
+  protected readonly patternPresets = [
+    { label: 'Alpha', pattern: '^[a-zA-Z]+$' },
+    { label: 'Alphanumeric', pattern: '^[a-zA-Z0-9]+$' },
+    { label: 'Digits', pattern: '^\\d+$' },
+    { label: 'Postal Code', pattern: '^\\d{5}(-\\d{4})?$' },
+    { label: 'Phone', pattern: '^\\+?[1-9]\\d{1,14}$' },
+    { label: 'Slug', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' },
+  ];
+
+  protected supportsPattern(type: string): boolean {
+    return ['text', 'textarea', 'markdown', 'email', 'password'].includes(type);
+  }
+
+  protected applyPreset(field: NestedFieldConfig, pattern: string): void {
+    this.store.setPatternValidator(this.store.keyOf(field), pattern);
+  }
+
+  // ─── Dependencies ──────────────────────────────────────────────────────────
+
+  protected readonly allDependencies = computed(() =>
+    computeRuleDependencies(this.store.config(), this.store.rules(), this.lang()),
+  );
+
+  protected readonly incomingDependencies = computed<RuleDependencyEdge[]>(() => {
+    const f = this.field();
+    if (!f) return [];
+    const key = this.store.keyOf(f);
+    const id = f.id;
+    return this.allDependencies().edges.filter(
+      e => e.targetKey === key || e.targetKey === id,
+    );
+  });
+
+  protected readonly outgoingDependencies = computed<RuleDependencyEdge[]>(() => {
+    const f = this.field();
+    if (!f) return [];
+    const key = this.store.keyOf(f);
+    const id = f.id;
+    return this.allDependencies().edges.filter(
+      e => e.sourceKey === key || e.sourceKey === id,
+    );
+  });
+
+  protected selectField(key: string): void {
+    if (key) this.store.selectField(key);
   }
 }

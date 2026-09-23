@@ -10,6 +10,7 @@ export * from './lib/components/field-rules-list.component';
 export * from './lib/components/entity-reference-config.component';
 export * from './lib/components/entity-builder-canvas.component';
 export * from './lib/components/entity-builder-tree-node.component';
+export * from './lib/components/rule-dependency-graph.component';
 
 // UI text for the builder's own chrome
 export * from './lib/builder-text';
@@ -20,6 +21,7 @@ export * from './lib/builder-store.service';
 // Catalog + helpers
 export * from './lib/field-catalog';
 export * from './lib/field-path-options';
+export * from './lib/rule-dependencies';
 
 // Re-export the core types a consumer of the builder needs
 export type {

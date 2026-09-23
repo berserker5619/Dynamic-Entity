@@ -135,8 +135,9 @@
     </details>
 
     <!-- Validators -->
+    <!-- Validators -->
     @if (meta(); as m) {
-      @if (m.flagValidators.length || m.paramValidators.length) {
+      @if (m.flagValidators.length || m.paramValidators.length || supportsPattern(f.type) || f.validators?.pattern) {
         <details class="deb-inspector__section" open>
           <summary class="deb-inspector__summary">
             {{ ui.text('sectionValidation') }}
@@ -171,6 +172,76 @@
                     />
                   </mat-form-field>
                 }
+              </div>
+            }
+
+            @if (supportsPattern(f.type) || f.validators?.pattern) {
+              <div class="deb-pattern-box" data-testid="pattern-playground">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+                  <mat-label>{{ ui.text('pattern') }}</mat-label>
+                  <input
+                    matInput
+                    data-testid="field-pattern-input"
+                    [ngModel]="f.validators?.pattern ?? ''"
+                    (ngModelChange)="store.setPatternValidator(store.keyOf(f), $event)"
+                  />
+                  <mat-hint>{{ ui.text('patternHint') }}</mat-hint>
+                </mat-form-field>
+
+                <div class="deb-pattern-presets">
+                  <span class="deb-section-title">{{ ui.text('quickPresets') }}:</span>
+                  @for (preset of patternPresets; track preset.label) {
+                    <button
+                      type="button"
+                      class="deb-preset-btn"
+                      [attr.data-testid]="'preset-' + preset.label.toLowerCase()"
+                      (click)="applyPreset(f, preset.pattern)"
+                    >
+                      {{ preset.label }}
+                    </button>
+                  }
+                </div>
+
+                <div class="deb-row deb-row--split">
+                  <span class="deb-section-title">{{ ui.text('testPattern') }}</span>
+                  <div
+                    class="deb-pattern-status"
+                    [class.deb-pattern-status--match]="regexEvaluation().status === 'match'"
+                    [class.deb-pattern-status--no-match]="regexEvaluation().status === 'no-match'"
+                    [class.deb-pattern-status--invalid]="regexEvaluation().status === 'invalid'"
+                    [class.deb-pattern-status--idle]="regexEvaluation().status === 'idle'"
+                    [class.deb-pattern-status--empty]="regexEvaluation().status === 'empty'"
+                    data-testid="regex-test-status"
+                  >
+                    @switch (regexEvaluation().status) {
+                      @case ('match') {
+                        <mat-icon>check_circle</mat-icon> {{ ui.text('patternMatch') }}
+                      }
+                      @case ('no-match') {
+                        <mat-icon>cancel</mat-icon> {{ ui.text('patternNoMatch') }}
+                      }
+                      @case ('invalid') {
+                        <mat-icon>error</mat-icon> {{ ui.text('patternInvalid') }}
+                      }
+                      @case ('idle') {
+                        <mat-icon>edit_note</mat-icon> {{ ui.text('testPatternPlaceholder') }}
+                      }
+                      @case ('empty') {
+                        <mat-icon>info</mat-icon> {{ ui.text('patternEmptyPrompt') }}
+                      }
+                    }
+                  </div>
+                </div>
+
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+                  <input
+                    matInput
+                    data-testid="regex-test-input"
+                    [placeholder]="ui.text('testPatternPlaceholder')"
+                    [ngModel]="testSample()"
+                    (ngModelChange)="testSample.set($event)"
+                  />
+                </mat-form-field>
               </div>
             }
           </div>
@@ -492,6 +563,70 @@
       </summary>
       <div class="deb-inspector__body">
         <ngx-field-rules-list />
+      </div>
+    </details>
+
+    <!-- Field Dependencies Visualizer -->
+    <details
+      class="deb-inspector__section"
+      [attr.open]="incomingDependencies().length || outgoingDependencies().length ? '' : null"
+      data-testid="section-dependencies"
+    >
+      <summary class="deb-inspector__summary">
+        {{ ui.text('sectionDependencies') }}
+        @if (incomingDependencies().length + outgoingDependencies().length; as count) {
+          <span class="deb-inspector__count" data-testid="dependencies-count">{{ count }}</span>
+        }
+        <mat-icon class="deb-inspector__chevron">expand_more</mat-icon>
+      </summary>
+      <div class="deb-inspector__body">
+        @if (incomingDependencies().length) {
+          <span class="deb-section-title">{{ ui.text('dependsOn') }} ({{ incomingDependencies().length }})</span>
+          <div class="deb-dep-list" data-testid="incoming-dependencies">
+            @for (dep of incomingDependencies(); track dep.id) {
+              <div class="deb-dep-row">
+                <div class="deb-dep-info">
+                  <span class="deb-dep-name">{{ dep.sourceLabel }}</span>
+                  <span class="deb-dep-detail">{{ dep.description }}</span>
+                </div>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [matTooltip]="ui.text('jumpToField', { field: dep.sourceLabel })"
+                  (click)="selectField(dep.sourceKey)"
+                >
+                  <mat-icon>arrow_back</mat-icon> {{ ui.text('jumpToField', { field: dep.sourceLabel }) }}
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+        @if (outgoingDependencies().length) {
+          <span class="deb-section-title">{{ ui.text('affects') }} ({{ outgoingDependencies().length }})</span>
+          <div class="deb-dep-list" data-testid="outgoing-dependencies">
+            @for (dep of outgoingDependencies(); track dep.id) {
+              <div class="deb-dep-row">
+                <div class="deb-dep-info">
+                  <span class="deb-dep-name">{{ dep.targetLabel }}</span>
+                  <span class="deb-dep-detail">{{ dep.description }}</span>
+                </div>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [matTooltip]="ui.text('jumpToField', { field: dep.targetLabel })"
+                  (click)="selectField(dep.targetKey)"
+                >
+                  <mat-icon>arrow_forward</mat-icon> {{ ui.text('jumpToField', { field: dep.targetLabel }) }}
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+        @if (!incomingDependencies().length && !outgoingDependencies().length) {
+          <p class="deb-hint" data-testid="no-field-dependencies">{{ ui.text('noDependencies') }}</p>
+        }
       </div>
     </details>
 

@@ -889,6 +889,20 @@ export class BuilderStore {
     });
   }
 
+  setPatternValidator(id: string, pattern: string | null): void {
+    this.mutate(draft => {
+      const field = this.findFieldInTabs(draft.tabs, id);
+      if (!field) return;
+      field.validators = field.validators ?? {};
+      const trimmed = pattern?.trim();
+      if (!trimmed) {
+        delete field.validators.pattern;
+      } else {
+        field.validators.pattern = trimmed;
+      }
+    });
+  }
+
   getParamValidator(field: NestedFieldConfig, validator: ParamValidator): number | null {
     const val = field.validators?.[validator];
     return typeof val === 'number' ? val : null;

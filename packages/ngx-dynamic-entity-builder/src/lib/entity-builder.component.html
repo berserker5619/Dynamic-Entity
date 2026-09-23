@@ -93,6 +93,18 @@
   </button>
 
   <button
+    mat-button
+    type="button"
+    data-testid="builder-rule-graph"
+    (click)="openRuleGraph()"
+    [matTooltip]="ui.text('ruleGraph')"
+    [attr.aria-label]="ui.text('ruleGraph')"
+  >
+    <mat-icon>hub</mat-icon>
+    <span class="deb-toolbar__btn-label">{{ ui.text('ruleGraph') }}</span>
+  </button>
+
+  <button
     mat-icon-button
     type="button"
     data-testid="toggle-fields"
@@ -454,3 +466,10 @@
     <pre class="deb-json">{{ json }}</pre>
   </mat-expansion-panel>
 </div>
+
+@if (ruleGraphOpen()) {
+  <ngx-rule-dependency-graph
+    (dismiss)="closeRuleGraph()"
+    (selectField)="onSelectFieldFromGraph($event)"
+  />
+}

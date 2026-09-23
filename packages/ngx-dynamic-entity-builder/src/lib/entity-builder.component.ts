@@ -12,6 +12,7 @@ import {
   effect,
   inject,
   model,
+  signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -38,6 +39,7 @@ import { FieldInspectorComponent } from './components/field-inspector.component'
 import { FieldPaletteComponent } from './components/field-palette.component';
 import { TabManagerComponent } from './components/tab-manager.component';
 import { EntityBuilderCanvasComponent } from './components/entity-builder-canvas.component';
+import { RuleDependencyGraphComponent } from './components/rule-dependency-graph.component';
 import { BuilderTextService } from './builder-text';
 
 type RbacAction = 'view' | 'edit' | 'delete';
@@ -74,6 +76,7 @@ const EMPTY_ROLES: readonly string[] = Object.freeze([]);
     TabManagerComponent,
     FieldInspectorComponent,
     EntityBuilderCanvasComponent,
+    RuleDependencyGraphComponent,
   ],
   templateUrl: './entity-builder.component.html',
   styleUrl: './entity-builder.component.css',
@@ -195,6 +198,21 @@ export class EntityBuilderComponent implements OnChanges {
 
   togglePreview(): void {
     this.previewOpen.update(open => !open);
+  }
+
+  readonly ruleGraphOpen = signal(false);
+
+  openRuleGraph(): void {
+    this.ruleGraphOpen.set(true);
+  }
+
+  closeRuleGraph(): void {
+    this.ruleGraphOpen.set(false);
+  }
+
+  onSelectFieldFromGraph(key: string): void {
+    this.store.selectField(key);
+    this.ruleGraphOpen.set(false);
   }
 
   /*

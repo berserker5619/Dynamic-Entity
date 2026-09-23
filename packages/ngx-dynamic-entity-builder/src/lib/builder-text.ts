@@ -110,6 +110,7 @@ export const DEFAULT_BUILDER_TEXT = {
   sectionAutomation: 'Automation',
   sectionRules: 'Rules',
   sectionReference: 'Reference',
+  sectionDependencies: 'Dependencies',
   width: 'Width',
   widthQuarter: '¼',
   widthThird: '⅓',
@@ -245,6 +246,36 @@ export const DEFAULT_BUILDER_TEXT = {
   driftHeading: 'Source field definition has drifted!',
   driftBody: 'The upstream field configuration in "{entity}" has evolved.',
   syncWithSource: 'Sync with Source',
+
+  // Validation pattern playground
+  pattern: 'Validation Pattern (Regex)',
+  patternHint: 'Regular expression for format validation.',
+  testPattern: 'Test Pattern',
+  testPatternPlaceholder: 'Type sample input to test…',
+  patternMatch: 'Pattern matches',
+  patternNoMatch: 'Pattern does not match',
+  patternInvalid: 'Invalid regex syntax',
+  patternEmptyPrompt: 'Enter regex above to test sample input',
+  quickPresets: 'Presets',
+
+  // Field dependencies
+  dependsOn: 'Depends on',
+  affects: 'Affects',
+  noDependencies: 'No active rule or field dependencies for this field.',
+
+  // Rule graph
+  ruleGraph: 'Rule Graph',
+  ruleGraphTitle: 'Rule & Dependency Graph',
+  ruleGraphSubtitle: 'Schema-wide rule triggers, conditional visibility, and cascades',
+  filterDependencies: 'Filter dependencies…',
+  noDependenciesFound: 'No dependencies matching current filter.',
+  jumpToField: 'Select {field}',
+  closeDialog: 'Close',
+  dependencyTypeRule: 'Rule',
+  dependencyTypeShowWhen: 'Show When',
+  dependencyTypeCascade: 'Cascade',
+  dependencyTypePatch: 'Copy on True',
+  totalDependencies: '{count} dependencies',
 };
 
 /** The keys above, as a union — checked in templates, completed in a host's overrides. */
