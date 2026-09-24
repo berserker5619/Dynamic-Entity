@@ -8,6 +8,26 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.1.0]
+
+### Added
+- **Interactive Rule & Dependency Graph (`ngx-rule-dependency-graph`)**:
+  - Visual dependency graph dialog in the Form Builder mapping reactive triggers, condition targets, and rule actions across tabs and fields.
+  - Node navigation with 1-click jump to select and edit any target field directly in the canvas and inspector.
+- **Regex Validation Pattern Playground**:
+  - Live interactive regex testing playground embedded in the Field Inspector's validation section.
+  - Real-time pattern evaluation with dynamic status chips (`matches`, `does not match`, `invalid regex syntax`).
+  - Pre-packaged regex presets (`Alpha`, `Alphanumeric`, `Digits`, `Postal Code`, `Phone`, `Slug`).
+- **Enterprise Industry Templates**:
+  - New production-grade demo schemas: `Insurance Claims`, `Patient Intake & Clinical Triage`, and `IT Asset & Fleet Lifecycle`.
+  - Comprehensive automated E2E test coverage and visual regression baselines for all new configurations.
+
+### Changed
+- **Form Builder Section Discovery**:
+  - Expanded all inspector sections by default (`Display`, `Visibility`, `Automation`, `Rules`, `Dependencies`, and `Reference`), providing authors immediate access to advanced configurations without requiring manual unfolding, while preserving collapse-on-click functionality.
+
+---
+
 ## [2.0.2]
 
 ### Added
