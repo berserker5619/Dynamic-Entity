@@ -104,20 +104,20 @@ import { BuilderTextService } from '../builder-text';
       }
       .deb-pattern-status--match {
         background: #dcfce7;
-        color: #15803d;
+        color: #166534;
       }
       .deb-pattern-status--no-match {
         background: #fee2e2;
-        color: #b91c1c;
+        color: #991b1b;
       }
       .deb-pattern-status--invalid {
         background: #fef3c7;
-        color: #b45309;
+        color: #92400e;
       }
       .deb-pattern-status--idle,
       .deb-pattern-status--empty {
         background: #f1f5f9;
-        color: #64748b;
+        color: #334155;
       }
       .deb-pattern-presets {
         display: flex;

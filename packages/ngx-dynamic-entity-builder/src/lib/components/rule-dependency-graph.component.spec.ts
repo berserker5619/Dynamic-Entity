@@ -131,4 +131,74 @@ describe('RuleDependencyGraphComponent', () => {
     closeBtn.click();
     expect(dismissSpy).toHaveBeenCalled();
   });
+
+  it('filters dependencies by type and displays empty state when nothing matches', () => {
+    const filterBtns = host.querySelectorAll('.deb-filter-btn') as NodeListOf<HTMLButtonElement>;
+    expect(filterBtns.length).toBe(5); // All, Rule, Show When, Cascade, Patch
+
+    // Click Rule filter
+    const ruleBtn = Array.from(filterBtns).find(b => b.textContent?.includes('Rule'));
+    ruleBtn?.click();
+    fixture.detectChanges();
+    expect(host.querySelectorAll('.deb-edge-card').length).toBe(1);
+
+    // Click Cascade filter
+    const cascadeBtn = Array.from(filterBtns).find(b => b.textContent?.includes('Cascade'));
+    cascadeBtn?.click();
+    fixture.detectChanges();
+    expect(host.querySelectorAll('.deb-edge-card').length).toBe(1);
+
+    // Click ShowWhen filter
+    const showWhenBtn = Array.from(filterBtns).find(b => b.textContent?.includes('Show When'));
+    showWhenBtn?.click();
+    fixture.detectChanges();
+    expect(host.querySelectorAll('.deb-edge-card').length).toBe(1);
+
+    // Click Patch filter
+    const patchBtn = Array.from(filterBtns).find(b => b.textContent?.includes('Copy on True'));
+    patchBtn?.click();
+    fixture.detectChanges();
+    expect(host.querySelectorAll('.deb-edge-card').length).toBe(1);
+
+    // Switch back to All
+    const allBtn = Array.from(filterBtns).find(b => b.textContent?.includes('All'));
+    allBtn?.click();
+    fixture.detectChanges();
+    expect(host.querySelectorAll('.deb-edge-card').length).toBe(4);
+
+    // Search for non-existent text to trigger empty state
+    const searchInput = host.querySelector('[data-testid="filter-dependencies-input"]') as HTMLInputElement;
+    searchInput.value = 'nonexistentxyz';
+    searchInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const empty = host.querySelector('[data-testid="no-dependencies-found"]');
+    expect(empty).toBeTruthy();
+
+    // Clear search
+    const clearBtn = host.querySelector('mat-form-field button') as HTMLButtonElement;
+    clearBtn?.click();
+    fixture.detectChanges();
+    expect(host.querySelectorAll('.deb-edge-card').length).toBe(4);
+  });
+
+  it('handles backdrop click dismissal and ignores dialog inner click', () => {
+    const dismissSpy = jest.spyOn(component.dismiss, 'emit');
+
+    // Click inner dialog: should NOT dismiss
+    const dialog = host.querySelector('.deb-graph-dialog') as HTMLElement;
+    dialog.click();
+    expect(dismissSpy).not.toHaveBeenCalled();
+
+    // Click backdrop: should dismiss
+    const backdrop = host.querySelector('.deb-graph-backdrop') as HTMLElement;
+    backdrop.click();
+    expect(dismissSpy).toHaveBeenCalled();
+  });
+
+  it('handles node click with empty key safely', () => {
+    const selectSpy = jest.spyOn(component.selectField, 'emit');
+    (component as any).onNodeClick('');
+    expect(selectSpy).not.toHaveBeenCalled();
+  });
 });

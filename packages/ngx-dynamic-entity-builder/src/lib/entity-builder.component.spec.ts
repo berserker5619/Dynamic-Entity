@@ -686,4 +686,22 @@ describe('EntityBuilderComponent — config cache invalidation on save', () => {
     (component as any).copyJson();
     expect(writeText).toHaveBeenCalledWith((component as any).json);
   });
+
+  it('controls rule graph modal and selects field from graph', async () => {
+    const component = await setup(false);
+    expect(component.ruleGraphOpen()).toBe(false);
+
+    component.openRuleGraph();
+    expect(component.ruleGraphOpen()).toBe(true);
+
+    const componentStore = (component as any).store as BuilderStore;
+    const selectSpy = jest.spyOn(componentStore, 'selectField');
+    component.onSelectFieldFromGraph('testField');
+    expect(selectSpy).toHaveBeenCalledWith('testField');
+    expect(component.ruleGraphOpen()).toBe(false);
+
+    component.openRuleGraph();
+    component.closeRuleGraph();
+    expect(component.ruleGraphOpen()).toBe(false);
+  });
 });
