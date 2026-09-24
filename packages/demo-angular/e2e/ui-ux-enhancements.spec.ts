@@ -163,13 +163,21 @@ test.describe('the builder as a person uses it', () => {
     await expect(page.getByTestId('add-option')).toBeVisible();
   });
 
-  test('advanced inspector sections start closed until the field uses them', async ({ page }) => {
+  test('advanced inspector sections start expanded by default and can be collapsed', async ({ page }) => {
     await gotoDemo(page);
     await safeClick(page.getByRole('button', { name: /Form Builder/i }));
     await safeClick(builderPaletteButton(page, 'Text'));
 
+    // Inspector sections start expanded by default
+    await expect(page.getByTestId('add-show-when')).toBeVisible();
+
+    // Sections can be collapsed by clicking the summary
+    const visibilitySummary = page.locator('details.deb-inspector__section summary').filter({ hasText: 'Visibility' });
+    await safeClick(visibilitySummary);
     await expect(page.getByTestId('add-show-when')).toBeHidden();
-    await openInspectorSection(page, 'Visibility');
+
+    // And reopened
+    await safeClick(visibilitySummary);
     await expect(page.getByTestId('add-show-when')).toBeVisible();
   });
 

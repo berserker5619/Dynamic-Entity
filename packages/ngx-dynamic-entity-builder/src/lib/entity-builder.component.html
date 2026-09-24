@@ -269,7 +269,7 @@
           >
         </div>
 
-        <mat-expansion-panel class="deb-rbac">
+        <mat-expansion-panel class="deb-rbac" [expanded]="true">
           <mat-expansion-panel-header>
             <mat-panel-title>{{ ui.text('permissions') }}</mat-panel-title>
           </mat-expansion-panel-header>
@@ -459,7 +459,7 @@
 
 <!-- ─── Footer: the exported JSON ─── -->
 <div class="deb-footer">
-  <mat-expansion-panel>
+  <mat-expansion-panel [expanded]="true">
     <mat-expansion-panel-header>
       <mat-panel-title><mat-icon>data_object</mat-icon>&nbsp;{{ ui.text('configJson') }}</mat-panel-title>
     </mat-expansion-panel-header>

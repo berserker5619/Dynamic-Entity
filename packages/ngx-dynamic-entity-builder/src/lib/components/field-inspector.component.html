@@ -6,11 +6,9 @@
     meant scrolling past every advanced setting a field has, and finding the rules list meant
     scrolling past all of them.
 
-    What is open by default is what an author sets when they add a field — name it, size it,
-    mark it required, give a choice field its options. The advanced half starts closed, but
-    opens itself as soon as *this* field uses it: a field with two rules is not a field whose
-    rules are advanced, and hiding what is already configured is how a setting gets forgotten
-    about. A closed section still reports itself through the count in its heading.
+    All inspector sections start expanded by default so authors have immediate access to
+    validation, automation, visibility conditions, rules, dependencies, and reference settings
+    without needing to manually unfold each section. Sections can still be collapsed as desired.
 
     `<details>` rather than mat-expansion-panel: the inspector already sits inside a card in a
     scrolling rail, and a third level of Material elevation inside that read as noise.
@@ -363,7 +361,7 @@
     }
 
     <!-- Flags -->
-    <details class="deb-inspector__section" [attr.open]="displayFlagCount(f) ? '' : null">
+    <details class="deb-inspector__section" open>
       <summary class="deb-inspector__summary">
         {{ ui.text('sectionDisplay') }}
         @if (displayFlagCount(f); as count) {
@@ -423,7 +421,7 @@
     </details>
 
     <!-- Conditional visibility (static showWhen) -->
-    <details class="deb-inspector__section" [attr.open]="showWhenEntries(f).length ? '' : null">
+    <details class="deb-inspector__section" open>
       <summary class="deb-inspector__summary">
         {{ ui.text('sectionVisibility') }}
         @if (showWhenEntries(f).length; as count) {
@@ -477,7 +475,7 @@
 
     <!-- Entity reference, cascade, autoPatch, and patchOnTrue -->
     @if (meta()?.isEntityRef || f.type === 'boolean' || f.type === 'checkbox') {
-      <details class="deb-inspector__section" [attr.open]="meta()?.isEntityRef || (f.patchOnTrue ?? []).length ? '' : null">
+      <details class="deb-inspector__section" open>
         <summary class="deb-inspector__summary">
           {{ ui.text('sectionAutomation') }}
           @if ((f.patchOnTrue ?? []).length; as count) {
@@ -553,7 +551,7 @@
     }
 
     <!-- Rules attached to this field -->
-    <details class="deb-inspector__section" [attr.open]="store.rulesForSelectedField().length ? '' : null">
+    <details class="deb-inspector__section" open>
       <summary class="deb-inspector__summary">
         {{ ui.text('sectionRules') }}
         @if (store.rulesForSelectedField().length; as count) {
@@ -569,7 +567,7 @@
     <!-- Field Dependencies Visualizer -->
     <details
       class="deb-inspector__section"
-      [attr.open]="incomingDependencies().length || outgoingDependencies().length ? '' : null"
+      open
       data-testid="section-dependencies"
     >
       <summary class="deb-inspector__summary">
@@ -631,7 +629,7 @@
     </details>
 
     <!-- Cross-entity field reference & drift management -->
-    <details class="deb-inspector__section" [attr.open]="f.isReferenced || f.hasDrift ? '' : null">
+    <details class="deb-inspector__section" open>
       <summary class="deb-inspector__summary">
         {{ ui.text('sectionReference') }}
         @if (f.isReferenced) {
