@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { capturePageErrors, gotoDemo, safeClick } from './test-helpers';
+import { capturePageErrors, gotoDemo, openInspectorSection, safeClick } from './test-helpers';
 
 test.describe('Dynamic Entity E2E - Form Builder Pattern Playground & Rule Dependency Graph', () => {
   test('tests validation pattern live and inspects schema dependencies in Rule Graph', async ({ page }) => {
@@ -64,7 +64,7 @@ test.describe('Dynamic Entity E2E - Form Builder Pattern Playground & Rule Depen
     await boolLabelInput.fill('Require Special Code');
 
     // Add a rule on Require Special Code targeting User Code
-    await safeClick(page.locator('summary').filter({ hasText: 'Rules' }).first());
+    await openInspectorSection(page, 'Rules');
     const addRuleBtn = page.locator('[data-testid="add-rule"]');
     await expect(addRuleBtn).toBeVisible();
     await addRuleBtn.click();

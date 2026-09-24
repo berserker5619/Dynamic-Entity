@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { capturePageErrors, gotoDemo, safeClick } from './test-helpers';
+import { capturePageErrors, gotoDemo, openInspectorSection, safeClick } from './test-helpers';
 
 test.describe('Dynamic Entity E2E - Form Builder Field Rename Updates Rule Paths', () => {
   test('updates bracketed rule trigger and target paths when field label derives a new id', async ({ page }) => {
@@ -32,7 +32,7 @@ test.describe('Dynamic Entity E2E - Form Builder Field Rename Updates Rule Paths
     await expect(fieldIdInput).toHaveValue('customerEmail');
 
     // ─── Step 3: Expand Rules Section & Add a Rule Attached to this Field ───
-    await safeClick(page.locator('summary').filter({ hasText: 'Rules' }));
+    await openInspectorSection(page, 'Rules');
 
     const addRuleBtn = page.locator('[data-testid="add-rule"]');
     await expect(addRuleBtn).toBeVisible();
