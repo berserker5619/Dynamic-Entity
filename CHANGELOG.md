@@ -8,6 +8,24 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- **Path-addressed rules inside groups read the wrong field.** The renderer's rule value map
+  looked controls up by bare id, so with `city` inside two groups both `[personal.home.city]`
+  and `[work.office.city]` carried whichever control was found first. Controls are now found
+  by path (`FormStructureService.controlAt` / `flattenValues`).
+- **`patchOnTrue` patched across scopes.** A bare `from`/`to` now resolves to a sibling in the
+  trigger's own scope before falling back to a form-wide lookup, and the trigger is read by
+  its ref.
+- **Ordering operators treated empty values as `0`.** `LESS_THAN` and friends no longer match
+  `''`, `null`, `[]` or booleans, so a rule such as "amount < 100" does not fire on a blank
+  field — in the form or in a server import.
+- **Date operators depended on the host timezone.** A bare `YYYY-MM-DD` is now read as local
+  midnight, like a `YYYY-MM-DDTHH:mm` datetime, and an empty date is no longer the epoch.
+
+---
+
 ## [2.1.0]
 
 ### Added

@@ -37,8 +37,8 @@ import {
   toRefToken,
   valuesEqual,
   applyAutoPatch,
-  applyPatchOnTrue,
   fieldsUnderTab,
+  isUnsafePath,
   migrateRecord,
   findTab,
   normalizeConfigOptions,
@@ -1055,18 +1055,6 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   private readonly warnedAmbiguousIds = new Set<string>();
 
   /**
-   * The value map rules and `showWhen` are evaluated against.
-   *
-   * Every field appears under two keys: its bare id, and its `refererField` path wrapped in brackets.
-   * The bare id is what every config written so far uses and is kept exactly as it was — but
-   * ids are unique per scope, so when two scopes define one the last field walked wins and
-   * the rule reads whichever that is. `[personal.address]` names one field and cannot be
-   * ambiguous, which is why a rule that has to distinguish them uses the ref.
-   *
-   * Both live in one flat map on purpose: `evaluateFormRules` takes a `Record<string,
-   * unknown>` and needs no knowledge of refs at all — the extra keys simply resolve.
-   */
-  /**
    * Every name a rule may address this field by.
    *
    * A rule target is either a bare field id — how every config so far addresses a field — or
@@ -1130,36 +1118,14 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
     byField: Map<NestedFieldConfig, FieldScopeEntry>;
   };
 
-  /**
-   * The control a scope entry addresses, named by path rather than by bare id.
-   *
-   * `getControl(field.id)` with no tab falls through to a first-match recursive search of the
-   * whole form, so with `address` on two tabs, hiding one disabled the other. The control
-   * tree mirrors the scope path exactly — `buildTabControls` nests by tab id and
-   * `buildFieldControl` nests a `group` under its own id — so a `[path]` ref resolves through
-   * `form.get()` on `getControl`'s first branch and names exactly one control.
-   *
-   * A field inside an `array` has no static path: its controls live in `FormArray` rows built
-   * per row. `form.get()` returns null for those and they are left alone, which is correct —
-   * a row's controls are created and destroyed with the row.
-   */
+  /** The control a scope entry addresses — see `FormStructureService.controlAt`. */
   private controlForEntry(entry: FieldScopeEntry): AbstractControl | null {
-    return this.getControl(toRefToken(fieldRefFor(entry.scope, entry.field.id)));
+    return this.structure.controlAt(this.form, entry);
   }
 
-
-
+  /** The value map rules and `showWhen` are evaluated against — see `FormStructureService.flattenValues`. */
   private flattenFormValues(): Record<string, any> {
-    const out: Record<string, any> = {};
-    for (const entry of collectFieldScopes(this.config)) {
-      const field = entry.field;
-      if (!field?.id) continue;
-      const ctrl = this.getControl(field.id, entry.scope.split('.').pop());
-      if (!ctrl) continue;
-      out[field.id] = ctrl.value;
-      out[toRefToken(refOf(field, entry.scope))] = ctrl.value;
-    }
-    return out;
+    return this.structure.flattenValues(this.form, this.fieldScopes());
   }
 
   // ─── autoPatch / patchOnTrue ──────────────────────────────────────────────
@@ -1188,21 +1154,42 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   /**
    * `patchOnTrue` — when a boolean/checkbox field transitions to `true`,
    * copy `from` → `to` within the current record.
+   *
+   * The trigger is read by its ref, and a bare `from`/`to` resolves to a sibling in the
+   * trigger's own scope before falling back to a form-wide lookup — so two groups that each
+   * carry `home`, `billing` and a "same as" flag patch within themselves, not across.
    */
   private runPatchOnTrue(values: Record<string, any>): void {
-    for (const field of this.allFields()) {
-      const mappings = field.patchOnTrue;
-      if (!mappings?.length) continue;
+    for (const entry of this.fieldScopes()) {
+      const field = entry.field;
+      const mappings = field?.patchOnTrue;
+      if (!field?.id || !mappings?.length) continue;
 
-      const wasTrue = this.previousValues[field.id] === true;
-      const isTrue = values[field.id] === true;
-      if (!isTrue || wasTrue) continue;
+      const trigger = toRefToken(refOf(field, entry.scope));
+      if (values[trigger] !== true || this.previousValues[trigger] === true) continue;
 
-      const patch = applyPatchOnTrue(mappings, values);
-      for (const [targetId, value] of Object.entries(patch)) {
-        this.getControl(targetId)?.patchValue(value, { emitEvent: false });
+      for (const mapping of mappings) {
+        if (!mapping || isUnsafePath(mapping.to)) continue;
+        const from = this.resolveInScope(mapping.from, entry.scope);
+        if (!from || !(from.key in values)) continue;
+        this.resolveInScope(mapping.to, entry.scope)?.control?.patchValue(values[from.key], { emitEvent: false });
       }
     }
+  }
+
+  /**
+   * A field named by a mapping, preferring a sibling in `scope` when the name is a bare id.
+   *
+   * `key` is the field's entry in the flattened value map; `control` is the control it owns.
+   */
+  private resolveInScope(name: unknown, scope: string): { key: string; control: AbstractControl | null } | null {
+    if (typeof name !== 'string' || !name) return null;
+    const parsed = parseFieldRef(name);
+    if (parsed.kind !== 'ref') {
+      const sibling = this.fieldScopes().find(e => e.scope === scope && e.field?.id === parsed.value);
+      if (sibling) return { key: toRefToken(refOf(sibling.field, sibling.scope)), control: this.controlForEntry(sibling) };
+    }
+    return { key: name, control: this.getControl(name) };
   }
 
   /**

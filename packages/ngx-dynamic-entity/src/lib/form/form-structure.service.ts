@@ -1,14 +1,17 @@
 import { Injectable, inject, isDevMode } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, FormGroup } from '@angular/forms';
-import type { EntityFormConfig, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
+import type { EntityFormConfig, FieldScopeEntry, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
 import {
+  fieldRefFor,
   getTabData,
   getTabPath,
   getValueByPath,
   normalizeArrayStructures,
   parseFieldRef,
+  refOf,
   setTabData,
   setValueByPath,
+  toRefToken,
 } from '@dynamic-entity/core';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
 
@@ -113,6 +116,44 @@ export class FormStructureService {
       curr = curr.get(p);
     }
     return curr instanceof FormGroup ? curr : null;
+  }
+
+  /**
+   * The control a scope entry addresses, found by its path rather than its bare id.
+   *
+   * The control tree mirrors the scope path exactly — a tab nests by its id and a `group`
+   * under its own — so `form.get(path)` names exactly one control. A bare-id lookup falls
+   * back to a first-match search and, with `address` on two tabs, finds the wrong one.
+   *
+   * A field inside an `array` has no static path: its controls live in `FormArray` rows
+   * built per row. `form.get()` returns null for those, and callers leave them alone.
+   */
+  controlAt(form: FormGroup | null, entry: FieldScopeEntry): AbstractControl | null {
+    return form?.get(fieldRefFor(entry.scope, entry.field.id)) ?? null;
+  }
+
+  /**
+   * The value map rules and `showWhen` are evaluated against.
+   *
+   * Every field appears under two keys: its bare id, and its ref wrapped in brackets. The
+   * bare id is what most configs use, but ids are unique only per scope, so when two scopes
+   * define one the last field walked wins. `[personal.address]` names one field and cannot
+   * be ambiguous, which is why a rule that has to tell them apart uses the ref.
+   *
+   * Both live in one flat map on purpose: `evaluateFormRules` takes a `Record<string,
+   * unknown>` and needs no knowledge of refs at all — the extra keys simply resolve.
+   */
+  flattenValues(form: FormGroup | null, entries: readonly FieldScopeEntry[]): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const entry of entries) {
+      const field = entry.field;
+      if (!field?.id) continue;
+      const ctrl = this.controlAt(form, entry);
+      if (!ctrl) continue;
+      out[field.id] = ctrl.value;
+      out[toRefToken(refOf(field, entry.scope))] = ctrl.value;
+    }
+    return out;
   }
 
   /**

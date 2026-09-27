@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { SimpleChange } from '@angular/core';
-import type { EntityFormConfig, FormRule } from '@dynamic-entity/core';
+import type { EntityFormConfig, FormRule, NestedFieldConfig } from '@dynamic-entity/core';
 import { assignFieldRefs, toRefToken } from '@dynamic-entity/core';
 import { provideBuiltInFieldTypes } from '../providers/provide-field-types';
 import { DynamicFormComponent } from './dynamic-form.component';
@@ -158,5 +158,100 @@ describe('addressing a field by its path', () => {
     });
 
     expect(c.ruleResult().hiddenFields).toContain('personalNote');
+  });
+});
+
+/**
+ * The same ambiguity one level down: an id shared by fields inside two `group`s. The value
+ * map was filled by a bare-id lookup, so both refs carried whichever control the search
+ * reached first.
+ */
+describe('addressing a field inside a group by its path', () => {
+  const addressGroup = (id: string, extra: NestedFieldConfig[] = []): NestedFieldConfig => ({
+    id,
+    type: 'group',
+    label: { en: id },
+    children: [
+      { id: 'city', type: 'text', label: { en: 'City' } },
+      { id: 'billingCity', type: 'text', label: { en: 'Billing city' } },
+      ...extra,
+    ],
+  });
+
+  const GROUP_CONFIG = (): EntityFormConfig =>
+    assignFieldRefs({
+      entity: 'people',
+      version: 1,
+      tabs: [
+        {
+          id: 'personal',
+          label: { en: 'Personal' },
+          fields: [
+            addressGroup('home', [
+              {
+                id: 'same',
+                type: 'boolean',
+                label: { en: 'Same' },
+                patchOnTrue: [{ from: 'city', to: 'billingCity' }],
+              },
+            ]),
+          ],
+        },
+        { id: 'work', label: { en: 'Work' }, fields: [addressGroup('office')] },
+      ],
+    })!;
+
+  function buildGroups(rules?: FormRule[]): DynamicFormComponent {
+    const config = GROUP_CONFIG();
+    const fixture = TestBed.createComponent(DynamicFormComponent);
+    const c = fixture.componentInstance;
+    c.config = config;
+    c.rules = rules;
+    c.initialData = {
+      personal: { home: { city: 'Chennai' } },
+      work: { office: { city: 'Berlin' } },
+    };
+    c.ngOnChanges({ config: new SimpleChange(undefined, config, true) });
+    fixture.detectChanges();
+    return c;
+  }
+
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    TestBed.configureTestingModule({
+      imports: [DynamicFormComponent],
+      providers: [provideBuiltInFieldTypes()],
+    });
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it('gives each ref its own control value', () => {
+    const values = buildGroups().formValues();
+    expect(values[toRefToken('personal.home.city')]).toBe('Chennai');
+    expect(values[toRefToken('work.office.city')]).toBe('Berlin');
+  });
+
+  it('evaluates a path-addressed rule against the field it names', () => {
+    const c = buildGroups([
+      {
+        formConfigId: 'people',
+        fieldId: '[work.office.city]',
+        conditions: [{ operator: 'EQUAL', compareType: 'value', value: 'Berlin' }],
+        action: { type: 'visibility', value: false },
+        targets: [{ id: '[work.office.billingCity]', type: 'field' }],
+        enabled: true,
+        priority: 1,
+      },
+    ]);
+    expect(c.ruleResult().hiddenFields).toContain('[work.office.billingCity]');
+  });
+
+  it('patchOnTrue copies between siblings in the trigger\'s own group', () => {
+    const c = buildGroups();
+    c.getControl('[personal.home.same]')!.setValue(true);
+
+    expect(c.getControl('[personal.home.billingCity]')!.value).toBe('Chennai');
+    expect(c.getControl('[work.office.billingCity]')!.value).toBeNull();
   });
 });
