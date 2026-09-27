@@ -13,12 +13,43 @@ function asArray<T>(value: T[] | undefined | null): T[] {
 }
 
 /**
+ * A value as a number for the ordering operators, or `NaN` — which every comparison rejects.
+ *
+ * Only a finite number or a numeric string counts. `Number('')`, `Number(null)`,
+ * `Number([])` and `Number(false)` are all `0`, so a blank field would satisfy `LESS_THAN 5`.
+ */
+function toNumber(value: unknown): number {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+  if (typeof value !== 'string' || value.trim() === '') return NaN;
+  return Number(value);
+}
+
+const BARE_DATE = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
+
+/**
+ * A value as epoch milliseconds for the date operators, or `NaN`.
+ *
+ * A bare `YYYY-MM-DD` is read as **local** midnight. `new Date()` reads it as UTC midnight
+ * but reads `YYYY-MM-DDTHH:mm` as local time, so comparing a date field with a datetime gave
+ * a different answer on either side of Greenwich. Empty values are `NaN`, not the epoch.
+ */
+function toTime(value: unknown): number {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+  if (typeof value !== 'string' || value.trim() === '') return NaN;
+  const bare = BARE_DATE.exec(value.trim());
+  if (bare) return new Date(Number(bare[1]), Number(bare[2]) - 1, Number(bare[3])).getTime();
+  return new Date(value).getTime();
+}
+
+/**
  * Evaluate a single rule condition against the current form values (and optional baseline values).
  *
  * Equality here is `valuesEqual`, not `valuesMatch`: a rule asks "does this fire", which is a
  * stricter question than "did the user pick this option". `EQUAL 0` does not match `'0'`, and
  * `EQUAL false` does not match `'false'`. The ordering, string and date operators keep their
- * deliberate coercion — `LESS_THAN` over a numeric string is the documented behaviour.
+ * deliberate coercion — `LESS_THAN` over a numeric string is the documented behaviour — but an
+ * empty value never satisfies one.
  */
 export function evaluateCondition(
   condition: RuleCondition,
@@ -63,28 +94,22 @@ export function evaluateCondition(
       return actualValue != null && actualValue !== '' && (!Array.isArray(actualValue) || actualValue.length > 0);
 
     case 'LESS_THAN':
-      return Number(actualValue) < Number(compareTarget);
+      return toNumber(actualValue) < toNumber(compareTarget);
 
     case 'MORE_THAN':
-      return Number(actualValue) > Number(compareTarget);
+      return toNumber(actualValue) > toNumber(compareTarget);
 
     case 'LESS_THAN_EQUAL':
-      return Number(actualValue) <= Number(compareTarget);
+      return toNumber(actualValue) <= toNumber(compareTarget);
 
     case 'MORE_THAN_EQUAL':
-      return Number(actualValue) >= Number(compareTarget);
+      return toNumber(actualValue) >= toNumber(compareTarget);
 
-    case 'DATE_BEFORE': {
-      const d1 = new Date(actualValue as string).getTime();
-      const d2 = new Date(compareTarget as string).getTime();
-      return !Number.isNaN(d1) && !Number.isNaN(d2) && d1 < d2;
-    }
+    case 'DATE_BEFORE':
+      return toTime(actualValue) < toTime(compareTarget);
 
-    case 'DATE_AFTER': {
-      const d1 = new Date(actualValue as string).getTime();
-      const d2 = new Date(compareTarget as string).getTime();
-      return !Number.isNaN(d1) && !Number.isNaN(d2) && d1 > d2;
-    }
+    case 'DATE_AFTER':
+      return toTime(actualValue) > toTime(compareTarget);
 
     case 'IN':
       return Array.isArray(compareTarget) && compareTarget.some(target => valuesEqual(actualValue, target));

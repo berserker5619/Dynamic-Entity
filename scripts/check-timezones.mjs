@@ -43,7 +43,8 @@ const ZONES = [
 /**
  * The suites whose behaviour a timezone can change.
  *
- * `core` is where the coercion lives, and where the original defect was. `server/all-configs`
+ * `core` is where the coercion lives, and where the original defect was; its `timezone`
+ * pattern also picks up the rules engine's date operators. `server/all-configs`
  * is here because it is the only suite that runs a **typed** cell — a `Date` out of a workbook
  * — through every dated field of every config the repository ships. The string path and the
  * typed path reach the same bug from different doors, and the gate only ever watched one of

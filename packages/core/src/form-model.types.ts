@@ -312,7 +312,7 @@ export interface RuleCondition {
   operator: RuleOperator;
   value?: unknown;
   compareType: RuleCompareType;
-  /** Dot-path for field-to-field comparison when `compareType === 'field'`. */
+  /** Field to compare against when `compareType === 'field'`: a bare id or a bracketed `[path]`. */
   compareToField?: string;
 }
 

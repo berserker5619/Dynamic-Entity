@@ -85,6 +85,11 @@ const CASES: Record<RuleOperator, Case[]> = {
     { compare: 10, actual: 10, expected: false, why: 'equal is not less' },
     { compare: 10, actual: 15, expected: false, why: 'above bound' },
     { compare: '10', actual: '5', expected: true, why: 'numeric strings compare numerically' },
+    { compare: 5, actual: '', expected: false, why: 'a blank field is not zero' },
+    { compare: 5, actual: null, expected: false, why: 'null is not zero' },
+    { compare: 1, actual: [], expected: false, why: 'an empty array is not zero' },
+    { compare: 1, actual: false, expected: false, why: 'a boolean is not a number' },
+    { compare: '', actual: -1, expected: false, why: 'a blank bound matches nothing' },
   ],
   MORE_THAN: [
     { compare: 10, actual: 15, expected: true, why: 'above bound' },
@@ -95,6 +100,7 @@ const CASES: Record<RuleOperator, Case[]> = {
     { compare: 10, actual: 10, expected: true, why: 'equal is inclusive' },
     { compare: 10, actual: 9, expected: true, why: 'below bound' },
     { compare: 10, actual: 11, expected: false, why: 'above bound' },
+    { compare: 0, actual: null, expected: false, why: 'null is not zero, inclusively either' },
   ],
   MORE_THAN_EQUAL: [
     { compare: 10, actual: 10, expected: true, why: 'equal is inclusive' },
@@ -106,6 +112,8 @@ const CASES: Record<RuleOperator, Case[]> = {
     { compare: '2024-01-01', actual: '2024-06-01', expected: false, why: 'later date' },
     { compare: '2024-01-01', actual: '2024-01-01', expected: false, why: 'same date is not before' },
     { compare: '2024-01-01', actual: 'not-a-date', expected: false, why: 'unparseable actual' },
+    { compare: '2024-01-01', actual: null, expected: false, why: 'an empty date is not the epoch' },
+    { compare: '2024-01-01', actual: '', expected: false, why: 'a blank date is not a date' },
   ],
   DATE_AFTER: [
     { compare: '2024-01-01', actual: '2024-06-01', expected: true, why: 'later date' },
