@@ -28,11 +28,16 @@ updates:
           - '@nguniversal/*'
           - ng-packagr
           - zone.js
-      # @typescript-eslint ships parser and plugin as a matched pair — bumping one alone is
-      # an ERESOLVE, which is exactly how the first run failed.
+      # typescript-eslint and angular-eslint ship parser and plugins as matched sets — bumping
+      # one alone is an ERESOLVE.
       typescript-eslint:
         patterns:
+          - 'typescript-eslint'
           - '@typescript-eslint/*'
+      angular-eslint:
+        patterns:
+          - 'angular-eslint'
+          - '@angular-eslint/*'
       # Everything else, batched by risk. Minor and patch are the ones worth taking on sight.
       dev-minor-and-patch:
         update-types:

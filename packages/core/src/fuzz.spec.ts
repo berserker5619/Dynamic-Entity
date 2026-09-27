@@ -139,6 +139,7 @@ function forEachGenerated(
       throw new Error(
         `Failed at seed ${seed}\ninput: ${JSON.stringify(input)?.slice(0, 800)}\n` +
           `cause: ${(error as Error).message}`,
+        { cause: error },
       );
     }
   }

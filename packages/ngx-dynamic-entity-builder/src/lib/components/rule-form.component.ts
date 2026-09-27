@@ -168,6 +168,8 @@ export class RuleFormComponent {
   };
 
   @Output() save = new EventEmitter<FormRule>();
+  // Published API since 1.x: renaming it would break every host bound to `(cancel)`.
+  // eslint-disable-next-line @angular-eslint/no-output-native
   @Output() cancel = new EventEmitter<void>();
 
   readonly operators: RuleOperator[] = [

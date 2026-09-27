@@ -240,7 +240,6 @@ export function languageEntries(text: unknown): [string, string][] {
 export function valuesEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   // Both sides absent is equal; one side absent never is. `==` is the deliberate idiom.
-  // eslint-disable-next-line eqeqeq
   if (a == null || b == null) return a == null && b == null;
 
   const aKey = optionKeyOf(a);

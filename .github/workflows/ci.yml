@@ -31,8 +31,7 @@ jobs:
         run: npm ci
 
       # Runs the control-character check, eslint, and each package's typecheck.
-      # eslint could not load a TypeScript file at all until @typescript-eslint/parser was
-      # added, so every rule in .eslintrc.js was dormant — this step is what keeps it honest.
+      # Type-aware ESLint (eslint.config.mjs) — this step is what keeps its rules enforced.
       - name: Lint
         run: npm run lint
 

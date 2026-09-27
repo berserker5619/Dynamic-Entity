@@ -464,7 +464,6 @@ describe('EntityImportComponent', () => {
   it('reports a transport that rejects with something that is not an Error', async () => {
     const rude: ImportTransport = {
       preview: async () => {
-        // eslint-disable-next-line no-throw-literal
         throw 'no thank you';
       },
       commit: async () => ({ records: [], errors: [], skipped: 0, planProblems: [] }),

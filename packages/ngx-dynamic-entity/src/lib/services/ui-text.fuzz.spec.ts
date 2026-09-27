@@ -113,6 +113,7 @@ function forEachGenerated(count: number, body: (input: ReturnType<typeof generat
       const shown = { ...input, overrides: typeof input.overrides === 'function' ? '[resolver]' : input.overrides };
       throw new Error(
         `Failed at seed ${seed}\ninput: ${JSON.stringify(shown)?.slice(0, 800)}\n` + `cause: ${(error as Error).message}`,
+        { cause: error },
       );
     }
   }

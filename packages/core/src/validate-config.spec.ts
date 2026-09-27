@@ -414,7 +414,7 @@ describe('validateConfig', () => {
   });
 
   it('accepts the people entity in the reference dataset', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const data = require('../../../test_data.json') as EntityFormConfig[];
     const people = data.find(c => c.entity === 'people');
     expect(people).toBeDefined();
@@ -494,7 +494,7 @@ describe('validateConfig', () => {
  * mismatch that put three non-existent types in the reference dataset.
  */
 describe('entity-form-config.schema.json', () => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const schema = require('../entity-form-config.schema.json');
 
   it('lists exactly the field types the catalog defines', () => {
