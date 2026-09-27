@@ -24,6 +24,7 @@ import {
 import { assignFieldRefs, collectFieldScopes, fieldRefFor, parseFieldRef, toRefToken } from '@dynamic-entity/core';
 import { createFieldConfig, getFieldTypeMeta, humanizeId, type FlagValidator, type ParamValidator } from './field-catalog';
 import { deepClone } from './clone';
+import { BuilderHistory } from './builder-history';
 
 export interface BuilderProblem {
   level: 'error' | 'warning';
@@ -55,8 +56,27 @@ const LEGACY_EMAIL_PATTERN = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'
 interface BuilderSnapshot {
   readonly config: EntityFormConfig;
   readonly rules: FormRule[];
-  /** Tab / field / rule counts, used to decide whether two edits may be coalesced. */
-  readonly shape: string;
+}
+
+/** Counts that distinguish a structural edit from a value edit. */
+function shapeOf({ config, rules }: BuilderSnapshot): string {
+  let fields = 0;
+  let tabs = 0;
+  const walkFields = (list: NestedFieldConfig[] | undefined): void => {
+    for (const f of list ?? []) {
+      fields += 1;
+      walkFields(f.children);
+    }
+  };
+  const walkTabs = (list: NestedTabConfig[] | undefined): void => {
+    for (const t of list ?? []) {
+      tabs += 1;
+      walkFields(t.fields);
+      walkTabs(t.children);
+    }
+  };
+  walkTabs(config.tabs);
+  return `${tabs}:${fields}:${rules.length}`;
 }
 
 /**
@@ -116,135 +136,37 @@ export class BuilderStore {
 
   // ─── Undo / redo ────────────────────────────────────────────────────────────
   //
-  // History is a list of {config, rules} pairs, because the builder's state is two signals
-  // and undoing one without the other would leave a rule pointing at a field that no longer
-  // exists.
-  //
-  // Entries hold **references, not clones**. `mutate` builds a new config and `mutateField`
-  // shares structure along the unchanged path, so every snapshot already refers to immutable
-  // objects and unchanged subtrees are shared between entries. That also removes the usual
-  // re-entrancy problem for free: undo puts the stored object back, so the recording effect
-  // sees the exact reference already sitting at the cursor and skips it. No suppression flag
-  // to get out of step.
-  private readonly history: BuilderSnapshot[] = [];
-  private readonly cursor = signal(-1);
-  private readonly historyLength = signal(0);
-  private lastEditAt = 0;
+  // History stores {config, rules} pairs, because the builder's state is two signals and
+  // undoing one without the other would leave a rule pointing at a field that no longer
+  // exists. Write paths call `record()` explicitly rather than from an `effect`, which would
+  // need an injection context and break `new BuilderStore()`.
+  private readonly history = new BuilderHistory<BuilderSnapshot>(
+    shapeOf,
+    (a, b) => a.config === b.config && a.rules === b.rules,
+  );
 
-  /** Consecutive edits closer together than this fold into one undo step. */
-  private static readonly COALESCE_MS = 400;
+  readonly canUndo = this.history.canUndo;
+  readonly canRedo = this.history.canRedo;
 
-  readonly canUndo = computed(() => this.cursor() > 0);
-  readonly canRedo = computed(() => this.cursor() < this.historyLength() - 1);
-
-  /**
-   * Fold the current state into history.
-   *
-   * Called explicitly by the write paths rather than from an `effect`. An effect would have
-   * been fewer call sites, but it requires an injection context: `BuilderStore` had no
-   * constructor, so `new BuilderStore()` was legal, and adding one broke every caller that
-   * did it with NG0203. Explicit calls also make the timing deterministic — a test can
-   * assert straight after an edit instead of flushing effects first.
-   *
-   * Calling it twice for one operation is harmless: the second call sees the same signal
-   * references already at the cursor and returns.
-   *
-   * `setFieldLabel` is bound to a keystroke, so recording every emission would make undo
-   * walk back one character at a time. Two consecutive edits merge when they land inside
-   * `COALESCE_MS` *and* the structure is unchanged — a rename coalesces, while adding,
-   * removing or moving anything always earns its own step however fast it is clicked.
-   */
   private record(): void {
-    const config = this._config();
-    const rules = this._rules();
-    const at = this.cursor();
-    const top = at >= 0 ? this.history[at] : undefined;
-    if (top && top.config === config && top.rules === rules) return;
-
-    const now = Date.now();
-    const snapshot: BuilderSnapshot = { config, rules, shape: this.shapeOf(config, rules) };
-
-    if (
-      top &&
-      now - this.lastEditAt < BuilderStore.COALESCE_MS &&
-      top.shape === snapshot.shape &&
-      at === this.history.length - 1
-    ) {
-      this.history[at] = snapshot;
-      this.lastEditAt = now;
-      return;
-    }
-
-    // A new edit after an undo discards the redo branch, which is what every editor does.
-    this.history.length = at + 1;
-    this.history.push(snapshot);
-
-    // Bounded, because a builder session is long and every keystroke that does not coalesce
-    // earns an entry. Snapshots hold references and share unchanged subtrees, so an entry is
-    // cheap — but unbounded is unbounded, and the oldest steps are the ones nobody walks
-    // back to. Dropping from the front keeps the most recent 200.
-    if (this.history.length > BuilderStore.MAX_HISTORY) {
-      this.history.splice(0, this.history.length - BuilderStore.MAX_HISTORY);
-    }
-
-    this.cursor.set(this.history.length - 1);
-    this.historyLength.set(this.history.length);
-    this.lastEditAt = now;
-  }
-
-  /** How many undo steps are kept. */
-  private static readonly MAX_HISTORY = 200;
-
-  /** Counts that distinguish a structural edit from a value edit. */
-  private shapeOf(config: EntityFormConfig, rules: FormRule[]): string {
-    let fields = 0;
-    let tabs = 0;
-    const walkFields = (list: NestedFieldConfig[] | undefined): void => {
-      for (const f of list ?? []) {
-        fields += 1;
-        walkFields(f.children);
-      }
-    };
-    const walkTabs = (list: NestedTabConfig[] | undefined): void => {
-      for (const t of list ?? []) {
-        tabs += 1;
-        walkFields(t.fields);
-        walkTabs(t.children);
-      }
-    };
-    walkTabs(config.tabs);
-    return `${tabs}:${fields}:${rules.length}`;
+    this.history.record({ config: this._config(), rules: this._rules() });
   }
 
   /** Start history again from the state just loaded. Nothing before it is undoable. */
   private resetHistory(): void {
-    this.history.length = 0;
-    this.history.push({
-      config: this._config(),
-      rules: this._rules(),
-      shape: this.shapeOf(this._config(), this._rules()),
-    });
-    this.cursor.set(0);
-    this.historyLength.set(1);
-    this.lastEditAt = 0;
+    this.history.reset({ config: this._config(), rules: this._rules() });
   }
 
   undo(): void {
-    if (!this.canUndo()) return;
-    this.applyHistory(this.cursor() - 1);
+    this.restore(this.history.undo());
   }
 
   redo(): void {
-    if (!this.canRedo()) return;
-    this.applyHistory(this.cursor() + 1);
+    this.restore(this.history.redo());
   }
 
-  private applyHistory(index: number): void {
-    const snapshot = this.history[index];
+  private restore(snapshot: BuilderSnapshot | null): void {
     if (!snapshot) return;
-    this.cursor.set(index);
-    // Order matters only in that both land before the effect runs; it then sees references
-    // identical to this entry and records nothing.
     this._config.set(snapshot.config);
     this._rules.set(snapshot.rules);
     this._isDirty.set(true);
