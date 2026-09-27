@@ -91,9 +91,8 @@ export interface FieldValidators {
   /**
    * Built-in email format check.
    *
-   * Separate from `pattern` on purpose. The builder used to express "email" by writing a
-   * regex into `pattern`, which meant a field could not have both, setting a custom pattern
-   * made the Email box appear ticked, and un-ticking Email deleted the custom pattern.
+   * Separate from `pattern` on purpose, so a field can carry both and toggling one never
+   * touches the other.
    */
   email?: boolean;
   /**

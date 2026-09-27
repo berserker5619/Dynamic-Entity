@@ -2,9 +2,8 @@
  * validate-config.ts — check an `EntityFormConfig` before anything tries to render it.
  *
  * A config is data: authored in the builder, stored, fetched from an API. TypeScript cannot
- * police any of that, so the first sign of a malformed one used to be a field that quietly
- * failed to render. The repository's own reference dataset shipped for a long time naming
- * three field types that do not exist, and nothing noticed.
+ * police any of that, and without a check the first sign of a malformed one is a field that
+ * quietly fails to render.
  *
  * Pure and dependency-free, so the same check runs in a build step, in a server handler
  * before persisting, or in a test.
@@ -71,6 +70,15 @@ function isBuiltInValidator(name: string): boolean {
 }
 
 /**
+ * `fields`, `children` and `tabs` are config data, so they may be any shape at all.
+ * `?.forEach` guards `undefined` and nothing else — a string or a number reached it and
+ * throws, which would crash the validator on the input it exists to describe.
+ */
+function asArray<T>(value: T[] | undefined): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
+/**
  * Validate a config's structure, ids and field types.
  *
  * Returns every problem found rather than throwing at the first, so an author fixing a config
@@ -78,15 +86,6 @@ function isBuiltInValidator(name: string): boolean {
  * also check a rule's trigger, `compareToField` and field targets against the same path/id
  * rule as `showWhen`.
  */
-/**
- * `fields`, `children` and `tabs` are config data, so they may be any shape at all.
- * `?.forEach` guards `undefined` and nothing else — a string or a number reached it and
- * threw, crashing the validator on the input it exists to describe.
- */
-function asArray<T>(value: T[] | undefined): T[] {
-  return Array.isArray(value) ? value : [];
-}
-
 export function validateConfig(
   config: EntityFormConfig | null | undefined,
   options: ValidateConfigOptions = {},
@@ -546,11 +545,10 @@ export function validateConfig(
     /*
      * The shape the engine needs.
      *
-     * This loop used `rule.conditions?.forEach`, which validates clean for exactly the shape
-     * that used to crash `evaluateFormRules` — `?.` guards `undefined` and nothing else, and
-     * a rule authored without conditions is the commonest half-finished rule there is. The
-     * engine now drops such a rule instead of throwing, so the config is no longer fatal;
-     * a rule that is silently never applied is still the failure this validator is for.
+     * Not `rule.conditions?.forEach`: `?.` guards `undefined` and nothing else, and a rule
+     * authored without conditions is the commonest half-finished rule there is. The engine
+     * drops such a rule rather than throwing, but a rule that is silently never applied is
+     * exactly the failure this validator is for.
      */
     if (!Array.isArray(rule.conditions)) {
       add('error', `${base}.conditions`, 'conditions must be an array; the rule is skipped at runtime.');

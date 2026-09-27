@@ -87,17 +87,11 @@ export async function* xlsxRows(
   /**
    * The next spreadsheet row number expected, so a gap can be filled rather than skipped.
    *
-   * **There used to be a race here, and its removal is worth recording.** Every pull was raced
-   * against a rejection bound to the input stream, because `guardZip` throwing mid-stream
-   * destroyed exceljs's input and the reader then stopped producing worksheets without ever
-   * rejecting — an eight-byte truncated zip hung a sixty-second test rather than failing it.
-   * `guardZip` now reads and validates the whole archive *before* the parser is constructed, so
-   * that failure cannot reach this code any more, and the race was doing two things instead:
-   * nothing, and leaking. Racing each row against one long-lived promise attached a reaction
-   * per row and released none until it settled, which for a promise that only rejects on
-   * failure is never — 1.9 KB a row, seventy-five megabytes over a fifty-thousand-row workbook.
-   * A request that hangs for some *other* reason is the Express adapter's `totalTimeoutMs` to
-   * answer, which is the layer that owns a clock.
+   * **Do not race each pull against a stream-error promise.** `guardZip` validates the whole
+   * archive before the parser is constructed, so a malformed zip cannot stall this loop — and
+   * racing every row against one long-lived promise attaches a reaction per row that is never
+   * released (about 1.9 KB a row, 75 MB over fifty thousand rows). A request that hangs for any
+   * other reason is the Express adapter's `totalTimeoutMs` to answer; that layer owns a clock.
    */
   let expected = 1;
   let yielded = false;

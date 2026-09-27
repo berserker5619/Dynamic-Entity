@@ -20,9 +20,7 @@ import { ValidatorRegistryService } from '../services/validator-registry.service
  *
  * The one question this answers is *where a value lives*: which control a field owns, how
  * the tab tree nests into groups, how a record is read out of the tree and patched back in.
- * It was half of `DynamicFormComponent`, mixed in with tab state, focus management, rule
- * evaluation and RBAC — and the cost of that was not length but ownership: the bug Phase 2
- * fixed was two methods forty lines apart disagreeing about what "every field" meant.
+ * Anything that has to find a field's control goes through here, so there is one answer.
  *
  * Deliberately stateless. Every method takes the form and the config it is operating on, so
  * there is no cached `this.form` to go stale against a rebuilt one, and every method is

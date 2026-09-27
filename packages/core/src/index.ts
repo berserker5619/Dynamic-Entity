@@ -1,10 +1,8 @@
 /**
  * The public surface of `@dynamic-entity/core`.
  *
- * Explicit, not `export *`. A barrel that re-exported every module made every helper in it
- * semver surface the moment it was written: `runValidateCli` and a dozen import-engine
- * internals were published API that nobody chose to publish, and removing one would have
- * been a breaking change. Adding a name here is now a deliberate act.
+ * Explicit, not `export *`: a barrel makes every helper semver surface the moment it is
+ * written. Adding a name here is a deliberate act.
  *
  * The CLI lives behind the `./cli` subpath rather than here, so importing this package in a
  * browser cannot pull it in even by accident.

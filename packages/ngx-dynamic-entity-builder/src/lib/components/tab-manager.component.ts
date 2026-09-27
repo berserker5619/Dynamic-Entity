@@ -16,11 +16,9 @@ import { BuilderTextService } from '../builder-text';
 /**
  * Re-exported so existing imports from this package keep working.
  *
- * This file used to declare its own `new InjectionToken('SYSTEM_DEFAULT_CAN_EDIT')` while
- * `ngx-dynamic-entity` exported another under the same name. InjectionToken identity is by
- * object reference, so a consumer providing the renderer's — the documented one — was
- * providing a token nothing injected, and the predicate silently never ran. One token now,
- * defined in the lower-level package that both depend on.
+ * Never declare a second `new InjectionToken('SYSTEM_DEFAULT_CAN_EDIT')` here: token identity
+ * is by object reference, so a consumer providing the renderer's would provide a token nothing
+ * injects. There is one token, in the lower-level package both depend on.
  */
 export { SYSTEM_DEFAULT_CAN_EDIT };
 

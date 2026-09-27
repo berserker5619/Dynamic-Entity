@@ -11,8 +11,8 @@ import { fieldDescribedBy, fieldDomId, nextFieldInstanceId } from './field-dom-i
  *
  * A bare calendar date is pinned to *local* midnight. `new Date('2020-01-01')` reads a
  * date-only string as UTC midnight, which renders as the previous day anywhere west of
- * Greenwich — and every legacy `datetime` value has exactly that shape, because the type
- * used to render through `DateFieldComponent` and its `type="date"` input.
+ * Greenwich — and legacy `datetime` values written by a `type="date"` input have exactly
+ * that shape.
  */
 function parseStored(value: unknown): Date | null {
   if (value === null || value === undefined || value === '') return null;
@@ -153,12 +153,6 @@ export class DateTimeFieldComponent {
     if (!d) return '—';
     return formatDisplayValue('datetime', undefined, d.toISOString(), this.language);
   }
-  /**
-   * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({
-   * validationMessages })` reaches this field. It used to render a fixed
-   * "This field has an error", which made a documented, configurable feature work on three
-   * of fifteen field types.
-   */
   /** Author help text, shown under the control and named by `aria-describedby`. */
   get hint(): string {
     return resolveLabel(this.field?.hint, this.language);

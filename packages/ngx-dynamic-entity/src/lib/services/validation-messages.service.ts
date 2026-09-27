@@ -5,9 +5,7 @@ import { VALIDATION_MESSAGES } from '../tokens/injection-tokens';
 /**
  * Resolves an Angular `ValidationErrors` object to the message shown under a field.
  *
- * These strings used to be hardcoded English literals inside each field component, so a
- * German form meant re-implementing every field type — the labels honoured `language` while
- * the errors underneath them did not.
+ * Field components never hardcode these strings, so errors honour `language` just as labels do.
  *
  * A message is a plain string, or a function when it needs the error's own detail
  * (`minlength.requiredLength`, `min.min`, and so on). The active `language` is passed
@@ -105,12 +103,10 @@ export class ValidationMessagesService {
   /**
    * The message for a field, chosen by its **type** rather than by a list the caller supplies.
    *
-   * Every field component used to pass its own copy of the key order, and the copies were
-   * near-identical — which was tolerable while the field itself was the only thing that
-   * rendered a message. It stopped being tolerable when the error summary above the form
-   * started naming what is wrong with each field: the summary has no field component to ask
-   * (the offending field is usually on a tab that is not rendered), so it would have needed a
-   * second copy of the same table, and a dropdown would have said "This field is required" in
+   * Both the field itself and the error summary above the form render this message, and the
+   * summary has no field component to ask (the offending field is usually on a tab that is
+   * not rendered). Per-component key orders would drift, and a dropdown would say "This
+   * field is required" in
    * the summary and "Please select an option" under the control.
    *
    * One table, read from both places, is what keeps those two sentences the same sentence.

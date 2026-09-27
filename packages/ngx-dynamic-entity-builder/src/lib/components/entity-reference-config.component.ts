@@ -198,11 +198,8 @@ import { BuilderTextService } from '../builder-text';
   styles: [
     `
       /*
-       * .deb-row, .deb-row--split, .deb-option-row and .deb-full were copied here from the
-       * builder's stylesheet, because under emulated encapsulation the originals could not
-       * reach this component. That stylesheet is no longer scoped, so the copies are gone and
-       * this panel takes the same definitions as every other one — which is the point of
-       * having them in one place.
+       * .deb-row, .deb-row--split, .deb-option-row and .deb-full come from the builder's
+       * unscoped stylesheet; do not copy them here.
        */
       .deb-entity-ref {
         display: flex;

@@ -92,12 +92,6 @@ export class CheckboxFieldComponent {
   get label(): string {
     return resolveLabel(this.field?.label, this.language);
   }
-  /**
-   * Configured messages reach this field too.
-   *
-   * It rendered no error element at all, so a required checkbox left unticked told the user
-   * nothing — and `validationMessages` could not reach a field that never displayed one.
-   */
   /** Author help text, shown under the control and named by `aria-describedby`. */
   get hint(): string {
     return resolveLabel(this.field?.hint, this.language);

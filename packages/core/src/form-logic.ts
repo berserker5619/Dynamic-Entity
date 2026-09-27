@@ -802,17 +802,6 @@ export function normalizeField(field: unknown): NestedFieldConfig {
   return normalized;
 }
 
-/**
- * Normalises a raw tab from storage, supporting object-keyed fields and children.
- */
-/**
- * Coerce a `tabs` / `fields` / `children` slot into an array.
- *
- * Older configs stored these as objects keyed by id, so an object is converted and its key
- * lifted into `id`. Anything else — a string, a number, `null` — is not a collection and
- * becomes an empty one, because the alternative is `.map` throwing on data the caller has
- * no control over.
- */
 /** Comparison helper for the structural-sharing checks; never indexes a non-array. */
 function asArrayLoose(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
@@ -828,6 +817,14 @@ function asTyped<T>(value: T[] | undefined): T[] | undefined {
   return Array.isArray(value) ? value : [];
 }
 
+/**
+ * Coerce a `tabs` / `fields` / `children` slot into an array.
+ *
+ * Older configs stored these as objects keyed by id, so an object is converted and its key
+ * lifted into `id`. Anything else — a string, a number, `null` — is not a collection and
+ * becomes an empty one, because the alternative is `.map` throwing on data the caller has
+ * no control over.
+ */
 function toEntryArray(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
   if (value && typeof value === 'object') {
@@ -838,6 +835,9 @@ function toEntryArray(value: unknown): unknown[] {
   return [];
 }
 
+/**
+ * Normalises a raw tab from storage, supporting object-keyed fields and children.
+ */
 export function normalizeTab(tab: unknown): NestedTabConfig {
   if (!tab || typeof tab !== 'object') return tab as NestedTabConfig;
   const t = tab as Record<string, unknown>;
@@ -884,10 +884,8 @@ export function normalizeConfig(config: unknown): EntityFormConfig {
 }
 
 // ─── Rule evaluation ─────────────────────────────────────────────────────────
-// Rules live in `rules-engine.ts` (`evaluateFormRules`). A second implementation used to
-// sit here with subtly different semantics — strict `===` for EQUAL where the engine
-// coerces — and no consumer. Two exported engines meant an importer could silently get
-// the wrong comparison rules, so this one was removed rather than kept in sync.
+// Rules live in `rules-engine.ts` (`evaluateFormRules`), and only there: two exported
+// engines would let an importer silently get the wrong comparison semantics.
 
 // ─── AutoPatch / PatchOnTrue ──────────────────────────────────────────────────
 

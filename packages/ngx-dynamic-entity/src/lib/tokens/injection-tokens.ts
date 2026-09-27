@@ -204,7 +204,7 @@ export const SYSTEM_DEFAULT_CAN_EDIT = new InjectionToken<(roles: string[]) => b
 export type ConfigSourceHandler = (entityKey: string) => any;
 
 /**
- * Registry/Resolver for resolving an EntityFormConfig by entity key across entities (Phase 8).
+ * Registry/Resolver for resolving an EntityFormConfig by entity key across entities.
  * Enables cross-entity field referencing (`isReferenced`, `referencedEntityKey`, `referencedFieldId`, `hasDrift`).
  */
 export const CONFIG_SOURCE = new InjectionToken<ConfigSourceHandler>('CONFIG_SOURCE');
@@ -234,8 +234,7 @@ export const MARKDOWN_RENDERER = new InjectionToken<(source: string) => string>(
  *
  * Masking is presentational — see SECURITY.md — and what it prints is a product decision:
  * `••••••••` reads as a redaction, "Hidden" reads as a permission, and a localized string
- * reads as neither in English. It was a literal repeated across every field component, so
- * there was no way to choose.
+ * reads as neither in English, so it is the host's to choose.
  *
  * @example
  * { provide: MASKED_PLACEHOLDER, useValue: '••••••••' }

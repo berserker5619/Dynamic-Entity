@@ -175,8 +175,8 @@ function ruleProblem(rule: FormRule, index: number): string | null {
  * The hidden and shown lists accumulate instead, and order does not affect them.
  *
  * A malformed rule is dropped and reported through `options.onProblem`; the rest still apply.
- * This used to throw out of `rule.conditions.every`, taking the whole evaluation — and, on
- * the client, the change-detection pass it ran inside — down with it.
+ * One bad rule must never throw out of the evaluation — on the client, that would take the
+ * change-detection pass it runs inside down with it.
  */
 export function evaluateFormRules(
   rules: FormRule[] | undefined | null,

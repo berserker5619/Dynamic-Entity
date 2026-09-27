@@ -8,9 +8,6 @@ import { LocalStore } from './mock/local-store.service';
 import { demoRulesFor, saveDemoRules } from './mock/demo-rules';
 
 /**
- * BuilderPageComponent — demo host for <ngx-entity-builder>.
- */
-/**
  * Panel state in `localStorage`, under the demo's own prefix.
  *
  * Wrapped in try/catch because private browsing and blocked site data make even reading
@@ -35,6 +32,9 @@ function writePanel(panel: 'left' | 'right' | 'fields' | 'preview', open: boolea
   }
 }
 
+/**
+ * BuilderPageComponent — demo host for <ngx-entity-builder>.
+ */
 @Component({
   selector: 'app-builder-page',
   standalone: true,
@@ -52,9 +52,8 @@ function writePanel(panel: 'left' | 'right' | 'fields' | 'preview', open: boolea
     }
 
     <!--
-      The builder used to open on a blank entity and offer no way to reach an existing one,
-      so anything that only shows up in an authored config — sub-tabs, most obviously — could
-      not be edited or demonstrated at all.
+      Loading an existing entity is what lets the demo show anything that only appears in an
+      authored config — sub-tabs, most obviously.
     -->
     <div class="builder-load">
       <div class="builder-load__picker">
@@ -208,8 +207,7 @@ export class BuilderPageComponent {
    *
    * Distinct from `availableRoles`, which is the vocabulary a schema's own permissions may
    * refer to. This is who is holding the mouse, and it is the only input the
-   * `SYSTEM_DEFAULT_CAN_EDIT` predicate ever sees — the builder had no other way to know,
-   * so a predicate that inspected roles previously answered for an empty array.
+   * `SYSTEM_DEFAULT_CAN_EDIT` predicate ever sees.
    */
   @Input() userRoles: string[] = ['admin'];
 

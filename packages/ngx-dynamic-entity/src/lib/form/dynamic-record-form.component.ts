@@ -44,9 +44,8 @@ const FIELD_NOT_FOUND = Symbol('field-not-found');
    *
    * Every value reads the token `ngx-dynamic-entity/styles.css` sets, with the previous
    * hard-coded literal as its fallback — so importing that file re-skins this component
-   * instead of fighting it. It used to be literals all the way down, and because a component
-   * stylesheet is injected after a global one and carries an attribute selector, the
-   * stylesheet's whole `.ngx-record-editor__*` section lost every tie and did nothing at all.
+   * instead of fighting it. Never bare literals: a component stylesheet is injected after a
+   * global one and carries an attribute selector, so it wins every tie against the host's.
    */
   styles: [
     `
@@ -658,10 +657,8 @@ export class DynamicRecordFormComponent implements OnChanges {
   /**
    * What this record is called, as opposed to what kind of thing it is.
    *
-   * The header used to show the entity's name twice — "clients", with "Entity: clients"
-   * underneath — so the one question a record header exists to answer, *which* record am I
-   * looking at, was the one thing it did not say. The entity keeps the subtitle; this takes
-   * the heading.
+   * A record header exists to answer *which* record am I looking at, so this takes the
+   * heading and the entity name keeps the subtitle.
    *
    * The order is deliberate. `showOnMinimize` is the author saying "this is what identifies a
    * record" — it is what the summary panel and the collapsed view already show — so it is
@@ -850,12 +847,6 @@ export class DynamicRecordFormComponent implements OnChanges {
   formatFieldValue(field: NestedFieldConfig): string {
     return formatDisplayValue(field.type, field.options, this.fieldValue(field.id), this.language);
   }
-
-  /**
-   * Finds which tab — and, where the field lives one level down, which sub-tab — owns a
-   * field. The walk used to check top-level `fields` only, so every field in a sub-tab was
-   * simply not found and the jump did nothing at all.
-   */
 
   /**
    * Switches to the tab holding `fieldId`, then scrolls it into view and moves focus to it.

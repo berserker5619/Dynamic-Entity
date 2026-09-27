@@ -101,9 +101,8 @@ export interface ImportTransport {
    * choice — and `spec` is that selection already expanded against the config. A transport that
    * renders locally wants the spec; one that asks a server wants the selection, because the
    * server has the config and only the choice needs to cross the wire. Passing both means
-   * neither has to reconstruct the other: the HTTP transport used to recover the selection from
-   * the expanded spec, which worked only because `stripIndices` happens to be exactly the
-   * inverse of the expansion. Optional, so an existing implementation keeps compiling.
+   * neither has to reconstruct the other. Optional, so an existing implementation keeps
+   * compiling.
    */
   template(
     spec: TemplateSpec,

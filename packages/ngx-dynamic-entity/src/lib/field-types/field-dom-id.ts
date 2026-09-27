@@ -1,14 +1,12 @@
 /**
  * DOM ids that survive being rendered more than once.
  *
- * A field component used to derive its control's id straight from `field.id`. That is unique
- * in a config and *not* unique in a document: an `array` field renders the same child fields
- * once per row, so a two-row Contacts array put two `#name` inputs on the page. `<label for>`
- * resolves to the first match in document order, so clicking the second row's label focused
- * the first row's input, and a screen reader read the same association twice. Duplicate ids on
- * focusable elements are also a WCAG failure in their own right.
+ * `field.id` is unique in a config and *not* unique in a document: an `array` field renders
+ * the same child fields once per row. `<label for>` resolves to the first match, so a second
+ * row's label would focus the first row's input — and duplicate ids on focusable elements are
+ * a WCAG failure in their own right.
  *
- * The fix is a counter, which is what Angular Material does for the same reason: the id stays
+ * The answer is a counter, which is what Angular Material does for the same reason: the id stays
  * readable — `email-de7` — and is unique for the lifetime of the page. It is deliberately not
  * derived from the row index, because a field component is given exactly five inputs and none
  * of them says where it is; adding a sixth would change the contract every custom field type

@@ -15,11 +15,8 @@
  *
  * ---
  *
- * Explicit, not `export *`. The barrel published `bytes`, `cell-text` and `guard-zip` whole:
- * an async-generator byte pump and a zip-bomb guard became semver surface nobody chose to
- * publish, and changing either would have been a breaking change. They are still here — a
- * server that streams needs `guardZip` and the byte helpers — but each name is listed, so a
- * new internal helper is no longer public by default.
+ * Explicit, not `export *`, so a new internal helper is never public by default. `guardZip`
+ * and the byte helpers are listed because a server that streams needs them.
  */
 
 // ─── Limits ─────────────────────────────────────────────────────────────────

@@ -156,10 +156,7 @@ export class RadioFieldComponent implements OnDestroy {
    * The value this option stores — the option object itself.
    *
    * Kept as a method rather than binding `option` straight into the template, because it is
-   * the one place that says *why* the two are the same thing. It used to delegate to
-   * `getOptionStoredValue`, an exported identity function whose two branches returned their
-   * argument unchanged; naming a transformation that does not happen is worse than naming
-   * nothing, because a reader has to go and check.
+   * the one place that says *why* the two are the same thing.
    */
   getOptStoredVal(option: DropdownOption): unknown {
     return option;
@@ -212,12 +209,6 @@ export class RadioFieldComponent implements OnDestroy {
     if (cached) return cached;
     return typeof value === 'object' ? resolveLabel(value as Record<string, string>, this.language) : String(value ?? '—');
   }
-  /**
-   * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({
-   * validationMessages })` reaches this field. It used to render a fixed
-   * "This field has an error", which made a documented, configurable feature work on three
-   * of fifteen field types.
-   */
   /** Author help text, shown under the control and named by `aria-describedby`. */
   get hint(): string {
     return resolveLabel(this.field?.hint, this.language);

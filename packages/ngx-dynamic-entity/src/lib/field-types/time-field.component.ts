@@ -100,12 +100,6 @@ export class TimeFieldComponent {
   formatTime(value: unknown): string {
     return formatDisplayValue('time', undefined, value, this.language);
   }
-  /**
-   * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({
-   * validationMessages })` reaches this field. It used to render a fixed
-   * "This field has an error", which made a documented, configurable feature work on three
-   * of fifteen field types.
-   */
   /** Author help text, shown under the control and named by `aria-describedby`. */
   get hint(): string {
     return resolveLabel(this.field?.hint, this.language);

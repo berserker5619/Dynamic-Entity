@@ -104,7 +104,7 @@ export function listNamesOf(config: EntityFormConfig): string[] {
  * The browser resolves a `listName` field from `LOOKUP_REGISTRY`; a server has no such
  * registry, so an unsupplied list means `coerceCell` finds no options to match against and
  * passes the raw text straight through. The record then looks right and compares wrong against
- * every rule that names the option — the defect fixed in `282e668`, one layer up.
+ * every rule that names the option.
  *
  * So it is not left to vigilance. A silent wrong value found in a database next quarter is the
  * expensive failure; an app that will not boot is the cheap one.

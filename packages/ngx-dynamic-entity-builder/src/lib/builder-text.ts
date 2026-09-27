@@ -99,8 +99,6 @@ export const DEFAULT_BUILDER_TEXT = {
   defaultValue: 'Default value',
 
   // Field inspector — section headings and the layout control.
-  // `validation` used to be the heading above the validator checkboxes; the inspector's
-  // sections now own their headings, so `sectionValidation` replaces it.
   sectionBasics: 'Basics',
   sectionLayout: 'Layout',
   sectionValidation: 'Validation',

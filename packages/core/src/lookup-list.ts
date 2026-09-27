@@ -87,9 +87,8 @@ export function normalizeLookupValues(
  * Project normalised list values onto the canonical option shape — the `name` *is* the
  * option, and `code ?? _id` becomes its stable key.
  *
- * A master list is exactly where identity already exists and was being thrown away: the
- * backend has decided this value is `ACTIVE` or `64f1…`, and the module note used to say
- * both were carried but never read. Reading `code` first is deliberate — it is the stable,
+ * A master list is exactly where identity already exists: the backend has decided this
+ * value is `ACTIVE` or `64f1…`. Reading `code` first is deliberate — it is the stable,
  * human-authored identifier, while `_id` changes if a list is rebuilt in another database.
  *
  * A list value with neither produces a keyless option, which matches by text as before.

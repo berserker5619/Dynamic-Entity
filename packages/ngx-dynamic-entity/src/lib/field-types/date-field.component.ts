@@ -87,14 +87,10 @@ export class DateFieldComponent {
   /**
    * ISO 8601 date → display string, through the formatter the host configured.
    *
-   * This used to call `toLocaleDateString()` directly, which meant `setDateFormatters` — the
-   * one seam for choosing how a date is rendered — reached the record summary and the `time`
-   * field but not this one. A host that configured formatters got them almost everywhere,
-   * and silently did not get them on the field type most likely to be the reason they
-   * configured formatters at all.
+   * Never call `toLocaleDateString()` directly here: `setDateFormatters` is the one seam for
+   * choosing how a date renders, and every date display has to go through it.
    *
-   * The default formatter is `toLocaleDateString()` with no locale, so an application that
-   * has not called `setDateFormatters` renders exactly what it rendered before.
+   * The default formatter is `toLocaleDateString()` with no locale.
    */
   formatDate(value: string | null): string {
     if (!value) return '—';
@@ -107,12 +103,6 @@ export class DateFieldComponent {
     if (Number.isNaN(parsed.getTime())) return value;
     return formatDisplayValue('date', undefined, value, this.language);
   }
-  /**
-   * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({
-   * validationMessages })` reaches this field. It used to render a fixed
-   * "This field has an error", which made a documented, configurable feature work on three
-   * of fifteen field types.
-   */
   /** Author help text, shown under the control and named by `aria-describedby`. */
   get hint(): string {
     return resolveLabel(this.field?.hint, this.language);

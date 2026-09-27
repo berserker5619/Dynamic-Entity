@@ -33,13 +33,8 @@ export interface RuleSyncContext {
 /**
  * RulesEvaluationService — evaluates rules, and owns what a result *means*.
  *
- * It used to be two passthrough methods, with the interpretation spread across the component:
- * the render filter decided one way what a rule result did to a field, and the validity sync
- * decided again forty lines further down. They disagreed about what "every field" meant, and
- * the consequence was a required field inside a `group` that a rule had hidden holding
- * `form.invalid` true forever with nothing on screen to explain it.
- *
- * Precedence lives here now, in one method that both callers go through. Still stateless —
+ * Precedence lives in one method that both the render filter and the validity sync go
+ * through, so what is on screen and what counts toward validity cannot disagree. Stateless —
  * every method takes the result it is interpreting, so there is nothing to go stale against a
  * rebuilt form and nothing to reset between configs.
  */

@@ -77,11 +77,8 @@ const WORKSHEET = /^xl\/worksheets\/sheet(\d+)\.xml$/;
 /**
  * The number in `sheetN.xml`, or `null` for anything that is not a worksheet.
  *
- * **Which worksheet an import reads used to be decided by byte order** — whichever one the
- * archive happened to list first. A user means the first *tab*, and an archive that put
- * `sheet2.xml` before `sheet1.xml` therefore imported the wrong sheet while preview and import
- * agreed with each other about it. Every mainstream writer emits sheet1 first, so it was latent
- * rather than live, but "the first worksheet" read as a decision when it was an accident.
+ * **Which worksheet an import reads is never decided by byte order.** A user means the first
+ * *tab*, and an archive may list `sheet2.xml` before `sheet1.xml`.
  *
  * The lowest number is not *quite* tab order either: the real order lives in `workbook.xml`'s
  * `<sheets>` and the relationship map, which this does not parse. It is a great deal closer
@@ -225,11 +222,8 @@ async function readDeflated(
   /**
    * Retention counted as it grows, not once the entry is complete.
    *
-   * Checking afterwards is the failure this whole file exists to criticise: by then the memory
-   * the limit was protecting has been spent. It was harmless in practice only because
-   * `limitBytes` already caps the stream upstream — which made it dead code on the real path
-   * and a late check on the direct one, and "harmless because something else did the work" is
-   * not a guard.
+   * Checking afterwards is too late: by then the memory the limit protects has been spent.
+   * `limitBytes` caps the stream upstream too, but this guard must not depend on that.
    */
   const retain = (slice: Buffer): void => {
     budget.retained += slice.length;

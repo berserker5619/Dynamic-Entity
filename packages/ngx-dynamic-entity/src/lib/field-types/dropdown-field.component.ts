@@ -145,10 +145,7 @@ export class DropdownFieldComponent {
    * The value this option stores — the option object itself.
    *
    * Kept as a method rather than binding `option` straight into the template, because it is
-   * the one place that says *why* the two are the same thing. It used to delegate to
-   * `getOptionStoredValue`, an exported identity function whose two branches returned their
-   * argument unchanged; naming a transformation that does not happen is worse than naming
-   * nothing, because a reader has to go and check.
+   * the one place that says *why* the two are the same thing.
    */
   getOptStoredVal(option: DropdownOption): unknown {
     return option;

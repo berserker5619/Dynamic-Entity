@@ -12,9 +12,7 @@ export const TEST_DATA_CONFIGS: EntityFormConfig[] = testDataRaw as EntityFormCo
  *
  * They live in `configs/` rather than as TypeScript literals for one reason: the demo's
  * import server reads the same files, so the browser and the server cannot be handed
- * different schemas for the same entity. That divergence used to be real — the server simply
- * refused these four entities rather than risk mapping a sheet against a config the user
- * never saw — and one source removes the risk instead of routing around it.
+ * different schemas for the same entity.
  *
  * Cast rather than validated: `resolveJsonModule` types them structurally, and these are
  * authored fixtures rather than user input. `validateConfig` is what checks a config that
@@ -35,8 +33,7 @@ export const CLIENTS_CONFIG = clientsConfig as EntityFormConfig;
  * A named master list, as a consuming app would hold it: values out of authoring order with an
  * explicit `sortOrder`, several languages, and metadata (`code`, `isSystemDefined`) that the
  * option shape drops but `LookupRegistryService.valuesFor` still exposes.
- */
-/**
+ *
  * Read from JSON so the demo app and import-server.mjs share one source.
  *
  * The import server resolves this list to the same options the browser does — insuranceClaims
@@ -183,11 +180,6 @@ export const EMPLOYEES_RECORDS: Record<string, unknown>[] = [
   },
 ];
 
-/**
- * `orders` — the demo entity that exercises the runtime features the other configs don't:
- * an entity-ref cascade (country → city), `autoPatch` from a selected company record,
- * `patchOnTrue`, and a `criticalField` lock. Loaders are registered in `app.config.ts`.
- */
 /**
  * `orders` — three `entity-ref` fields, an `autoPatch` that copies fields off the referenced
  * record, a `patchOnTrue`, and a `criticalField`. Nothing else in the demo reaches those, and

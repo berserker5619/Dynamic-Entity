@@ -313,9 +313,8 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   readonly ruleResult = computed(() =>
     this.rulesEvaluation.evaluate(this.rules, this.formValues(), this.baseline(), {
       // The engine reports rather than logs, because it also runs on a server. This is the
-      // client's answer: say it once per distinct problem, in dev only. A rule the author
-      // half-finished used to throw out of change detection; now it is skipped, and a
-      // silently skipped rule is exactly as hard to diagnose as a thrown one.
+      // client's answer: say it once per distinct problem, in dev only — a silently skipped
+      // rule is as hard to diagnose as a thrown one.
       onProblem: message => this.warnOnce(message),
     }),
   );
@@ -444,8 +443,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   /**
    * Whether the current roles may see this record at all.
    *
-   * `permissions.view` used to be computed and thrown away — a user whose roles failed it
-   * still received the complete form with every value in the DOM. It is honoured now.
+   * A user whose roles fail `permissions.view` gets no form, so no value reaches the DOM.
    *
    * As with masking, this is presentational: it stops the browser rendering data, it does
    * not stop the data reaching the browser. Authorize on the server.
@@ -510,13 +508,11 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   /**
    * Whether the Save button is unavailable.
    *
-   * This used to be `submitBlocked`, so an invalid form greyed Save out — and a greyed button
-   * is the worst possible answer to "why can't I save?". It cannot be clicked, so there is no
-   * moment at which the form gets to say which field is at fault or which tab it is on; the
-   * user is left comparing a disabled button against a form that looks, to them, filled in.
-   * On a tabbed form the offending field is usually not even on screen.
+   * Deliberately not `submitBlocked`: a greyed button is the worst answer to "why can't I
+   * save?". It cannot be clicked, so the form never gets to say which field is at fault or
+   * which tab it is on — and on a tabbed form that field is usually not on screen.
    *
-   * Save now stays available while the form is merely invalid. Clicking it still saves
+   * Save stays available while the form is merely invalid. Clicking it still saves
    * nothing — `submit()` checks `submitBlocked` and refuses — but the refusal is where the
    * error summary, the tab badges and the jump to the first bad field come from, so pressing
    * Save produces an explanation instead of silence.
@@ -554,10 +550,9 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
 
       // Clear *before* the guard below, not after it.
       //
-      // The reset used to sit behind `if (visibleTabs.length === 0) return`, so a swap that
-      // arrived while no tab was visible — a config still being applied, or every tab hidden
-      // by a rule at that instant — skipped it entirely and the previous record's tab
-      // survived into the next one. Clearing is unconditional and cheap, and safe on its own
+      // A swap can arrive while no tab is visible — a config still being applied, or every
+      // tab hidden by a rule at that instant — and the previous record's tab must not survive
+      // into the next one. Clearing is unconditional and cheap, and safe on its own
       // because `activeTabConfig` already falls back to the first visible tab when nothing
       // is selected. Selecting the tab is what needs tabs to exist; forgetting the old one
       // does not.
@@ -568,14 +563,9 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
 
       if (this.visibleTabs.length === 0) return;
 
-      // The first tab used to be chosen only when no tab was active yet, and nothing ever
-      // cleared `activeTab` — so a form that stays mounted while `initialData` is swapped
-      // opened the next record on the tab the previous one was left on. The demo escaped it
-      // by destroying the form between records; a host that keeps it mounted did not.
-      //
-      // Resetting here is consistent with what already happens: `buildForm` assigns a brand
-      // new FormGroup, so a changed `initialData` has already discarded every control and
-      // all validation state. The tab was the one thing pretending nothing had changed.
+      // A form that stays mounted while `initialData` is swapped must open the next record
+      // on its first tab, not the tab the previous one was left on. `buildForm` has already
+      // discarded every control and all validation state; the active tab resets with them.
       if (!this.activeTab()) {
         // No focus steal: the panel gains focus when a *user* picks a tab, not when a host
         // swaps the record underneath them.
@@ -1046,11 +1036,8 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   /**
    * Ids already warned about, per component instance.
    *
-   * This was `private static`, so it was module-global mutable state that nothing ever
-   * cleared: under SSR every render of every form in the process accumulated into one set
-   * that lived as long as the server did, and the first request to render a config
-   * suppressed the warning for every request after it. Per instance, the warning is once per
-   * form — which is what "warn once" was meant to mean.
+   * Per instance, never `static`: under SSR a module-global set would outlive every request,
+   * and the first render of a config would suppress the warning for every render after it.
    */
   private readonly warnedAmbiguousIds = new Set<string>();
 
@@ -1090,9 +1077,8 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   /**
    * Every field in the config with the scope its value is stored under, cached per config.
    *
-   * `collectFieldScopes` walks the whole tree. It was called once per field from `pathFor`,
-   * which `namesField` calls, which the render filter calls for every field on the active
-   * tab — a quadratic walk on every change-detection pass. Keyed by config identity, so a
+   * `collectFieldScopes` walks the whole tree, and `pathFor` runs once per rendered field on
+   * every change-detection pass — uncached, that is quadratic. Keyed by config identity, so a
    * new config invalidates it without an explicit lifecycle hook to forget.
    */
   private fieldScopes(): FieldScopeEntry[] {
@@ -1333,11 +1319,9 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
   async submit(): Promise<void> {
     if (!this.canSubmit || this.submitBlocked) {
       /*
-       * A refused save used to mark every control touched and stop there.
-       *
-       * On a tabbed form that is indistinguishable from a broken button: the errors appear on
-       * whichever tabs hold them, the user is looking at a different one, and nothing on
-       * screen changes. Three things fix it, and all three are needed — the summary says how
+       * Marking every control touched is not enough on its own: on a tabbed form the errors
+       * appear on whichever tabs hold them, the user is looking at a different one, and
+       * nothing on screen changes. Three things are needed — the summary says how
        * many and which, the tab badges say where, and this jump takes the user to the first.
        */
       this.markAllTouched();

@@ -70,14 +70,7 @@ export class AppComponent implements OnInit {
   readonly records = signal<VersionedRecord[]>([]);
   readonly selectedRecord = signal<VersionedRecord | null>(null);
   /**
-   * Renders the record editor instead of the plain form.
-   *
-   * `ngx-dynamic-record-form` is the only component with the summary panel and its quick-jump
-   * links, so without a way to reach it here nothing in the demo exercised `jumpToField`.
-   */
-  /**
-   * How the open record is presented. Three modes, because the renderer supports three and
-   * the demo previously reached only two:
+   * How the open record is presented — all three modes the renderer supports:
    *
    *   'form'   — the editable form.
    *   'record' — read-only, with a per-tab "Edit section" flow (the record component's
@@ -100,10 +93,8 @@ export class AppComponent implements OnInit {
   /**
    * Why the last save was refused, or `null`.
    *
-   * `(saveRejected)` is the other half of a `beforeSave` hook that can abort. The library
-   * emits it, and until this was bound nothing in the demo listened — so a vetoed save
-   * looked exactly like a Save button that did nothing, which is the failure the abort
-   * support was added to fix, reintroduced one layer up.
+   * `(saveRejected)` is the other half of a `beforeSave` hook that can abort. Unbound, a
+   * vetoed save would look exactly like a Save button that did nothing.
    */
   readonly saveRejection = signal<string | null>(null);
 

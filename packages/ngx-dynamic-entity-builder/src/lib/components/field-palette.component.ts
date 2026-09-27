@@ -64,11 +64,8 @@ interface PaletteSection {
 /**
  * FieldPaletteComponent — the list of buildable field types.
  *
- * Two things changed the day this stopped being a flat grid of twenty-two buttons. The labels
- * were clipped mid-word — "Boolean Toggl", "Entity Referen", "File Attachmen" — because the
- * grid forced two equal columns and the button refused to wrap, so a third of the palette
- * could not be read. And with no order to them, finding "Month & Year" meant scanning the
- * whole list: the grouping and the filter are what make a palette this size navigable.
+ * Grouped and filterable, because a flat list of twenty-two types is not navigable, and
+ * tiles wrap their labels so names like "Entity Reference" are never clipped.
  */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -198,7 +195,7 @@ interface PaletteSection {
       }
 
       /*
-       * An auto height and a wrapping label are the fix for the clipped names. Material's
+       * An auto height and a wrapping label keep long names readable. Material's
        * button locks a line height and hides the overflow, which is right for a toolbar and
        * wrong for a 140px-wide tile holding "Entity Reference".
        */

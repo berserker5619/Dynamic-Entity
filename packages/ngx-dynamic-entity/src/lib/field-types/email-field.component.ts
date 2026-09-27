@@ -60,10 +60,7 @@ import { fieldDescribedBy, fieldDomId, nextFieldInstanceId } from './field-dom-i
           [attr.disabled]="field.disabled ? true : null"
         />
         @if (errorMessage) {
-          <!-- One branch, resolved by the service. The template used to spell out "Email is
-               required" and "Enter a valid email address" itself, so a host configuring
-               validationMessages was overridden by markup it could not reach. The service
-               defaults say the same thing. -->
+          <!-- One branch, resolved by the service, so a host's validationMessages apply. -->
           <span class="ngx-field__error" [attr.data-testid]="'field-' + field.id + '-error'" [id]="domId('-error')">{{
             errorMessage
           }}</span>
@@ -98,12 +95,6 @@ export class EmailFieldComponent {
   get placeholder(): string {
     return resolveLabel(this.field?.placeholder, this.language);
   }
-  /**
-   * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({
-   * validationMessages })` reaches this field. It used to render a fixed
-   * "This field has an error", which made a documented, configurable feature work on three
-   * of fifteen field types.
-   */
   /** Author help text, shown under the control and named by `aria-describedby`. */
   get hint(): string {
     return resolveLabel(this.field?.hint, this.language);

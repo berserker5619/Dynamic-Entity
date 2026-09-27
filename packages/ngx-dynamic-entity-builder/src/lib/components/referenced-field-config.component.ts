@@ -130,10 +130,8 @@ export class ReferencedFieldConfigComponent {
   }
 
   /**
-   * Both callers pass the id of the field they just edited. This used to ignore that
-   * argument and read `store.selectedField()` instead, so whenever the edited field was not
-   * the selected one it checked drift against the wrong field's source entity — or bailed
-   * out entirely if nothing was selected.
+   * Takes the id of the field just edited rather than reading `store.selectedField()`, which
+   * need not be the same field — or any field at all.
    */
   private async checkDriftForField(fieldId: string): Promise<void> {
     const f = this.store.fields().find(field => field.id === fieldId);

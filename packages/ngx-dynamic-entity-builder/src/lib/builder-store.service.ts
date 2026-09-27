@@ -129,8 +129,7 @@ export class BuilderStore {
   /**
    * Roles of the person using the builder — distinct from `availableRoles`, which is the
    * vocabulary a schema may reference. Needed so the SYSTEM_DEFAULT_CAN_EDIT predicate can
-   * be asked a real question; it was previously called with a hardcoded empty array, which
-   * made any role-checking predicate answer false for everyone.
+   * be asked a real question rather than answering for an empty role list.
    */
   private readonly _userRoles = signal<string[]>([]);
 
@@ -190,11 +189,8 @@ export class BuilderStore {
   /**
    * Every field the config declares, sub-tabs included.
    *
-   * This used to stop at top-level tabs, which quietly broke three things at once: nine of
-   * `insuranceClaims`'s twenty-eight fields never appeared on the canvas, the entity-reference
-   * picker could not offer a nested field as a source, and the drift check looked a nested
-   * field up here, got nothing, and returned without checking. The store's structural
-   * operations already walked the whole tree — only this view did not.
+   * The canvas, the entity-reference source picker and the drift check all read this, so it
+   * has to reach nested tabs just as the store's structural operations do.
    *
    * It deliberately does not descend into a field's own `children`: `group` and `array`
    * children are rendered by the row that owns them, not as rows of their own.
@@ -345,10 +341,9 @@ export class BuilderStore {
   /**
    * Every tab in the tree, flattened.
    *
-   * The structural operations below used to iterate `draft.tabs` directly, which is only
-   * the top level. A field on a sub-tab could be selected and edited but never removed,
-   * duplicated, moved or reordered — the builder could author nested configs it was then
-   * unable to restructure, which is the worst possible state for an authoring tool.
+   * The structural operations below go through this rather than `draft.tabs`, which is only
+   * the top level — otherwise a field on a sub-tab could be edited but never removed,
+   * duplicated, moved or reordered.
    */
   private flattenTabs(tabs: NestedTabConfig[] = []): NestedTabConfig[] {
     const list: NestedTabConfig[] = [];
@@ -490,20 +485,16 @@ export class BuilderStore {
    *
    * Ids are the wiring between fields — rules, cascades, patches and `showWhen` all address
    * fields by id — so a rename that only touches `field.id` silently breaks that wiring.
-   * That was survivable while renaming was a rare manual act; label-derived ids make it
-   * routine, so the references move with it.
-   */
-  /**
+   * Label-derived ids make renaming routine, so the references move with it.
+   *
    * `key` addresses the field to rename; `oldId` is the bare id every *reference* to it
-   * carries. They were one parameter, which worked only while an id was unique across the
-   * config: resolving needs the path, while `showWhen`, `parentField`, `autoPatch` targets
-   * and rules are all keyed by bare id and never match a path.
+   * carries. They are separate because resolving needs the path, while `showWhen`,
+   * `parentField`, `autoPatch` targets and rules are all keyed by bare id.
    */
   private applyRename(key: string, oldId: string, newId: string): void {
     // Selection is held as whatever the caller passed — `addField` stores a bare id while a
-    // canvas click stores a path — so comparing the two strings said "not selected" for a
-    // field that plainly was, and the inspector emptied itself mid-rename. Compare the
-    // fields the two keys resolve to instead.
+    // canvas click stores a path — so compare the fields the two keys resolve to, not the
+    // strings.
     const selectedKey = this._selectedFieldId();
     const tabsNow = this._config().tabs;
     const wasSelected = !!selectedKey && this.findFieldInTabs(tabsNow, selectedKey) === this.findFieldInTabs(tabsNow, key);
@@ -833,9 +824,8 @@ export class BuilderStore {
   hasFlagValidator(field: NestedFieldConfig, validator: FlagValidator): boolean {
     if (validator === 'required') return !!field.validators?.required;
     if (validator === 'email') {
-      // This used to report *any* pattern as email, so writing a custom regex silently
-      // ticked the box. The legacy encoding is still recognised so a config authored by the
-      // old builder keeps showing Email as ticked.
+      // Only the legacy email regex counts, never any pattern: a custom regex must not tick
+      // the box. Recognising it keeps older configs showing Email as ticked.
       return !!field.validators?.email || field.validators?.pattern === LEGACY_EMAIL_PATTERN;
     }
     return false;
@@ -901,7 +891,7 @@ export class BuilderStore {
     });
   }
 
-  /** Link a field to a field defined in another entity configuration (Phase 8). */
+  /** Link a field to a field defined in another entity configuration */
   linkReferencedField(fieldId: string, sourceEntityKey: string, sourceField: NestedFieldConfig): void {
     this.mutate(draft => {
       const field = this.findFieldInTabs(draft.tabs, fieldId);

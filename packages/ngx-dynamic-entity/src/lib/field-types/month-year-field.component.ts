@@ -170,12 +170,6 @@ export class MonthYearFieldComponent {
     const monthName = MONTH_NAMES[parseInt(monthNum, 10) - 1];
     return monthName && year ? `${monthName} ${year}` : String(value);
   }
-  /**
-   * Resolved through `ValidationMessagesService`, so `provideNgxDynamicEntity({
-   * validationMessages })` reaches this field. It used to render a fixed
-   * "This field has an error", which made a documented, configurable feature work on three
-   * of fifteen field types.
-   */
   /** Author help text, shown under the control and named by `aria-describedby`. */
   get hint(): string {
     return resolveLabel(this.field?.hint, this.language);

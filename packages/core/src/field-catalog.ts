@@ -302,11 +302,8 @@ export const FIELD_TYPE_CATALOG: FieldTypeMeta[] = [
  * Lookup index over `FIELD_TYPE_CATALOG`.
  *
  * Built lazily and invalidated on registration rather than frozen at module evaluation.
- * It used to be built once when this module first loaded, which meant pushing an entry onto
- * the exported `FIELD_TYPE_CATALOG` array had no effect on lookups: the builder's palette
- * and `createFieldConfig` could never see a custom type, even though the renderer's own
- * `provideFieldTypes` registry genuinely is open. Half the registry was extensible and the
- * half the builder depends on was not.
+ * An index frozen at load would hide every type registered afterwards from the builder's
+ * palette and `createFieldConfig`.
  */
 let catalogIndex: Map<string, FieldTypeMeta> | null = null;
 

@@ -139,9 +139,8 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * `[<hole>, {...}]`. A hole is not a row the user entered, and leaving it in produces a record
  * with a phantom blank entry that the form then renders as an empty row.
  *
- * **Returns the compacted value and does not mutate its argument.** It used to do both — an
- * object was rewritten in place while an array came back as a new one — so whether a caller
- * could ignore the return value depended on what they passed in.
+ * **Returns the compacted value and does not mutate its argument**, for objects and arrays
+ * alike.
  */
 export function compactArrays<T>(value: T): T {
   if (Array.isArray(value)) {

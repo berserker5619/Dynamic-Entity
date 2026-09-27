@@ -68,10 +68,8 @@ export class ValidatorRegistryService {
     }
     if (config.email) fnList.push(Validators.email);
 
-    // Named validators from the consumer registry. This branch previously hardcoded the
-    // built-ins and consulted the registry only for the `string[]` form of this config, so
-    // a validator the consumer had registered could not be named from a typed schema
-    // without casting it to `any`.
+    // Named validators from the consumer registry, so a registered validator can be named
+    // from a typed schema.
     for (const key of config.custom ?? []) {
       const fn = this.resolve(key);
       if (fn) fnList.push(fn);
@@ -106,10 +104,9 @@ export class ValidatorRegistryService {
   /**
    * Say when a named validator resolved to nothing.
    *
-   * It used to be dropped in silence, which is the worst failure mode this library has: the
-   * schema says the field is checked, the field is not checked, the form saves, and nothing
-   * anywhere said so. For `customAsync` that is typically a uniqueness check, so the duplicate
-   * lands in the database.
+   * Silence would be the worst failure mode this library has: the schema says the field is
+   * checked, the field is not checked, the form saves, and nothing says so. For
+   * `customAsync` that is typically a uniqueness check, so the duplicate lands in the database.
    *
    * Dev only, once per name — this runs while controls are built, which happens on every
    * config change. `validateConfig` with `knownValidators` is the build-time version of the

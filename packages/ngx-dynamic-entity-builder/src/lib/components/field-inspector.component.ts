@@ -320,9 +320,7 @@ export class FieldInspectorComponent {
 
   /**
    * Seeds a new condition with the first field not already watched.
-   *
-   * It used to seed the literal string `field`, which is not a field id at all — so a new
-   * condition started out referencing nothing and silently hid the field until it was edited.
+   * A seed that names no real field would silently hide this one until edited.
    */
   protected addShowWhen(field: NestedFieldConfig): void {
     const next = { ...(field.showWhen ?? {}) };

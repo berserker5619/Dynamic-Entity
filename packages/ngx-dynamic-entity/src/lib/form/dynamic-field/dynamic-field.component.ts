@@ -135,7 +135,7 @@ export class DynamicFieldComponent implements OnChanges, OnDestroy {
    *
    * `detectChanges()` rather than `markForCheck()`: a selection that arrives from a native
    * `change` event (or Playwright) may not be followed by another Angular tick, so a dirty
-   * flag would never be flushed. Running CD on the hosted component now is the copy showing up.
+   * flag would never be flushed. Running CD on the hosted component immediately is what shows the copied value.
    *
    * Done here rather than in each of the eighteen field components: the host owns the
    * component reference, so one subscription covers every type including custom ones.
