@@ -8,7 +8,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Unreleased]
+## [2.1.1]
 
 ### Fixed
 - **Path-addressed rules inside groups read the wrong field.** The renderer's rule value map
@@ -20,7 +20,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   its ref.
 - **Ordering operators treated empty values as `0`.** `LESS_THAN` and friends no longer match
   `''`, `null`, `[]` or booleans, so a rule such as "amount < 100" does not fire on a blank
-  field — in the form or in a server import.
+  field — in the form or in a server import. A rule meant to fire on an empty field should
+  use `IS_EMPTY`.
 - **Security (low): the import router resolved `Object.prototype` keys as entities.** With
   `configs` given as a map, `/import/constructor`, `/import/__proto__` and similar resolved to a
   built-in instead of 404ing, and ran preview or import against it. No records could reach
@@ -28,6 +29,15 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Config and rules maps are now read by own property only.
 - **Date operators depended on the host timezone.** A bare `YYYY-MM-DD` is now read as local
   midnight, like a `YYYY-MM-DDTHH:mm` datetime, and an empty date is no longer the epoch.
+- **Builder empty-canvas icon failed WCAG AA contrast** (about 1.5:1). It now uses the builder's
+  muted text colour.
+
+### Changed
+- Development tooling only — nothing below changes a published API. Lint moved to ESLint 10
+  with a flat `eslint.config.mjs` (typescript-eslint 8, angular-eslint 21). `@dynamic-entity/core`
+  and `@dynamic-entity/server` run Jest 30. The workspace resolves Angular 21.2.24 across every
+  `@angular/*` package, and `turbo` is pinned rather than `latest`.
+- `BuilderStore`'s undo/redo lives in an internal `BuilderHistory`; behaviour is unchanged.
 
 ---
 
