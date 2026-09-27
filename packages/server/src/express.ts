@@ -121,6 +121,11 @@ function checkLookups(entity: string, config: EntityFormConfig, lookups: ImportL
   );
 }
 
+/** A map's own entry for `key`, never one inherited from `Object.prototype`. */
+function ownValue<T>(map: Readonly<Record<string, T>>, key: string): T | undefined {
+  return Object.hasOwn(map, key) ? map[key] : undefined;
+}
+
 /** `csv` unless a valid `xlsx` was asked for; anything else is a refusal rather than a guess. */
 function readFormat(value: unknown): TemplateFormat {
   if (value === undefined || value === 'csv') return 'csv';
@@ -243,13 +248,16 @@ export function createImportRouter(options: ImportRouterOptions): Router {
    * The key is a lookup into a map the consumer supplied — never a path segment, never
    * interpolated into anything. Reflecting it back would turn a 404 into a way to probe which
    * entities exist and, if a browser ever rendered the message, into a way to inject into it.
+   *
+   * An own-property check, not `configs[entity]`: `constructor`, `__proto__` or `toString`
+   * would otherwise resolve to a built-in and run an import against it.
    */
   const configFor = async (request: Request): Promise<{ entity: string; config: EntityFormConfig }> => {
     const entity = String(request.params['entity'] ?? '');
     const config =
       typeof options.configs === 'function'
         ? await options.configs(entity, request)
-        : options.configs[entity];
+        : ownValue(options.configs, entity);
 
     if (!config) throw new ImportError('UNKNOWN_ENTITY', 'No import is configured for that entity.');
     // A loader can return a config the router never saw at construction, so the boot-time
@@ -392,7 +400,7 @@ export function createImportRouter(options: ImportRouterOptions): Router {
       filename: upload.filename,
       plan: plan as never,
       config,
-      rules: routerOptions.rules?.[entity],
+      rules: routerOptions.rules && ownValue(routerOptions.rules, entity),
       lookups: routerOptions.lookups,
       lang: language(request),
       limits: resolved,

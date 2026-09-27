@@ -21,6 +21,11 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Ordering operators treated empty values as `0`.** `LESS_THAN` and friends no longer match
   `''`, `null`, `[]` or booleans, so a rule such as "amount < 100" does not fire on a blank
   field — in the form or in a server import.
+- **Security (low): the import router resolved `Object.prototype` keys as entities.** With
+  `configs` given as a map, `/import/constructor`, `/import/__proto__` and similar resolved to a
+  built-in instead of 404ing, and ran preview or import against it. No records could reach
+  `onImport` (a built-in has no importable columns), but it bypassed the unknown-entity 404.
+  Config and rules maps are now read by own property only.
 - **Date operators depended on the host timezone.** A bare `YYYY-MM-DD` is now read as local
   midnight, like a `YYYY-MM-DDTHH:mm` datetime, and an empty date is no longer the epoch.
 

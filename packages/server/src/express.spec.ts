@@ -708,3 +708,22 @@ describe('multipart abuse', () => {
     expect(response.body.error.message).toContain('notes');
   });
 });
+
+/**
+ * `configs` is a plain object, so `configs['constructor']` is `Object`, not `undefined`. An
+ * inherited key must 404 like any other unknown entity rather than run against a built-in.
+ */
+describe('createImportRouter — entity names that are Object.prototype keys', () => {
+  for (const entity of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+    it(`404s for "${entity}"`, async () => {
+      const template = await request(app()).get(`/import/${entity}/template`);
+      expect(template.status).toBe(404);
+      expect(template.body.error.code).toBe('UNKNOWN_ENTITY');
+
+      const preview = await request(app())
+        .post(`/import/${entity}/preview`)
+        .attach('file', Buffer.from('a,b\n1,2\n'), 'x.csv');
+      expect(preview.status).toBe(404);
+    });
+  }
+});
