@@ -823,7 +823,9 @@ mat-toolbar.deb-toolbar {
 .deb-empty mat-icon {
   transform: scale(1.8);
   margin-bottom: 16px;
-  color: #cbd5e1;
+  /* Not #cbd5e1 (1.5:1): axe measures contrast on aria-hidden text too, so the glyph has
+     to pass like any other. */
+  color: var(--deb-muted);
 }
 
 /*

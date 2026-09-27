@@ -48,10 +48,9 @@ import { BuilderTextService } from '../builder-text';
         @if (store.fields().length === 0) {
           <div class="deb-empty">
             <!--
-              Decoration, and marked as such. The sentence below says everything this glyph
-              says, so a reader hearing "widgets" before it learns nothing; and a faint
-              illustration cannot meet a text contrast ratio without ceasing to be faint.
-              Hidden from the accessibility tree, it is neither announced nor measured.
+              Decoration, and marked as such: the sentence below says everything this glyph
+              says, so it is hidden from the accessibility tree. axe still measures its
+              contrast, so its colour passes AA like any other text.
             -->
             <mat-icon aria-hidden="true">widgets</mat-icon>
             <p>{{ ui.text('canvasEmpty') }}</p>
