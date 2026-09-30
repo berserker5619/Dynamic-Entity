@@ -31,7 +31,8 @@ cannot hold.
 
 ## ✨ Features
 
-- **21 field types** — `text`, `textarea`, `markdown`, `number`, `currency`, `email`, `password`, `date`, `datetime`, `time`, `monthYear`, `dropdown`, `radio`, `checkbox`, `boolean`, `multiSelect`, `entity-ref`, `group`, `array`, `image`, `file`. Every type is a standalone component you can register individually, or swap for your own.
+- **27 field types** — `text`, `textarea`, `markdown`, `number`, `currency`, `email`, `password`, `date`, `datetime`, `time`, `monthYear`, `dropdown`, `radio`, `checkbox`, `boolean`, `multiSelect`, `entity-ref`, `group`, `array`, `image`, `file`, `url`, `phone`, `slider`, `rating`, `color`, `tags`. Every type is a standalone component you can register individually, or swap for your own.
+- **Web, contact and scale inputs** — `url` and `phone` store the text as typed, with opt-in `validators.url` / `validators.phone` format checks. A read-only `url` links only to `http(s)` addresses. `slider` stores a number on `validators.min`–`max` (default 0–100) in steps of `step`. `rating` stores 1 to `validators.max` stars (default 5) as native radios, so it works from the keyboard and with a screen reader. `color` stores `#rrggbb`. `tags` stores a `string[]` of free text; `minLength`/`maxLength` count tags. All six import from a spreadsheet with the same checks the form applies.
 - **Field help text** — `hint` on any field puts an info icon beside its label, with the text on hover and for as long as the field has focus. It is wired to the control through `aria-describedby`, so a screen reader gets it without hovering anything. Unlike a `placeholder` it does not vanish at the first keystroke, which is what makes it usable for a format or a rule rather than an example. `LocalizedText`, like every other authored string.
 - **A refused save explains itself** — pressing Save on an invalid form names every field at fault *and what is wrong with it*, badges each tab with its count, and jumps to the first. Save stays clickable while a form is merely invalid: a disabled button cannot say why.
 - **Reactive rules engine** — three action types (`visibility` to show **or hide** a field or tab, `validation` to attach an error or warning, `info` to raise a banner) driven by 18 condition operators including `EQUAL`, `CONTAINS`, `IN`, `DATE_BEFORE`, `HAS_ITEMS` and `VALUE_CHANGED`. Conditions within a rule are ANDed; rules apply in ascending `priority`, so the highest number wins. A rule reaches a field at any depth and addresses one by path. See [Rules](#-rules).
@@ -198,7 +199,7 @@ The same check is a command, so a consumer CI job can fail a bad config before i
 npx dynamic-entity validate ./form-config.json
 ```
 
-`--additional-field-types signature,rating` matches `additionalFieldTypes`, and
+`--additional-field-types signature,nps` matches `additionalFieldTypes`, and
 `--validators noDisposable,uniqueEmail` matches `knownValidators`. `--rules rules.json`
 passes a `FormRule[]` so CI can gate rule references the same way. `--fail-on-warnings`
 treats a warning as a failure. Exit `0` means no errors, `1` means the config is unusable,

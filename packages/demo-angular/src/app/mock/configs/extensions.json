@@ -56,11 +56,11 @@
           "visibility": true
         },
         {
-          "id": "rating",
-          "type": "rating",
+          "id": "recommend",
+          "type": "nps",
           "label": {
-            "en": "Rating",
-            "de": "Bewertung"
+            "en": "Would recommend",
+            "de": "Weiterempfehlung"
           },
           "visibility": true
         },

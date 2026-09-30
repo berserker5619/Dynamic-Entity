@@ -10,6 +10,7 @@
  */
 
 import { FIELD_TYPE_CATALOG } from './field-catalog';
+import { normalizeHexColor } from './field-values';
 import { ROOT_SCOPE, ambiguousFieldIds, collectFieldScopes, parseFieldRef, refOf } from './field-scopes';
 import { OPTION_KEY, UNSAFE_PATH_KEYS, isUnsafePath, resolveLabel } from './form-logic';
 import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from './form-model.types';
@@ -45,7 +46,7 @@ export interface ValidateConfigOptions {
    * registered names and an unknown one becomes an error here instead.
    *
    * Omit it and the check does not run, exactly like `rules`. The built-ins the registry
-   * resolves without a consumer — `required`, `email`, and `min:`/`max:`/`minLength:`/
+   * resolves without a consumer — `required`, `email`, `url`, `phone`, and `min:`/`max:`/`minLength:`/
    * `maxLength:` with a numeric argument — are always accepted.
    */
   knownValidators?: readonly string[];
@@ -55,7 +56,7 @@ const ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 
 /** Built-in validator names the registry resolves without anything registered. */
 const PARAMETERISED_BUILTINS = new Set(['min', 'max', 'minLength', 'maxLength']);
-const BARE_BUILTINS = new Set(['required', 'email']);
+const BARE_BUILTINS = new Set(['required', 'email', 'url', 'phone']);
 
 /**
  * Whether the renderer's `ValidatorRegistryService` could resolve this name on its own.
@@ -215,7 +216,8 @@ export function validateConfig(
   const checkDefaultValue = (field: NestedFieldConfig, path: string) => {
     const value = field.defaultValue;
     if (value === undefined || value === null) return;
-    if ((field.type === 'number' || field.type === 'currency') && typeof value !== 'number') {
+    const numeric = field.type === 'number' || field.type === 'currency' || field.type === 'slider' || field.type === 'rating';
+    if (numeric && typeof value !== 'number') {
       add(
         'error',
         `${path}.defaultValue`,
@@ -228,6 +230,12 @@ export function validateConfig(
         `${path}.defaultValue`,
         `A "${field.type}" field's default must be a boolean; this is a ${typeof value}.`,
       );
+    }
+    if (field.type === 'color' && normalizeHexColor(value) !== value) {
+      add('error', `${path}.defaultValue`, `A "color" field's default must be a lowercase #rrggbb colour.`);
+    }
+    if (field.type === 'tags' && (!Array.isArray(value) || value.some(item => typeof item !== 'string'))) {
+      add('error', `${path}.defaultValue`, `A "tags" field's default must be an array of strings.`);
     }
   };
 
@@ -363,6 +371,20 @@ export function validateConfig(
       );
     }
 
+    if (field.step !== undefined && !(typeof field.step === 'number' && Number.isFinite(field.step) && field.step > 0)) {
+      add('error', `${path}.step`, 'step must be a number greater than 0. The slider falls back to 1.');
+    }
+    if (field.type === 'slider') {
+      const min = field.validators?.min;
+      const max = field.validators?.max;
+      if (typeof min === 'number' && typeof max === 'number' && max <= min) {
+        add(
+          'error',
+          `${path}.validators`,
+          `A slider's max (${max}) must be greater than its min (${min}). The track falls back to 0–100 and the form still enforces both bounds, so no value can be valid.`,
+        );
+      }
+    }
     if (field.colSpan !== undefined && (field.colSpan < 1 || field.colSpan > 12)) {
       add('error', `${path}.colSpan`, 'colSpan must be between 1 and 12.');
     }

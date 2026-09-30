@@ -207,23 +207,23 @@ test.describe('hooks — a beforeSave that vetoes the save', () => {
 
 test.describe('a field type the library does not ship', () => {
   /**
-   * `provideFieldTypes({ rating: RatingFieldComponent })` on the renderer's side,
+   * `provideFieldTypes({ nps: NpsFieldComponent })` on the renderer's side,
    * `registerFieldType` on the authoring side. Both are needed and they are deliberately
    * independent — core holds no component reference, which is what keeps it free of Angular.
    */
   test('renders, edits, and round-trips through a save', async ({ page }) => {
     await openRecord(page, 'Current Sample');
 
-    const rating = fieldById(page, 'rating');
-    await expect(rating).toHaveAttribute('data-field-type', 'rating');
-    await expect(fieldPart(page, 'rating', 'input')).toHaveText('2');
+    const recommend = fieldById(page, 'recommend');
+    await expect(recommend).toHaveAttribute('data-field-type', 'nps');
+    await expect(fieldPart(page, 'recommend', 'input')).toHaveText('2');
 
-    await safeClick(page.getByTestId('field-rating-star-5'));
-    await expect(fieldPart(page, 'rating', 'input')).toHaveText('5');
+    await safeClick(page.getByTestId('field-recommend-score-9'));
+    await expect(fieldPart(page, 'recommend', 'input')).toHaveText('9');
 
     await safeClick(page.getByTestId(SAVE));
     await safeClick(page.getByRole('button', { name: 'Current Sample' }));
-    await expect(fieldPart(page, 'rating', 'input')).toHaveText('5');
+    await expect(fieldPart(page, 'recommend', 'input')).toHaveText('9');
   });
 
   test('the builder knows the type as well as the renderer', async ({ page }) => {
@@ -231,12 +231,12 @@ test.describe('a field type the library does not ship', () => {
     await safeClick(page.getByRole('button', { name: 'Form Builder' }));
 
     // In the palette, because `registerFieldType` added it to core's catalog.
-    await expect(builderPaletteButton(page, 'Rating')).toBeVisible();
+    await expect(builderPaletteButton(page, 'Net Promoter')).toBeVisible();
 
     // And an authored config using it opens as a known field rather than an unknown one.
     await safeSelect(page.getByTestId('builder-entity-select'), 'extensions');
-    await expect(page.getByTestId('row-id-rating')).toBeVisible();
-    await expect(page.getByTestId('builder-preview').locator('[data-field-type="rating"]')).toBeVisible();
+    await expect(page.getByTestId('row-id-recommend')).toBeVisible();
+    await expect(page.getByTestId('builder-preview').locator('[data-field-type="nps"]')).toBeVisible();
   });
 });
 

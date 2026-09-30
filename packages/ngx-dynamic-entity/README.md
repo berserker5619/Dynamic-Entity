@@ -25,7 +25,7 @@ No Angular Material required. This package has no dependency on Material or the 
 - **`DynamicRecordFormComponent`** — record editor with summary drawer (`showOnMinimize`), profile header, and per-section saving.
 - **Reactive rules** — real-time condition evaluation driving field/tab visibility, validation errors and warnings, and info banners.
 - **Entity references & cascades** — consumer-registered loaders, parent→child dropdown filtering, and `autoPatch` record copying.
-- **21 field types** — each a standalone component, registered explicitly so unused types are never bundled.
+- **27 field types** — each a standalone component, registered explicitly so unused types are never bundled.
 - **Fully translatable** — config text is `LocalizedText`; the library's own buttons and empty states resolve through `uiText`.
 - **Configurable masking and dates** — `MASKED_PLACEHOLDER` replaces the `XXXXXXXXX` literal; `setDateFormatters` in `@dynamic-entity/core` replaces the browser-locale date punctuation.
 

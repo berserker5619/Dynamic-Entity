@@ -1660,6 +1660,6 @@ describe('DynamicFormComponent — automatic column widths', () => {
   /** A type the table says nothing about is a consumer's own; the conservative width is full. */
   it('falls back to the full row for an unknown type', () => {
     component.layout = 'auto';
-    expect(component.getFieldSpan({ id: 'a', type: 'rating' as never, label: {} })).toBe('span 12');
+    expect(component.getFieldSpan({ id: 'a', type: 'signature' as never, label: {} })).toBe('span 12');
   });
 });

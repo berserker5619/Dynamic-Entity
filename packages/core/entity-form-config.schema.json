@@ -72,7 +72,13 @@
         "group",
         "array",
         "image",
-        "file"
+        "file",
+        "url",
+        "phone",
+        "slider",
+        "rating",
+        "color",
+        "tags"
       ]
     },
     "validators": {
@@ -88,6 +94,14 @@
         "email": {
           "type": "boolean",
           "description": "Built-in email check. Independent of `pattern`; a field may have both."
+        },
+        "url": {
+          "type": "boolean",
+          "description": "Built-in web address check: an absolute http or https URL with a host."
+        },
+        "phone": {
+          "type": "boolean",
+          "description": "Built-in phone check: digits with common separators and an optional leading +, 7 to 15 digits."
         },
         "custom": {
           "type": "array",
@@ -160,6 +174,11 @@
           "description": "Named list key. Inline `options` win when both are present."
         },
         "defaultValue": {},
+        "step": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Increment between a slider's values. Defaults to 1; the range is validators.min to validators.max."
+        },
         "validators": { "$ref": "#/$defs/validators" },
         "options": { "type": "array", "items": { "$ref": "#/$defs/localizedText" } },
         "children": {

@@ -83,6 +83,12 @@ const AUTO_COL_SPAN: Readonly<Record<string, number>> = {
   boolean: 4,
   checkbox: 4,
   'entity-ref': 6,
+  url: 6,
+  phone: 6,
+  slider: 6,
+  rating: 4,
+  color: 4,
+  tags: 6,
   // Left at the full width deliberately — textarea, markdown, image, file, group and array
   // each hold something a half-row would crop.
 };

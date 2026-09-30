@@ -31,7 +31,7 @@
  *                      all of them — and assert both a ceiling and the gap between them.
  *                      This is the tree-shaking claim: "an app that uses three field types
  *                      pays for three" rested entirely on a bundler eliding one unused
- *                      exported function, in a module that statically references all 21
+ *                      exported function, in a module that statically references all 27
  *                      components. Nothing tested it.
  *   --keep             Leave the temporary project on disk for inspection.
  */
@@ -439,6 +439,12 @@ export class SsrRootComponent {
           },
           { id: 'imageField', type: 'image', label: { en: 'Image' }, visibility: true },
           { id: 'fileField', type: 'file', label: { en: 'File' }, visibility: true },
+          { id: 'urlField', type: 'url', label: { en: 'Url' }, visibility: true },
+          { id: 'phoneField', type: 'phone', label: { en: 'Phone' }, visibility: true },
+          { id: 'sliderField', type: 'slider', label: { en: 'Slider' }, visibility: true },
+          { id: 'ratingField', type: 'rating', label: { en: 'Rating' }, visibility: true },
+          { id: 'colorField', type: 'color', label: { en: 'Color' }, visibility: true },
+          { id: 'tagsField', type: 'tags', label: { en: 'Tags' }, visibility: true },
         ],
       },
     ],
@@ -465,6 +471,12 @@ export class SsrRootComponent {
     arrayField: [{ rowText: 'Array item 1' }],
     imageField: 'https://example.com/avatar.png',
     fileField: 'document.pdf',
+    urlField: 'https://example.com',
+    phoneField: '+1 555 555 0123',
+    sliderField: 40,
+    ratingField: 4,
+    colorField: '#336699',
+    tagsField: ['alpha', 'beta'],
   };
   roles: string[] = ['editor'];
 }
@@ -489,6 +501,7 @@ const expectedFieldIds = [
   'emailField', 'passwordField', 'dateField', 'datetimeField', 'timeField',
   'monthYearField', 'dropdownField', 'radioField', 'checkboxField', 'booleanField',
   'multiSelectField', 'entityRefField', 'groupField', 'arrayField', 'imageField', 'fileField',
+  'urlField', 'phoneField', 'sliderField', 'ratingField', 'colorField', 'tagsField',
 ];
 
 for (const fieldId of expectedFieldIds) {
@@ -497,7 +510,7 @@ for (const fieldId of expectedFieldIds) {
   }
 }
 
-console.log('PASS: renderApplication produced markup containing all 21 field types${zoneless ? ' (zoneless)' : ''}.');
+console.log('PASS: renderApplication produced markup containing all 27 field types${zoneless ? ' (zoneless)' : ''}.');
 `,
   );
 } else if (size) {
@@ -506,7 +519,7 @@ console.log('PASS: renderApplication produced markup containing all 21 field typ
   /*
    * Both bootstrap a real application, because that is what makes the question meaningful:
    * a bundler only drops a component when nothing reachable from the entry point mentions
-   * it, and `provideBuiltInFieldTypes()` mentions all 21 in one statically-analysable map.
+   * it, and `provideBuiltInFieldTypes()` mentions all 27 in one statically-analysable map.
    * Everything else about the two files is identical, so the difference in output is the
    * field components and nothing else.
    */

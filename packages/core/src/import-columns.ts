@@ -138,7 +138,15 @@ function formatHint(field: NestedFieldConfig): string | undefined {
     case 'currency':
       return 'a number';
     case 'multiSelect':
+    case 'tags':
       return 'values separated by ;';
+    case 'slider':
+    case 'rating':
+      return 'a number';
+    case 'color':
+      return '#RRGGBB';
+    case 'url':
+      return 'https://…';
     default:
       return undefined;
   }

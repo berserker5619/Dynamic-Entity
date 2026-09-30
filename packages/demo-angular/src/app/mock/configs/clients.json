@@ -54,6 +54,31 @@
           "visibility": true
         },
         {
+          "id": "website",
+          "type": "url",
+          "label": {
+            "en": "Website"
+          },
+          "validators": {
+            "url": true
+          },
+          "visibility": true
+        },
+        {
+          "id": "phone",
+          "type": "phone",
+          "label": {
+            "en": "Phone"
+          },
+          "hint": {
+            "en": "Include the country code if the client is abroad."
+          },
+          "validators": {
+            "phone": true
+          },
+          "visibility": true
+        },
+        {
           "id": "status",
           "type": "dropdown",
           "label": {
@@ -87,6 +112,25 @@
           "colSpan": 6,
           "visibility": true,
           "maskData": true
+        },
+        {
+          "id": "brandColor",
+          "type": "color",
+          "label": {
+            "en": "Brand colour"
+          },
+          "visibility": true
+        },
+        {
+          "id": "labels",
+          "type": "tags",
+          "label": {
+            "en": "Labels"
+          },
+          "validators": {
+            "maxLength": 8
+          },
+          "visibility": true
         },
         {
           "id": "notes",

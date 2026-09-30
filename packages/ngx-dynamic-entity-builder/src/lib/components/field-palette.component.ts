@@ -24,6 +24,10 @@ const GROUP_OF: Readonly<Record<string, PaletteGroup>> = {
   currency: 'basic',
   email: 'basic',
   password: 'basic',
+  url: 'basic',
+  phone: 'basic',
+  slider: 'basic',
+  color: 'basic',
 
   dropdown: 'choice',
   radio: 'choice',
@@ -31,6 +35,8 @@ const GROUP_OF: Readonly<Record<string, PaletteGroup>> = {
   checkbox: 'choice',
   boolean: 'choice',
   'entity-ref': 'choice',
+  rating: 'choice',
+  tags: 'choice',
 
   date: 'datetime',
   datetime: 'datetime',

@@ -22,7 +22,7 @@ npm install @dynamic-entity/core
 - **Nested entity form model (`EntityFormConfig`)** — tabbed hierarchies, sub-tabs, nested groups, arrays, and field table display metadata.
 - **Pure form logic** — label resolution, display value formatting (`setDateFormatters` for `date` / `datetime` / `time`), nested data access, and masking, all as side-effect-free functions.
 - **Rules engine** — condition evaluation over 18 operators (`EQUAL`, `NOT_EQUAL`, `CONTAINS`, `NOT_CONTAINS`, `STARTS_WITH`, `ENDS_WITH`, `IS_EMPTY`, `IS_NOT_EMPTY`, `LESS_THAN`, `MORE_THAN`, `LESS_THAN_EQUAL`, `MORE_THAN_EQUAL`, `DATE_BEFORE`, `DATE_AFTER`, `IN`, `NOT_IN`, `HAS_ITEMS`, `VALUE_CHANGED`) producing three action types: `visibility`, `validation`, and `info`.
-- **Canonical field catalog** — `FIELD_TYPE_CATALOG` is the single source of truth for the 21 field type keys (`text`, `textarea`, `markdown`, `number`, `currency`, `email`, `password`, `date`, `datetime`, `time`, `monthYear`, `dropdown`, `radio`, `checkbox`, `boolean`, `multiSelect`, `entity-ref`, `group`, `array`, `image`, `file`), consumed by both the renderer and the builder.
+- **Canonical field catalog** — `FIELD_TYPE_CATALOG` is the single source of truth for the 27 field type keys (`text`, `textarea`, `markdown`, `number`, `currency`, `email`, `password`, `date`, `datetime`, `time`, `monthYear`, `dropdown`, `radio`, `checkbox`, `boolean`, `multiSelect`, `entity-ref`, `group`, `array`, `image`, `file`, `url`, `phone`, `slider`, `rating`, `color`, `tags`), consumed by both the renderer and the builder.
 - **Entity reference contracts** — `EntityReferenceLoader`, option normalisation, and pure cascade filtering (`lookupFilter` / `lookupPath`).
 - **File contracts** — canonical `FileRef` and `FileUploadHandler`, shared by the image and file field types.
 - **Config validation** — `validateConfig` checks structure, field types against the catalog, ids unique per scope, and references that would never resolve — including bracketed field paths and, when passed, `FormRule`s. A JSON Schema for editor completion ships alongside it at `@dynamic-entity/core/schema`. The same check is the `dynamic-entity validate` command, for gating configs in CI.
@@ -44,7 +44,7 @@ import {
 const label = resolveLabel({ en: 'First Name', de: 'Vorname' }, 'en'); // "First Name"
 
 // 2. Inspect the field type vocabulary
-console.log(FIELD_TYPE_CATALOG.length); // 21
+console.log(FIELD_TYPE_CATALOG.length); // 27
 
 // 3. Raise an info banner on the `annualBudget` field when it exceeds 5,000,000
 const rules: FormRule[] = [
@@ -123,7 +123,7 @@ check can run in CI without writing a script:
 npx dynamic-entity validate ./form-config.json
 ```
 
-`--additional-field-types signature,rating` is the command-line form of
+`--additional-field-types signature,nps` is the command-line form of
 `additionalFieldTypes`. `--rules rules.json` is a `FormRule[]` checked against the same
 path/id rule as `showWhen`. `--fail-on-warnings` treats a warning as a failure. Exit `0`
 means no errors, `1` means the config is unusable, `2` means the file or the JSON itself is.

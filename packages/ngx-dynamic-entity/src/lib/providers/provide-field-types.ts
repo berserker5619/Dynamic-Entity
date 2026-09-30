@@ -22,13 +22,19 @@ import { GroupFieldComponent } from '../field-types/group-field.component';
 import { ArrayFieldComponent } from '../field-types/array-field.component';
 import { ImageFieldComponent } from '../field-types/image-field.component';
 import { FileFieldComponent } from '../field-types/file-field.component';
+import { UrlFieldComponent } from '../field-types/url-field.component';
+import { PhoneFieldComponent } from '../field-types/phone-field.component';
+import { SliderFieldComponent } from '../field-types/slider-field.component';
+import { RatingFieldComponent } from '../field-types/rating-field.component';
+import { ColorFieldComponent } from '../field-types/color-field.component';
+import { TagsFieldComponent } from '../field-types/tags-field.component';
 
 /**
  * Field-type registration — the tree-shaking seam.
  *
  * `FieldRegistryService` imports no components. Whatever you register here is what gets
  * bundled, so an app that only uses text/number/dropdown pays for three components and
- * their imports, not twenty-one.
+ * their imports, not twenty-seven.
  *
  * ```ts
  * // Everything (convenient; bundles all built-ins):
@@ -65,6 +71,12 @@ export function builtInFieldTypes(): Record<string, Type<any>> {
     array: ArrayFieldComponent,
     image: ImageFieldComponent,
     file: FileFieldComponent,
+    url: UrlFieldComponent,
+    phone: PhoneFieldComponent,
+    slider: SliderFieldComponent,
+    rating: RatingFieldComponent,
+    color: ColorFieldComponent,
+    tags: TagsFieldComponent,
   };
 }
 
@@ -75,7 +87,7 @@ export function provideFieldTypes(types: Record<string, Type<any>>): Environment
   ]);
 }
 
-/** Register all 21 built-in field type keys. Convenience for apps that use most of them. */
+/** Register all 27 built-in field type keys. Convenience for apps that use most of them. */
 export function provideBuiltInFieldTypes(): EnvironmentProviders {
   return provideFieldTypes(builtInFieldTypes());
 }

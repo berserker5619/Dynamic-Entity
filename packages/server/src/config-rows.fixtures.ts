@@ -17,7 +17,13 @@
  * depends on `@dynamic-entity/core` and on nothing else in this package.
  */
 
-import { resolveOptionLabel, type ImportColumn, type ImportLookups } from '@dynamic-entity/core';
+import {
+  ratingScale,
+  resolveOptionLabel,
+  sliderBounds,
+  type ImportColumn,
+  type ImportLookups,
+} from '@dynamic-entity/core';
 
 export interface SynthesiseOptions {
   /** Language the option labels were resolved in. Must match the one the columns came from. */
@@ -66,6 +72,10 @@ const TEXT = {
   datetime: '2024-03-07T09:30:00.000Z',
   monthYear: '2024-03',
   time: '09:30',
+  url: 'https://example.com/profile',
+  phone: '+1 555 555 0123',
+  color: '#336699',
+  tags: 'alpha;beta',
 } as const;
 
 /** The first option a `listName` field would offer, resolved the way `coerceCell` matches it. */
@@ -96,6 +106,16 @@ function numberFor(column: ImportColumn): number {
   if (typeof validators.min === 'number') value = Math.max(value, validators.min);
   if (typeof validators.max === 'number') value = Math.min(value, validators.max);
   return value;
+}
+
+/** The track's lower end, which is always on the track and on a step. */
+function sliderValueFor(column: ImportColumn): number {
+  return sliderBounds(column.field).min;
+}
+
+/** The top star: a whole number on the scale, and no lower than any `min`. */
+function ratingValueFor(column: ImportColumn): number {
+  return ratingScale(column.field);
 }
 
 /**
@@ -172,6 +192,18 @@ export function cellFor(column: ImportColumn, options: SynthesiseOptions = {}): 
       return TEXT.monthYear;
     case 'time':
       return TEXT.time;
+    case 'url':
+      return TEXT.url;
+    case 'phone':
+      return TEXT.phone;
+    case 'color':
+      return TEXT.color;
+    case 'tags':
+      return TEXT.tags;
+    case 'slider':
+      return String(sliderValueFor(column));
+    case 'rating':
+      return String(ratingValueFor(column));
     default:
       return textFor(column, options);
   }
@@ -197,6 +229,10 @@ export function typedCellFor(column: ImportColumn, options: SynthesiseOptions = 
     case 'number':
     case 'currency':
       return numberFor(column);
+    case 'slider':
+      return sliderValueFor(column);
+    case 'rating':
+      return ratingValueFor(column);
     case 'date':
       return new Date(WHEN.date);
     case 'datetime':

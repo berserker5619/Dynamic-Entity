@@ -237,6 +237,12 @@ export class FieldInspectorComponent {
     return flags.filter(Boolean).length;
   }
 
+  /** A step must be above zero; anything else clears it, and the slider uses 1. */
+  protected positiveOrUnset(value: unknown): number | undefined {
+    const n = this.toNum(value);
+    return n !== null && n > 0 ? n : undefined;
+  }
+
   protected toNum(value: unknown): number | null {
     if (value === '' || value === null || value === undefined) return null;
     const n = Number(value);
@@ -412,7 +418,7 @@ export class FieldInspectorComponent {
   ];
 
   protected supportsPattern(type: string): boolean {
-    return ['text', 'textarea', 'markdown', 'email', 'password'].includes(type);
+    return ['text', 'textarea', 'markdown', 'email', 'password', 'url', 'phone'].includes(type);
   }
 
   protected applyPreset(field: NestedFieldConfig, pattern: string): void {

@@ -1,7 +1,27 @@
 import { Injectable, inject, isDevMode } from '@angular/core';
-import { AsyncValidatorFn, ValidatorFn, Validators } from '@angular/forms';
-import type { FieldValidators } from '@dynamic-entity/core';
+import { AbstractControl, AsyncValidatorFn, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
+import { isValidPhone, isValidUrl, type FieldValidators } from '@dynamic-entity/core';
 import { ASYNC_VALIDATOR_REGISTRY, VALIDATOR_REGISTRY } from '../tokens/injection-tokens';
+
+/**
+ * A format check that, like `Validators.email`, passes an empty value.
+ *
+ * Emptiness is `required`'s question. Answering it here too would give an optional field an
+ * error the moment it was cleared.
+ */
+function formatValidator(key: 'url' | 'phone', test: (value: string) => boolean): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const value = control.value;
+    if (value === null || value === undefined || value === '') return null;
+    return test(String(value)) ? null : { [key]: true };
+  };
+}
+
+/** The built-in web address check. The rule itself is in core, so an import applies the same one. */
+export const urlValidator: ValidatorFn = formatValidator('url', isValidUrl);
+
+/** The built-in phone number check. The rule itself is in core, so an import applies the same one. */
+export const phoneValidator: ValidatorFn = formatValidator('phone', isValidPhone);
 
 /**
  * ValidatorRegistryService — resolves validator configs / key strings to Angular ValidatorFns.
@@ -22,6 +42,8 @@ export class ValidatorRegistryService {
 
     if (validatorKey === 'required') return Validators.required;
     if (validatorKey === 'email') return Validators.email;
+    if (validatorKey === 'url') return urlValidator;
+    if (validatorKey === 'phone') return phoneValidator;
 
     const [name, param] = validatorKey.split(':');
     const value = parseFloat(param);
@@ -67,6 +89,8 @@ export class ValidatorRegistryService {
       }
     }
     if (config.email) fnList.push(Validators.email);
+    if (config.url) fnList.push(urlValidator);
+    if (config.phone) fnList.push(phoneValidator);
 
     // Named validators from the consumer registry, so a registered validator can be named
     // from a typed schema.

@@ -69,6 +69,12 @@ export const DEFAULT_UI_TEXT = {
   uploadImage: 'Upload',
   changeImage: 'Change',
 
+  // Rating, colour and tags
+  ratingValue: '{value} of {max}',
+  clearValue: 'Clear {field}',
+  addTagPlaceholder: 'Type and press Enter',
+  removeTag: 'Remove {tag}',
+
   // Month / year pickers
   month: 'Month',
   year: 'Year',

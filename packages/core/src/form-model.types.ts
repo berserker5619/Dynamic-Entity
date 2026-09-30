@@ -78,7 +78,13 @@ export type RichFieldType =
   | 'group'
   | 'array'
   | 'image'
-  | 'file';
+  | 'file'
+  | 'url'
+  | 'phone'
+  | 'slider'
+  | 'rating'
+  | 'color'
+  | 'tags';
 
 /** Angular-style validator config for a field. */
 export interface FieldValidators {
@@ -95,6 +101,22 @@ export interface FieldValidators {
    * touches the other.
    */
   email?: boolean;
+  /**
+   * Built-in web address check: an absolute `http:` or `https:` URL with a host.
+   *
+   * Other schemes are refused on purpose. A read-only `url` field renders its value as a
+   * link, and `javascript:` is a link too.
+   */
+  url?: boolean;
+  /**
+   * Built-in phone number check: digits with optional spaces, dots, dashes, brackets and a
+   * leading `+`, holding 7 to 15 digits (15 is the E.164 maximum).
+   *
+   * Deliberately loose. National formats differ too much for one rule to be right everywhere,
+   * so this catches typing mistakes rather than validating a numbering plan. Add a `pattern`
+   * alongside it for a stricter local format.
+   */
+  phone?: boolean;
   /**
    * Names of validators registered through `provideNgxDynamicEntity({ validators })`.
    *
@@ -229,6 +251,14 @@ export interface NestedFieldConfig {
    */
   listName?: string;
   defaultValue?: unknown;
+  /**
+   * Increment between a `slider`'s values. Defaults to 1.
+   *
+   * The range itself is `validators.min` / `validators.max` (0 and 100 when absent). They are
+   * the same numbers that bound what the control accepts, so the track and the check cannot
+   * disagree.
+   */
+  step?: number;
   validators?: FieldValidators;
   /** Inline options for dropdown/radio/multiSelect (each a LocalizedText-labelled value). */
   options?: DropdownOption[];

@@ -2,7 +2,7 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { registerFieldType, setDateFormatters } from '@dynamic-entity/core';
 import { appConfig } from './app/app.config';
 import { AppComponent } from './app/app.component';
-import { RATING_TYPE } from './app/mock/extensions-entity';
+import { NPS_TYPE } from './app/mock/extensions-entity';
 
 /**
  * Tie date display to the interface language.
@@ -28,9 +28,9 @@ setDateFormatters({
 });
 
 /**
- * Describe the custom `rating` type to the *authoring* side.
+ * Describe the custom `nps` type to the *authoring* side.
  *
- * The renderer's half is `provideFieldTypes({ rating: RatingFieldComponent })` in
+ * The renderer's half is `provideFieldTypes({ nps: NpsFieldComponent })` in
  * `app.config.ts`. This is the other half: the builder's palette, `getFieldTypeMeta` and
  * `createFieldConfig` all read core's catalog, which holds metadata and no component
  * reference — the separation that keeps core free of Angular.
@@ -40,11 +40,11 @@ setDateFormatters({
  * with only this, the palette offers a type that renders nothing.
  */
 registerFieldType({
-  type: RATING_TYPE,
-  label: 'Rating',
-  icon: 'star',
-  description: 'Five-point rating, stored as a number',
-  idPrefix: 'rating',
+  type: NPS_TYPE,
+  label: 'Net Promoter',
+  icon: 'recommend',
+  description: 'Likelihood to recommend, 0 to 10, stored as a number',
+  idPrefix: 'nps',
   hasOptions: false,
   isEntityRef: false,
   flagValidators: ['required'],

@@ -30,6 +30,10 @@ export const DEFAULT_VALIDATION_MESSAGES: Record<string, ValidationMessage> = {
   required: 'This field is required.',
   requiredSelection: 'Please select an option.',
   email: 'Please enter a valid email address.',
+  url: 'Please enter a full web address, starting with https://.',
+  phone: 'Please enter a valid phone number.',
+  minItems: (_lang, err) => `At least ${err?.requiredLength} required.`,
+  maxItems: (_lang, err) => `No more than ${err?.requiredLength} allowed.`,
   pattern: 'Invalid format.',
   minlength: (_lang, err) => `Minimum ${err?.requiredLength} characters required.`,
   maxlength: (_lang, err) => `Maximum ${err?.requiredLength} characters allowed.`,
@@ -50,19 +54,36 @@ export type MessageOrderEntry = string | readonly [errorKey: string, messageKey:
  * first error actually on the control — so the shared list costs nothing and spares every
  * field component a near-identical copy of it.
  */
-const COMMON_ORDER: readonly MessageOrderEntry[] = ['required', 'email', 'min', 'max', 'minlength', 'maxlength', 'pattern'];
+const COMMON_ORDER: readonly MessageOrderEntry[] = [
+  'required',
+  'email',
+  'url',
+  'phone',
+  'min',
+  'max',
+  'minlength',
+  'maxlength',
+  'pattern',
+];
 
 /**
  * Where a field type disagrees with the common list.
  *
- * Only three do, and each for a reason about how the control reads rather than what it can
- * raise: a select says "Please select an option" where an input says "This field is
- * required"; a number that is neither required nor out of range is not "invalid", it is not a
- * number; and a control with no text in it cannot fail a length or format rule.
+ * Each for a reason about how the control reads rather than what it can raise: a select says
+ * "Please select an option" where an input says "This field is required"; a number that is
+ * neither required nor out of range is not "invalid", it is not a number; a control with no
+ * text in it cannot fail a length or format rule; and a `tags` list is counted in items, not
+ * characters, although Angular reports both as `minlength`.
  */
 const ORDER_BY_FIELD_TYPE: Readonly<Record<string, { order: readonly MessageOrderEntry[]; fallback: string }>> = {
   dropdown: { order: [['required', 'requiredSelection']], fallback: 'invalidSelection' },
   number: { order: ['required', 'min', 'max'], fallback: 'invalidNumber' },
+  slider: { order: ['required', 'min', 'max'], fallback: 'invalid' },
+  rating: { order: ['required', 'min', 'max'], fallback: 'invalid' },
+  tags: {
+    order: ['required', ['minlength', 'minItems'], ['maxlength', 'maxItems'], 'pattern'],
+    fallback: 'invalid',
+  },
   boolean: { order: ['required', 'pattern'], fallback: 'invalid' },
   checkbox: { order: ['required', 'pattern'], fallback: 'invalid' },
   file: { order: ['required', 'pattern'], fallback: 'invalid' },

@@ -97,6 +97,8 @@ export const DEFAULT_BUILDER_TEXT = {
   hintInLanguage: 'Help text ({language})',
   hintHint: 'An info icon beside the label, shown on hover and while the field has focus. Read out with the field.',
   defaultValue: 'Default value',
+  sliderStep: 'Step',
+  sliderStepHint: 'How far one notch moves the slider. Leave empty for 1.',
 
   // Field inspector — section headings and the layout control.
   sectionBasics: 'Basics',

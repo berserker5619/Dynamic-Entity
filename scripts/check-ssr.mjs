@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Assert that ngx-dynamic-entity source code and all 21 field types comply with Server-Side Rendering (SSR).
+ * Assert that ngx-dynamic-entity source code and every built-in field type comply with Server-Side Rendering (SSR).
  *
  * Why this exists: A server-side render (Angular Universal / @angular/platform-server) runs
  * without a real browser window or DOM. Direct references to `window`, `document`, `navigator`,
@@ -8,7 +8,7 @@
  * the Node process with `ReferenceError: window is not defined`.
  *
  * This script statically inspects all shipped components and services in `packages/ngx-dynamic-entity`
- * for unsafe DOM access, verifies that all 21 field components are registered and standalone, and
+ * for unsafe DOM access, verifies that every built-in field component exists, and
  * confirms SSR hygiene.
  *
  * Usage: node scripts/check-ssr.mjs
@@ -19,7 +19,7 @@ import { join, relative } from 'node:path';
 const ROOT = process.cwd();
 const RENDERER_SRC = join(ROOT, 'packages/ngx-dynamic-entity/src/lib');
 
-const ALL_21_FIELD_TYPES = {
+const ALL_FIELD_TYPES = {
   text: 'text-field.component.ts',
   textarea: 'textarea-field.component.ts',
   markdown: 'markdown-field.component.ts',
@@ -41,7 +41,16 @@ const ALL_21_FIELD_TYPES = {
   array: 'array-field.component.ts',
   image: 'image-field.component.ts',
   file: 'file-field.component.ts',
+  url: 'url-field.component.ts',
+  phone: 'phone-field.component.ts',
+  slider: 'slider-field.component.ts',
+  rating: 'rating-field.component.ts',
+  color: 'color-field.component.ts',
+  tags: 'tags-field.component.ts',
 };
+
+// Counted rather than written down, so adding a type cannot leave a stale number in the output.
+const FIELD_TYPE_COUNT = Object.keys(ALL_FIELD_TYPES).length;
 
 const FORBIDDEN_DOM_GLOBALS = [
   'window.',
@@ -118,12 +127,12 @@ for (const file of files) {
   }
 }
 
-// Verify that all 21 field types exist as standalone components
+// Verify that every built-in field type exists as a component file
 const fieldTypeDir = join(RENDERER_SRC, 'field-types');
 const fieldFiles = new Set(readdirSync(fieldTypeDir));
 const missingTypes = [];
 
-for (const [type, expectedFile] of Object.entries(ALL_21_FIELD_TYPES)) {
+for (const [type, expectedFile] of Object.entries(ALL_FIELD_TYPES)) {
   if (!fieldFiles.has(expectedFile)) {
     missingTypes.push(`${type} (${expectedFile})`);
   }
@@ -140,5 +149,5 @@ if (violations > 0) {
 }
 
 console.log(
-  `PASS: All ${files.length} renderer source files and all 21 field types adhere to SSR safety guidelines.`,
+  `PASS: All ${files.length} renderer source files and all ${FIELD_TYPE_COUNT} field types adhere to SSR safety guidelines.`,
 );

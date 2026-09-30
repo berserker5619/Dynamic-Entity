@@ -36,7 +36,7 @@ export const appConfig: ApplicationConfig = {
 - **Tab & tree manager** — organize primary tabs, sub-tabs, nested groups, and array field lists. Nesting is recursive; no depth limit is enforced.
 - **Live preview slot** — a projected content slot, so the builder renders a preview without depending on the renderer package.
 - **Undo & redo** — `Ctrl`/`Cmd`+`Z` and `Ctrl`/`Cmd`+`Shift`+`Z`, plus toolbar buttons that disable at the ends of the history. Consecutive edits inside 400ms merge when the structure is unchanged, so typing a label is one step while adding two fields is two.
-- **All 21 field types** from the `@dynamic-entity/core` catalog.
+- **All 27 field types** from the `@dynamic-entity/core` catalog.
 - **Translatable interface** — every word the builder itself renders resolves through `BUILDER_TEXT`; `uiLanguage` picks the locale. Date punctuation in a live preview follows `setDateFormatters` from `@dynamic-entity/core`; the masked placeholder is a renderer token (`MASKED_PLACEHOLDER`), not a builder one.
 
 ---

@@ -63,6 +63,13 @@ describe('a configured UI_TEXT reaches every field type on screen', () => {
     date: '2020-01-15',
     datetime: '2020-01-15T10:30',
     time: '09:30',
+    // A rating and a colour offer Clear, and tags offer Remove, only once they hold a value.
+    rating: 3,
+    slider: 3,
+    color: '#336699',
+    tags: ['alpha', 'beta'],
+    url: 'https://example.com',
+    phone: '+1 555 555 0123',
   };
 
   function render(type: string, readonly: boolean, value: unknown): string {

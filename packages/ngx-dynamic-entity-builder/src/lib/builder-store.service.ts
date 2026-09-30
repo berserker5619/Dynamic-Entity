@@ -785,6 +785,9 @@ export class BuilderStore {
         else delete field.validators.email;
         // Clear the legacy encoding either way, so a config touched here stops carrying both.
         if (field.validators.pattern === LEGACY_EMAIL_PATTERN) delete field.validators.pattern;
+      } else if (validator === 'url' || validator === 'phone') {
+        if (on) field.validators[validator] = true;
+        else delete field.validators[validator];
       }
     });
   }
@@ -828,6 +831,7 @@ export class BuilderStore {
       // the box. Recognising it keeps older configs showing Email as ticked.
       return !!field.validators?.email || field.validators?.pattern === LEGACY_EMAIL_PATTERN;
     }
+    if (validator === 'url' || validator === 'phone') return !!field.validators?.[validator];
     return false;
   }
 

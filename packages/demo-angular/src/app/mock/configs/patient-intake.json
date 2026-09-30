@@ -222,6 +222,17 @@
           "colSpan": 12
         },
         {
+          "id": "painLevel",
+          "type": "slider",
+          "label": {
+            "en": "Pain Level (0–10)",
+            "de": "Schmerzstärke (0–10)"
+          },
+          "validators": { "min": 0, "max": 10 },
+          "step": 1,
+          "colSpan": 6
+        },
+        {
           "id": "currentMedications",
           "type": "textarea",
           "label": {
@@ -347,6 +358,15 @@
           "table": {
             "visible": true
           }
+        },
+        {
+          "id": "intakeExperience",
+          "type": "rating",
+          "label": {
+            "en": "Intake Experience",
+            "de": "Aufnahmeerfahrung"
+          },
+          "colSpan": 6
         }
       ]
     }

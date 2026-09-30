@@ -43,6 +43,7 @@
   --ngx-color-info: var(--ngx-color-accent);
   --ngx-color-info-soft: var(--ngx-color-accent-soft);
   --ngx-color-disabled-bg: #eef1f4;
+  --ngx-color-rating: #a8660b;
 
   /* Metrics */
   --ngx-radius: 8px;
@@ -97,6 +98,7 @@
     --ngx-color-warning-soft: #2f2517;
     --ngx-color-success: #6fc9a8;
     --ngx-color-disabled-bg: #1c2631;
+    --ngx-color-rating: #f0c05a;
     --ngx-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   }
 }
@@ -655,6 +657,214 @@ textarea.ngx-field__input:focus {
 .ngx-field__radio-option input[type='radio'] {
   accent-color: var(--ngx-color-accent);
   margin: 0;
+}
+
+/* Text for assistive technology only: announced, not drawn. */
+.ngx-field__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ngx-field__link {
+  color: var(--ngx-color-accent);
+  overflow-wrap: anywhere;
+}
+
+/* Slider */
+.ngx-field__slider-wrap,
+.ngx-field__color-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--ngx-control-height);
+}
+
+.ngx-field__slider {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--ngx-color-accent);
+}
+
+/* An untouched slider still draws a thumb; dimming it says the position is not a value. */
+.ngx-field__slider--unset {
+  opacity: 0.55;
+}
+
+.ngx-field__slider-value,
+.ngx-field__color-code {
+  min-width: 4ch;
+  font-variant-numeric: tabular-nums;
+  color: var(--ngx-color-muted);
+}
+
+/* Colour */
+.ngx-field__color {
+  inline-size: 44px;
+  block-size: 34px;
+  padding: 2px;
+  border: 1px solid var(--ngx-color-border);
+  border-radius: var(--ngx-radius-sm);
+  background: var(--ngx-color-surface);
+  cursor: pointer;
+}
+
+.ngx-field__color:focus-visible {
+  outline: var(--ngx-focus-width) solid var(--ngx-color-accent);
+  outline-offset: 2px;
+}
+
+.ngx-field__color-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ngx-field__swatch {
+  inline-size: 18px;
+  block-size: 18px;
+  border-radius: 4px;
+  border: 1px solid var(--ngx-color-border-strong);
+}
+
+/* Rating */
+.ngx-field__rating {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: var(--ngx-control-height);
+}
+
+/* The radio stays in the page for the keyboard and screen readers; the star is what is seen. */
+.ngx-field__star {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 32px;
+  min-block-size: 32px;
+  cursor: pointer;
+  border-radius: var(--ngx-radius-sm);
+}
+
+.ngx-field__star-input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ngx-field__star:has(.ngx-field__star-input:focus-visible) {
+  box-shadow: var(--ngx-ring);
+}
+
+.ngx-field__star-glyph {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ngx-color-muted);
+}
+
+.ngx-field__star--on .ngx-field__star-glyph,
+.ngx-field__star-glyph--on {
+  color: var(--ngx-color-rating);
+}
+
+.ngx-field__rating .ngx-field__remove-btn {
+  margin-inline-start: 8px;
+  padding: 2px 8px;
+}
+
+.ngx-field__stars {
+  margin-inline-end: 6px;
+}
+
+/* Tags */
+.ngx-field__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--ngx-control-height);
+  padding: 4px 8px;
+  border: 1px solid var(--ngx-color-border);
+  border-radius: var(--ngx-radius);
+  background: var(--ngx-color-surface);
+}
+
+.ngx-field__tags:focus-within {
+  border-color: var(--ngx-color-accent);
+  box-shadow: var(--ngx-ring);
+}
+
+.ngx-field--invalid .ngx-field__tags {
+  border-color: var(--ngx-color-error);
+}
+
+.ngx-field__tags--readonly {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.ngx-field__tags--disabled {
+  background: var(--ngx-color-disabled-bg);
+}
+
+.ngx-field__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border-radius: var(--ngx-radius-pill);
+  background: var(--ngx-color-accent-soft);
+  color: var(--ngx-color-text);
+  font-size: var(--ngx-hint-size);
+}
+
+.ngx-field__tags--readonly .ngx-field__tag {
+  padding-inline-end: 10px;
+}
+
+.ngx-field__tag-remove {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--ngx-color-muted);
+  font: inherit;
+  line-height: 1;
+  min-inline-size: 24px;
+  min-block-size: 24px;
+  border-radius: var(--ngx-radius-pill);
+  cursor: pointer;
+}
+
+.ngx-field__tag-remove:hover {
+  color: var(--ngx-color-accent);
+}
+
+.ngx-field__tag-remove:focus-visible {
+  outline: var(--ngx-focus-width) solid var(--ngx-color-accent);
+  outline-offset: 1px;
+}
+
+.ngx-field__tags-input {
+  flex: 1;
+  min-inline-size: 8ch;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--ngx-font-size);
+  padding: 4px 2px;
 }
 
 /* Checkbox */

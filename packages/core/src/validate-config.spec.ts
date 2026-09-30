@@ -515,7 +515,7 @@ describe('entity-form-config.schema.json', () => {
   it('documents every validator key the model supports', () => {
     const keys = Object.keys(schema.$defs.validators.properties).sort();
     expect(keys).toEqual(
-      ['custom', 'customAsync', 'email', 'max', 'maxLength', 'min', 'minLength', 'pattern', 'required'].sort(),
+      ['custom', 'customAsync', 'email', 'max', 'maxLength', 'min', 'minLength', 'pattern', 'phone', 'required', 'url'].sort(),
     );
   });
 });

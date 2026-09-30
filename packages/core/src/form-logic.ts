@@ -15,6 +15,7 @@ import type {
   RawDropdownOption,
   RichFieldType,
 } from './form-model.types';
+import { normalizeTags } from './field-values';
 
 const EMPTY = '—';
 
@@ -494,6 +495,13 @@ export function formatDisplayValue(
         })
         .filter(Boolean)
         .join(', ');
+    }
+
+    // Plain strings, so nothing to look up. Without this an array fell into the default
+    // branch and was read as a language map, which shows the first tag and drops the rest.
+    case 'tags': {
+      const tags = normalizeTags(raw);
+      return tags.length ? tags.join(', ') : EMPTY;
     }
 
     default:

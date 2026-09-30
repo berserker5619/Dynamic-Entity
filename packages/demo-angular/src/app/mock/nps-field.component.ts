@@ -9,11 +9,15 @@ import {
   type NestedFieldConfig,
 } from 'ngx-dynamic-entity';
 
-/** The stars this control offers. A five-point scale, low to high. */
-const STARS = [1, 2, 3, 4, 5] as const;
+/** The points on a Net Promoter scale: 0 ("not at all likely") to 10 ("extremely likely"). */
+const SCORES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
 /**
  * A field type the library does not ship, written against the published contract.
+ *
+ * "How likely are you to recommend us?", scored 0 to 10. It is deliberately not the built-in
+ * `rating`. Zero is a real answer here, where a rating starts at one star. Adding a type is
+ * what this demonstrates, so it has to be one the library does not already have.
  *
  * This is the main extensibility claim, and the only way to check it is to implement it from
  * outside: `DynamicFieldComponentContract` is the whole interface, the renderer assigns
@@ -33,11 +37,11 @@ const STARS = [1, 2, 3, 4, 5] as const;
  */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
-  selector: 'app-rating-field',
+  selector: 'app-nps-field',
   standalone: true,
   template: `
     <div
-      class="ngx-field ngx-field--rating"
+      class="ngx-field ngx-field--nps"
       [attr.data-testid]="'field-' + field.id"
       [attr.data-field-type]="field.type"
       [class.ngx-field--readonly]="readonly"
@@ -50,48 +54,53 @@ const STARS = [1, 2, 3, 4, 5] as const;
           maskedText
         }}</span>
       } @else if (readonly) {
-        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ asStars() }}</span>
+        <span class="ngx-field__value" [attr.data-testid]="'field-' + field.id + '-value'">{{ asText() }}</span>
       } @else {
-        <div class="rating" [id]="domId()" role="group" [attr.aria-label]="label">
-          @for (star of stars; track star) {
+        <div class="nps" [id]="domId()" role="group" [attr.aria-label]="label">
+          @for (score of scores; track score) {
             <button
               type="button"
-              class="rating__star"
-              [class.rating__star--on]="star <= value()"
-              [attr.data-testid]="'field-' + field.id + '-star-' + star"
-              [attr.aria-pressed]="star <= value()"
-              [attr.aria-label]="star + ' of 5'"
+              class="nps__score"
+              [class.nps__score--on]="score === value()"
+              [attr.data-testid]="'field-' + field.id + '-score-' + score"
+              [attr.aria-pressed]="score === value()"
+              [attr.aria-label]="score + ' of 10'"
               [disabled]="field.disabled"
-              (click)="pick(star)"
+              (click)="pick(score)"
             >
-              &#9733;
+              {{ score }}
             </button>
           }
-          <span class="rating__value" [attr.data-testid]="'field-' + field.id + '-input'">{{ value() || '—' }}</span>
+          <span class="nps__value" [attr.data-testid]="'field-' + field.id + '-input'">{{ value() ?? '—' }}</span>
         </div>
       }
     </div>
   `,
   styles: [
     `
-      .rating {
+      .nps {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
-        gap: 2px;
+        gap: 4px;
       }
-      .rating__star {
+      .nps__score {
+        min-width: 30px;
+        height: 30px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
         background: none;
-        border: none;
+        color: inherit;
         cursor: pointer;
-        font-size: 22px;
-        line-height: 1;
-        padding: 0 2px;
-        color: #cbd5e1;
+        font: inherit;
+        font-size: 13px;
       }
-      .rating__star--on {
-        color: #f59e0b;
+      .nps__score--on {
+        border-color: #2563a8;
+        background: #2563a8;
+        color: #fff;
       }
-      .rating__value {
+      .nps__value {
         margin-left: 8px;
         font-size: 13px;
         color: var(--text-muted, #64748b);
@@ -99,7 +108,7 @@ const STARS = [1, 2, 3, 4, 5] as const;
     `,
   ],
 })
-export class RatingFieldComponent implements DynamicFieldComponentContract {
+export class NpsFieldComponent implements DynamicFieldComponentContract {
   /** Unique per instance — see the note above about `array` rows sharing a `field.id`. */
   private readonly instanceId = nextFieldInstanceId();
   protected domId(suffix = ''): string {
@@ -112,7 +121,7 @@ export class RatingFieldComponent implements DynamicFieldComponentContract {
    */
   protected readonly maskedText = inject(MASKED_PLACEHOLDER, { optional: true }) ?? 'XXXXXXXXX';
 
-  protected readonly stars = STARS;
+  protected readonly scores = SCORES;
 
   @Input() field!: NestedFieldConfig;
   @Input() control!: AbstractControl;
@@ -124,19 +133,22 @@ export class RatingFieldComponent implements DynamicFieldComponentContract {
     return resolveLabel(this.field?.label, this.language);
   }
 
-  protected value(): number {
-    const raw = Number(this.control?.value);
-    return Number.isFinite(raw) ? raw : 0;
+  /** The score, or null for no answer. Zero is an answer, so it cannot stand for "none". */
+  protected value(): number | null {
+    const raw = this.control?.value;
+    if (raw === null || raw === undefined || raw === '') return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n <= 10 ? n : null;
   }
 
-  protected asStars(): string {
+  protected asText(): string {
     const n = this.value();
-    return n ? '\u2605'.repeat(n) + '\u2606'.repeat(STARS.length - n) : '\u2014';
+    return n === null ? '—' : `${n} / 10`;
   }
 
-  protected pick(star: number): void {
-    // Clicking the current rating clears it, which is the only way back to "not rated".
-    this.control.setValue(star === this.value() ? null : star);
+  protected pick(score: number): void {
+    // Clicking the current score clears it, which is the only way back to "not answered".
+    this.control.setValue(score === this.value() ? null : score);
     this.control.markAsDirty();
     this.control.markAsTouched();
   }

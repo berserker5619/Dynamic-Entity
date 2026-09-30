@@ -29,7 +29,7 @@ export const EXTENSIONS_ENTITY = 'extensions';
  * one place it enters a config. That is the honest cost of a custom type today and is left
  * visible rather than hidden behind an `any`.
  */
-export const RATING_TYPE = 'rating' as RichFieldType;
+export const NPS_TYPE = 'nps' as RichFieldType;
 
 /**
  * Addresses a remote uniqueness check would reject.
@@ -59,7 +59,7 @@ export const ASYNC_CHECK_MS = 800;
  *   `provideNgxDynamicEntity` — the schema stays data the builder can author, the rule stays
  *   code. An import runs neither: `applyMapping` checks the built-in validators only, on both
  *   transports alike, which is the validation-parity gap EXTENDING.md describes.
- * - `rating` is `RATING_TYPE`, a field type the library does not ship. It needs registering
+ * - `recommend` is `NPS_TYPE`, a field type the library does not ship. It needs registering
  *   twice — once for the renderer (`provideFieldTypes`) and once for the builder's catalog.
  * - `attachment` is a `file`, which no spreadsheet cell can carry. It is what makes this
  *   entity the one that demonstrates unsupported-column reporting in the import wizard.
@@ -79,7 +79,7 @@ export const EXTENSIONS_RECORDS: Record<string, unknown>[] = [
     _configVersion: 1,
     name: 'Legacy Sample',
     email: 'legacy@example.com',
-    rating: 4,
+    recommend: 8,
     reviewedOn: '2020-01-15',
   },
   {
@@ -87,7 +87,7 @@ export const EXTENSIONS_RECORDS: Record<string, unknown>[] = [
     _configVersion: EXTENSIONS_VERSION,
     title: 'Current Sample',
     email: 'current@example.com',
-    rating: 2,
+    recommend: 2,
     reviewedOn: '2026-03-08',
   },
 ];

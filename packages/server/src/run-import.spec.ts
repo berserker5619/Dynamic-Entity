@@ -515,6 +515,8 @@ describe('sampleText', () => {
     { type: 'number', raw: 42, expected: 42 },
     { type: 'number', raw: -1.5, expected: -1.5 },
     { type: 'currency', raw: 1234.56, expected: 1234.56 },
+    { type: 'slider', raw: 42, expected: 42 },
+    { type: 'rating', raw: 4, expected: 4 },
     { type: 'checkbox', raw: true, expected: true },
     { type: 'checkbox', raw: false, expected: false },
     { type: 'boolean', raw: true, expected: true },
@@ -534,7 +536,8 @@ describe('sampleText', () => {
     // The guard on the guard. A type added to `coerceTypedCell` without a row above would
     // otherwise be exactly as unchecked as `time` was.
     const covered = new Set(CASES.map(entry => entry.type));
-    for (const type of ['date', 'datetime', 'monthYear', 'time', 'number', 'currency', 'boolean', 'checkbox']) {
+    const special = ['date', 'datetime', 'monthYear', 'time', 'number', 'currency', 'slider', 'rating', 'boolean', 'checkbox'];
+    for (const type of special) {
       expect({ type, covered: covered.has(type) }).toEqual({ type, covered: true });
     }
   });

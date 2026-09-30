@@ -172,6 +172,21 @@
                 }
               </div>
             }
+            @if (f.type === 'slider') {
+              <!-- The slider's range is min and max above; its increment is the one number left. -->
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
+                <mat-label>{{ ui.text('sliderStep') }}</mat-label>
+                <input
+                  matInput
+                  type="number"
+                  min="0"
+                  data-testid="field-step"
+                  [ngModel]="f.step ?? null"
+                  (ngModelChange)="store.updateField(store.keyOf(f), { step: positiveOrUnset($event) })"
+                />
+                <mat-hint>{{ ui.text('sliderStepHint') }}</mat-hint>
+              </mat-form-field>
+            }
 
             @if (supportsPattern(f.type) || f.validators?.pattern) {
               <div class="deb-pattern-box" data-testid="pattern-playground">

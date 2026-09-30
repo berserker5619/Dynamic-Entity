@@ -34,6 +34,12 @@ const ALL_BUILTIN_FIELD_TYPES = [
   'array',
   'image',
   'file',
+  'url',
+  'phone',
+  'slider',
+  'rating',
+  'color',
+  'tags',
 ];
 
 describe('FieldRegistryService', () => {

@@ -117,6 +117,18 @@ export {
 } from './field-catalog';
 export type { FieldTypeMeta, FlagValidator, ParamValidator } from './field-catalog';
 
+// ─── Field values: format checks shared by the form and the import ──────────
+export {
+  MAX_RATING_SCALE,
+  isValidPhone,
+  isValidUrl,
+  normalizeHexColor,
+  normalizeTags,
+  ratingScale,
+  sliderBounds,
+} from './field-values';
+export type { SliderBounds } from './field-values';
+
 // ─── Rules ──────────────────────────────────────────────────────────────────
 export { evaluateCondition, evaluateFormRules, filterRulesForTab } from './rules-engine';
 export type { EvaluateFormRulesOptions } from './rules-engine';

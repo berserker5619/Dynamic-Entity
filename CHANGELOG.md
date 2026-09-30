@@ -8,6 +8,51 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [Unreleased]
+
+### Added
+- **Six field types: `url`, `phone`, `slider`, `rating`, `color` and `tags`**, bringing the
+  built-in set to 27. Each has a renderer component (`UrlFieldComponent`,
+  `PhoneFieldComponent`, `SliderFieldComponent`, `RatingFieldComponent`,
+  `ColorFieldComponent`, `TagsFieldComponent`), a catalogue entry the builder's palette offers,
+  and spreadsheet import support.
+  - `url` / `phone` store text as typed. New opt-in flag validators `validators.url` (absolute
+    `http:`/`https:` with a host) and `validators.phone` (7–15 digits, common separators, optional
+    leading `+`) are applied by the form, by `validateImportedRecord`, and may be named from
+    `validators.custom` as `'url'` / `'phone'`. A read-only `url` renders a link only for an
+    `http(s)` value, so a stored `javascript:` URL is never clickable.
+  - `slider` stores a number. Its track is `validators.min`–`validators.max` (0–100 when absent)
+    in steps of the new `NestedFieldConfig.step` (default 1). An untouched slider says so rather
+    than presenting its midpoint as a value.
+  - `rating` stores a whole number from 1 to `validators.max` (default 5, at most 10), built from
+    native radio inputs so it is keyboard- and screen-reader-operable.
+  - `color` stores lowercase `#rrggbb`. An import accepts `#rgb`, `rrggbb` and either case.
+  - `tags` stores `string[]`. Enter, comma or semicolon adds a tag; Backspace in an empty box
+    removes the last; pasted lists are split. `minLength`/`maxLength` count tags, and their
+    messages say so (`minItems` / `maxItems` in `validationMessages`).
+- `@dynamic-entity/core` exports the shared value helpers the form and the import both use:
+  `isValidUrl`, `isValidPhone`, `normalizeHexColor`, `normalizeTags`, `ratingScale`,
+  `sliderBounds` and `MAX_RATING_SCALE`. The renderer exports `urlValidator` and
+  `phoneValidator`.
+- UI text keys `ratingValue`, `clearValue`, `addTagPlaceholder` and `removeTag`; builder text
+  keys `sliderStep` and `sliderStepHint`.
+- `validateConfig` checks a `slider`/`rating` default is a number, a `color` default is
+  `#rrggbb`, a `tags` default is a string array, `step` is positive, and a slider's `max` is
+  above its `min`.
+
+### Changed
+- `validateImportedRecord` applies `minLength`/`maxLength` to array values as Angular does, so
+  a `multiSelect` or `tags` cell with too many items is refused at import rather than at save.
+
+### Migration
+- A config that already registers its **own** field type named `url`, `phone`, `slider`,
+  `rating`, `color` or `tags` keeps working: `provideFieldTypes` registered after
+  `provideBuiltInFieldTypes()` still wins, and `registerFieldType` still replaces the catalogue
+  entry. Rename it if you want the built-in as well. The demo's custom example type, formerly
+  `rating`, is now `nps` for that reason.
+
+---
+
 ## [2.1.1]
 
 ### Fixed

@@ -22,7 +22,7 @@ const SHOUTING = /[A-Z]{4,}/;
  * `minlength`, `maxlength`, `pattern` — so a custom key is not in that list and falls through
  * to the `invalid` fallback, which `app.config.ts` overrides and localizes. The validator
  * still does its job: the control is invalid and Save is blocked. Only the *wording* is
- * generic, and a field type of your own (see `rating-field.component.ts`) can name whatever
+ * generic, and a field type of your own (see `nps-field.component.ts`) can name whatever
  * keys it likes.
  */
 export const DEMO_VALIDATORS: Record<string, ValidatorFn> = {

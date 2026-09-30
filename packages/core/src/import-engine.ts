@@ -32,6 +32,14 @@ import {
   resolveOptionLabel,
   valuesMatch,
 } from './form-logic';
+import {
+  isValidPhone,
+  isValidUrl,
+  normalizeHexColor,
+  normalizeTags,
+  ratingScale,
+  sliderBounds,
+} from './field-values';
 import type {
   DropdownOption,
   EntityFormConfig,
@@ -80,7 +88,7 @@ const FALSE_TEXT = new Set(['false', 'f', 'no', 'n', '0']);
 const EMAIL_PATTERN =
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
-/** How a multiSelect cell separates its values. */
+/** How a multiSelect or tags cell separates its values. */
 const MULTI_SEPARATOR = ';';
 
 /**
@@ -313,6 +321,11 @@ function coerceTypedCell(field: NestedFieldConfig, raw: unknown): CoerceOutcome 
     return { value: raw };
   }
 
+  if (typeof raw === 'number' && (field.type === 'slider' || field.type === 'rating')) {
+    if (!Number.isFinite(raw)) return { error: `"${String(raw)}" is not a number` };
+    return checkScale(field, raw, String(raw));
+  }
+
   if (typeof raw === 'boolean' && (field.type === 'boolean' || field.type === 'checkbox')) {
     return { value: raw };
   }
@@ -360,6 +373,24 @@ export function coerceCell(
       const parsed = Number(text.replace(/,/g, ''));
       if (!Number.isFinite(parsed)) return { error: `"${text}" is not a number` };
       return { value: parsed };
+    }
+
+    case 'slider':
+    case 'rating': {
+      if (!NUMERIC.test(text)) return { error: `"${text}" is not a number` };
+      const parsed = Number(text.replace(/,/g, ''));
+      if (!Number.isFinite(parsed)) return { error: `"${text}" is not a number` };
+      return checkScale(field, parsed, text);
+    }
+
+    case 'color': {
+      const hex = normalizeHexColor(text);
+      return hex ? { value: hex } : { error: `"${text}" is not a colour (#RRGGBB)` };
+    }
+
+    case 'tags': {
+      const tags = normalizeTags(text.split(MULTI_SEPARATOR));
+      return { value: tags.length ? tags : undefined };
     }
 
     case 'boolean':
@@ -429,6 +460,27 @@ export function coerceCell(
     default:
       return { value: text };
   }
+}
+
+/**
+ * A `slider` or `rating` value checked against the scale the control draws.
+ *
+ * The form cannot produce a value off the track or a fraction of a star, so an import that
+ * accepted one would save a record the form cannot display. This is separate from
+ * `validators.min`/`max`: those still apply afterwards and report in the same words they use
+ * for a `number`.
+ */
+function checkScale(field: NestedFieldConfig, value: number, text: string): CoerceOutcome {
+  if (field.type === 'rating') {
+    const scale = ratingScale(field);
+    if (!Number.isInteger(value) || value < 1 || value > scale) {
+      return { error: `"${text}" is not a whole number from 1 to ${scale}` };
+    }
+    return { value };
+  }
+  const { min, max } = sliderBounds(field);
+  if (value < min || value > max) return { error: `"${text}" is outside ${min} to ${max}` };
+  return { value };
 }
 
 /** Lowercase alphanumerics only, so "First Name", `first_name` and `firstName` collapse. */
@@ -597,6 +649,17 @@ function applyFieldValidators(field: NestedFieldConfig, value: unknown, lang: st
     }
   }
 
+  // Angular's `minLength`/`maxLength` count an array's items as well as a string's characters,
+  // and the form applies them to both. Checking only strings passed rows the form refuses.
+  if (Array.isArray(value)) {
+    if (typeof validators.minLength === 'number' && value.length < validators.minLength) {
+      messages.push(`${label} must have at least ${validators.minLength} items`);
+    }
+    if (typeof validators.maxLength === 'number' && value.length > validators.maxLength) {
+      messages.push(`${label} must have at most ${validators.maxLength} items`);
+    }
+  }
+
   if (typeof value === 'string') {
     if (typeof validators.minLength === 'number' && value.length < validators.minLength) {
       messages.push(`${label} must be at least ${validators.minLength} characters`);
@@ -617,6 +680,12 @@ function applyFieldValidators(field: NestedFieldConfig, value: unknown, lang: st
     }
     if (validators.email && !EMAIL_PATTERN.test(value)) {
       messages.push(`${label} is not a valid email address`);
+    }
+    if (validators.url && !isValidUrl(value)) {
+      messages.push(`${label} is not a valid web address`);
+    }
+    if (validators.phone && !isValidPhone(value)) {
+      messages.push(`${label} is not a valid phone number`);
     }
   }
 

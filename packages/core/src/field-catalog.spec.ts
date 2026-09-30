@@ -16,7 +16,7 @@ describe('FIELD_TYPE_CATALOG', () => {
   const ALL_TYPES: RichFieldType[] = [
     'text', 'textarea', 'markdown', 'number', 'currency', 'email', 'password', 'date', 'datetime',
     'time', 'monthYear', 'dropdown', 'radio', 'checkbox', 'boolean', 'multiSelect', 'entity-ref',
-    'group', 'array', 'image', 'file',
+    'group', 'array', 'image', 'file', 'url', 'phone', 'slider', 'rating', 'color', 'tags',
   ];
 
   it('declares an entry for every RichFieldType', () => {
@@ -49,7 +49,7 @@ describe('FIELD_TYPE_CATALOG', () => {
 
   it('only declares validators the FieldValidators model supports', () => {
     for (const meta of FIELD_TYPE_CATALOG) {
-      for (const flag of meta.flagValidators) expect(['required', 'email']).toContain(flag);
+      for (const flag of meta.flagValidators) expect(['required', 'email', 'url', 'phone']).toContain(flag);
       for (const param of meta.paramValidators) {
         expect(['min', 'max', 'minLength', 'maxLength']).toContain(param);
       }

@@ -24,8 +24,8 @@ import { BUILDER_TEXT } from 'ngx-dynamic-entity-builder';
 import { DEMO_BUILDER_TEXT, DEMO_UI_TEXT } from './mock/ui-text-de';
 import { DEMO_ENTITY_REF_LOADERS } from './mock/entity-ref-loaders';
 import { demoSheetParser } from './mock/demo-sheet-parser';
-import { RATING_TYPE } from './mock/extensions-entity';
-import { RatingFieldComponent } from './mock/rating-field.component';
+import { NPS_TYPE } from './mock/extensions-entity';
+import { NpsFieldComponent } from './mock/nps-field.component';
 import { SessionEntityRefCacheStore } from './mock/session-ref-cache';
 import {
   DEMO_ASYNC_VALIDATORS,
@@ -133,9 +133,9 @@ export const appConfig: ApplicationConfig = {
      * through this token; the *builder* resolves it through core's field catalog, which
      * holds no component reference at all — that separation is what keeps core free of
      * Angular. `main.ts` makes the other half of the call, before bootstrap, so the
-     * builder's palette offers `rating` as well.
+     * builder's palette offers `nps` as well.
      */
-    provideFieldTypes({ [RATING_TYPE]: RatingFieldComponent }),
+    provideFieldTypes({ [NPS_TYPE]: NpsFieldComponent }),
     // A `markdown` field works with no renderer — it shows its source. Registering one is
     // what turns on the Preview tab and the rendered read-only view, so the demo supplies a
     // small local function rather than a parser dependency: the token takes any

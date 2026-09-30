@@ -72,6 +72,12 @@ export * from './lib/field-types/group-field.component';
 export * from './lib/field-types/array-field.component';
 export * from './lib/field-types/image-field.component';
 export * from './lib/field-types/file-field.component';
+export * from './lib/field-types/url-field.component';
+export * from './lib/field-types/phone-field.component';
+export * from './lib/field-types/slider-field.component';
+export * from './lib/field-types/rating-field.component';
+export * from './lib/field-types/color-field.component';
+export * from './lib/field-types/tags-field.component';
 
 // Value helpers — a dropdown value is now a language-keyed object, so a consumer rendering
 // record values needs these. Re-exported so they don't have to depend on core directly.
