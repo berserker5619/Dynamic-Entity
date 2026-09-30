@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ValidatorRegistryService } from './validator-registry.service';
+import { ValidatorRegistryService, phoneValidator, urlValidator } from './validator-registry.service';
 import { VALIDATOR_REGISTRY } from '../tokens/injection-tokens';
 import { FormControl, Validators } from '@angular/forms';
 
@@ -221,5 +221,34 @@ describe('ValidatorRegistryService — typed config reaches custom validators', 
     expect(fns.length).toBe(1);
     expect(fns[0](new FormControl('someone@example.com'))).toBeNull();
     expect(fns[0](new FormControl('nope'))).not.toBeNull();
+  });
+
+  describe('the url and phone format checks', () => {
+    it('resolves each by name, so validators.custom can list them', () => {
+      expect(service.resolve('url')).toBe(urlValidator);
+      expect(service.resolve('phone')).toBe(phoneValidator);
+    });
+
+    it('applies each from its own FieldValidators flag', () => {
+      expect(service.resolveFromConfig({ url: true })).toEqual([urlValidator]);
+      expect(service.resolveFromConfig({ phone: true })).toEqual([phoneValidator]);
+    });
+
+    it('raises its own error key for a malformed value', () => {
+      expect(urlValidator(new FormControl('example.com'))).toEqual({ url: true });
+      expect(phoneValidator(new FormControl('12'))).toEqual({ phone: true });
+    });
+
+    it('passes a well-formed value', () => {
+      expect(urlValidator(new FormControl('https://example.com'))).toBeNull();
+      expect(phoneValidator(new FormControl('+44 20 7946 0958'))).toBeNull();
+    });
+
+    it('leaves an empty value to required, as Validators.email does', () => {
+      for (const empty of [null, undefined, '']) {
+        expect(urlValidator(new FormControl(empty))).toBeNull();
+        expect(phoneValidator(new FormControl(empty))).toBeNull();
+      }
+    });
   });
 });

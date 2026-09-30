@@ -73,4 +73,32 @@ describe('ValidationMessagesService', () => {
   it('returns an empty string for a key with no default and no override', () => {
     expect(make().messageFor('noSuchKey', 'en', null)).toBe('');
   });
+
+  describe('the newer field types', () => {
+    it('counts a tags field in items, although Angular reports minlength and maxlength', () => {
+      const service = make();
+      expect(service.resolveForField({ minlength: { requiredLength: 2 } }, 'en', 'tags')).toBe('At least 2 required.');
+      expect(service.resolveForField({ maxlength: { requiredLength: 5 } }, 'en', 'tags')).toBe(
+        'No more than 5 allowed.',
+      );
+    });
+
+    it('keeps characters for every other type', () => {
+      expect(make().resolveForField({ maxlength: { requiredLength: 5 } }, 'en', 'text')).toBe(
+        'Maximum 5 characters allowed.',
+      );
+    });
+
+    it('names the url and phone formats', () => {
+      const service = make();
+      expect(service.resolveForField({ url: true }, 'en', 'url')).toContain('https://');
+      expect(service.resolveForField({ phone: true }, 'en', 'phone')).toBe('Please enter a valid phone number.');
+    });
+
+    it('reports a slider or rating out of range like a number', () => {
+      const service = make();
+      expect(service.resolveForField({ max: { max: 10 } }, 'en', 'slider')).toBe('Value must not exceed 10.');
+      expect(service.resolveForField({ min: { min: 3 } }, 'en', 'rating')).toBe('Value must be at least 3.');
+    });
+  });
 });
