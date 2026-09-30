@@ -8,7 +8,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Unreleased]
+## [2.2.0]
 
 ### Added
 - **Six field types: `url`, `phone`, `slider`, `rating`, `color` and `tags`**, bringing the
