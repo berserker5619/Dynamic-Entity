@@ -21,6 +21,18 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Plans saved against 2.2 keep working.** A 2.2 ref for a moved container's child resolves to
   its new address with a plan warning. An un-indexed child of a moved array resolves to slot 0.
   The alias will be removed in 3.0, so save the plan again to update it.
+- **Import now applies rules the way the form does.** Rules the builder writes name fields as
+  `[tab.field]` refs, but import evaluated rules per tab against values keyed only by bare id.
+  So a ref trigger never matched and a ref target was never hidden, and a required field the form
+  hid still rejected the row. Import now evaluates every rule against the form's flat value map
+  (bare id and `[ref]`), with the form's precedence:
+  - a hide beats a show, and a show beats `showWhen` or `visibility: false`;
+  - a hidden container hides its children;
+  - a hidden tab relaxes every field it owns, including sub-tabs and group children.
+
+  `showWhen` keys written as refs also resolve. **Some rows that 2.2 rejected now import**, and
+  every one of them is a row the form would save. New `flattenFieldValues` and `namesOfField`
+  in core; the form's `flattenValues` now uses them.
 
 ### Added
 - `validateConfig` rejects an authored `refererField` on a field inside an array, because it

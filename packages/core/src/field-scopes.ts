@@ -252,6 +252,40 @@ export function collectFieldRefs(config: EntityFormConfig | null | undefined): F
   });
 }
 
+/**
+ * Every name a rule, `showWhen` key or cascade parent may call a field by: its bare id, and its
+ * ref in brackets. The ref is `refOf`, the same address the builder writes into a rule.
+ */
+export function namesOfField(field: { id: string; refererField?: string }, scope: string): string[] {
+  return [field.id, toRefToken(refOf(field, scope))];
+}
+
+/**
+ * The value map rules and `showWhen` are evaluated against.
+ *
+ * Every field appears under both of its names (`namesOfField`). The bare id is what most
+ * configs use, but ids are unique only per scope, so when two scopes define one the last field
+ * walked wins; `[personal.address]` names one field and cannot be ambiguous. One flat map, so
+ * `evaluateFormRules` needs no knowledge of refs at all — the extra keys simply resolve.
+ *
+ * The form and the importer both build it here, from wherever each keeps its values, so a rule
+ * cannot mean one thing on screen and another in a spreadsheet. `valueOf` returns `undefined`
+ * for a field with no single value — a field inside an array row — and that field is left out.
+ */
+export function flattenFieldValues<E extends FieldScopeEntry>(
+  entries: readonly E[],
+  valueOf: (entry: E) => { value: unknown } | undefined,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const entry of entries) {
+    if (!entry.field?.id) continue;
+    const found = valueOf(entry);
+    if (!found) continue;
+    for (const name of namesOfField(entry.field, entry.scope)) out[name] = found.value;
+  }
+  return out;
+}
+
 /** Wraps a ref for use in a rule or condition: `personal.city` → `[personal.city]`. */
 export function toRefToken(path: string): string {
   return `[${path}]`;

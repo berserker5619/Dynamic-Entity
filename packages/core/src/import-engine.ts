@@ -20,12 +20,19 @@ import {
   validateMappingPlan,
   type LeafTarget,
 } from './import-columns';
-import { ROOT_SCOPE, collectFieldRefs, fieldRefFor } from './field-scopes';
+import {
+  ROOT_SCOPE,
+  collectFieldRefs,
+  fieldRefFor,
+  fieldsUnderTab,
+  flattenFieldValues,
+  namesOfField,
+  type FieldScopeEntry,
+} from './field-scopes';
 import { stampRecord } from './migration';
-import { evaluateFormRules, filterRulesForTab } from './rules-engine';
+import { evaluateFormRules } from './rules-engine';
 import {
   evaluateFieldVisibility,
-  getTabData,
   getValueByPath,
   isUnsafePath,
   normalizeArrayStructures,
@@ -46,7 +53,6 @@ import type {
   EntityFormConfig,
   FormRule,
   NestedFieldConfig,
-  NestedTabConfig,
 } from './form-model.types';
 import type {
   ImportColumn,
@@ -584,44 +590,83 @@ export interface ValidateRecordOptions {
   targets?: readonly LeafTarget[];
 }
 
+/** What the rules and `showWhen` make of one record. */
+interface RuleState {
+  /** The flat map `showWhen` is evaluated against — see `flattenFieldValues`. */
+  values: Record<string, unknown>;
+  /** Fields that do not count: hidden by a rule, inside a hidden container, or on a hidden tab. */
+  hidden: Set<NestedFieldConfig>;
+  /** Fields a rule explicitly showed, which beats a static `showWhen` or `visibility: false`. */
+  shown: Set<NestedFieldConfig>;
+  /** A rule's validation message per field. */
+  ruleErrors: Map<NestedFieldConfig, string>;
+}
+
 /**
- * Which fields a rule or a `showWhen` has hidden, and which rules have raised an error.
+ * Which fields the rules hide or show, and which rules have raised an error.
  *
- * Rules are evaluated the way the renderer evaluates them — per tab, against that tab's own
- * flat values — because `evaluateFormRules` takes a `Record<string, unknown>` keyed by bare
- * `fieldId`, which is exactly what `getTabData` returns and exactly what the renderer hands it.
- * Evaluating them against the nested record instead would silently match nothing.
+ * Evaluated exactly the way the form evaluates them: every rule at once, against one flat map
+ * in which each field answers to its bare id and to its `[ref]`. A rule names a field either
+ * way — the builder writes refs — so a field is hidden when *either* of its names is, and a
+ * hidden container hides everything inside it. Anything less, and a required field the form
+ * hides would reject a row the form itself would save.
+ *
+ * Only the static part — which values there are — differs from the form: here they come from
+ * the record, at the address `collectFieldRefs` gives, rather than from controls. A field inside
+ * an array row has no single value, in the form or here, and is left out of the map.
  */
 function evaluateRuleState(
   record: Record<string, unknown>,
   config: EntityFormConfig,
   rules: readonly FormRule[] | undefined,
-): { hiddenIds: Set<string>; ruleErrors: Map<string, string> } {
-  const hiddenIds = new Set<string>();
-  const ruleErrors = new Map<string, string>();
-  if (!rules?.length) return { hiddenIds, ruleErrors };
-
-  const walk = (tabs: NestedTabConfig[] | undefined): void => {
-    for (const tab of tabs ?? []) {
-      if (!tab?.id) continue;
-      const values = (getTabData(tab.id, record, config) ?? {}) as Record<string, unknown>;
-      const result = evaluateFormRules(filterRulesForTab([...rules], tab.id, config), values);
-
-      for (const id of result.hiddenFields) hiddenIds.add(id);
-      // A hidden tab hides everything on it; a required field the user cannot see must not
-      // fail the import.
-      if (result.hiddenTabs.includes(tab.id)) {
-        for (const field of tab.fields ?? []) if (field?.id) hiddenIds.add(field.id);
-      }
-      for (const [id, message] of Object.entries(result.validationErrors)) {
-        ruleErrors.set(id, message);
-      }
-      walk(tab.children);
-    }
+): RuleState {
+  const entries = collectFieldRefs(config);
+  const arrays = entries
+    .filter(entry => entry.field?.type === 'array' && entry.field.id)
+    .map(entry => fieldRefFor(entry.scope, entry.field.id));
+  const inArray = (entry: FieldScopeEntry): boolean => {
+    const position = fieldRefFor(entry.scope, entry.field.id);
+    return arrays.some(arrayRef => position.startsWith(`${arrayRef}.`));
   };
-  walk(config.tabs);
+  const values = flattenFieldValues(entries, entry =>
+    inArray(entry) ? undefined : { value: getValueByPath(record, entry.ref) },
+  );
 
-  return { hiddenIds, ruleErrors };
+  const state: RuleState = { values, hidden: new Set(), shown: new Set(), ruleErrors: new Map() };
+  if (!rules?.length) return state;
+
+  const result = evaluateFormRules(rules as FormRule[], values);
+  const hiddenNames = new Set(result.hiddenFields);
+  const shownNames = new Set(result.shownFields);
+
+  // A hidden tab hides everything it owns, sub-tabs and container children included; a
+  // required field the user cannot see must not fail the import.
+  for (const tabId of result.hiddenTabs) {
+    for (const entry of fieldsUnderTab(config, tabId)) state.hidden.add(entry.field);
+  }
+
+  // Entries arrive parent-first, so a hidden container is known before its children are.
+  const hiddenContainers: string[] = [];
+  for (const entry of entries) {
+    const field = entry.field;
+    if (!field?.id) continue;
+    const position = fieldRefFor(entry.scope, field.id);
+    const names = namesOfField(field, entry.scope);
+
+    const hidden =
+      hiddenContainers.some(prefix => position.startsWith(`${prefix}.`)) ||
+      names.some(name => hiddenNames.has(name));
+    if (hidden) {
+      state.hidden.add(field);
+      if (field.type === 'group' || field.type === 'array') hiddenContainers.push(position);
+    } else if (names.some(name => shownNames.has(name))) {
+      state.shown.add(field);
+    }
+
+    const message = names.map(name => result.validationErrors[name]).find(Boolean);
+    if (message) state.ruleErrors.set(field, message);
+  }
+  return state;
 }
 
 /** Apply a field's declared validators to a coerced value. */
@@ -717,19 +762,20 @@ export function validateImportedRecord(
   const problems: RecordProblem[] = [];
   if (!record || !config) return problems;
 
-  const { hiddenIds, ruleErrors } = evaluateRuleState(record, config, options.rules);
+  const rules = evaluateRuleState(record, config, options.rules);
 
   const check = (target: LeafTarget, value: unknown, ref: string, scopeValues: Record<string, unknown>): void => {
     const field = target.field;
-    if (hiddenIds.has(field.id)) return;
-    // Static `showWhen` is evaluated against the values in the field's own scope, which is
-    // where its sibling lives — the same comparison the renderer makes.
-    if (!evaluateFieldVisibility(field, scopeValues)) return;
+    // The form's precedence: a hide beats everything, a show beats static visibility.
+    if (rules.hidden.has(field)) return;
+    // Static `showWhen` reads the form's flat map, with the field's own scope over it so that
+    // a bare sibling id means the sibling beside it — in an array row, the same row's.
+    if (!rules.shown.has(field) && !evaluateFieldVisibility(field, { ...rules.values, ...scopeValues })) return;
 
     for (const message of applyFieldValidators(field, value, lang)) {
       problems.push({ ref, message, raw: value });
     }
-    const ruleMessage = ruleErrors.get(field.id);
+    const ruleMessage = rules.ruleErrors.get(field);
     if (ruleMessage) problems.push({ ref, message: ruleMessage, raw: value });
   };
 

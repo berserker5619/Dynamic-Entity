@@ -3,15 +3,14 @@ import { AbstractControl, FormArray, FormBuilder, FormGroup } from '@angular/for
 import type { EntityFormConfig, FieldScopeEntry, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
 import {
   fieldRefFor,
+  flattenFieldValues,
   getTabData,
   getTabPath,
   getValueByPath,
   normalizeArrayStructures,
   parseFieldRef,
-  refOf,
   setTabData,
   setValueByPath,
-  toRefToken,
 } from '@dynamic-entity/core';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
 
@@ -142,16 +141,11 @@ export class FormStructureService {
    * unknown>` and needs no knowledge of refs at all — the extra keys simply resolve.
    */
   flattenValues(form: FormGroup | null, entries: readonly FieldScopeEntry[]): Record<string, unknown> {
-    const out: Record<string, unknown> = {};
-    for (const entry of entries) {
-      const field = entry.field;
-      if (!field?.id) continue;
+    // The naming rule is core's, shared with the importer; only where values come from is ours.
+    return flattenFieldValues(entries, entry => {
       const ctrl = this.controlAt(form, entry);
-      if (!ctrl) continue;
-      out[field.id] = ctrl.value;
-      out[toRefToken(refOf(field, entry.scope))] = ctrl.value;
-    }
-    return out;
+      return ctrl ? { value: ctrl.value } : undefined;
+    });
   }
 
   /**

@@ -112,9 +112,11 @@ already answered: duplicate ids across scopes are allowed by design.
    drift; the renderer keeps reading values from controls and passes them in.
 2. `evaluateRuleState` builds that map per tab from `fieldsUnderTab(config, tab.id)` and
    evaluates against it.
-3. Key hidden state by both name forms. A field is hidden if `hidden` contains its bare id
-   *and* the id is not ambiguous (`ambiguousFieldIds`), or if it contains its ref token.
-   Rule validation messages get the same treatment.
+3. Key hidden state by both name forms: a field is hidden if `hidden` contains its bare id or
+   its ref token. Rule validation messages get the same treatment.
+   *As built:* an ambiguous bare id hides **every** field that answers to it, because that is
+   what the form does, and parity with the form is the point of this step. `validateConfig`
+   already flags the ambiguous reference.
 4. `evaluateFieldVisibility` for each leaf gets the same flat map, so `showWhen` keys written
    as `[ref]` resolve.
 
