@@ -15,13 +15,14 @@ import { Injectable, inject } from '@angular/core';
 import {
   applyMapping,
   arrayBoundFor,
+  cellText,
   decimalMarkFor,
   deriveImportColumns,
   suggestMapping,
   toCsv,
   type ImportResult,
   type MappingPlan,
-  type SheetData,
+  type SheetGrid,
   type TemplateSpec,
 } from '@dynamic-entity/core';
 import { SHEET_PARSER } from '../tokens/injection-tokens';
@@ -53,10 +54,10 @@ export class LocalImportTransport implements ImportTransport {
    * having to remember to. Keying on a name or a size would collide between two files a user
    * picked in sequence.
    */
-  private readonly parsed = new WeakMap<File, Promise<SheetData>>();
+  private readonly parsed = new WeakMap<File, Promise<SheetGrid>>();
 
   /** The registered parser, or the built-in CSV one. */
-  private read(file: File): Promise<SheetData> {
+  private read(file: File): Promise<SheetGrid> {
     const cached = this.parsed.get(file);
     if (cached) return cached;
 
@@ -77,7 +78,9 @@ export class LocalImportTransport implements ImportTransport {
 
     return {
       headers: sheet.headers,
-      sample: sheet.rows.slice(0, SAMPLE_ROWS),
+      // Rendered the way the server renders it, so a typed date shows — and previews — as the
+      // calendar date the commit will store, not as a timestamp.
+      sample: sheet.rows.slice(0, SAMPLE_ROWS).map(row => row.map(cellText)),
       rowCount: sheet.rows.length,
       suggestion: suggestMapping(sheet.headers, columns, context.config?.entity ?? ''),
       arrayBound,

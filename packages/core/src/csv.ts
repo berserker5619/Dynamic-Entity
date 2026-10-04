@@ -21,6 +21,20 @@ export interface SheetData {
 }
 
 /**
+ * A parsed sheet whose cells keep their types: a `Date`, a `number`, a `boolean`.
+ *
+ * What a workbook reader produces, and what `applyMapping` reads — a typed date cell is read
+ * as the calendar date it is, where its *text* is whatever a library's formatter printed.
+ * `SheetData` is the text-only case of it, so anything that returns `SheetData` is a
+ * `SheetGrid` already.
+ */
+export interface SheetGrid {
+  headers: string[];
+  rows: unknown[][];
+  delimiter?: CsvDelimiter;
+}
+
+/**
  * Cell prefixes a spreadsheet application treats as the start of a formula.
  *
  * A generated template is a file we hand to someone who opens it in Excel, which makes it the

@@ -190,7 +190,8 @@ export {
   parseCsv,
   toCsv,
 } from './csv';
-export type { CsvDelimiter, CsvReader, CsvReaderOptions, SheetData } from './csv';
+export type { CsvDelimiter, CsvReader, CsvReaderOptions, SheetData, SheetGrid } from './csv';
+export { cellText } from './cell-text';
 
 // ─── Spreadsheet import ─────────────────────────────────────────────────────
 export type {

@@ -64,6 +64,19 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the delimiter through `decimalMarkFor`, so preview and commit agree. Comma-separated files
   behave exactly as before.
 
+- **Typed cells reach the browser importer.** `SheetParser` returned `SheetData`, whose rows are
+  `string[][]`, so a browser `.xlsx` parser could only hand over text, and a workbook imported in
+  the tab could differ from the same file imported on the server. It now returns the new
+  `SheetGrid` (`rows: unknown[][]`). A 2.2 parser still compiles, because `SheetData` is a
+  `SheetGrid`. Code that *calls* a `SheetParser` now gets `unknown[][]`. Samples render through
+  the new core `cellText` (the server's `sampleText`, moved), so a midnight-UTC `Date` previews
+  as `YYYY-MM-DD`. The server keeps `sampleText` as an alias.
+- **The documented SheetJS example imported dates a day early east of Greenwich, and as serial
+  numbers everywhere.** Checked against SheetJS 0.20.3, it needs `cellDates: true` (or date
+  cells arrive as numbers) and `UTC: true` (or they arrive at local midnight). The example now
+  has both, and points at SheetJS's CDN, because the npm `xlsx` package stopped at a vulnerable
+  0.18.5.
+
 ### Added
 - **Numbered array headers are recognised.** `suggestMapping` now matches the spellings
   customer sheets use for a row of a repeating field: `Phone 2 Number`, `phone_2_number`,

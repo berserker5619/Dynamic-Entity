@@ -215,3 +215,63 @@ describe('LocalImportTransport.preview sizing', () => {
     ]);
   });
 });
+
+/**
+ * A parser that keeps cell types — what a workbook library produces when asked to. The date is
+ * built with `Date.UTC`, which is how a workbook stores a calendar date and how the server's
+ * reader hands one over, so the result is the same in every timezone this runs in.
+ */
+describe('LocalImportTransport with a typed parser', () => {
+  const TYPED: EntityFormConfig = {
+    entity: 'people',
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        flatData: true,
+        fields: [
+          { id: 'born', type: 'date', label: { en: 'Born' } },
+          { id: 'score', type: 'number', label: { en: 'Score' } },
+          { id: 'active', type: 'boolean', label: { en: 'Active' } },
+        ],
+      },
+    ],
+  };
+  const PLAN_TYPED: MappingPlan = {
+    entity: 'people',
+    entries: [
+      { ref: 'born', column: 0 },
+      { ref: 'score', column: 1 },
+      { ref: 'active', column: 2 },
+    ],
+  };
+
+  let local: LocalImportTransport;
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: SHEET_PARSER,
+          useValue: () => ({
+            headers: ['Born', 'Score', 'Active'],
+            rows: [[new Date(Date.UTC(2024, 2, 7)), 1234.5, true]],
+          }),
+        },
+      ],
+    });
+    local = TestBed.inject(LocalImportTransport);
+  });
+
+  it('imports a date cell as the calendar date it is, as the server would', async () => {
+    const file = csvFile('people.xlsx', '');
+    const result = await local.commit(file, PLAN_TYPED, { config: TYPED });
+    expect(result.errors).toEqual([]);
+    expect(result.records[0]).toMatchObject({ born: '2024-03-07', score: 1234.5, active: true });
+  });
+
+  it('shows that date in the sample as a date, not a timestamp', async () => {
+    const preview = await local.preview(csvFile('people.xlsx', ''), { config: TYPED });
+    expect(preview.sample).toEqual([['2024-03-07', '1234.5', 'true']]);
+  });
+});

@@ -665,34 +665,49 @@ happens*. Collapsing them into one option would make each answer imply the other
 
 ```typescript
 import { provideNgxDynamicEntity } from 'ngx-dynamic-entity';
-import type { SheetData } from '@dynamic-entity/core';
+import { cellText, type SheetGrid } from '@dynamic-entity/core';
 
+// SheetJS 0.20.3 or later, installed from https://cdn.sheetjs.com — the `xlsx` package on npm
+// stopped at 0.18.5, which has known vulnerabilities. Nothing in this library depends on it.
 declare const XLSX: {
-  read(data: ArrayBuffer): { SheetNames: string[]; Sheets: Record<string, unknown> };
+  read(data: ArrayBuffer, options: unknown): { SheetNames: string[]; Sheets: Record<string, unknown> };
   utils: { sheet_to_json(sheet: unknown, options: unknown): unknown[][] };
 };
 
 export const importProviders = [
   provideNgxDynamicEntity({
-    // Only needed for formats beyond CSV. Rows are positional, never keyed by header: a real
-    // sheet has two columns both called "Notes", and a header-keyed row loses one of them.
-    sheetParser: async (file: File): Promise<SheetData> => {
-      const workbook = XLSX.read(await file.arrayBuffer());
+    // Only needed for formats beyond delimited text — CSV, semicolon CSV and TSV are built in.
+    // Rows are positional, never keyed by header: a real sheet has two columns both called
+    // "Notes", and a header-keyed row loses one of them.
+    sheetParser: async (file: File): Promise<SheetGrid> => {
+      const workbook = XLSX.read(await file.arrayBuffer(), { cellDates: true });
       const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {
         header: 1,
         raw: true,
         defval: '',
+        UTC: true,
       });
-      return { headers: (rows[0] ?? []) as string[], rows: rows.slice(1) as string[][] };
+      return { headers: (rows[0] ?? []).map(cellText), rows: rows.slice(1) };
     },
   }),
 ];
 ```
 
-`raw: true` rather than `raw: false`, deliberately. A date cell should arrive as a `Date`, and
-`coerceCell` reads a typed cell by its **UTC** components — a spreadsheet date is a calendar
-date with no zone, which is exactly why it is stored at UTC midnight. Stringify it first and
-you get *local* time, which moves every date back a day for anyone west of Greenwich.
+Every one of those options matters, and each was checked against SheetJS 0.20.3:
+
+- **`raw: true`** keeps cell types, so a number arrives as a number and a boolean as a boolean.
+  With `raw: false` every cell is whatever SheetJS's formatter printed.
+- **`cellDates: true`** makes a date cell a `Date`. Without it, `raw: true` hands over the
+  date's serial number, which imports as a number.
+- **`UTC: true`** puts that `Date` at UTC midnight. `coerceCell` reads a typed date by its
+  **UTC** components, because a spreadsheet date is a calendar date with no zone, and that is
+  also how the server's reader delivers one. Without it, SheetJS builds *local* midnight,
+  which in UTC is the previous day for anyone east of Greenwich: `2024-03-07` imported as
+  `2024-03-06` in India.
+
+With all three, a workbook imported in the browser produces the same records as the same
+workbook posted to `@dynamic-entity/server`. A parser that returns text (`SheetData`) still
+works; it just loses the types.
 
 ### The column contract
 

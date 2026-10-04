@@ -20,34 +20,42 @@ import type {
   ImportLookups,
   ImportResult,
   MappingPlan,
-  SheetData,
+  SheetGrid,
   TemplateSpec,
 } from '@dynamic-entity/core';
 
 /**
  * Reads an uploaded file into headers and positional rows.
  *
- * Positional (`string[][]`), not keyed by header, because a real sheet carries duplicate
- * headers and blank ones — and because a mapping entry addresses a column by index for
- * exactly that reason. A parser that returned objects keyed by header would silently lose
- * the second of two columns both called "Notes".
+ * Positional, not keyed by header, because a real sheet carries duplicate headers and blank
+ * ones — and because a mapping entry addresses a column by index for exactly that reason. A
+ * parser that returned objects keyed by header would silently lose the second of two columns
+ * both called "Notes".
  *
- * The library ships a CSV implementation and no more. Registering one that understands
+ * Cells may keep their types (`SheetGrid`): a date cell handed over as a `Date` at UTC midnight
+ * is imported as that calendar date, exactly as the server reads the same workbook, where its
+ * text is whatever a library's formatter printed. A parser returning text (`SheetData`, as 2.2's
+ * did) still fits.
+ *
+ * The library ships a delimited-text reader and no more. Registering one that understands
  * `.xlsx` is how a consumer adds it, and which spreadsheet library they use stays their
  * choice — this package has no runtime dependency and gains none here.
  *
  * @example
+ * // SheetJS 0.20.3+ from https://cdn.sheetjs.com — the npm `xlsx` package stopped at 0.18.5,
+ * // which has known vulnerabilities. `UTC: true` matters: without it a date cell arrives at
+ * // *local* midnight, which is the previous day in UTC for anyone east of Greenwich.
  * provideNgxDynamicEntity({
  *   sheetParser: async file => {
- *     const workbook = XLSX.read(await file.arrayBuffer());
+ *     const workbook = XLSX.read(await file.arrayBuffer(), { cellDates: true });
  *     const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {
- *       header: 1, raw: false, defval: '',
- *     }) as string[][];
- *     return { headers: rows[0] ?? [], rows: rows.slice(1) };
+ *       header: 1, raw: true, defval: '', UTC: true,
+ *     }) as unknown[][];
+ *     return { headers: (rows[0] ?? []).map(cellText), rows: rows.slice(1) };
  *   },
  * })
  */
-export type SheetParser = (file: File) => SheetData | Promise<SheetData>;
+export type SheetParser = (file: File) => SheetGrid | Promise<SheetGrid>;
 
 /** The formats a generated template can be written in. CSV needs no dependency. */
 export type TemplateFormat = 'csv' | 'xlsx';
