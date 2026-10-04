@@ -143,6 +143,108 @@ describe('a rule that hides a nested field', () => {
   });
 });
 
+/**
+ * A hidden *tab* keeps its fields out of validity too.
+ *
+ * Only fields were synced, so a rule hiding a tab with a required field on it left
+ * `form.invalid` true with the field off screen and out of the error summary — which lists
+ * visible tabs only. Save refused with nothing to say why.
+ */
+describe('a rule that hides a tab', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    TestBed.configureTestingModule({
+      imports: [DynamicFormComponent],
+      providers: [provideBuiltInFieldTypes()],
+    });
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
+  const TABBED = (): EntityFormConfig =>
+    assignFieldRefs({
+      entity: 'people',
+      version: 1,
+      tabs: [
+        { id: 'main', label: { en: 'Main' }, fields: [{ id: 'status', type: 'text', label: { en: 'Status' } }] },
+        {
+          id: 'consent',
+          label: { en: 'Consent' },
+          fields: [{ id: 'signedBy', type: 'text', label: { en: 'Signed by' }, validators: { required: true } }],
+          children: [
+            {
+              id: 'witness',
+              label: { en: 'Witness' },
+              fields: [
+                {
+                  id: 'witnessDetails',
+                  type: 'group',
+                  label: { en: 'Witness' },
+                  children: [{ id: 'name', type: 'text', label: { en: 'Name' }, validators: { required: true } }],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: 'archive',
+          label: { en: 'Archive' },
+          visibility: false,
+          fields: [{ id: 'archivedBy', type: 'text', label: { en: 'Archived by' }, validators: { required: true } }],
+        },
+      ],
+    })!;
+
+  const hideConsent = rule({ targets: [{ id: 'consent', type: 'tab' }] });
+
+  function buildTabbed(rules: FormRule[], status: string): DynamicFormComponent {
+    const config = TABBED();
+    const fixture = TestBed.createComponent(DynamicFormComponent);
+    const c = fixture.componentInstance;
+    c.config = config;
+    c.rules = rules;
+    c.initialData = { main: { status } };
+    c.ngOnChanges({ config: new SimpleChange(undefined, config, true) });
+    fixture.detectChanges();
+    return c;
+  }
+
+  it('leaves the form invalid while the tab and its required fields show', () => {
+    const c = buildTabbed([hideConsent], 'nothing');
+    expect(c.getControl(toRefToken('consent.signedBy'))?.disabled).toBe(false);
+    expect(c.submitBlocked).toBe(true);
+    expect(c.invalidFields().map(f => f.field.id)).toEqual(expect.arrayContaining(['signedBy', 'name']));
+  });
+
+  it('takes every field the hidden tab owns out of validity, sub-tabs and groups included', () => {
+    const c = buildTabbed([hideConsent], 'trigger');
+    expect(c.getControl(toRefToken('consent.signedBy'))?.disabled).toBe(true);
+    expect(c.getControl(toRefToken('consent.witness.witnessDetails.name'))?.disabled).toBe(true);
+    expect(c.form.invalid).toBe(false);
+    expect(c.submitBlocked).toBe(false);
+  });
+
+  it('puts them back when the rule stops firing', () => {
+    const c = buildTabbed([hideConsent], 'trigger');
+    c.getControl(toRefToken('main.status'))?.setValue('nothing');
+    expect(c.getControl(toRefToken('consent.signedBy'))?.disabled).toBe(false);
+    expect(c.form.invalid).toBe(true);
+  });
+
+  it('treats a tab the config hides the same way, until a rule shows it', () => {
+    const showArchive = rule({
+      action: { type: 'visibility', value: true },
+      targets: [{ id: 'archive', type: 'tab' }],
+    });
+    const hidden = buildTabbed([hideConsent], 'trigger');
+    expect(hidden.getControl(toRefToken('archive.archivedBy'))?.disabled).toBe(true);
+
+    const shown = buildTabbed([hideConsent, showArchive], 'trigger');
+    expect(shown.getControl(toRefToken('archive.archivedBy'))?.disabled).toBe(false);
+    expect(shown.form.invalid).toBe(true);
+  });
+});
+
 describe('a rule that shows', () => {
   beforeEach(() => {
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);

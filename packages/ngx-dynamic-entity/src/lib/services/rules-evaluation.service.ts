@@ -9,7 +9,7 @@ import type {
   RuleEvaluationResult,
 } from '@dynamic-entity/core';
 import type { AbstractControl } from '@angular/forms';
-import { evaluateFieldVisibility, evaluateFormRules, filterRulesForTab } from '@dynamic-entity/core';
+import { evaluateFieldVisibility, evaluateFormRules, fieldsUnderTab, filterRulesForTab } from '@dynamic-entity/core';
 
 /** What `syncHiddenFieldState` needs from the form it is operating on. */
 export interface RuleSyncContext {
@@ -28,6 +28,11 @@ export interface RuleSyncContext {
   addressOf(field: NestedFieldConfig): string;
   /** The control a scope entry addresses, or `null` when it has no static path. */
   controlFor(entry: FieldScopeEntry): AbstractControl | null;
+  /**
+   * The config the entries came from. Needed to know which tab owns each field: a tab that is
+   * not rendered hides every field it owns. Omitted, only field-level visibility applies.
+   */
+  config?: EntityFormConfig | null;
 }
 
 /**
@@ -101,6 +106,12 @@ export class RulesEvaluationService {
    * The predicate is `isFieldVisible`, the same one the render filter uses, so what is on
    * screen and what counts toward validity cannot drift apart.
    *
+   * A tab that is not rendered — hidden by a rule, or `visibility: false` with no rule showing
+   * it — hides everything it owns, sub-tabs and container children included. Only fields were
+   * checked here, so a rule hiding a tab with a required field on it left the form invalid
+   * with the field out of sight and out of the error summary: Save did nothing, silently.
+   * Import already relaxed a hidden tab's fields, so the form refused rows import accepted.
+   *
    * Entries must arrive parent-first, which is what `collectFieldScopes` yields: a container's
    * children are skipped once the container itself is hidden, because Angular's `disable()`
    * cascades to descendants and a child's `enable()` walks back up recalculating ancestors.
@@ -108,6 +119,7 @@ export class RulesEvaluationService {
    */
   syncHiddenFieldState(entries: readonly FieldScopeEntry[], ctx: RuleSyncContext): void {
     const hiddenContainers: string[] = [];
+    const onHiddenTab = this.fieldsOnHiddenTabs(ctx.result, ctx.config);
 
     for (const entry of entries) {
       const field = entry.field;
@@ -116,7 +128,8 @@ export class RulesEvaluationService {
       const address = ctx.addressOf(field);
       if (hiddenContainers.some(prefix => address.startsWith(`${prefix}.`))) continue;
 
-      const hidden = !this.isFieldVisible(ctx.result, field, ctx.namesOf(field), ctx.values);
+      const hidden =
+        onHiddenTab.has(field) || !this.isFieldVisible(ctx.result, field, ctx.namesOf(field), ctx.values);
       if (hidden && (field.type === 'group' || field.type === 'array')) hiddenContainers.push(address);
 
       const ctrl = ctx.controlFor(entry);
@@ -128,6 +141,31 @@ export class RulesEvaluationService {
         ctrl.enable({ emitEvent: false });
       }
     }
+  }
+
+  /**
+   * Every field owned by a tab that does not render, under `isTabVisible`'s precedence.
+   *
+   * Stops descending at the first hidden tab: `fieldsUnderTab` already covers its sub-tabs,
+   * and a sub-tab of a hidden tab is not rendered whatever its own visibility says.
+   */
+  private fieldsOnHiddenTabs(
+    result: RuleEvaluationResult,
+    config: EntityFormConfig | null | undefined,
+  ): ReadonlySet<NestedFieldConfig> {
+    const out = new Set<NestedFieldConfig>();
+    const visit = (tabs: NestedTabConfig[] | undefined): void => {
+      for (const tab of Array.isArray(tabs) ? tabs : []) {
+        if (!tab || typeof tab !== 'object' || !tab.id) continue;
+        if (this.isTabVisible(result, tab)) {
+          visit(tab.children);
+        } else {
+          for (const entry of fieldsUnderTab(config, tab.id)) out.add(entry.field);
+        }
+      }
+    };
+    visit(config?.tabs);
+    return out;
   }
 
   /**

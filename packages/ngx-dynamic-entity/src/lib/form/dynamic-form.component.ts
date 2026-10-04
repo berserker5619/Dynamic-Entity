@@ -1225,6 +1225,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, OnDestroy {
       namesOf: field => this.namesOf(field),
       addressOf: field => this.addressOf(field),
       controlFor: entry => this.controlForEntry(entry),
+      config: this.config,
     });
   }
 
