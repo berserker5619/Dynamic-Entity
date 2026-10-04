@@ -485,7 +485,7 @@
         "priority": 1,
         "conditions": [
           {
-            "operator": "EQUALS",
+            "operator": "EQUAL",
             "value": false,
             "compareType": "value"
           }
@@ -509,7 +509,7 @@
         "priority": 2,
         "conditions": [
           {
-            "operator": "GREATER_THAN",
+            "operator": "MORE_THAN",
             "value": 5000000,
             "compareType": "value"
           }
@@ -519,7 +519,12 @@
           "severity": "warning",
           "value": "Budget exceeds $5,000,000 threshold. Board approval required."
         },
-        "targets": []
+        "targets": [
+          {
+            "id": "annualBudget",
+            "type": "field"
+          }
+        ]
       }
     ]
   },

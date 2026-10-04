@@ -25,6 +25,9 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `MORE_THAN`). New `RULE_OPERATORS` and `RULE_ACTION_TYPES` export the vocabulary the check
   uses, and `RuleOperator` / `RuleActionType` are derived from them, so the type and the check
   cannot drift.
+- **The two rules in `test_data.json`'s `complexFullTest` now fire.** Both used a misspelt
+  operator, and the info rule had no target. A test now validates every config the repository
+  ships, rules included, so a typo fails `npm test`.
 
 ## [2.3.0]
 
