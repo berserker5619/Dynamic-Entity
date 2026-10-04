@@ -29,6 +29,12 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   nothing. A tab that does not render now relaxes every field it owns, sub-tabs and group
   children included. This applies both to a rule-hidden tab and to `visibility: false` with no
   rule showing it. Import already behaved this way.
+- **Fields inside a `group` can be edited in the builder.** The store resolved a field only
+  among each tab's own fields and never inside a container. So a group child's row could be
+  clicked and highlighted, but the inspector stayed empty and its rules were not listed.
+  Remove, duplicate, move and every property setter also did nothing for it. A group child
+  now resolves like any other field. It moves only among its siblings, and its duplicate lands
+  beside it in the same group.
 - **Required fields in the demo's `patientIntake` and `itAssets` configs are now required.**
   Fifteen fields set `required: true` on the field rather than under `validators`.
 - **A typo'd rule operator no longer validates clean.** `evaluateCondition` returns `false` for

@@ -390,15 +390,33 @@ export class BuilderStore {
   }
 
   private findFieldBy(tabs: NestedTabConfig[] = [], match: (f: NestedFieldConfig) => boolean): NestedFieldConfig | null {
-    for (const t of tabs) {
-      const found = t.fields?.find(match);
+    for (const list of this.fieldLists(tabs)) {
+      const found = list.find(match);
       if (found) return found;
-      if (t.children) {
-        const nested = this.findFieldBy(t.children, match);
-        if (nested) return nested;
-      }
     }
     return null;
+  }
+
+  /**
+   * Every array a field can sit in: each tab's `fields` and each `group`/`array`'s `children`.
+   *
+   * The lookup walked tab `fields` only, so a field inside a group could be drawn and clicked
+   * but never resolved: its row highlighted while the inspector stayed empty, and remove,
+   * duplicate, move and every property setter did nothing at all.
+   */
+  private fieldLists(tabs: NestedTabConfig[] = []): NestedFieldConfig[][] {
+    const lists: NestedFieldConfig[][] = [];
+    const visit = (fields: NestedFieldConfig[]): void => {
+      lists.push(fields);
+      for (const f of fields) if (f.children?.length) visit(f.children);
+    };
+    for (const tab of this.flattenTabs(tabs)) if (tab.fields) visit(tab.fields);
+    return lists;
+  }
+
+  /** The array holding this exact field object, wherever it is nested. */
+  private listContaining(tabs: NestedTabConfig[] = [], field: NestedFieldConfig): NestedFieldConfig[] | null {
+    return this.fieldLists(tabs).find(list => list.includes(field)) ?? null;
   }
 
   /**
@@ -578,12 +596,10 @@ export class BuilderStore {
       // `personal.address` with it.
       const target = this.findFieldInTabs(draft.tabs, key);
       if (!target) return;
+      const list = this.listContaining(draft.tabs, target);
+      if (!list) return;
       removedId = target.id;
-      for (const tab of this.flattenTabs(draft.tabs)) {
-        if (tab.fields) {
-          tab.fields = tab.fields.filter(f => f !== target);
-        }
-      }
+      list.splice(list.indexOf(target), 1);
     });
     if (removedId === null) return;
     // `manualIds` is keyed by bare id and shared by every field carrying it, so it is only
@@ -605,15 +621,13 @@ export class BuilderStore {
     const newId = this.uniqueId(prefix, this.allFieldIds(this._config().tabs));
 
     this.mutate(draft => {
-      for (const tab of this.flattenTabs(draft.tabs)) {
-        const index = (tab.fields ?? []).findIndex(f => f.id === id);
-        if (index !== -1) {
-          const copy = clone(source);
-          copy.id = newId;
-          tab.fields!.splice(index + 1, 0, copy);
-          break;
-        }
-      }
+      // The same key resolves to the same field in the draft, whatever list holds it.
+      const wanted = this.findFieldInTabs(draft.tabs, id);
+      const list = wanted && this.listContaining(draft.tabs, wanted);
+      if (!wanted || !list) return;
+      const copy = clone(source);
+      copy.id = newId;
+      list.splice(list.indexOf(wanted) + 1, 0, copy);
     });
     this._selectedFieldId.set(newId);
     return newId;
@@ -625,19 +639,15 @@ export class BuilderStore {
       // field the walk reached first, which for two `address` fields was never the one the
       // arrow button belonged to.
       const wanted = this.findFieldInTabs(draft.tabs, key);
-      if (!wanted) return;
+      const fields = wanted && this.listContaining(draft.tabs, wanted);
+      if (!wanted || !fields) return;
 
-      for (const tab of this.flattenTabs(draft.tabs)) {
-        const fields = tab.fields ?? [];
-        const from = fields.findIndex(f => f === wanted);
-        if (from !== -1) {
-          const to = from + direction;
-          if (to < 0 || to >= fields.length) return;
-          const [item] = fields.splice(from, 1);
-          fields.splice(to, 0, item);
-          return;
-        }
-      }
+      // Within its own list: a group child moves among its siblings, never out of the group.
+      const from = fields.indexOf(wanted);
+      const to = from + direction;
+      if (to < 0 || to >= fields.length) return;
+      const [item] = fields.splice(from, 1);
+      fields.splice(to, 0, item);
     });
   }
 
@@ -666,17 +676,13 @@ export class BuilderStore {
       const wanted = this.findFieldInTabs(draft.tabs, id);
       if (!wanted) return;
 
-      for (const tab of this.flattenTabs(draft.tabs)) {
-        const index = (tab.fields ?? []).findIndex(f => f === wanted);
-        if (index === -1) continue;
-        if (tab.id === targetTabId) return; // already there; nothing to do
+      const list = this.listContaining(draft.tabs, wanted);
+      if (!list || list === targetTab.fields) return; // already there; nothing to do
 
-        const [field] = tab.fields!.splice(index, 1);
-        targetTab.fields = targetTab.fields ?? [];
-        targetTab.fields.push(field);
-        moved = true;
-        return;
-      }
+      list.splice(list.indexOf(wanted), 1);
+      targetTab.fields = targetTab.fields ?? [];
+      targetTab.fields.push(wanted);
+      moved = true;
     });
     return moved;
   }

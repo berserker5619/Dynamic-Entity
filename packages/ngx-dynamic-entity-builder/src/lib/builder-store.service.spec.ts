@@ -1391,3 +1391,90 @@ describe('BuilderStore — field id uniqueness spans the whole tree', () => {
     expect(store.errors()).toEqual([]);
   });
 });
+
+/**
+ * A field inside a `group` is drawn on the canvas with the same controls as any other row.
+ *
+ * The store's lookup walked each tab's `fields` and never a container's `children`, so every
+ * one of those controls was dead for a group child: the row highlighted, the inspector stayed
+ * empty, and remove, duplicate, move and the property setters silently did nothing.
+ */
+describe('BuilderStore — fields inside a group', () => {
+  let store: BuilderStore;
+  const contact = () => store.config().tabs![0].fields!.find(f => f.id === 'contact')!;
+  const childIds = () => (contact().children ?? []).map(f => f.id);
+
+  beforeEach(() => {
+    store = new BuilderStore();
+    store.load(
+      {
+        entity: 'people',
+        version: 1,
+        tabs: [
+          {
+            id: 'personal',
+            label: { en: 'Personal' },
+            fields: [
+              { id: 'name', type: 'text', label: { en: 'Name' } },
+              {
+                id: 'contact',
+                type: 'group',
+                label: { en: 'Contact' },
+                children: [
+                  { id: 'email', type: 'email', label: { en: 'Email' }, validators: { required: true } },
+                  { id: 'phone', type: 'text', label: { en: 'Phone' } },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      [
+        {
+          id: 'email-rule',
+          formConfigId: 'people',
+          fieldId: '[personal.contact.email]',
+          conditions: [{ operator: 'IS_EMPTY', compareType: 'value' }],
+          action: { type: 'validation', value: 'Email needed', severity: 'error' },
+          targets: [{ id: '[personal.contact.email]', type: 'field' }],
+          enabled: true,
+          priority: 1,
+        },
+      ],
+    );
+  });
+
+  it('resolves a selected child for the inspector, and lists its rules', () => {
+    store.selectField('personal.contact.email');
+    expect(store.selectedField()?.id).toBe('email');
+    expect(store.rulesForSelectedField().map(r => r.id)).toEqual(['email-rule']);
+  });
+
+  it('edits a child through a property setter', () => {
+    store.setFieldLabel('personal.contact.phone', 'en', 'Mobile');
+    expect(contact().children![1].label).toEqual({ en: 'Mobile' });
+  });
+
+  it('removes a child, and only that child', () => {
+    store.removeField('personal.contact.phone');
+    expect(childIds()).toEqual(['email']);
+    expect(store.config().tabs![0].fields!.map(f => f.id)).toEqual(['name', 'contact']);
+  });
+
+  it('duplicates a child into the same group, right after it', () => {
+    const copyId = store.duplicateField('personal.contact.email');
+    expect(copyId).toBeTruthy();
+    expect(childIds()).toEqual(['email', copyId, 'phone']);
+    expect(contact().children![1].validators).toEqual({ required: true });
+    // Restamped at its own address, so selecting the copy does not select the source.
+    expect(contact().children![1].refererField).toBe(`personal.contact.${copyId}`);
+  });
+
+  it('moves a child among its siblings and never out of the group', () => {
+    store.moveField('personal.contact.phone', -1);
+    expect(childIds()).toEqual(['phone', 'email']);
+    store.moveField('personal.contact.phone', -1);
+    expect(childIds()).toEqual(['phone', 'email']);
+    expect(store.config().tabs![0].fields!.map(f => f.id)).toEqual(['name', 'contact']);
+  });
+});
