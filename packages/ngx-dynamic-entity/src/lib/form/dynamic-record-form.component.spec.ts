@@ -64,6 +64,19 @@ describe('DynamicRecordFormComponent', () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
+  // The record view passes `[error]` through to the form it wraps; dropping the binding would
+  // leave a host's load failure invisible in this view only.
+  it('shows the host error through the form it wraps', () => {
+    fixture = TestBed.createComponent(DynamicRecordFormComponent);
+    component = fixture.componentInstance;
+    component.config = config;
+    component.error = 'Could not save this section.';
+    component.ngOnChanges({ config: new SimpleChange(undefined, config, true) });
+    fixture.detectChanges();
+    const banner = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="form-error"]');
+    expect(banner?.textContent?.trim()).toBe('Could not save this section.');
+  });
+
   describe('edit permission', () => {
     /**
      * `userRoles` was an input this component declared and then read from nowhere: it

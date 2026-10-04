@@ -195,3 +195,61 @@ These keep unit or script coverage, because a browser adds nothing:
 - Steps 3–8: every row in the audit's "no e2e at all" list is either covered by a test above or
   listed under "Explicitly not e2e" / "Not reachable from the demo" with its reason.
 - Full `npm run e2e` green in both projects. The expected added runtime is 3–4 minutes.
+
+---
+
+## Outcome (Oct 4, 2026)
+
+All eight steps landed on `main`. Writing the tests turned up five more real bugs, each fixed in
+its own commit ahead of the test that found it.
+
+**Bugs found while writing the tests**
+
+| Bug | Found by | Fix |
+|---|---|---|
+| `required: true` on the field (not under `validators`) is read by nothing. Fifteen fields in `patient-intake.json` and `it-assets.json` were silently optional | step 6: an adult intake saved with no consent | `validateConfig` error; data moved under `validators` |
+| A rule-hidden tab's fields stayed in form validity. Save refused with no error summary, because the summary lists visible tabs only. Import already relaxed them | step 6: a minor's intake would not save | renderer disables every field a non-rendered tab owns |
+| Seeded insurance claims failed their own `nationalId` pattern, so none could be saved unedited | step 5: saving `claim_001` | seed IDs fixed |
+| The demo never bound `[rules]` on the import page, and `import-server.mjs` passed none, so imports ignored `DEMO_RULES` | step 4: the `[ref]` rule test | both transports get `DEMO_RULES` |
+| The builder could not resolve a field inside a `group`. Its row highlighted, but the inspector stayed empty, and remove, duplicate, move and setters did nothing | step 7: selecting `contact.email` | lookups and list edits walk `children` |
+| Builder rows below 560px showed no field name (0px label), and the selected row's buttons overlapped the badge | step 7, narrow project | actions take a full second line |
+
+**Where the implementation departs from the plan, and why**
+
+- *Step 1:* also rejects unknown target types, and treats a whitespace-only `compareToField` as
+  missing.
+- *Step 2:* the guard spec is `server/src/shipped-configs.spec.ts`, not a core spec. It imports
+  `DEMO_RULES` (TypeScript that imports core's types). Server tests run against a built core;
+  core's own do not. The `complex-full-flow.spec.ts` check was moot, because the demo never
+  loads `test_data.json`'s rules.
+- *Step 3:* Patient Intake had no `tags` or `array` field and no sub-tabs. The config gains
+  `knownAllergens` (tags) and `allergyActionPlan` (shown only by the `HAS_ITEMS` rule). The
+  consent "sub-tab" is a top-level tab.
+- *Step 4:* import stores array rows compacted, with empty slots dropped, so slot 6 is the
+  second address rather than index 5. The header grammar's trailing-`s` singular means
+  `Address 1 Street` does not map for an array labelled "Addresses"; the spec uses
+  `Addresses 1 Street`. Both are documented behaviour, recorded in the spec header.
+- *Step 5:* the form displays a stored `#ABC` as `#aabbcc` but does not rewrite it on save. Only
+  import normalises it, so the assertion is split in two.
+- *Step 6:* a dismissed record-view banner stays dismissed for the session even when its rule
+  re-fires, and is re-armed when the record is loaded again. That is the documented contract on
+  `DynamicRecordFormComponent.dismissed`, and the test asserts it rather than "until the
+  condition re-fires".
+- *Step 7:* sub-tabs have no reorder control, so there is nothing to test. The demo's live
+  preview gets no `[rules]`, so a disabled rule is proved in the record form after Save. The
+  builder never lets a duplicate id exist (it suffixes), so the refused save uses an empty
+  entity name. The demo already persisted the centre panels.
+- *Step 8:* `check-demo-coverage.mjs` does not check component inputs, but `readOnlyFields` is
+  wired anyway (IT Support cannot edit a client's email) and asserted in `demo.spec.ts`. `[error]`
+  had no unit test either, so it now has unit tests on both form components rather than a
+  contrived failing-load path in the demo. `rules-and-record-form.spec.ts` is deleted: both its
+  checks were already asserted elsewhere, more strongly.
+
+**Follow-ups, not done**
+
+- `import-all-configs.spec.ts` covers nine entities and skips `patientIntake` and `itAssets`.
+- No check verifies that seeded demo records pass their own config's validators. The claims
+  bug above would have been caught by one.
+- On a new record every field counts as changed, so `VALUE_CHANGED` fires as soon as a value
+  is entered. That is correct by the operator's definition, but noisy for the triage warning.
+

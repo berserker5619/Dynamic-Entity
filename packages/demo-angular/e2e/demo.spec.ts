@@ -4,6 +4,7 @@ import {
   builderFieldRows,
   builderPaletteButton,
   fieldByLabel,
+  fieldPart,
   gotoDemo,
   recordButton,
   safeClick,
@@ -59,6 +60,30 @@ test.describe('Dynamic Entity Demo E2E Tests', () => {
     await safeClick(recordButton(page, 'Acme Corp'));
 
     await expect(fieldByLabel(page, 'Salary').locator('input')).toHaveValue('120000');
+  });
+
+  /*
+   * `[readOnlyFields]`: IT support may edit a client but not its email (see `readOnlyFields`
+   * in app.component.ts). One field locked, the rest editable, and the save keeps both.
+   */
+  test('locks one field for a role while the rest stay editable', async ({ page }) => {
+    await safeClick(page.getByRole('button', { name: 'IT Support (Masked Salary)' }));
+    await safeClick(recordButton(page, 'Acme Corp'));
+
+    await expect(fieldPart(page, 'email', 'input')).toHaveCount(0);
+    await expect(fieldPart(page, 'email', 'value')).toHaveText('ops@acme.com');
+    await fieldPart(page, 'company', 'input').fill('Acme Holdings');
+    await safeClick(page.getByTestId('form-submit'));
+
+    const saved = await page.evaluate(
+      () => (JSON.parse(localStorage.getItem('de_demo_records_clients') ?? '[]') as Record<string, unknown>[])[0],
+    );
+    expect(saved).toMatchObject({ company: 'Acme Holdings', email: 'ops@acme.com' });
+
+    // The same field for a role without the lock is an input again.
+    await safeClick(page.getByRole('button', { name: 'Admin' }));
+    await safeClick(recordButton(page, 'Acme Corp'));
+    await expect(fieldPart(page, 'email', 'input')).toHaveValue('ops@acme.com');
   });
 
   test('builder adds a text field and updates the live preview', async ({ page }) => {

@@ -66,6 +66,17 @@ export class AppComponent implements OnInit {
   });
 
   private readonly rulesRevision = signal(0);
+
+  /**
+   * Fields this role may see but not change — `[readOnlyFields]`, demonstrated.
+   *
+   * IT support may edit a client (they fix company and status data) but not its contact email,
+   * which belongs to the account team. Permissions are all-or-nothing per record; this is the
+   * per-field lock a host layers on top, and the field renders as a value rather than an input.
+   */
+  readonly readOnlyFields = computed(() =>
+    this.selectedEntity() === 'clients' && this.userRoles().includes('IT_SUPPORT') ? ['email'] : [],
+  );
   readonly allConfigs = signal<EntityFormConfig[]>([]);
   readonly records = signal<VersionedRecord[]>([]);
   readonly selectedRecord = signal<VersionedRecord | null>(null);

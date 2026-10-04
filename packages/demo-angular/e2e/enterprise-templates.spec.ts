@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { fieldById, gotoDemo, recordButton, safeClick, safeSelect } from './test-helpers';
 
+/**
+ * A navigation smoke test for the two enterprise entities: each opens, its tabs switch, and
+ * its seeded records render. Nothing more is asserted here on purpose. The field types these
+ * entities carry are driven end to end in `field-types-2-2.spec.ts`, and Patient Intake's
+ * rules in `rules-banners-and-tabs.spec.ts`.
+ */
 test.describe('Enterprise Entity Templates (Healthcare & IT Assets)', () => {
   test.beforeEach(async ({ page }) => {
     await gotoDemo(page);

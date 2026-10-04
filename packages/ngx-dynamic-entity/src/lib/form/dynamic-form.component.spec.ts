@@ -10,6 +10,7 @@ import {
 } from '@angular/forms';
 import type { EntityFormConfig, FormRule, RecordMigration } from '@dynamic-entity/core';
 import { DynamicFormComponent } from './dynamic-form.component';
+import { provideBuiltInFieldTypes } from '../providers/provide-field-types';
 import { EntityRefSelectionService } from '../services/entity-ref-selection.service';
 import { HookRegistryService } from '../services/hook-registry.service';
 import { RbacService } from '../services/rbac.service';
@@ -712,6 +713,44 @@ describe('DynamicFormComponent', () => {
  * phase 1 gave each tab its own FormGroup, the record stores them separately. These pin
  * that, and the one place where the id alone is still ambiguous.
  */
+/**
+ * `[error]` is how a host says the record could not be loaded or saved. It had no test at all,
+ * in a unit suite or end to end, so a template change that dropped the banner would have
+ * passed everything.
+ */
+describe('DynamicFormComponent — error input', () => {
+  const config: EntityFormConfig = {
+    entity: 'clients',
+    tabs: [{ id: 'main', label: { en: 'Main' }, fields: [{ id: 'name', type: 'text', label: { en: 'Name' } }] }],
+  };
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [DynamicFormComponent],
+      providers: [provideBuiltInFieldTypes()],
+    }).compileComponents();
+  });
+
+  function render(error: string | null): HTMLElement {
+    const fixture = TestBed.createComponent(DynamicFormComponent);
+    fixture.componentInstance.config = config;
+    fixture.componentInstance.error = error;
+    fixture.componentInstance.ngOnChanges({ config: new SimpleChange(undefined, config, true) });
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('shows the host error as an alert above the form', () => {
+    const banner = render('Could not load this record.').querySelector('[data-testid="form-error"]');
+    expect(banner?.textContent?.trim()).toBe('Could not load this record.');
+    expect(banner?.getAttribute('role')).toBe('alert');
+  });
+
+  it('shows nothing when there is no error', () => {
+    expect(render(null).querySelector('[data-testid="form-error"]')).toBeNull();
+  });
+});
+
 describe('DynamicFormComponent — duplicate field ids across tabs', () => {
   const DUPES: EntityFormConfig = {
     entity: 'employees',

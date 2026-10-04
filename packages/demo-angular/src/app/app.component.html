@@ -144,7 +144,7 @@
       -->
       @if (formMode() === 'form') {
         <ngx-dynamic-form [config]="config()!" [initialData]="selectedRecord() || {}" [userRoles]="userRoles()"
-          [rules]="rules()"
+          [rules]="rules()" [readOnlyFields]="readOnlyFields()"
           [language]="language()" [loading]="loading()" layout="auto" (formSubmit)="onFormSubmit($event)"
           (saveRejected)="onSaveRejected($event)"
           (formReset)="onCancel()"></ngx-dynamic-form>
@@ -158,7 +158,7 @@
           the section save as well as the whole-record one.
         -->
         <ngx-dynamic-record-form [config]="config()!" [initialData]="selectedRecord() || {}"
-          [rules]="rules()"
+          [rules]="rules()" [readOnlyFields]="readOnlyFields()"
           [userRoles]="userRoles()" [language]="language()" [loading]="loading()"
           [isReadOnly]="formMode() === 'data'" layout="auto"
           (formSubmit)="onFormSubmit($event)"
