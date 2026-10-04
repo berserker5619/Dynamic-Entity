@@ -10,7 +10,7 @@
  * disagreed with the renderer about where a value lives is exactly the drift it warns about.
  */
 
-import { ROOT_SCOPE, collectFieldScopes, refOf } from './field-scopes';
+import { ROOT_SCOPE, collectFieldRefs, collectFieldScopes, refOf } from './field-scopes';
 import { getFieldTypeMeta } from './field-catalog';
 import { resolveLabel, resolveOptionLabel } from './form-logic';
 import type { EntityFormConfig, NestedFieldConfig, RichFieldType } from './form-model.types';
@@ -58,7 +58,10 @@ const CONTAINER_TYPES = new Set<RichFieldType>(['group', 'array']);
  */
 export interface LeafTarget {
   field: NestedFieldConfig;
+  /** Positional scope, built from ids. Headings are made from it. */
   scope: string;
+  /** Where the field's siblings live in the record: `scope`, unless a moved container rebased it. */
+  recordScope: string;
   /** Structural address with no row numbers, e.g. `work.contacts.email`. */
   ref: string;
   /** The repeating ancestor's address when this field is inside an `array`, else `null`. */
@@ -81,20 +84,21 @@ function isAncestorRef(prefix: string, ref: string): boolean {
  * own, so neither is a column and neither is validated directly.
  */
 export function collectLeafTargets(config: EntityFormConfig | null | undefined): LeafTarget[] {
-  const entries = collectFieldScopes(config);
+  // Addresses rather than bare `refOf`: a moved container takes its children with it.
+  const entries = collectFieldRefs(config);
 
   // Array paths first, so a leaf can be told which of its ancestors repeat. Taken from the
   // same walk rather than a second one — see this file's header.
   const arrayRefs = entries
     .filter(entry => entry.field?.type === 'array' && entry.field.id)
-    .map(entry => refOf(entry.field, entry.scope));
+    .map(entry => entry.ref);
 
   const targets: LeafTarget[] = [];
   for (const entry of entries) {
     const field = entry.field;
     if (!field?.id || CONTAINER_TYPES.has(field.type)) continue;
 
-    const ref = refOf(field, entry.scope);
+    const ref = entry.ref;
     const ancestors = arrayRefs.filter(arrayRef => isAncestorRef(arrayRef, ref));
     // The innermost repeating ancestor is the longest matching prefix.
     const arrayRef = ancestors.length
@@ -104,6 +108,7 @@ export function collectLeafTargets(config: EntityFormConfig | null | undefined):
     targets.push({
       field,
       scope: entry.scope,
+      recordScope: entry.recordScope,
       ref,
       arrayRef,
       tail: arrayRef ? ref.slice(arrayRef.length + 1) : '',
@@ -381,6 +386,86 @@ export function buildTemplateSpec(
 }
 
 /**
+ * Refs 2.2 derived that this version derives differently → what they now mean.
+ *
+ * 2.2 took every address from `refOf`, so a moved container's children kept their id-built
+ * position, and a moved array's children were not unrolled at all (`phones.number`). Plans
+ * saved against those refs are persisted and posted, so they keep resolving — with a warning —
+ * until 3.0. An un-indexed ref that now repeats means slot 0, which is the only slot it ever
+ * filled.
+ *
+ * `rows` is how many array slots to alias, and only matters for refs that repeated in 2.2.
+ */
+export function legacyRefAliases(
+  config: EntityFormConfig | null | undefined,
+  rows: number,
+): Map<string, string> {
+  const aliases = new Map<string, string>();
+  const entries = collectFieldScopes(config);
+  const oldArrayRefs = entries
+    .filter(entry => entry.field?.type === 'array' && entry.field.id)
+    .map(entry => refOf(entry.field, entry.scope));
+  const oldTargets = new Map(
+    entries
+      .filter(entry => entry.field?.id && !CONTAINER_TYPES.has(entry.field.type))
+      .map(entry => [entry.field, refOf(entry.field, entry.scope)] as const),
+  );
+
+  const targets = collectLeafTargets(config);
+  const slotsOf = (target: LeafTarget) => (index: number): string =>
+    target.arrayRef ? `${formatArrayHeader(target.arrayRef, index)}.${target.tail}` : target.ref;
+  // A ref that still means something today is never an alias, whatever 2.2 made of it.
+  const current = new Set<string>();
+  for (const target of targets) {
+    for (let index = 0; index < (target.arrayRef ? rows : 1); index++) current.add(slotsOf(target)(index));
+  }
+  const alias = (old: string, now: string): void => {
+    if (old !== now && !current.has(old)) aliases.set(old, now);
+  };
+
+  for (const target of targets) {
+    const oldRef = oldTargets.get(target.field);
+    if (!oldRef || target.nested) continue;
+    const ancestors = oldArrayRefs.filter(arrayRef => isAncestorRef(arrayRef, oldRef));
+    if (ancestors.length > 1) continue;
+    const oldArrayRef = ancestors[0];
+
+    const slot = slotsOf(target);
+
+    if (oldArrayRef) {
+      const oldTail = oldRef.slice(oldArrayRef.length + 1);
+      for (let index = 0; index < rows; index++) {
+        alias(`${formatArrayHeader(oldArrayRef, index)}.${oldTail}`, slot(index));
+      }
+    } else {
+      alias(oldRef, slot(0));
+    }
+  }
+  return aliases;
+}
+
+/**
+ * The plan with every 2.2 ref rewritten to what it means now. Returns the same plan object
+ * when nothing needed rewriting.
+ */
+export function upgradeLegacyRefs(
+  plan: MappingPlan,
+  config: EntityFormConfig | null | undefined,
+): MappingPlan {
+  if (!plan || !Array.isArray(plan.entries)) return plan;
+  const aliases = legacyRefAliases(config, Math.max(arrayBoundOf(plan), 1));
+  if (!aliases.size) return plan;
+  return {
+    ...plan,
+    entries: plan.entries.map(entry =>
+      entry && typeof entry === 'object' && aliases.has(entry.ref)
+        ? { ...entry, ref: aliases.get(entry.ref)! }
+        : entry,
+    ),
+  };
+}
+
+/**
  * Check a mapping plan against the config it claims to target.
  *
  * Returns `ConfigProblem[]` — the same shape `validateConfig` returns, so a plan's problems
@@ -425,12 +510,11 @@ export function validateMappingPlan(
   // Derived from the plan rather than taken from the caller, so a plan's own row numbers are
   // always in scope and an unknown ref means the *config* lacks the field — not that the
   // column list happened to be generated too short to contain it.
+  const bound = Math.max(options.maxArrayRows ?? 0, arrayBoundOf(plan), 1);
   const known = new Set(
-    deriveImportColumns(config, {
-      ...options,
-      maxArrayRows: Math.max(options.maxArrayRows ?? 0, arrayBoundOf(plan), 1),
-    }).columns.map(column => column.ref),
+    deriveImportColumns(config, { ...options, maxArrayRows: bound }).columns.map(column => column.ref),
   );
+  const aliases = legacyRefAliases(config, bound);
   const seen = new Set<string>();
 
   plan.entries.forEach((entry, i) => {
@@ -443,15 +527,23 @@ export function validateMappingPlan(
       add('error', `${at}.ref`, 'An entry needs a target field ref.');
       return;
     }
-    if (!known.has(entry.ref)) {
+    const alias = aliases.get(entry.ref);
+    const ref = alias && known.has(alias) ? alias : entry.ref;
+    if (ref !== entry.ref) {
+      add(
+        'warning',
+        `${at}.ref`,
+        `"${entry.ref}" is the 2.2 address of "${ref}"; it is read as "${ref}" until 3.0. Save the plan again to update it.`,
+      );
+    } else if (!known.has(entry.ref)) {
       add('error', `${at}.ref`, `References unknown field "${entry.ref}".`);
     }
     // One entry per target. Two entries for one field is not a merge, it is a race between
     // whichever the writer applies last — so it is rejected rather than resolved.
-    if (seen.has(entry.ref)) {
-      add('error', `${at}.ref`, `"${entry.ref}" is mapped more than once.`);
+    if (seen.has(ref)) {
+      add('error', `${at}.ref`, `"${ref}" is mapped more than once.`);
     }
-    seen.add(entry.ref);
+    seen.add(ref);
 
     const hasColumn = entry.column !== undefined;
     const hasConstant = entry.constant !== undefined;

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { FormArray, FormControl, FormGroup } from '@angular/forms';
 import type { EntityFormConfig, NestedFieldConfig } from '@dynamic-entity/core';
-import { assignFieldRefs } from '@dynamic-entity/core';
+import { applyMapping, assignFieldRefs } from '@dynamic-entity/core';
 import { FormStructureService } from './form-structure.service';
 
 /**
@@ -277,6 +277,35 @@ describe('FormStructureService', () => {
       );
 
       expect(form.get('personal.firstName')!.value).toBe('Ada');
+    });
+
+    /**
+     * Import and the form must agree on where a moved array lives. Import derives its columns
+     * from the same config, writes the record, and the form has to open it and save it back
+     * with the rows still at the override.
+     */
+    it('round-trips an imported record whose array was moved by refererField', () => {
+      const config = CONFIG();
+      config.tabs[0].fields![2].refererField = 'people.contacts';
+      const plan = {
+        entity: 'people',
+        entries: [
+          { ref: 'people.contacts.0.name', column: 0 },
+          { ref: 'people.contacts.1.name', column: 1 },
+        ],
+      };
+      const imported = applyMapping([['Ada', 'Bo']], plan, config, { stamp: false });
+      expect(imported.errors).toEqual([]);
+
+      const form = service.buildForm(config);
+      service.patchForm(form, config, imported.records[0], fieldsById(config));
+      const rows = form.get('personal.contacts') as FormArray;
+      expect(rows.length).toBe(2);
+      expect(rows.at(1).get('name')!.value).toBe('Bo');
+
+      expect(service.extractRecord(form, config)['people']).toEqual({
+        contacts: [{ name: 'Ada' }, { name: 'Bo' }],
+      });
     });
 
     it('reports a top-level key that names a field but reached no control', () => {

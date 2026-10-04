@@ -55,14 +55,16 @@ export {
   ROOT_SCOPE,
   ambiguousFieldIds,
   assignFieldRefs,
+  collectFieldRefs,
   collectFieldScopes,
   fieldRefFor,
   fieldsUnderTab,
+  isRefOverride,
   parseFieldRef,
   refOf,
   toRefToken,
 } from './field-scopes';
-export type { FieldScopeEntry } from './field-scopes';
+export type { FieldRefEntry, FieldScopeEntry } from './field-scopes';
 
 // ─── Config validation ──────────────────────────────────────────────────────
 export { formatConfigProblems, isConfigValid, validateConfig } from './validate-config';

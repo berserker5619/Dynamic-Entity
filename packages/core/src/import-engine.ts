@@ -16,10 +16,11 @@ import {
   arrayBoundOf,
   collectLeafTargets,
   deriveImportColumns,
+  upgradeLegacyRefs,
   validateMappingPlan,
   type LeafTarget,
 } from './import-columns';
-import { ROOT_SCOPE } from './field-scopes';
+import { ROOT_SCOPE, collectFieldRefs, fieldRefFor } from './field-scopes';
 import { stampRecord } from './migration';
 import { evaluateFormRules, filterRulesForTab } from './rules-engine';
 import {
@@ -741,9 +742,9 @@ export function validateImportedRecord(
       // directly is exact where going back through `getTabData` would only approximate it for
       // a field nested inside a `group`.
       const scopeValues =
-        target.scope === ROOT_SCOPE
+        target.recordScope === ROOT_SCOPE
           ? record
-          : ((getValueByPath(record, target.scope) ?? {}) as Record<string, unknown>);
+          : ((getValueByPath(record, target.recordScope) ?? {}) as Record<string, unknown>);
       check(target, getValueByPath(record, target.ref), target.ref, scopeValues);
       continue;
     }
@@ -818,12 +819,19 @@ export function applyMapping(
   if (planProblems.some(problem => problem.level === 'error')) {
     return { records: [], errors: [], skipped: 0, planProblems };
   }
+  // Already warned about above; from here on a 2.2 ref is simply its current address.
+  const upgraded = upgradeLegacyRefs(plan, config);
 
   const byRef = new Map(
     deriveImportColumns(config, derive).columns.map(column => [column.ref, column]),
   );
   const targets = collectLeafTargets(config);
-  const entries = (plan?.entries ?? []).filter(entry => entry && byRef.has(entry.ref));
+  const entries = (upgraded?.entries ?? []).filter(entry => entry && byRef.has(entry.ref));
+  // `normalizeArrayStructures` walks by id, so it finds an array where its id puts it. A moved
+  // array lives at its override instead, which is where the renderer reads it from.
+  const movedArrays = collectFieldRefs(config)
+    .filter(entry => entry.field?.type === 'array' && entry.ref !== fieldRefFor(entry.scope, entry.field.id))
+    .map(entry => entry.ref);
 
   rows.forEach((row, i) => {
     const rowNumber = firstRowNumber + i;
@@ -873,6 +881,10 @@ export function applyMapping(
 
     const cleaned = compactArrays(record);
     normalizeArrayStructures(cleaned, config);
+    for (const ref of movedArrays) {
+      const value = getValueByPath(cleaned, ref);
+      if (!Array.isArray(value)) setRecordValue(cleaned, ref, value == null ? [] : [value]);
+    }
 
     // `targets` is hoisted out of the loop: deriving it per row re-walked the whole config
     // once per row, which is pure waste on the large files the streaming path exists for.

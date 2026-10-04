@@ -11,7 +11,15 @@
 
 import { FIELD_TYPE_CATALOG } from './field-catalog';
 import { normalizeHexColor } from './field-values';
-import { ROOT_SCOPE, ambiguousFieldIds, collectFieldScopes, parseFieldRef, refOf } from './field-scopes';
+import {
+  ROOT_SCOPE,
+  ambiguousFieldIds,
+  collectFieldRefs,
+  collectFieldScopes,
+  fieldRefFor,
+  parseFieldRef,
+  refOf,
+} from './field-scopes';
 import { OPTION_KEY, UNSAFE_PATH_KEYS, isUnsafePath, resolveLabel } from './form-logic';
 import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from './form-model.types';
 
@@ -556,6 +564,34 @@ export function validateConfig(
     });
   };
   walkTabsForRefs(config.tabs, 'tabs');
+
+  // `refererField` overrides the renderer and the importer cannot agree on. A stamped ref is
+  // the field's own position — the builder writes one on every field — so only a ref that
+  // points somewhere else, and is not just its moved container's new position, counts.
+  const addressed = collectFieldRefs(config);
+  const arrayPositions = addressed
+    .filter(entry => entry.field?.type === 'array' && entry.field.id)
+    .map(entry => fieldRefFor(entry.scope, entry.field.id));
+  for (const entry of addressed) {
+    const field = entry.field;
+    if (!entry.authored) continue;
+    const position = fieldRefFor(entry.scope, field.id);
+    if (arrayPositions.some(arrayRef => position.startsWith(`${arrayRef}.`))) {
+      add(
+        'error',
+        `${entry.path}.refererField`,
+        `refererField is not allowed on a field inside an array: "${field.refererField}" cannot say which row it means.`,
+      );
+      continue;
+    }
+    if ((field.type === 'group' || field.type === 'array') && !entry.tabLevel) {
+      add(
+        'warning',
+        `${entry.path}.refererField`,
+        `refererField on a ${field.type} that is not directly on a tab is ignored: the form only moves tab-level containers, so the value stays at "${position}".`,
+      );
+    }
+  }
 
   options.rules?.forEach((rule, i) => {
     if (!rule || typeof rule !== 'object') {

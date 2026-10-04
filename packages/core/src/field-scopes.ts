@@ -177,6 +177,81 @@ export function refOf(field: { id: string; refererField?: string }, scope: strin
   return field.refererField ?? fieldRefFor(scope, field.id);
 }
 
+/** A `refererField` that points somewhere other than where the field sits. */
+export function isRefOverride(field: { id: string; refererField?: string }, scope: string): boolean {
+  return !!field.refererField && field.refererField !== fieldRefFor(scope, field.id);
+}
+
+/** A field entry together with where its value actually lives in a record. */
+export interface FieldRefEntry extends FieldScopeEntry {
+  /** The value's address in the record, e.g. `contact.phones.number` (no row numbers). */
+  ref: string;
+  /** Address of the object holding the field's siblings, or `ROOT_SCOPE`. */
+  recordScope: string;
+  /** Directly on a tab, which is the only place the renderer honours a container's override. */
+  tabLevel: boolean;
+  /**
+   * `refererField` points somewhere other than the field's position, rebased or not: a
+   * deliberate override rather than the builder's stamp.
+   */
+  authored: boolean;
+}
+
+/** A field entry's config path ends at a tab's `fields`, not at a container's `children`. */
+const TAB_LEVEL_PATH = /\.fields\[\d+\]$/;
+
+const isContainer = (field: NestedFieldConfig): boolean =>
+  field.type === 'group' || field.type === 'array';
+
+/**
+ * Every field with the address its value is read from and written to.
+ *
+ * Usually that is `refOf`. The exception is a container — a `group` or `array` — whose
+ * `refererField` moves it: the renderer copies the container's whole value to the override
+ * (`extractRecord`) and reads it back from there (`patchForm`), so its children move with it.
+ * `refOf` alone cannot see that, because a child's scope is built from ids, and a child's own
+ * `refererField` is usually just the builder's stamp of that id-built position.
+ *
+ * So a moved container's subtree is rebased under the override. Only tab-level containers
+ * move, because those are the only ones the renderer reads an override for; an override
+ * anywhere deeper is ignored, and `validateConfig` says so. A leaf's own authored override is
+ * kept as it always was.
+ */
+export function collectFieldRefs(config: EntityFormConfig | null | undefined): FieldRefEntry[] {
+  const entries = collectFieldScopes(config);
+
+  // Positional address → override, for every container the renderer actually moves.
+  const moved = new Map<string, string>();
+  for (const entry of entries) {
+    const field = entry.field;
+    if (!field?.id || !isContainer(field) || !TAB_LEVEL_PATH.test(entry.path)) continue;
+    if (isRefOverride(field, entry.scope)) moved.set(fieldRefFor(entry.scope, field.id), field.refererField!);
+  }
+
+  const rebase = (path: string): string => {
+    let from = '';
+    for (const candidate of moved.keys()) {
+      if ((path === candidate || path.startsWith(`${candidate}.`)) && candidate.length > from.length) {
+        from = candidate;
+      }
+    }
+    return from ? moved.get(from)! + path.slice(from.length) : path;
+  };
+
+  return entries.map(entry => {
+    const field = entry.field;
+    const tabLevel = TAB_LEVEL_PATH.test(entry.path);
+    const recordScope = entry.scope === ROOT_SCOPE ? ROOT_SCOPE : rebase(entry.scope);
+    if (!field?.id) return { ...entry, ref: '', recordScope, tabLevel, authored: false };
+
+    const rebased = rebase(fieldRefFor(entry.scope, field.id));
+    const authored = isRefOverride(field, entry.scope) && field.refererField !== rebased;
+    // A container is where the renderer puts it. A leaf keeps an override it was authored with.
+    const ref = authored && !isContainer(field) ? field.refererField! : rebased;
+    return { ...entry, ref, recordScope, tabLevel, authored };
+  });
+}
+
 /** Wraps a ref for use in a rule or condition: `personal.city` → `[personal.city]`. */
 export function toRefToken(path: string): string {
   return `[${path}]`;

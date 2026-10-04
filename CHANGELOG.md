@@ -8,6 +8,26 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- **A `group` or `array` moved by `refererField` now imports where the form reads it.** The
+  renderer moves a tab-level container's whole value to its override, but import built its
+  children's addresses from ids. A moved array was therefore not unrolled at all
+  (`phones.number`), and a moved group's children landed at their old position. Children are
+  now addressed under the override (`contact.phones.0.number`), and a moved array is always an
+  array at the override. Column headings are unchanged. New `collectFieldRefs` returns each
+  field's record address, and `LeafTarget` gains `recordScope`.
+- **Plans saved against 2.2 keep working.** A 2.2 ref for a moved container's child resolves to
+  its new address with a plan warning. An un-indexed child of a moved array resolves to slot 0.
+  The alias will be removed in 3.0, so save the plan again to update it.
+
+### Added
+- `validateConfig` rejects an authored `refererField` on a field inside an array, because it
+  cannot say which row it means. It warns about an override on a container that is not directly
+  on a tab, which the form ignores. A ref the builder stamped (the field's own position) is never
+  flagged.
+
 ## [2.2.0]
 
 ### Added
