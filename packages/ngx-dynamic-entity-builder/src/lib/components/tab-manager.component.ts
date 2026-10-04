@@ -43,7 +43,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
     <div class="deb-tabs">
       <div class="deb-tabs__head">
         <span class="deb-section-title">{{ ui.text('tabsManager') }}</span>
-        <button mat-stroked-button type="button" (click)="store.addTab()">
+        <button mat-stroked-button type="button" data-testid="add-tab" (click)="store.addTab()">
           <mat-icon>add</mat-icon> {{ ui.text('addTab') }}
         </button>
       </div>
@@ -59,6 +59,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
               <mat-label>{{ tab.id }} {{ tab.systemDefault ? ui.text('systemTag') : '' }}</mat-label>
               <input
                 matInput
+                [attr.data-testid]="'tab-label-' + tab.id"
                 [disabled]="!canEditTab(tab)"
                 [ngModel]="tabLabel(tab)"
                 (ngModelChange)="store.setTabLabel(tab.id, lang(), $event)"
@@ -68,6 +69,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
               mat-icon-button
               type="button"
               [disabled]="i === 0 || !canEditTab(tab)"
+              [attr.data-testid]="'tab-up-' + tab.id"
               (click)="store.moveTab(tab.id, -1)"
               [matTooltip]="ui.text('moveUp')"
               [attr.aria-label]="ui.text('moveTabUp')"
@@ -78,6 +80,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
               mat-icon-button
               type="button"
               [disabled]="i === count - 1 || !canEditTab(tab)"
+              [attr.data-testid]="'tab-down-' + tab.id"
               (click)="store.moveTab(tab.id, 1)"
               [matTooltip]="ui.text('moveDown')"
               [attr.aria-label]="ui.text('moveTabDown')"
@@ -131,7 +134,14 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
             >
               {{ ui.text('systemDefault') }}
             </mat-checkbox>
-            <button mat-button type="button" color="primary" [disabled]="!canEditTab(tab)" (click)="store.addSubTab(tab.id)">
+            <button
+              mat-button
+              type="button"
+              color="primary"
+              [attr.data-testid]="'add-subtab-' + tab.id"
+              [disabled]="!canEditTab(tab)"
+              (click)="store.addSubTab(tab.id)"
+            >
               {{ ui.text('addSubTab') }}
             </button>
           </div>
@@ -160,6 +170,7 @@ export { SYSTEM_DEFAULT_CAN_EDIT };
                     <mat-label>{{ sub.id }}</mat-label>
                     <input
                       matInput
+                      [attr.data-testid]="'subtab-label-' + sub.id"
                       [disabled]="!canEditTab(sub)"
                       [ngModel]="tabLabel(sub)"
                       (ngModelChange)="store.setTabLabel(sub.id, lang(), $event)"

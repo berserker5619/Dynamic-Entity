@@ -240,6 +240,7 @@
             <mat-label>{{ ui.text('entityName') }}</mat-label>
             <input
               matInput
+              data-testid="builder-entity-name"
               [ngModel]="store.config().entity"
               (ngModelChange)="store.setEntityName($event)"
               [placeholder]="ui.text('entityNamePlaceholder')"
@@ -277,7 +278,12 @@
             @if (availableRoles.length) {
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
                 <mat-label>{{ ui.text('actionRoles', { action }) }}</mat-label>
-                <mat-select multiple [ngModel]="rolesFor(action)" (ngModelChange)="setRoles(action, $event)">
+                <mat-select
+                  multiple
+                  [attr.data-testid]="'permission-roles-' + action"
+                  [ngModel]="rolesFor(action)"
+                  (ngModelChange)="setRoles(action, $event)"
+                >
                   @for (role of availableRoles; track role) {
                     <mat-option [value]="role">{{ role }}</mat-option>
                   }
@@ -286,7 +292,12 @@
             } @else {
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="deb-full">
                 <mat-label>{{ ui.text('actionRolesPlaceholder', { action }) }}</mat-label>
-                <input matInput [ngModel]="rolesFor(action).join(', ')" (ngModelChange)="setRolesFromText(action, $event)" />
+                <input
+                  matInput
+                  [attr.data-testid]="'permission-roles-' + action"
+                  [ngModel]="rolesFor(action).join(', ')"
+                  (ngModelChange)="setRolesFromText(action, $event)"
+                />
               </mat-form-field>
             }
           }

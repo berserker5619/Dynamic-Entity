@@ -120,6 +120,7 @@ export default defineConfig({
       use: { viewport: { width: 412, height: 915 } },
       testMatch: [
         /accessibility\.spec\.ts/,
+        /builder-structure\.spec\.ts/,
         /demo\.spec\.ts/,
         /field-types-2-2\.spec\.ts/,
         /import-mapping\.spec\.ts/,
