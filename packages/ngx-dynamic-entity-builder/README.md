@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg?color=purple)](https://www.npmjs.com/package/ngx-dynamic-entity-builder)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
 
-Visual Angular builder for authoring `EntityFormConfig` schemas consumed by `ngx-dynamic-entity`. Supports Angular 17 through 22.
+Visual Angular builder for authoring `EntityFormConfig` schemas consumed by `ngx-dynamic-entity`. Supports Angular **17.2** through 22. It needs 17.2 rather than 17.0 because the panel bindings use `model()`; the renderer and core still support 17.0.
 
 ---
 
@@ -29,11 +29,17 @@ export const appConfig: ApplicationConfig = {
 
 ## ✨ Features
 
-- **Palette & canvas** — click a field type in the palette to add it; drag to reorder within the canvas and tree.
-- **Property inspector** — configure validators, options, display flags, `criticalField`, `maskData`, `autoPatch`, and `patchOnTrue`.
+- **Palette & canvas** — click a field type in the palette to add it; drag to reorder within the canvas and tree. The palette is grouped by kind and filterable by label, type or description.
+- **Property inspector** — configure validators, options, display flags, `hint`, `criticalField`, `maskData`, `autoPatch`, and `patchOnTrue`. A **Width** control sets `colSpan`, and a **Tab** picker moves a field to another tab. Every section opens expanded and collapses on click.
+- **Regex pattern playground** — beside `validators.pattern`, type sample input and see *matches*, *does not match*, or *invalid regex syntax* live. Presets are provided for the common shapes (letters, alphanumeric, digits, postal code, phone, slug).
+- **Stable option keys** — each new option gets a `$key` minted from its label, shown read-only in the inspector and never rewritten on rename. **Assign stable keys** backfills an existing schema. See [Option identity](../../README.md#-option-identity).
 - **Entity reference designer** — registry key mapping, display fields, static filters, and parent→child cascades (`parentField` + `lookupFilter`).
-- **Rules manager** — create, reorder, edit, and toggle reactive rules (`RuleFormComponent`, `FieldRulesListComponent`).
-- **Tab & tree manager** — organize primary tabs, sub-tabs, nested groups, and array field lists. Nesting is recursive; no depth limit is enforced.
+- **Referenced-field drift** — a field linked to another entity's field shows when its source has changed since it was copied, with **Sync with Source**.
+- **Rules manager** — create, reorder, edit, and toggle reactive rules (`RuleFormComponent`, `FieldRulesListComponent`). Fields are chosen from a path list (`[work.address]`), never typed, and renaming a field repoints every rule that named it.
+- **Rule & dependency graph** — `ngx-rule-dependency-graph`, opened from the toolbar, maps every rule's trigger, conditions and targets across tabs; clicking a node selects that field in the canvas and inspector. The inspector's **Dependencies** section lists what a field depends on and what it affects.
+- **Tab & tree manager** — organize primary tabs, sub-tabs, nested groups, and array field lists. Nesting is recursive; no depth limit is enforced. Fields on sub-tabs can be removed, duplicated, moved and reordered like any other.
+- **Issue list** — every `validateConfig` problem in the schema, listed and linked to the field it concerns. The builder will not emit `save` for a config `validateConfig` rejects.
+- **Collapsible layout** — the palette column, the inspector, the Fields canvas and the Live Preview each collapse independently, and the toolbar stays sticky so its toggles are always in reach. All four are two-way bindable (see below).
 - **Live preview slot** — a projected content slot, so the builder renders a preview without depending on the renderer package.
 - **Undo & redo** — `Ctrl`/`Cmd`+`Z` and `Ctrl`/`Cmd`+`Shift`+`Z`, plus toolbar buttons that disable at the ends of the history. Consecutive edits inside 400ms merge when the structure is unchanged, so typing a label is one step while adding two fields is two.
 - **All 27 field types** from the `@dynamic-entity/core` catalog.
@@ -65,7 +71,19 @@ export const appConfig: ApplicationConfig = {
 | `languages` | `string[]` | Locales offered for localized labels. Defaults to `['en']`. |
 | `uiLanguage` | `string` | Locale for the builder's **own** chrome, not the labels being authored. Defaults to `'en'`. |
 | `availableRoles` | `string[]` | Roles offered in the permissions editor. |
+| `userRoles` | `string[]` | Roles of the person using the builder, passed to the `SYSTEM_DEFAULT_CAN_EDIT` predicate to decide whether they may edit system-default tabs. Distinct from `availableRoles`. |
 | `commonModules` | `readonly CommonModuleEntry[]` | Shared-module options for tabs. |
+
+### Panel state
+
+`leftSidebarOpen`, `rightSidebarOpen`, `fieldsOpen` and `previewOpen` are two-way bindable
+(`model()`), all `true` by default. The builder stores nothing itself — no package here touches
+`localStorage`, which keeps them safe to render on a server — so a host that wants the layout
+remembered binds them to its own storage:
+
+```html
+<ngx-entity-builder [config]="config" [(leftSidebarOpen)]="paletteOpen" [(previewOpen)]="previewOpen" />
+```
 
 ### Outputs
 
@@ -154,7 +172,7 @@ export const builderTextProvider = {
 
 A value may be `LocalizedText`, a flat string, or a resolver
 `(key, defaultText, language) => string` for a host that already has ngx-translate, Transloco
-or `$localize`. `DEFAULT_BUILDER_TEXT` exports all 149 keys with their English source
+or `$localize`. `DEFAULT_BUILDER_TEXT` exports all 222 keys with their English source
 strings, so a translation file can be generated from it rather than transcribed.
 
 **`uiLanguage` is not `languages`.** `languages` is the vocabulary a label is _authored_ in,
@@ -168,5 +186,4 @@ at once share one chrome language.
 ## ⚠️ Known limitations
 
 - **Field ids are unique per scope**, not across the whole schema — `address` on Personal Details and `address` on Work Details are two different fields, and records nest by tab so they store separately. The builder still generates and enforces ids that are unique across the config, because its selection model addresses a field by bare id. New `showWhen`, cascade, patch and rule references are chosen from a path list (`[work.address]`). A bare id in an older config is still valid while only one scope defines it; `validateConfig` reports it as ambiguous the moment two do.
-- **Structural edits apply to top-level tabs only.** Removing, duplicating, moving, and reordering a field works for fields on a top-level tab; a field inside a sub-tab can be selected and edited but not yet restructured.
 - **Not an SSR target.** The builder is a Material visual editor with drag-and-drop. Host it in a browser-only route. The form renderer (`ngx-dynamic-entity`) is the SSR surface.

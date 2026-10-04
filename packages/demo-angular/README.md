@@ -9,10 +9,33 @@ npm run dev --workspace=demo-angular   # http://localhost:4200
 
 ## What it demonstrates
 
-- Every field type, rendered from the configs in `../../test_data.json`
+- Every field type, rendered from the configs in `../../test_data.json`, plus three larger
+  industry schemas — Insurance Claims, Patient Intake & Clinical Triage, and IT Asset & Fleet
+  Lifecycle (`src/app/mock/configs/`)
+- The three record presentations — Form, Record view and Data only — and a list view
 - The role switcher, showing masking and `permissions.view` in action
-- The visual builder with live preview
+- The interface-language switch, with a German pack for both libraries' chrome
+  (`src/app/mock/ui-text-de.ts`)
+- The visual builder with live preview, the rule & dependency graph and the regex playground
+- The spreadsheet import wizard, in the browser by default
+- A Light / Dark / Auto theme switch, and a Live JSON Inspector drawer showing the current
+  config and record, with copy and download
 - Records persisted to `localStorage` via a mock store, so there is no backend to run
+
+## Importing through the server
+
+The wizard runs in the browser unless you open the app with `?transport=http`. Then it posts
+the file to `import-server.mjs`, a small Express app using `@dynamic-entity/server`, which the
+dev server proxies at `/api/import` (`proxy.conf.json`) so the browser sees one origin, as a
+real deployment would:
+
+```bash
+node packages/demo-angular/import-server.mjs   # port 4300, or IMPORT_PORT
+npm run dev --workspace=demo-angular           # then open http://localhost:4200/?transport=http
+```
+
+That mode also reads `.xlsx` uploads, which the browser path does not without a registered
+`sheetParser`.
 
 ## Its stylesheet is a reference
 

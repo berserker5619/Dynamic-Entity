@@ -23,11 +23,18 @@ No Angular Material required. This package has no dependency on Material or the 
 
 - **`DynamicFormComponent`** — tabbed dynamic forms generated from an `EntityFormConfig`, built on Angular Reactive Forms.
 - **`DynamicRecordFormComponent`** — record editor with summary drawer (`showOnMinimize`), profile header, and per-section saving.
-- **Reactive rules** — real-time condition evaluation driving field/tab visibility, validation errors and warnings, and info banners.
-- **Entity references & cascades** — consumer-registered loaders, parent→child dropdown filtering, and `autoPatch` record copying.
+- **`EntityImportComponent`** (`ngx-entity-import`) — a four-step spreadsheet import wizard (choose a file, match columns, review, done) that derives its columns from the config and works with no backend. See [Spreadsheet import](#-spreadsheet-import).
+- **Reactive rules** — real-time condition evaluation driving field/tab visibility, validation errors and warnings, and info banners. A rule names a field by bare id or by `[path]`, at any depth.
+- **Sync and async validation** — built-in validators, named ones you register, async checks against a server, and an abortable `beforeSave` hook. `saveRejected` says why a save was refused.
+- **A refused save explains itself** — Save stays clickable on an invalid form; pressing it lists every field at fault and what is wrong with it, badges each tab with its count, and jumps to the first.
+- **Field help text** — `hint` puts an info icon beside a label, wired to the control with `aria-describedby`.
+- **Entity references, lookup lists & cascades** — consumer-registered loaders, named master lists resolved by name, parent→child dropdown filtering, and `autoPatch` record copying.
+- **Record migration** — register `migrations` and a record saved under an older `config.version` is upgraded as it enters the form.
 - **27 field types** — each a standalone component, registered explicitly so unused types are never bundled.
+- **Layout** — `layout="auto"` sizes fields by type instead of giving each the full width; `colSpan` sizes one field on a 12-column grid.
 - **Fully translatable** — config text is `LocalizedText`; the library's own buttons and empty states resolve through `uiText`.
 - **Configurable masking and dates** — `MASKED_PLACEHOLDER` replaces the `XXXXXXXXX` literal; `setDateFormatters` in `@dynamic-entity/core` replaces the browser-locale date punctuation.
+- **Optional stylesheet** — unstyled by default; import `ngx-dynamic-entity/styles.css` for a token-driven base theme with dark mode.
 
 ---
 
@@ -62,6 +69,24 @@ provideFieldTypes({ text: TextFieldComponent, dropdown: DropdownFieldComponent }
 ```
 
 Multiple `provideFieldTypes` calls merge; on a key collision the later registration wins. Pass your own component for a key to override a built-in, or add a key of your own for a custom type.
+
+Everything else is an option on `provideNgxDynamicEntity`:
+
+| Option | What it registers |
+|---|---|
+| `maskedRoles` | Roles that see `maskData` fields masked |
+| `fieldTypes` | Field components, the same as `provideFieldTypes` |
+| `entityRefs` | `entity-ref` loaders by registry key |
+| `lookups` | Named option lists (`listName`), sync or async |
+| `validators` / `asyncValidators` | Validators named by `validators.custom` / `customAsync` |
+| `validationMessages` | Error text per validator key, a string or `(language, error) => string` |
+| `uiText` | The library's own text — see below |
+| `hooks` | Lifecycle hooks keyed `<entity>:<hook>` — `beforeSave` may abort a save |
+| `migrations` | `RecordMigration[]` applied as a record enters the form |
+| `sheetParser` | A reader for upload formats beyond delimited text, e.g. `.xlsx` |
+| `importTransport` | Where an import runs — see `provideHttpImportTransport` |
+
+Details for each are in [EXTENDING.md](../../EXTENDING.md).
 
 Some field types take an optional collaborator. A `markdown` field renders its source as
 text until you register a renderer — see
@@ -154,6 +179,10 @@ summary panel, so one value cannot render two ways depending on where you look.
 | `readonly` | `boolean` | Renders the whole form read-only. |
 | `readOnlyFields` | `string[]` | Read-only by field id. |
 | `loading` / `error` | `boolean` / `string \| null` | Render loading and error states. |
+| `layout` | `'stack' \| 'auto'` | Default `'stack'`, every field full width. `'auto'` sizes fields without a `colSpan` by type. |
+| `changeDebounceMs` | `number` | Debounce for `formChange`. Default `0`, synchronous. |
+| `showInfoBanners` | `boolean` | Render rule `info` banners inline. Default `true`. |
+| `preview` | `boolean` | Seed one empty row per `array` and disable the form, as the builder's live preview does. |
 
 ### Outputs
 
@@ -163,6 +192,7 @@ summary panel, so one value cannot render two ways depending on where you look.
 | `formChange` | `Record<string, any>` |
 | `formReset` | `void` |
 | `activeTabChange` | `string` (tab id) |
+| `saveRejected` | `{ reason, error? }` — a `beforeSave` hook aborted the save. |
 
 ---
 
@@ -194,7 +224,7 @@ that do not want the section flow.
 
 | Input | Type | Notes |
 |---|---|---|
-| `config` / `initialData` / `userRoles` / `language` | — | As the form component. |
+| `config` / `initialData` / `userRoles` / `language` / `layout` / `loading` / `error` | — | As the form component. |
 | `viewMode` | `boolean` | Default `true`. Read-only with a per-tab edit flow. |
 | `isReadOnly` | `boolean` | Whole record read-only, with no edit affordance at all. |
 | `readOnlyFields` | `string[]` | Specific ids read-only while the rest stays editable. |
@@ -213,6 +243,34 @@ listening is indistinguishable from a button that does nothing.
 **RBAC applies on top of all three.** Roles outside `permissions.edit` get a read-only
 record whichever presentation you choose — see [Security](#-security), because that is a
 rendering decision, not an access-control boundary.
+
+---
+
+## 📥 Spreadsheet import
+
+```html
+<ngx-entity-import [config]="config" [rules]="rules" (importComplete)="save($event)" />
+```
+
+| Input | Notes |
+|---|---|
+| `config` | Required. The columns, template and validation all derive from it. |
+| `rules` | Pass the same rules the form uses, or a rule-hidden required field rejects rows the form would save. |
+| `lookups` | Option lists already resolved, merged over what `LOOKUP_REGISTRY` provides. |
+| `language` | Default `'en'`. |
+| `templateFormat` | `'csv'` (default) or `'xlsx'`. `xlsx` needs a server transport. |
+
+| Output | Payload |
+|---|---|
+| `importComplete` | `ImportResult` — the records, the rows that failed and why. **Nothing is stored for you**: this is where you write them. |
+| `templateReady` | `Blob` — the generated template. |
+
+With nothing registered, the file is read and mapped in the browser. The built-in reader
+handles comma CSV, semicolon CSV and TSV, detecting the separator from the header line; a
+`sheetParser` adds other formats. `provideHttpImportTransport({ baseUrl })` moves the same
+wizard onto [`@dynamic-entity/server`](../server) for files a tab cannot hold. The column
+contract, numbered array headers and the validation-parity gap are in
+[EXTENDING.md](../../EXTENDING.md#spreadsheet-import).
 
 ---
 
@@ -256,4 +314,18 @@ The visual builder is a separate package and is not an SSR target.
 
 ## 🎨 Styling
 
-This package ships no CSS. Field components emit `ngx-field`, `ngx-field__label`, `ngx-field__input`, and `ngx-field__error` for you to style. See `packages/demo-angular/src/styles.css` in the repository for a working reference.
+Nothing is styled unless you ask. Field components emit `ngx-field`, `ngx-field__label`,
+`ngx-field__input`, and `ngx-field__error` for you to style, and the package has no design
+system of its own.
+
+An optional base stylesheet ships with it, driven entirely by custom properties and scoped to
+`.ngx-form` / `.ngx-record-editor`, with a dark palette under `prefers-color-scheme: dark`:
+
+```css
+@import 'ngx-dynamic-entity/styles.css';
+```
+
+Re-skin it by redeclaring tokens such as `--ngx-color-accent` on the same selectors. Add
+`ngx-form-sticky-actions` to a wrapper for a Save bar that stays in view. See the
+[root README](../../README.md#-styling) for the full token story, and
+`packages/demo-angular/src/styles.css` for a working reference.

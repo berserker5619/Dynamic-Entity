@@ -42,7 +42,7 @@ cannot hold.
 - **Named lookup lists** — sync or async master lists resolved by name, with localized labels, fallbacks, and an integrity report for values that no longer match any option. A list value's `code` becomes the option's stable key, so renaming one does not orphan records.
 - **Stable option identity** — an option may carry a reserved `$key` alongside its translations. When both sides of a comparison have one, the key decides and the text is display only, so renaming "Active" to "Enabled" costs nothing. Configs and records without keys behave exactly as they did in 1.x. See [Option identity](#-option-identity).
 - **Spreadsheet import** — a four-step wizard that derives its own columns from the config, generates a matching CSV or `.xlsx` template, suggests a mapping and reports every row it could not take. Works with **no backend**; add `@dynamic-entity/server` and the identical wizard streams a fifty-thousand-row workbook a tab could never hold. See [Spreadsheet import](#-spreadsheet-import).
-- **Visual builder** — click-to-add palette, drag-and-drop reordering, and a recursive tree editor for tabs, sub-tabs, groups, and arrays.
+- **Visual builder** — click-to-add palette, drag-and-drop reordering, and a recursive tree editor for tabs, sub-tabs, groups, and arrays, with undo/redo, a rule & dependency graph, a live regex playground for `validators.pattern`, and collapsible panels. See the [builder README](packages/ngx-dynamic-entity-builder/README.md).
 - **Localizable end to end** — config labels, placeholders and options are `LocalizedText` keyed by language; the libraries' own chrome (Save, Reset, "No rows yet.", every builder panel) resolves through `uiText` / `BUILDER_TEXT`, either as `LocalizedText` per key or through a resolver into an existing i18n layer.
 - **Configurable date display** — `date` / `datetime` / `time` format through `setDateFormatters` in `@dynamic-entity/core`. The default stays the browser's locale, not the form's `language`.
 - **100% standalone** — every component is `standalone: true`; the packages contain no `NgModule`. Signals are used for internal state; component inputs and outputs are decorator-based.
@@ -637,14 +637,19 @@ zonelessly on Angular 20.
 ## 🧪 Testing
 
 ```bash
-npm test          # unit tests across all workspace packages
-npm run build     # build every package
-npm run lint      # type-check every package, and check that the demo still
-                  # wires every extension point (scripts/check-demo-coverage.mjs)
-
-# Playwright E2E (from the demo app)
-cd packages/demo-angular && npx playwright test
+npm test                 # unit tests across all workspace packages
+npm run build            # build every package
+npm run lint             # type-check every package, plus the repository checks: the demo
+                         # wires every extension point, no stray control characters, the
+                         # build graph, SSR hygiene, and a lockfile carrying every platform
+npm run check:timezones  # the date-sensitive specs under six timezones, UTC-8 to UTC+14
+npm run benchmark        # rules, config validation, migration and CSV parsing throughput
+npm run e2e              # the Playwright suite, from the demo app
 ```
+
+The E2E suite includes visual-regression snapshots of every presentation mode, the builder
+and the import wizard (`e2e/visual-regression.spec.ts`), and a contrast audit in both colour
+schemes (`e2e/contrast-aa.spec.ts`). `PLAYWRIGHT_ALL_BROWSERS=1` adds Firefox.
 
 ---
 
@@ -663,7 +668,7 @@ name fields by that model.
 
 ## 📝 Changelog
 
-See [CHANGELOG.md](CHANGELOG.md). The three packages share a version and are released
+See [CHANGELOG.md](CHANGELOG.md). The four packages share a version and are released
 together.
 
 ---

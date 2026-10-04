@@ -68,15 +68,23 @@ console.log(result.infoBanners); // { annualBudget: 'Budget exceeds $5,000,000' 
 
 ```typescript
 interface RuleEvaluationResult {
-  hiddenFields: string[];                        // field ids hidden by a visibility rule
-  hiddenTabs: string[];                          // tab ids hidden by a visibility rule
+  hiddenFields: string[];                        // fields hidden by a visibility rule
+  hiddenTabs: string[];                          // tabs hidden by a visibility rule
+  shownFields: string[];                         // fields a `visibility: true` rule showed
+  shownTabs: string[];                           // tabs a `visibility: true` rule showed
   validationErrors: Record<string, string>;      // target id → message
   validationWarnings: Record<string, string>;    // target id → message
   infoBanners: Record<string, string>;           // target id → message
 }
 ```
 
-Each map is keyed by the **target id** the rule points at, not by rule id. Pass a baseline record as the third argument to enable the `VALUE_CHANGED` operator:
+Each list and map holds the target **as the rule names it** — a bare id, or a bracketed path
+such as `[personal.status]` — not the rule id. A hide beats a show; a show beats a field's
+static `visibility: false` or `showWhen`. The values map you pass is looked up by the same
+names, so a rule written with paths needs values keyed by path too: `flattenFieldValues`
+builds that map, every field under both its id and its `[path]`. Pass a baseline record as
+the third argument to enable the `VALUE_CHANGED` operator, and `{ onProblem }` as the fourth
+to hear about a malformed rule, which is skipped rather than thrown:
 
 ```typescript
 import { evaluateFormRules, type FormRule } from '@dynamic-entity/core';
@@ -125,7 +133,9 @@ npx dynamic-entity validate ./form-config.json
 ```
 
 `--additional-field-types signature,nps` is the command-line form of
-`additionalFieldTypes`. `--rules rules.json` is a `FormRule[]` checked against the same
+`additionalFieldTypes`, and `--validators noDisposable,uniqueEmail` of `knownValidators`, so a
+`validators.custom` naming something unregistered is caught before it is silently dropped at
+render time. `--rules rules.json` is a `FormRule[]` checked against the same
 path/id rule as `showWhen`. `--fail-on-warnings` treats a warning as a failure. Exit `0`
 means no errors, `1` means the config is unusable, `2` means the file or the JSON itself is.
 
