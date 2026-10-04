@@ -10,7 +10,9 @@ import {
 import {
   buildTemplateSpec,
   collectLeafTargets,
+  decimalMarkFor,
   formatConfigProblems,
+  type CsvDelimiter,
   type EntityFormConfig,
   type FormRule,
   type ImportLookups,
@@ -107,6 +109,9 @@ type Step = 'upload' | 'map' | 'review' | 'done';
         }
 
         @case ('review') {
+          @if (delimiterText(); as separator) {
+            <p class="ngx-entity-import__delimiter" data-testid="import-delimiter">{{ separator }}</p>
+          }
           @if (plan(); as current) {
             <ngx-import-preview
               [config]="config"
@@ -115,6 +120,7 @@ type Step = 'upload' | 'map' | 'review' | 'done';
               [lookups]="resolvedLookups()"
               [rules]="rules"
               [language]="language"
+              [decimal]="decimal()"
             />
           }
           <button
@@ -272,6 +278,8 @@ export class EntityImportComponent {
   protected readonly headers = signal<string[]>([]);
   protected readonly sample = signal<string[][]>([]);
   protected readonly rowCount = signal(0);
+  /** The separator a delimited file turned out to use, so the user can see how it was read. */
+  protected readonly delimiter = signal<CsvDelimiter | undefined>(undefined);
   protected readonly fileName = signal('');
   protected readonly plan = signal<MappingPlan | null>(null);
   protected readonly result = signal<ImportResult | null>(null);
@@ -368,6 +376,7 @@ export class EntityImportComponent {
       this.headers.set(preview.headers);
       this.sample.set(preview.sample);
       this.rowCount.set(preview.rowCount);
+      this.delimiter.set(preview.delimiter);
       this.plan.set(preview.suggestion);
       this.step.set('map');
     } catch (error) {
@@ -457,12 +466,32 @@ export class EntityImportComponent {
     return result.failed ?? new Set(result.errors.map(error => error.row)).size;
   }
 
+  /** The decimal mark the commit will read numbers with, so the preview reads them the same. */
+  protected decimal(): '.' | ',' {
+    return decimalMarkFor(this.delimiter());
+  }
+
+  /** How the file's columns were split, in words — or nothing for a workbook. */
+  protected delimiterText(): string | null {
+    switch (this.delimiter()) {
+      case ',':
+        return this.ui.text('importDelimiterComma', this.language);
+      case ';':
+        return this.ui.text('importDelimiterSemicolon', this.language);
+      case '\t':
+        return this.ui.text('importDelimiterTab', this.language);
+      default:
+        return null;
+    }
+  }
+
   protected restart(): void {
     this.file = null;
     this.fileName.set('');
     this.headers.set([]);
     this.sample.set([]);
     this.rowCount.set(0);
+    this.delimiter.set(undefined);
     this.plan.set(null);
     this.result.set(null);
     this.problem.set(null);

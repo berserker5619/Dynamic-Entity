@@ -77,6 +77,15 @@ export interface CoerceOptions {
    */
   lang?: string;
   lookups?: ImportLookups;
+  /**
+   * The decimal mark text numbers use. Default `.`, with `,` grouping thousands: `1,234.5`.
+   *
+   * With `,` the roles swap — `1.234,5` — which is what a sheet saved with `;` between fields
+   * almost always means, because Excel picks `;` exactly in the locales whose decimal mark is
+   * the comma. Reading such a sheet with `.` turns `1,500` (one and a half) into 1500 with no
+   * error at all, so a transport that detected `;` passes `,` here.
+   */
+  decimal?: '.' | ',';
 }
 
 /** A coerced cell, or the reason it could not be coerced. */
@@ -239,6 +248,31 @@ const UTC_INSTANT = /^\d{4}-\d{2}-\d{2}T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?Z$/;
 /** A number as a spreadsheet writes one, including 3-digit grouping and exponents. */
 const NUMERIC = /^[+-]?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
 
+/** The same shape with a decimal comma and `.` grouping: `1.234,5`. */
+const NUMERIC_COMMA = /^[+-]?(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d+)?(?:[eE][+-]?\d+)?$/;
+
+/**
+ * A number cell's text as a number, or `null` when it is not one.
+ *
+ * Matched against a shape rather than handed to `Number`, which is far more permissive than any
+ * spreadsheet: it reads `0x10` as 16, and stripping commas first turned the plainly broken
+ * `1,2,3` into 123. A malformed cell becoming a plausible wrong number is worse than one
+ * becoming an error, because nobody goes looking for it.
+ */
+function parseNumberText(text: string, decimal: '.' | ',' = '.'): number | null {
+  const canonical =
+    decimal === ','
+      ? NUMERIC_COMMA.test(text)
+        ? text.replace(/\./g, '').replace(',', '.')
+        : null
+      : NUMERIC.test(text)
+        ? text.replace(/,/g, '')
+        : null;
+  if (canonical === null) return null;
+  const parsed = Number(canonical);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 /**
  * Read a cell as a calendar date — a year, a month and a day, with no instant in sight.
  *
@@ -373,22 +407,14 @@ export function coerceCell(
   switch (field.type) {
     case 'number':
     case 'currency': {
-      // Matched against a shape rather than handed to `Number`, which is far more permissive
-      // than any spreadsheet: it reads `0x10` as 16, and stripping commas first turned the
-      // plainly broken `1,2,3` into 123. A malformed cell becoming a plausible wrong number is
-      // worse than one becoming an error, because nobody goes looking for it.
-      if (!NUMERIC.test(text)) return { error: `"${text}" is not a number` };
-      const parsed = Number(text.replace(/,/g, ''));
-      if (!Number.isFinite(parsed)) return { error: `"${text}" is not a number` };
-      return { value: parsed };
+      const parsed = parseNumberText(text, options.decimal);
+      return parsed === null ? { error: `"${text}" is not a number` } : { value: parsed };
     }
 
     case 'slider':
     case 'rating': {
-      if (!NUMERIC.test(text)) return { error: `"${text}" is not a number` };
-      const parsed = Number(text.replace(/,/g, ''));
-      if (!Number.isFinite(parsed)) return { error: `"${text}" is not a number` };
-      return checkScale(field, parsed, text);
+      const parsed = parseNumberText(text, options.decimal);
+      return parsed === null ? { error: `"${text}" is not a number` } : checkScale(field, parsed, text);
     }
 
     case 'color': {

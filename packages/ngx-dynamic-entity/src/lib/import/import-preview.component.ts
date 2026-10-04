@@ -143,6 +143,8 @@ export class ImportPreviewComponent implements OnChanges {
   /** The same rules the commit will apply; without them a rule-driven rejection is invisible. */
   @Input() rules?: readonly FormRule[];
   @Input() language = 'en';
+  /** The decimal mark number cells use — the one the commit will read them with. */
+  @Input() decimal: '.' | ',' = '.';
 
   protected readonly ui = inject(UiTextService);
 
@@ -172,6 +174,7 @@ export class ImportPreviewComponent implements OnChanges {
       lang: this.language,
       lookups: this.lookups,
       rules: this.rules,
+      decimal: this.decimal,
       stamp: false,
       firstRowNumber: 0,
     });
@@ -189,6 +192,7 @@ export class ImportPreviewComponent implements OnChanges {
           const outcome = coerceCell(field, raw, {
             lang: this.language,
             lookups: this.lookups,
+            decimal: this.decimal,
           });
 
           if ('error' in outcome) return { text: outcome.error, failed: true };

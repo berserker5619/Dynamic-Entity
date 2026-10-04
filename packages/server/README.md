@@ -263,6 +263,11 @@ Decided by the file's **first bytes**, never by its name — an attacker who wan
 will name their zip `.csv`.
 
 - **CSV** — through core's dependency-free incremental parser. UTF-8, with or without a BOM.
+  The separator — `,`, `;` or tab — is detected from the header line, exactly as the browser
+  detects it, and returned as `delimiter` from a preview. A `;` file is read with a **decimal
+  comma** (`1,5` is one and a half), because Excel writes `;` in precisely the locales that
+  use one; pass `decimal` to `runImport` to override. Generated CSV templates stay
+  comma-separated, so Excel in those locales opens them as one column — offer `xlsx` there.
 - **`.xlsx`** — through `exceljs`. Cells keep their types: a date cell arrives as a `Date` at
   UTC midnight and is read as the calendar date it is, in every timezone.
 - A pre-2007 `.xls` and a UTF-16 file are **named** rather than parsed into nonsense.

@@ -58,7 +58,12 @@ const DELIBERATELY_UNDEMONSTRATED = {
   HOOK_REGISTRY: 'Plumbing under provideNgxDynamicEntity({ hooks }), which the demo uses.',
   RECORD_MIGRATIONS: 'Plumbing under provideNgxDynamicEntity({ migrations }), which the demo uses.',
   UI_TEXT: 'Plumbing under provideNgxDynamicEntity({ uiText }), which the demo uses.',
-  SHEET_PARSER: 'Plumbing under provideNgxDynamicEntity({ sheetParser }), which the demo uses.',
+  SHEET_PARSER: 'Plumbing under provideNgxDynamicEntity({ sheetParser }) — see sheetParser.',
+  sheetParser:
+    'The demo registers none: since 2.3 the built-in reader covers comma, semicolon and ' +
+    'tab-separated text, which was all the demo parser added, and ?transport=http reads .xlsx ' +
+    'on the server. A parser registered only to be seen would demonstrate nothing. The seam ' +
+    'itself is exercised by local-import-transport.spec.ts, which registers one.',
   IMPORT_TRANSPORT:
     'The seam for running an import on a server instead of in the browser, and the demo now ' +
     'wires both sides of it. The default is the in-browser transport — that is what a consumer ' +

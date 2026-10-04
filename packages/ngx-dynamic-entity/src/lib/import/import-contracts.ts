@@ -14,6 +14,7 @@
  */
 
 import type {
+  CsvDelimiter,
   EntityFormConfig,
   FormRule,
   ImportLookups,
@@ -81,6 +82,8 @@ export interface ImportPreview {
    * transport written for 2.2 keeps compiling; the mapper sizes itself the same way regardless.
    */
   arrayBound?: number;
+  /** The field separator a delimited-text file used. Absent for a workbook. */
+  delimiter?: CsvDelimiter;
 }
 
 /**

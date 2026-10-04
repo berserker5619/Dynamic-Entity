@@ -10,7 +10,26 @@ function csvFile(name: string, body: string): File {
 describe('defaultSheetParser', () => {
   it('reads a CSV into headers and positional rows', async () => {
     const sheet = await defaultSheetParser(csvFile('people.csv', 'First Name,Status\nAlice,Active'));
-    expect(sheet).toEqual({ headers: ['First Name', 'Status'], rows: [['Alice', 'Active']] });
+    expect(sheet).toEqual({
+      headers: ['First Name', 'Status'],
+      rows: [['Alice', 'Active']],
+      delimiter: ',',
+    });
+  });
+
+  it('reads a .tsv by tabs, with no parser registered', async () => {
+    const tsv = 'First Name\tStatus\nAlice\tActive';
+    const sheet = await defaultSheetParser(csvFile('people.tsv', tsv));
+    expect(sheet.headers).toEqual(['First Name', 'Status']);
+    expect(sheet.rows).toEqual([['Alice', 'Active']]);
+  });
+
+  it('detects a semicolon CSV, keeping a quoted semicolon inside its cell', async () => {
+    const sheet = await defaultSheetParser(
+      csvFile('people.csv', 'Name;Email;City\n"Rao; Jr.";rao@example.com;Pune'),
+    );
+    expect(sheet.delimiter).toBe(';');
+    expect(sheet.rows).toEqual([['Rao; Jr.', 'rao@example.com', 'Pune']]);
   });
 
   it('refuses a workbook by name rather than reading a zip as text', async () => {

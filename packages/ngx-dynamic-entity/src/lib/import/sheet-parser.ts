@@ -31,5 +31,8 @@ export const defaultSheetParser: SheetParser = async (file: File): Promise<Sheet
         'sheetParser with provideNgxDynamicEntity({ sheetParser }) to accept other formats.',
     );
   }
-  return parseCsv(await file.text());
+  // A `.tsv` says what it is. Anything else is read the way `parseCsv` reads text — the
+  // separator its header line uses most — which is also how the server reads an upload.
+  const tabs = /\.tsv$/i.test(file?.name ?? '');
+  return parseCsv(await file.text(), tabs ? { delimiter: '\t' } : {});
 };

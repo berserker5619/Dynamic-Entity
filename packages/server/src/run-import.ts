@@ -14,10 +14,12 @@
 import {
   applyMapping,
   arrayBoundFor,
+  decimalMarkFor,
   deriveImportColumns,
   suggestMapping,
   validateMappingPlan,
   type ConfigProblem,
+  type CsvDelimiter,
   type EntityFormConfig,
   type FormRule,
   type ImportLookups,
@@ -66,6 +68,11 @@ export interface RunImportOptions {
   /** Values for every `listName` the config mentions. A server has no `LOOKUP_REGISTRY`. */
   lookups?: ImportLookups;
   lang?: string;
+  /**
+   * The decimal mark in number cells. Defaults to `,` for a CSV that uses `;` between fields,
+   * because that is what Excel writes in exactly those locales, and `.` otherwise.
+   */
+  decimal?: '.' | ',';
   /** Omit to validate without writing: the identical pipeline, every error, nothing stored. */
   onBatch?: OnBatch;
   limits?: Partial<ImportLimits>;
@@ -157,6 +164,7 @@ export async function runImport(options: RunImportOptions): Promise<ImportRunRes
     limits,
   });
 
+  const decimal = options.decimal ?? decimalMarkFor(sheet.delimiter);
   const errors: ImportRowError[] = [];
   let errorCount = 0;
   let imported = 0;
@@ -176,6 +184,7 @@ export async function runImport(options: RunImportOptions): Promise<ImportRunRes
 
     const result = applyMapping(rows, plan, config, {
       lang: options.lang,
+      decimal,
       rules: options.rules,
       lookups: options.lookups,
       firstRowNumber: firstRow,
@@ -260,6 +269,8 @@ export interface SheetPreview {
   /** Data rows in the file, which the whole stream is read to count. */
   rowCount: number;
   format: SheetFormat;
+  /** The field separator a CSV uses. Absent for a workbook. */
+  delimiter?: CsvDelimiter;
   /** Rows of each repeating field the suggestion was sized for — see `arrayBoundFor`. */
   arrayBound: number;
 }
@@ -306,6 +317,7 @@ export async function previewSheet(options: PreviewSheetOptions): Promise<SheetP
     rowCount,
     suggestion: suggestMapping(sheet.headers, columns, options.config?.entity ?? ''),
     format: sheet.format,
+    ...(sheet.delimiter ? { delimiter: sheet.delimiter } : {}),
     arrayBound,
   };
 }

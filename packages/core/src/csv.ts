@@ -16,6 +16,8 @@
 export interface SheetData {
   headers: string[];
   rows: string[][];
+  /** The field separator the text used, when it was parsed from delimited text. */
+  delimiter?: CsvDelimiter;
 }
 
 /**
@@ -110,6 +112,14 @@ export function padRow<T>(row: readonly T[], width: number): (T | '')[] {
  * So each is a flag carried across `push` calls rather than a lookahead. `parseCsv` is
  * expressed in terms of this reader — one set of quoting rules, one place to be wrong.
  */
+/** The field separators a sheet may use. Excel writes `;` in locales whose decimal mark is `,`. */
+export type CsvDelimiter = ',' | ';' | '\t';
+
+export interface CsvReaderOptions {
+  /** Default `,`. Quoting and line breaks are the same whatever separates fields. */
+  delimiter?: CsvDelimiter;
+}
+
 export interface CsvReader {
   /** Feed the next chunk of text; returns every row it completed, which may be none. */
   push(chunk: string): string[][];
@@ -117,7 +127,8 @@ export interface CsvReader {
   end(): string[][];
 }
 
-export function createCsvReader(): CsvReader {
+export function createCsvReader(options: CsvReaderOptions = {}): CsvReader {
+  const delimiter = options.delimiter ?? ',';
   let row: string[] = [];
   let field = '';
   /** Inside a quoted field. */
@@ -152,7 +163,7 @@ export function createCsvReader(): CsvReader {
       pending = true;
       return;
     }
-    if (char === ',') {
+    if (char === delimiter) {
       endField();
       return;
     }
@@ -240,10 +251,69 @@ export function createCsvReader(): CsvReader {
  * importer skips empty rows and counts them; a parser that removed them would shift every
  * subsequent row number in every error message.
  */
-export function parseCsv(text: string): SheetData {
-  const reader = createCsvReader();
-  const rows = [...reader.push(typeof text === 'string' ? text : ''), ...reader.end()];
+export function parseCsv(text: string, options: CsvReaderOptions = {}): SheetData {
+  const source = typeof text === 'string' ? text : '';
+  const delimiter = options.delimiter ?? detectDelimiter(firstLine(source));
+  const reader = createCsvReader({ delimiter });
+  const rows = [...reader.push(source), ...reader.end()];
 
   const headers = rows.shift() ?? [];
-  return { headers, rows: rows.map(r => padRow(r, headers.length)) };
+  return { headers, rows: rows.map(r => padRow(r, headers.length)), delimiter };
+}
+
+/**
+ * The decimal mark a sheet's number cells use, judged from its field separator.
+ *
+ * Excel writes `;` between fields in exactly the locales whose decimal mark is `,`, so a `;`
+ * sheet means `1,5` is one and a half. Reading it with `.` would make `1,500` fifteen hundred,
+ * silently. Every other separator — and a workbook, which has none — keeps `.`.
+ */
+export function decimalMarkFor(delimiter: CsvDelimiter | undefined): '.' | ',' {
+  return delimiter === ';' ? ',' : '.';
+}
+
+const CANDIDATES: readonly CsvDelimiter[] = [',', ';', '\t'];
+
+/**
+ * Which separator a header line uses: whichever candidate occurs most often outside quotes.
+ *
+ * Read from the header alone, because it is the one line every sheet has and the one line
+ * whose cells are labels rather than data — a decimal comma in a value cannot outvote the
+ * separators there. A tie, or no separator at all (a one-column sheet), is `,`: the format's
+ * own default, and what every file read before detection existed was read with.
+ */
+export function detectDelimiter(headerLine: string): CsvDelimiter {
+  const counts = new Map<CsvDelimiter, number>(CANDIDATES.map(candidate => [candidate, 0]));
+  let quoted = false;
+  for (const char of stripBom(String(headerLine ?? ''))) {
+    if (char === '"') quoted = !quoted;
+    else if (!quoted && counts.has(char as CsvDelimiter)) {
+      counts.set(char as CsvDelimiter, counts.get(char as CsvDelimiter)! + 1);
+    }
+  }
+  let best: CsvDelimiter = ',';
+  for (const candidate of CANDIDATES) {
+    if (counts.get(candidate)! > counts.get(best)!) best = candidate;
+  }
+  return best;
+}
+
+/**
+ * The text up to the first line break outside quotes, or `null` when `text` holds no complete
+ * line yet. A quoted header may contain a line break, and splitting there would detect from
+ * half a header.
+ */
+export function completeFirstLine(text: string): string | null {
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '"') quoted = !quoted;
+    else if (!quoted && (char === '\n' || char === '\r')) return text.slice(0, i);
+  }
+  return null;
+}
+
+/** The header line of a whole file: its first line, or all of it when it has only one. */
+function firstLine(text: string): string {
+  return completeFirstLine(text) ?? text;
 }

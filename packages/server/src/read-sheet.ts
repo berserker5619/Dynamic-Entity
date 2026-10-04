@@ -15,7 +15,14 @@
  * signature tidier is exactly the bug that would reintroduce.
  */
 
-import { createCsvReader, padRow } from '@dynamic-entity/core';
+import {
+  completeFirstLine,
+  createCsvReader,
+  detectDelimiter,
+  padRow,
+  type CsvDelimiter,
+  type CsvReader,
+} from '@dynamic-entity/core';
 import { destroySource, limitBytes, peek, toByteStream, type ByteSource } from './bytes';
 import { sampleText } from './cell-text';
 import { ImportError } from './errors';
@@ -31,6 +38,8 @@ export interface SheetSource {
   headers: string[];
   /** Data rows, one at a time. Pulling stops the read; not pulling stops it too. */
   rows: AsyncIterable<unknown[]>;
+  /** The field separator a CSV turned out to use. Absent for a workbook. */
+  delimiter?: CsvDelimiter;
 }
 
 export interface ReadSheetOptions {
@@ -80,20 +89,55 @@ export function detectFormat(head: Uint8Array): SheetFormat {
   return 'csv';
 }
 
-/** Decode UTF-8 across chunk boundaries and feed core's incremental reader. */
-async function* csvRows(stream: AsyncIterable<Uint8Array>): AsyncGenerator<string[]> {
+/**
+ * Decode UTF-8 across chunk boundaries and feed core's incremental reader.
+ *
+ * The separator is not known until the header line has been seen, so text is held until the
+ * first line break outside quotes — the same line `parseCsv` detects from in a browser, so
+ * both read one file the same way. Holding it is bounded: a header longer than the longest
+ * legal row is refused rather than buffered without end.
+ */
+async function* csvRows(
+  stream: AsyncIterable<Uint8Array>,
+  limits: ImportLimits,
+  found: { delimiter?: CsvDelimiter },
+): AsyncGenerator<string[]> {
   // Not `fatal`: a sheet is user data from somewhere else, and one bad byte replaced with
   // U+FFFD is a cell the importer can report on. Rejecting the whole file for it is a worse
   // answer to a problem the user can see in exactly one cell.
   const decoder = new TextDecoder('utf-8');
-  const reader = createCsvReader();
+  const maxHeader = limits.maxCellLength * limits.maxColumns + limits.maxColumns;
+  let held = '';
+  let reader: CsvReader | null = null;
+
+  const open = (headerLine: string): CsvReader => {
+    found.delimiter = detectDelimiter(headerLine);
+    return createCsvReader({ delimiter: found.delimiter });
+  };
 
   for await (const chunk of stream) {
     // `stream: true` is what holds a multi-byte character split across a 64 KB boundary.
-    for (const row of reader.push(decoder.decode(chunk, { stream: true }))) yield row;
+    const text = decoder.decode(chunk, { stream: true });
+    if (!reader) {
+      held += text;
+      const line = completeFirstLine(held);
+      if (line === null) {
+        if (held.length > maxHeader) {
+          throw new ImportError('SHEET_TOO_LARGE', 'The header row is longer than any row may be.');
+        }
+        continue;
+      }
+      reader = open(line);
+      for (const row of reader.push(held)) yield row;
+      held = '';
+      continue;
+    }
+    for (const row of reader.push(text)) yield row;
   }
 
-  for (const row of reader.push(decoder.decode())) yield row;
+  const rest = held + decoder.decode();
+  reader ??= open(completeFirstLine(rest) ?? rest);
+  for (const row of reader.push(rest)) yield row;
   for (const row of reader.end()) yield row;
 }
 
@@ -149,7 +193,8 @@ export async function readSheet(options: ReadSheetOptions): Promise<SheetSource>
     const counted = limitBytes(toByteStream(options.stream), limits.maxBytes);
     const { head, stream } = await peek(counted, MAGIC_BYTES);
     const format = detectFormat(head);
-    const rows = format === 'xlsx' ? xlsxRows(stream, limits) : csvRows(stream);
+    const found: { delimiter?: CsvDelimiter } = {};
+    const rows = format === 'xlsx' ? xlsxRows(stream, limits) : csvRows(stream, limits, found);
 
     const iterator = rows[Symbol.asyncIterator]();
     const first = await iterator.next();
@@ -170,6 +215,7 @@ export async function readSheet(options: ReadSheetOptions): Promise<SheetSource>
       format,
       headers,
       rows: closing(guardRows(remaining, headers.length, limits), options.stream),
+      ...(found.delimiter ? { delimiter: found.delimiter } : {}),
     };
   } catch (error) {
     // Every exit from this function closes the request body, including the ones that are a

@@ -50,6 +50,20 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `arrayBound`. It is optional on the Angular and wire types, and `HttpImportTransport` treats it
   as 3 when a pre-2.3 server leaves it out.
 
+- **TSV and semicolon CSV are read in their own columns.** Core's CSV reader only split on
+  commas. The browser accepted `.tsv` and then read each line as a single column, and Excel's
+  semicolon CSV failed the same way in the browser and on the server. The separator is now
+  detected from the header line (`detectDelimiter`): `,`, `;` or tab, counted outside quotes,
+  with a tie or a one-column header reading as `,`. `.tsv` always means tab. On the server only
+  the header line is held (bounded) before streaming starts. `createCsvReader` and `parseCsv`
+  take `{ delimiter }`, `SheetData` reports `delimiter`, and the previews carry it so the wizard
+  can say how the file was split. The demo's TSV-only `demoSheetParser` is gone.
+- **A semicolon file is read with a decimal comma.** Once those files parse, `1,500` in one would
+  otherwise import as 1500, when it means 1.5. `CoerceOptions.decimal` (`'.' | ','`) selects
+  the convention. The server, the local transport and the preview dry-run all default it from
+  the delimiter through `decimalMarkFor`, so preview and commit agree. Comma-separated files
+  behave exactly as before.
+
 ### Added
 - **Numbered array headers are recognised.** `suggestMapping` now matches the spellings
   customer sheets use for a row of a repeating field: `Phone 2 Number`, `phone_2_number`,

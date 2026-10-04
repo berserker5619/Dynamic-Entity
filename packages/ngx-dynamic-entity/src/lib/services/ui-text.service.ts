@@ -129,6 +129,9 @@ export const DEFAULT_UI_TEXT = {
 
   // Import wizard — review and result
   importPreviewHeading: 'First {count} row(s), as they will be saved',
+  importDelimiterComma: 'Columns are separated by commas.',
+  importDelimiterSemicolon: 'Columns are separated by semicolons, and numbers use a decimal comma.',
+  importDelimiterTab: 'Columns are separated by tabs.',
   importRowRejected: 'This row will not be imported: {reason}',
   importRunImport: 'Import {count} row(s)',
   importImporting: 'Importing…',

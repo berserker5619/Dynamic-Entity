@@ -654,3 +654,69 @@ describe('previewSheet sizing', () => {
     ]);
   });
 });
+
+describe('delimited text that is not comma-separated', () => {
+  const AMOUNTS: EntityFormConfig = {
+    entity: 'claims',
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        flatData: true,
+        fields: [
+          { id: 'name', type: 'text', label: { en: 'Name' } },
+          { id: 'amount', type: 'number', label: { en: 'Amount' } },
+        ],
+      },
+    ],
+  };
+  const PLAN_AMOUNTS = {
+    entity: 'claims',
+    entries: [
+      { ref: 'name', column: 0 },
+      { ref: 'amount', column: 1 },
+    ],
+  };
+  const SEMICOLON = 'Name;Amount\r\n"Rao; Jr.";1,500\r\nAda;1.234,5\r\n';
+
+  it('previews a semicolon file in its own columns and says how it was split', async () => {
+    const preview = await previewSheet({ stream: chunked(SEMICOLON, 1), config: AMOUNTS });
+    expect(preview.headers).toEqual(['Name', 'Amount']);
+    expect(preview.sample[0]).toEqual(['Rao; Jr.', '1,500']);
+    expect(preview.delimiter).toBe(';');
+  });
+
+  it('imports it with a decimal comma, so 1,500 is one and a half', async () => {
+    const records: Record<string, unknown>[] = [];
+    const result = await runImport({
+      stream: chunked(SEMICOLON, 1),
+      plan: PLAN_AMOUNTS,
+      config: AMOUNTS,
+      onBatch: batch => {
+        records.push(...batch);
+      },
+    });
+    expect(result.errors).toEqual([]);
+    expect(records.map(({ name, amount }) => ({ name, amount }))).toEqual([
+      { name: 'Rao; Jr.', amount: 1.5 },
+      { name: 'Ada', amount: 1234.5 },
+    ]);
+  });
+
+  it('reads a tab-separated upload by its tabs', async () => {
+    const preview = await previewSheet({ stream: chunked('Name\tAmount\nAda\t2\n', 3), config: AMOUNTS });
+    expect(preview.delimiter).toBe('\t');
+    expect(preview.sample).toEqual([['Ada', '2']]);
+  });
+
+  it('refuses a header line longer than any row may be, rather than buffering it', async () => {
+    const endless = 'x'.repeat(200);
+    await expect(
+      previewSheet({
+        stream: chunked(endless, 16),
+        config: AMOUNTS,
+        limits: { maxCellLength: 10, maxColumns: 5 },
+      }),
+    ).rejects.toMatchObject({ code: 'SHEET_TOO_LARGE' });
+  });
+});

@@ -15,6 +15,7 @@ import { Injectable, inject } from '@angular/core';
 import {
   applyMapping,
   arrayBoundFor,
+  decimalMarkFor,
   deriveImportColumns,
   suggestMapping,
   toCsv,
@@ -80,6 +81,7 @@ export class LocalImportTransport implements ImportTransport {
       rowCount: sheet.rows.length,
       suggestion: suggestMapping(sheet.headers, columns, context.config?.entity ?? ''),
       arrayBound,
+      ...(sheet.delimiter ? { delimiter: sheet.delimiter } : {}),
     };
   }
 
@@ -89,6 +91,8 @@ export class LocalImportTransport implements ImportTransport {
       lang: context.lang,
       rules: context.rules,
       lookups: context.lookups,
+      // A `;` file means `1,5` is one and a half — the same call the server makes.
+      decimal: decimalMarkFor(sheet.delimiter),
     });
   }
 

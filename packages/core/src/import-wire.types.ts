@@ -11,6 +11,7 @@
  * time someone puts it behind a queue, a Lambda, or a framework that is not Express.
  */
 
+import type { CsvDelimiter } from './csv';
 import type { ImportRowError, MappingPlan } from './import-model.types';
 import type { ConfigProblem } from './validate-config';
 
@@ -28,6 +29,8 @@ export interface ImportPreviewResponse {
    * a server older than 2.3, which always sized for 3.
    */
   arrayBound?: number;
+  /** The field separator a CSV upload turned out to use. Absent for a workbook. */
+  delimiter?: CsvDelimiter;
   /**
    * `CORE_VERSION` on the machine that produced this.
    *

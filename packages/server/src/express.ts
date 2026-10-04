@@ -332,6 +332,7 @@ export function createImportRouter(options: ImportRouterOptions): Router {
         suggestion: preview.suggestion,
         rowCount: preview.rowCount,
         arrayBound: preview.arrayBound,
+        ...(preview.delimiter ? { delimiter: preview.delimiter } : {}),
         engineVersion: CORE_VERSION,
       };
       response.json(body);

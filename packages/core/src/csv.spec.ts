@@ -2,7 +2,7 @@ import { createCsvReader, escapeFormula, padRow, parseCsv, toCsv } from './csv';
 
 describe('parseCsv', () => {
   it('reads headers and positional rows', () => {
-    expect(parseCsv('a,b\n1,2')).toEqual({ headers: ['a', 'b'], rows: [['1', '2']] });
+    expect(parseCsv('a,b\n1,2')).toEqual({ headers: ['a', 'b'], rows: [['1', '2']], delimiter: ',' });
   });
 
   it('keeps a quoted field containing a comma, a quote and a line break', () => {
@@ -40,7 +40,7 @@ describe('parseCsv', () => {
   });
 
   it('returns empty headers for empty input', () => {
-    expect(parseCsv('')).toEqual({ headers: [], rows: [] });
+    expect(parseCsv('')).toEqual({ headers: [], rows: [], delimiter: ',' });
   });
 });
 
@@ -87,7 +87,7 @@ describe('toCsv', () => {
     const headers = ['name', 'note'];
     const rows = [['Alice', 'says "hi", loudly'], ['Bob', 'line\nbreak']];
     const parsed = parseCsv(toCsv(headers, rows));
-    expect(parsed).toEqual({ headers, rows });
+    expect(parsed).toEqual({ headers, rows, delimiter: ',' });
   });
 });
 

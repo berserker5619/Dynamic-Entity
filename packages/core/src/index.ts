@@ -180,8 +180,17 @@ export type { CommonModuleEntry, ComponentClass } from './constants';
 export { computeFieldDrift, createFieldSnapshot } from './referenced-field';
 
 // ─── CSV ────────────────────────────────────────────────────────────────────
-export { createCsvReader, escapeFormula, padRow, parseCsv, toCsv } from './csv';
-export type { CsvReader, SheetData } from './csv';
+export {
+  completeFirstLine,
+  createCsvReader,
+  decimalMarkFor,
+  detectDelimiter,
+  escapeFormula,
+  padRow,
+  parseCsv,
+  toCsv,
+} from './csv';
+export type { CsvDelimiter, CsvReader, CsvReaderOptions, SheetData } from './csv';
 
 // ─── Spreadsheet import ─────────────────────────────────────────────────────
 export type {
