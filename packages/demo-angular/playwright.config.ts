@@ -123,6 +123,7 @@ export default defineConfig({
         /demo\.spec\.ts/,
         /markdown-field\.spec\.ts/,
         /record-presentation-modes\.spec\.ts/,
+        /rules-banners-and-tabs\.spec\.ts/,
         // German is roughly a third longer than English, and the grid collapses to one
         // column here — which is where a translated button first overflows its own row.
         /ui-text-i18n-widgets\.spec\.ts/,
