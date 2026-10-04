@@ -14,6 +14,7 @@
 import { Injectable, inject } from '@angular/core';
 import {
   applyMapping,
+  arrayBoundFor,
   deriveImportColumns,
   suggestMapping,
   toCsv,
@@ -69,13 +70,16 @@ export class LocalImportTransport implements ImportTransport {
 
   async preview(file: File, context: ImportContext): Promise<ImportPreview> {
     const sheet = await this.read(file);
-    const { columns } = deriveImportColumns(context.config, { lang: context.lang });
+    // Sized from the headers exactly as the server sizes them, so both offer the same slots.
+    const arrayBound = arrayBoundFor(sheet.headers, context.config, null, context.lang);
+    const { columns } = deriveImportColumns(context.config, { lang: context.lang, maxArrayRows: arrayBound });
 
     return {
       headers: sheet.headers,
       sample: sheet.rows.slice(0, SAMPLE_ROWS),
       rowCount: sheet.rows.length,
       suggestion: suggestMapping(sheet.headers, columns, context.config?.entity ?? ''),
+      arrayBound,
     };
   }
 

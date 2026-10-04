@@ -331,6 +331,7 @@ export function createImportRouter(options: ImportRouterOptions): Router {
         sample: preview.sample,
         suggestion: preview.suggestion,
         rowCount: preview.rowCount,
+        arrayBound: preview.arrayBound,
         engineVersion: CORE_VERSION,
       };
       response.json(body);

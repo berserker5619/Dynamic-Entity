@@ -121,6 +121,11 @@ export const DEFAULT_UI_TEXT = {
   importGuessed: 'Guessed',
   importMappedCount: '{mapped} of {total} field(s) matched.',
   importRequiredUnmapped: '{count} required field(s) still need a column.',
+  importConstant: 'Fixed value: {value}',
+  importAddSlot: 'Add a {label} row',
+  importStaleHeading: 'Mapped to fields this form no longer has',
+  importStaleExplain: 'The import will refuse this mapping until these are removed.',
+  importRemoveEntry: 'Remove',
 
   // Import wizard — review and result
   importPreviewHeading: 'First {count} row(s), as they will be saved',

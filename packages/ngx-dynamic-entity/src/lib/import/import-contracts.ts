@@ -76,6 +76,11 @@ export interface ImportPreview {
   suggestion: MappingPlan;
   /** Total data rows in the file, which may be far more than `sample` holds. */
   rowCount: number;
+  /**
+   * Rows of each repeating field the suggestion was sized for (`arrayBoundFor`). Optional so a
+   * transport written for 2.2 keeps compiling; the mapper sizes itself the same way regardless.
+   */
+  arrayBound?: number;
 }
 
 /**

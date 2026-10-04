@@ -13,6 +13,7 @@
 
 import {
   CORE_VERSION,
+  DEFAULT_ARRAY_ROWS,
   deriveImportColumns,
   stripIndices,
   type ImportCommitResponse,
@@ -183,6 +184,8 @@ class HttpImportTransport implements ImportTransport {
       sample: preview.sample ?? [],
       suggestion: preview.suggestion,
       rowCount: preview.rowCount ?? 0,
+      // A server older than 2.3 does not say, and always sized for the default.
+      arrayBound: preview.arrayBound ?? DEFAULT_ARRAY_ROWS,
     };
   }
 

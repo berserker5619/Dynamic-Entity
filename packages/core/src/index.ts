@@ -203,8 +203,10 @@ export {
   collectLeafTargets,
   deriveImportColumns,
   stripIndices,
+  upgradeLegacyRefs,
   validateMappingPlan,
 } from './import-columns';
+export { DEFAULT_ARRAY_ROWS, arrayBoundFor, inferArrayBound } from './array-headers';
 export type { DeriveColumnsOptions, LeafTarget, TemplateSpec } from './import-columns';
 export {
   applyMapping,

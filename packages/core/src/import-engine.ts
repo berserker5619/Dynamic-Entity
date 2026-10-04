@@ -16,12 +16,11 @@ import {
   arrayBoundOf,
   collectLeafTargets,
   deriveImportColumns,
-  stripIndices,
   upgradeLegacyRefs,
   validateMappingPlan,
   type LeafTarget,
 } from './import-columns';
-import { normalizeHeader, slotKey, slotPatterns } from './array-headers';
+import { childCountByArray, columnSlotPatterns, normalizeHeader, slotKey } from './array-headers';
 import {
   ROOT_SCOPE,
   collectFieldRefs,
@@ -520,15 +519,7 @@ export function suggestMapping(
     entries.push({ ref: column.ref, column: index, header: headers[index], confidence });
   };
 
-  // How many children each array has, so a bare `Phone 2` is only read as the one child of
-  // an array that has one.
-  const childrenOf = new Map<string, Set<string>>();
-  for (const column of columns) {
-    if (column.arrayRef === undefined) continue;
-    const children = childrenOf.get(column.arrayRef) ?? new Set<string>();
-    children.add(stripIndices(column.ref));
-    childrenOf.set(column.arrayRef, children);
-  }
+  const childCount = childCountByArray(columns);
 
   /**
    * A field's own label and id, and for a row of a repeating field every numbered spelling
@@ -537,17 +528,9 @@ export function suggestMapping(
    * matched only its own ref or generated heading.
    */
   const candidates = (column: ImportColumn): { exact: string[]; loose: string[] } => {
-    const label = resolveLabel(column.field.label) || '';
-    const loose = [label, column.field.id];
-    if (column.arrayRef !== undefined && column.arrayIndex !== undefined) {
-      const patterns = slotPatterns({
-        arrayLabel: column.arrayLabel,
-        arrayId: column.arrayRef.split('.').pop(),
-        childLabel: label,
-        childId: column.field.id,
-        onlyChild: childrenOf.get(column.arrayRef)?.size === 1,
-      });
-      loose.push(...patterns.map(pattern => slotKey(pattern, column.arrayIndex! + 1)));
+    const loose = [resolveLabel(column.field.label) || '', column.field.id];
+    for (const pattern of columnSlotPatterns(column, childCount)) {
+      loose.push(slotKey(pattern, column.arrayIndex! + 1));
     }
     return { exact: [column.ref, column.header], loose };
   };

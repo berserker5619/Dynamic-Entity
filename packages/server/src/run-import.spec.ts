@@ -4,6 +4,7 @@ import {
   deriveImportColumns,
   parseCsv,
   suggestMapping,
+  type EntityFormConfig,
   type NestedFieldConfig,
 } from '@dynamic-entity/core';
 import { sampleText } from './cell-text';
@@ -610,5 +611,46 @@ describe('previewSheet', () => {
       previewSheet({ stream, config: CONFIG, limits: { maxRows: 1 } }),
     ).rejects.toThrow();
     expect(destroyed()).toBe(true);
+  });
+});
+
+/** The same sheet and config are in the Angular package's `local-import-transport.spec.ts`. */
+describe('previewSheet sizing', () => {
+  const PHONES: EntityFormConfig = {
+    entity: 'people',
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        flatData: true,
+        fields: [
+          { id: 'name', type: 'text', label: { en: 'Name' } },
+          {
+            id: 'phones',
+            type: 'array',
+            label: { en: 'Phone' },
+            children: [
+              { id: 'number', type: 'text', label: { en: 'Number' } },
+              { id: 'kind', type: 'text', label: { en: 'Type' } },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  it('sizes repeating fields from the headers, and suggests every named row', async () => {
+    const preview = await previewSheet({
+      stream: chunked('Name,Phone 1 Number,Phone 6 Number,phone_6_type\nAda,1,6,home\n'),
+      config: PHONES,
+    });
+
+    expect(preview.arrayBound).toBe(6);
+    expect(preview.suggestion.entries.map(entry => entry.ref)).toEqual([
+      'name',
+      'phones.0.number',
+      'phones.5.number',
+      'phones.5.kind',
+    ]);
   });
 });

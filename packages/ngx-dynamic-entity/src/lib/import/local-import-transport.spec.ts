@@ -169,3 +169,49 @@ describe('LocalImportTransport', () => {
     expect(preview.sample).toEqual([['FromParser']]);
   });
 });
+
+/**
+ * The same sheet and config are in `server/src/run-import.spec.ts`. Both previews must offer the
+ * same number of rows, or a plan made in one wizard does not fit the other.
+ */
+describe('LocalImportTransport.preview sizing', () => {
+  const PHONES: EntityFormConfig = {
+    entity: 'people',
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        flatData: true,
+        fields: [
+          { id: 'name', type: 'text', label: { en: 'Name' } },
+          {
+            id: 'phones',
+            type: 'array',
+            label: { en: 'Phone' },
+            children: [
+              { id: 'number', type: 'text', label: { en: 'Number' } },
+              { id: 'kind', type: 'text', label: { en: 'Type' } },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  it('sizes repeating fields from the headers, and suggests every named row', async () => {
+    TestBed.configureTestingModule({});
+    const transport = TestBed.inject(LocalImportTransport);
+    const preview = await transport.preview(
+      csvFile('people.csv', 'Name,Phone 1 Number,Phone 6 Number,phone_6_type\nAda,1,6,home\n'),
+      { config: PHONES },
+    );
+
+    expect(preview.arrayBound).toBe(6);
+    expect(preview.suggestion.entries.map(entry => entry.ref)).toEqual([
+      'name',
+      'phones.0.number',
+      'phones.5.number',
+      'phones.5.kind',
+    ]);
+  });
+});

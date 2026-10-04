@@ -122,6 +122,8 @@ describe('HttpImportTransport.preview', () => {
       sample: [['Alice']],
       suggestion: PLAN,
       rowCount: 1,
+      // The canned server response predates 2.3 and does not say, so the default stands in.
+      arrayBound: 3,
     });
   });
 
@@ -567,7 +569,7 @@ describe('HttpImportTransport — the defaults', () => {
       file(),
       CONTEXT,
     );
-    expect(preview).toEqual({ headers: [], sample: [], suggestion: PLAN, rowCount: 0 });
+    expect(preview).toEqual({ headers: [], sample: [], suggestion: PLAN, rowCount: 0, arrayBound: 3 });
   });
 
   it('fills in a commit whose optional fields the server left out', async () => {

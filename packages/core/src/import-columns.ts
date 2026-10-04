@@ -456,6 +456,9 @@ export function legacyRefAliases(
 /**
  * The plan with every 2.2 ref rewritten to what it means now. Returns the same plan object
  * when nothing needed rewriting.
+ *
+ * Exported for a UI that edits a stored plan, so it shows the field a 2.2 ref now means
+ * rather than an unknown one. Goes away with the alias in 3.0.
  */
 export function upgradeLegacyRefs(
   plan: MappingPlan,

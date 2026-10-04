@@ -34,6 +34,22 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   every one of them is a row the form would save. New `flattenFieldValues` and `namesOfField`
   in core; the form's `flattenValues` now uses them.
 
+- **The mapper no longer drops plan entries.** Opening a stored plan and changing any selection
+  used to emit only the fields the mapper had rows for. Fixed values (`constant`) and rows past
+  the third slot were silently lost. Now every incoming entry survives, in its own position and
+  exactly as it arrived, until the user changes or removes it:
+  - a fixed value appears as its own choice in the field's select;
+  - an entry for a field the config no longer has is listed under "Mapped to fields this form no
+    longer has" with a Remove button. The import still refuses the plan until it is removed.
+- **The wizard offers as many array rows as the sheet needs.** The mapper, the local preview and
+  the server's `previewSheet` all used to derive three rows per repeating field, so a sheet
+  with `Phone 4` could not be mapped through the UI. They now size from the new
+  `arrayBoundFor(headers, config, plan?)`: the highest row any header names, the highest row
+  the plan maps, and never fewer than 3. The mapper also has an "Add a … row" button per
+  repeating field. `ImportPreview`, `SheetPreview` and `ImportPreviewResponse` gain
+  `arrayBound`. It is optional on the Angular and wire types, and `HttpImportTransport` treats it
+  as 3 when a pre-2.3 server leaves it out.
+
 ### Added
 - **Numbered array headers are recognised.** `suggestMapping` now matches the spellings
   customer sheets use for a row of a repeating field: `Phone 2 Number`, `phone_2_number`,

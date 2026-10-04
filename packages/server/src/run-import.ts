@@ -13,6 +13,7 @@
 
 import {
   applyMapping,
+  arrayBoundFor,
   deriveImportColumns,
   suggestMapping,
   validateMappingPlan,
@@ -259,6 +260,8 @@ export interface SheetPreview {
   /** Data rows in the file, which the whole stream is read to count. */
   rowCount: number;
   format: SheetFormat;
+  /** Rows of each repeating field the suggestion was sized for — see `arrayBoundFor`. */
+  arrayBound: number;
 }
 
 /**
@@ -293,7 +296,9 @@ export async function previewSheet(options: PreviewSheetOptions): Promise<SheetP
   // The same derivation the browser transport uses, so the two suggest the same mapping for
   // the same file. Readonly and system-default fields stay out of a *suggestion* for the same
   // reason they are marked: nobody maps a column onto a field the form fills in itself.
-  const { columns } = deriveImportColumns(options.config, { lang: options.lang });
+  // Sized from the headers, so a sheet with `Phone 6 Number` is offered six rows.
+  const arrayBound = arrayBoundFor(sheet.headers, options.config, null, options.lang);
+  const { columns } = deriveImportColumns(options.config, { lang: options.lang, maxArrayRows: arrayBound });
 
   return {
     headers: sheet.headers,
@@ -301,5 +306,6 @@ export async function previewSheet(options: PreviewSheetOptions): Promise<SheetP
     rowCount,
     suggestion: suggestMapping(sheet.headers, columns, options.config?.entity ?? ''),
     format: sheet.format,
+    arrayBound,
   };
 }

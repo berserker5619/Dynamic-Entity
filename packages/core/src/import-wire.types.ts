@@ -24,6 +24,11 @@ export interface ImportPreviewResponse {
   /** Data rows in the file, which may be far more than `sample` holds. */
   rowCount: number;
   /**
+   * Rows of each repeating field the suggestion was sized for (`arrayBoundFor`). Absent from
+   * a server older than 2.3, which always sized for 3.
+   */
+  arrayBound?: number;
+  /**
    * `CORE_VERSION` on the machine that produced this.
    *
    * The browser's engine and the server's are separately deployed and may differ.

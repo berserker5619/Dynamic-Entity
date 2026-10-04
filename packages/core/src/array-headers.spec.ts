@@ -1,4 +1,4 @@
-import { matchSlot, slotKey, slotPatterns } from './array-headers';
+import { arrayBoundFor, inferArrayBound, matchSlot, slotKey, slotPatterns } from './array-headers';
 import { deriveImportColumns } from './import-columns';
 import { suggestMapping } from './import-engine';
 import type { EntityFormConfig, NestedFieldConfig } from './form-model.types';
@@ -104,5 +104,41 @@ describe('suggestMapping with numbered headers', () => {
   it('carries the array label and address on every unrolled column', () => {
     const column = deriveImportColumns(PHONES).columns.find(c => c.ref === 'phones.1.kind');
     expect(column).toMatchObject({ arrayRef: 'phones', arrayLabel: 'Phones', arrayIndex: 1 });
+  });
+});
+
+describe('inferArrayBound', () => {
+  const sixPhones = ['Name', ...[1, 2, 3, 4, 5, 6].map(n => `Phone ${n} Number`)];
+
+  it('finds the highest row any header names, by any spelling suggestion reads', () => {
+    expect(inferArrayBound(sixPhones, PHONES)).toBe(6);
+    expect(inferArrayBound(['Name', 'phone_4_type', 'x', 'y'], PHONES)).toBe(4);
+    expect(inferArrayBound(['Phones / Number 5', 'a', 'b', 'c', 'd'], PHONES)).toBe(5);
+  });
+
+  it('reads a ref-spelled header as its 0-based row', () => {
+    expect(inferArrayBound(['phones.4.number', 'a', 'b', 'c', 'd'], PHONES)).toBe(5);
+  });
+
+  it('is 1 for a sheet that names no rows, and ignores numbers no sheet could reach', () => {
+    expect(inferArrayBound(['Name'], PHONES)).toBe(1);
+    expect(inferArrayBound(['Number 2024', 'Name'], PHONES)).toBe(1);
+    expect(inferArrayBound(['phones.999.number'], PHONES)).toBe(1);
+  });
+
+  it('never offers fewer than the default, and always reaches what a plan maps', () => {
+    expect(arrayBoundFor(['Name'], PHONES)).toBe(3);
+    expect(arrayBoundFor(sixPhones, PHONES)).toBe(6);
+    const plan = { entity: 'people', entries: [{ ref: 'phones.7.number', column: 0 }] };
+    expect(arrayBoundFor(['Name'], PHONES, plan)).toBe(8);
+  });
+
+  it('sizes the suggestion, so every named slot is filled', () => {
+    const { columns } = deriveImportColumns(PHONES, { maxArrayRows: arrayBoundFor(sixPhones, PHONES) });
+    const plan = suggestMapping(sixPhones, columns);
+    expect(plan.entries.map(entry => entry.ref)).toEqual([
+      'name',
+      ...[0, 1, 2, 3, 4, 5].map(n => `phones.${n}.number`),
+    ]);
   });
 });

@@ -11,6 +11,11 @@
  * spaces, underscores and brackets irrelevant: `Number (2)` and `number_2` are both `number2`.
  */
 
+import { MAX_ARRAY_BOUND, arrayBoundOf, deriveImportColumns, stripIndices } from './import-columns';
+import { resolveLabel } from './form-logic';
+import type { EntityFormConfig } from './form-model.types';
+import type { ImportColumn, MappingPlan } from './import-model.types';
+
 /** Lowercase alphanumerics only, so "First Name", `first_name` and `firstName` collapse. */
 export function normalizeHeader(text: string): string {
   return String(text ?? '')
@@ -92,4 +97,114 @@ export function matchSlot(header: string, pattern: string): number | null {
   const digits = key.slice(prefix.length, key.length - suffix.length);
   if (!/^[1-9]\d{0,5}$/.test(digits)) return null;
   return Number(digits);
+}
+
+/**
+ * Each array's distinct children among `columns`, keyed by the array's address.
+ *
+ * `{array} n` is only a pattern for an array with one child, and that has to be decided over
+ * the whole column list, not per column.
+ */
+export function childCountByArray(columns: readonly ImportColumn[]): Map<string, number> {
+  const children = new Map<string, Set<string>>();
+  for (const column of columns) {
+    if (column.arrayRef === undefined) continue;
+    const set = children.get(column.arrayRef) ?? new Set<string>();
+    set.add(stripIndices(column.ref));
+    children.set(column.arrayRef, set);
+  }
+  return new Map([...children].map(([arrayRef, set]) => [arrayRef, set.size]));
+}
+
+/**
+ * The patterns one unrolled column answers to: the sheet spellings `slotPatterns` knows, plus
+ * the engine's own — the generated heading and the ref — so a template's headers size the
+ * column list too.
+ */
+export function columnSlotPatterns(column: ImportColumn, childCount: ReadonlyMap<string, number>): string[] {
+  if (column.arrayRef === undefined || column.arrayIndex === undefined) return [];
+  const label = resolveLabel(column.field.label) || '';
+  const patterns = slotPatterns({
+    arrayLabel: column.arrayLabel,
+    arrayId: column.arrayRef.split('.').pop(),
+    childLabel: label,
+    childId: column.field.id,
+    onlyChild: childCount.get(column.arrayRef) === 1,
+  });
+  // `Phones / Number 3` and `contact.phones.3.number`, with the number taken out.
+  const heading = column.header.replace(/\s*\d+$/, '');
+  const tail = column.ref.slice(column.arrayRef.length + 1).replace(/^\d+\./, '');
+  patterns.push(`${normalizeHeader(heading)}${SLOT}`, `${normalizeHeader(column.arrayRef)}${SLOT}${normalizeHeader(tail)}`);
+  return patterns;
+}
+
+/** The highest row number read from a header when the sheet itself is narrower. */
+const PLAUSIBLE_ROWS = 100;
+
+/**
+ * The most rows of any repeating field a sheet's headers name, by any spelling
+ * `suggestMapping` recognises. At least 1, at most `MAX_ARRAY_BOUND`.
+ *
+ * A ref-spelled header counts as its row number, which is 0-based — `phones.3.number` names
+ * the fourth row — and every other spelling as the 1-based number a person writes.
+ */
+export function inferArrayBound(
+  headers: readonly string[],
+  config: EntityFormConfig | null | undefined,
+  lang?: string,
+): number {
+  const { columns } = deriveImportColumns(config, {
+    lang,
+    maxArrayRows: 1,
+    includeReadonly: true,
+    includeSystemDefault: true,
+  });
+  const childCount = childCountByArray(columns);
+  const patterns = columns.flatMap(column => columnSlotPatterns(column, childCount));
+  const refPrefixes = columns
+    .filter(column => column.arrayRef !== undefined)
+    .map(column => `${column.arrayRef}.`);
+
+  // A sheet with `Phone 1` and `Phone 4` names four rows, so a slot may exceed the column
+  // count — but not by orders of magnitude: `Revenue 2024` is a year, not the 2024th row of a
+  // `revenue` field.
+  const reach = Math.max(headers.length, PLAUSIBLE_ROWS);
+  let bound = 1;
+  for (const header of headers) {
+    const text = String(header ?? '').trim();
+    // The ref spelling is read exactly, before normalising throws its dots away.
+    const ref = refPrefixes.find(prefix => text.startsWith(prefix));
+    const row = ref ? /^(\d+)\./.exec(text.slice(ref.length)) : null;
+    if (row && Number(row[1]) < reach) {
+      bound = Math.max(bound, Number(row[1]) + 1);
+      continue;
+    }
+    for (const pattern of patterns) {
+      const slot = matchSlot(text, pattern);
+      if (slot !== null && slot <= reach) bound = Math.max(bound, slot);
+    }
+  }
+  return Math.min(bound, MAX_ARRAY_BOUND);
+}
+
+/** The fewest rows the wizard offers for a repeating field, whatever the sheet says. */
+export const DEFAULT_ARRAY_ROWS = 3;
+
+/**
+ * How many rows of each repeating field to derive columns for: enough for every row the sheet's
+ * headers name, every row an existing plan maps, and never fewer than the default.
+ *
+ * The mapper, the local preview and the server preview all size from this one function, so
+ * the same file offers the same slots wherever it is read.
+ */
+export function arrayBoundFor(
+  headers: readonly string[],
+  config: EntityFormConfig | null | undefined,
+  plan?: MappingPlan | null,
+  lang?: string,
+): number {
+  return Math.min(
+    Math.max(DEFAULT_ARRAY_ROWS, inferArrayBound(headers, config, lang), arrayBoundOf(plan)),
+    MAX_ARRAY_BOUND,
+  );
 }

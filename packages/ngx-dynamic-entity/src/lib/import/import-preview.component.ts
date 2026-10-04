@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, Input, OnChanges, inject, signal } from '@angular/core';
 import {
   applyMapping,
+  arrayBoundFor,
   coerceCell,
   deriveImportColumns,
   formatDisplayValue,
+  upgradeLegacyRefs,
   type EntityFormConfig,
   type FormRule,
   type ImportColumn,
@@ -149,11 +151,19 @@ export class ImportPreviewComponent implements OnChanges {
   protected readonly grid = signal<PreviewRow[]>([]);
 
   ngOnChanges(): void {
+    // Sized by the plan, so a mapped sixth phone is shown rather than silently left out, and
+    // read through the 2.2 alias, so an old ref shows the field it now means.
+    const plan = upgradeLegacyRefs(this.plan, this.config);
     const byRef = new Map(
-      deriveImportColumns(this.config, { lang: this.language }).columns.map(c => [c.ref, c]),
+      deriveImportColumns(this.config, {
+        lang: this.language,
+        maxArrayRows: arrayBoundFor([], this.config, plan),
+        includeReadonly: true,
+        includeSystemDefault: true,
+      }).columns.map(c => [c.ref, c]),
     );
 
-    const entries = (this.plan?.entries ?? []).filter(entry => byRef.has(entry.ref));
+    const entries = (plan?.entries ?? []).filter(entry => byRef.has(entry.ref));
     this.columns.set(entries.map(entry => byRef.get(entry.ref)!));
 
     // The same engine the commit runs, over the sample only. Row 0 of the sample is numbered
