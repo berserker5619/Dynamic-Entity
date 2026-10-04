@@ -54,6 +54,9 @@ const PATTERN_CANDIDATES = [
   'AB123456C',
   'ABC-123',
   'REF-0001',
+  // `patientIntake.ssn` and `itAssets.assetTag`, the demo's two shapes no other entry fits.
+  '123-45-6789',
+  'AST-00042',
   '12345',
   'A1',
   'Sample',

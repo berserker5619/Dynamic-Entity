@@ -15,6 +15,7 @@ import {
   TEST_DATA_CONFIGS,
 } from '../src/app/mock/sample-data';
 import { EXTENSIONS_CONFIG } from '../src/app/mock/extensions-entity';
+import { IT_ASSETS_CONFIG, PATIENT_INTAKE_CONFIG } from '../src/app/mock/seed-enterprise';
 import { synthesiseCsv, synthesiseTypedRow } from '../../server/src/config-rows.fixtures';
 import { workbookOf } from '../../server/src/workbook.fixtures';
 
@@ -23,7 +24,7 @@ import { workbookOf } from '../../server/src/workbook.fixtures';
  *
  * **What this exists to catch.** `import-wizard.spec.ts` drives `clients` (three columns) and
  * `import-server.spec.ts` drives `visitNotes` (three columns). The picker offers **nine**
- * entities between `test_data.json` and the demo's own TypeScript configs, and the two the
+ * entities between `test_data.json` and the demo's own configs, and the two the
  * suite drove were among the narrowest. `insuranceClaims` is thirty-five columns across four
  * nesting levels; `employees` carries a repeating `addresses` array that becomes nine numbered
  * columns; `extensions` carries a `file` field a sheet cannot hold and a field type the library
@@ -43,13 +44,21 @@ const ROWS = 2;
  * The picker's list, merged the way `LocalStore.ensureSeed` merges it.
  *
  * Built rather than listed: `clients` and `employees` exist in *both* `test_data.json` and
- * `sample-data.ts`, and the demo's TypeScript version wins. A hard-coded list of nine would be
- * a second statement of that merge, and the first thing to go stale.
+ * `sample-data.ts`, and the demo's version wins. It still names the demo's own configs, and
+ * it went stale exactly that way: `patientIntake` and `itAssets` joined the picker and never
+ * joined this list. The first test below compares it with the picker, so that cannot recur.
  */
 const CONFIGS: EntityFormConfig[] = (() => {
   const merged = new Map<string, EntityFormConfig>();
   for (const config of TEST_DATA_CONFIGS) merged.set(config.entity, config);
-  for (const config of [CLIENTS_CONFIG, EMPLOYEES_CONFIG, ORDERS_CONFIG, EXTENSIONS_CONFIG]) {
+  for (const config of [
+    CLIENTS_CONFIG,
+    EMPLOYEES_CONFIG,
+    ORDERS_CONFIG,
+    EXTENSIONS_CONFIG,
+    PATIENT_INTAKE_CONFIG,
+    IT_ASSETS_CONFIG,
+  ]) {
     merged.set(config.entity, config);
   }
   return [...merged.values()];
@@ -62,7 +71,7 @@ const CONFIGS: EntityFormConfig[] = (() => {
  * refused those, because serving them from a second copy would have handed the browser one
  * schema and the server another. Both halves now read one set of JSON configs under
  * `src/app/mock/configs/`, so the refusal has nothing left to protect against and the server
- * leg covers the same nine entities the browser leg does — including `employees`, whose
+ * leg covers every entity the browser leg does — including `employees`, whose
  * repeating `addresses` array becomes numbered columns, and `extensions`, whose `file` field
  * a sheet cannot carry at all.
  */
@@ -123,6 +132,14 @@ async function commit(page: Page): Promise<void> {
   await page.locator('[data-testid="import-to-review"]').click();
   await page.locator('[data-testid="import-commit"]').click();
 }
+
+test('this spec covers every entity the picker offers', async ({ page }) => {
+  await openWizard(page, 'clients');
+  const offered = await page.locator('#entitySelect option').evaluateAll(options =>
+    options.map(o => (o as HTMLOptionElement).value).filter(Boolean),
+  );
+  expect([...offered].sort()).toEqual(CONFIGS.map(c => c.entity).sort());
+});
 
 test.describe('every entity the demo offers, imported in the browser', () => {
   for (const config of CONFIGS) {
