@@ -216,9 +216,9 @@ offsets): a midnight-UTC `Date` → `YYYY-MM-DD`, matching the server for the sa
 
 ## Step 8 — Release 2.3.0
 
-- Bump `CORE_VERSION` and the package versions. The HTTP engine check compares major.minor, so
-  2.3 clients and 2.2 servers will refuse each other. State that in the changelog, and
-  deploy servers first.
+- Bump `CORE_VERSION` and the package versions. The HTTP engine check compares major.minor,
+  but a mismatch is a *warning*, not a refusal (corrected while building: the review assumed a
+  refusal). State that in the changelog, and deploy servers first.
 - `CHANGELOG.md`: new errors and warnings (`REFERER_INSIDE_ARRAY`, `REFERER_OVERRIDE_IGNORED`),
   the legacy-ref alias, rule-by-ref import behaviour (some rows that used to be rejected now
   import), the `SheetParser` widening, the delimiter and decimal behaviour, `arrayBound` and
