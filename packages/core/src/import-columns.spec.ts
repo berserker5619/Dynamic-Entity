@@ -1,4 +1,5 @@
 import { parseCsv, toCsv } from './csv';
+import { assignFieldRefs } from './field-scopes';
 import {
   MAX_ARRAY_BOUND,
   arrayBoundOf,
@@ -205,6 +206,28 @@ describe('deriveImportColumns', () => {
       ],
     };
     expect(deriveImportColumns(empty).columns[0].enumValues).toBeUndefined();
+  });
+});
+
+describe('a config as the builder saves it', () => {
+  /**
+   * The builder stamps `refererField` on every field, array children included, and on reload
+   * cannot tell a stamped ref from an authored one. A stamped ref is the field's own position,
+   * so it must derive exactly what the unstamped config derives — anything else means the
+   * importer reads a stamp as an override.
+   */
+  it('derives the same columns as the unstamped config', () => {
+    const stamped = assignFieldRefs(structuredClone(CONFIG));
+    expect(stamped.tabs[1].fields?.[1].children?.[0].refererField).toBe('work.contacts.name');
+    // `field` is left out: the stamped copy differs from the original by exactly the stamp.
+    const shape = (config: EntityFormConfig) => {
+      const derived = deriveImportColumns(config, { maxArrayRows: 2 });
+      return {
+        columns: derived.columns.map(({ field: _field, ...column }) => column),
+        unsupported: derived.unsupported.map(({ ref, reason }) => ({ ref, reason })),
+      };
+    };
+    expect(shape(stamped)).toEqual(shape(CONFIG));
   });
 });
 

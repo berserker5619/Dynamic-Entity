@@ -1,0 +1,567 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`every field type clients uses derives the same columns as the 2.2 baseline 1`] = `
+{
+  "columns": [
+    {
+      "arrayIndex": undefined,
+      "header": "General Info / Client Name",
+      "ref": "primaryDetails.name",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "General Info / Email Address",
+      "ref": "primaryDetails.email",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "General Info / Company Name",
+      "ref": "primaryDetails.company",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "General Info / Status",
+      "ref": "primaryDetails.status",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "General Info / Annual Revenue / Salary",
+      "ref": "primaryDetails.salary",
+      "required": false,
+    },
+  ],
+  "unsupported": [],
+}
+`;
+
+exports[`every field type complexFullTest uses derives the same columns as the 2.2 baseline 1`] = `
+{
+  "columns": [
+    {
+      "arrayIndex": undefined,
+      "header": "Primary & Basics / Full Name",
+      "ref": "generalTab.fullName",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Primary & Basics / Corporate Email",
+      "ref": "generalTab.emailAddress",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Primary & Basics / Executive Summary",
+      "ref": "generalTab.bioNotes",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Primary & Basics / Release Notes",
+      "ref": "generalTab.releaseNotes",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Primary & Basics / Annual Budget ($USD)",
+      "ref": "generalTab.annualBudget",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Primary & Basics / Team Count",
+      "ref": "generalTab.teamCount",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Primary & Basics / Department",
+      "ref": "generalTab.department",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Primary & Basics / Assigned System Roles",
+      "ref": "generalTab.roles",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Primary & Basics / Account Active & Verified",
+      "ref": "generalTab.accountActive",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Primary & Basics / Preferred Contact Method",
+      "ref": "generalTab.contactMethod",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Primary & Basics / Opt-in to Security Announcements",
+      "ref": "generalTab.optInNewsletter",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Dates, Files & References / Effective Join Date",
+      "ref": "datesAndFilesTab.joinDate",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Dates, Files & References / Billing Cycle Month/Year",
+      "ref": "datesAndFilesTab.billingCycle",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Dates, Files & References / Daily Shift Start Time",
+      "ref": "datesAndFilesTab.dailyShiftStart",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Dates, Files & References / Linked Parent Organization",
+      "ref": "datesAndFilesTab.orgRef",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Dates, Files & References / Synced Source Client Name (Referenced)",
+      "ref": "datesAndFilesTab.syncedClientName",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Nested Groups & Dynamic Arrays / HQ Physical Address / Street Address",
+      "ref": "nestedStructuresTab.addressGroup.street",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Nested Groups & Dynamic Arrays / HQ Physical Address / City",
+      "ref": "nestedStructuresTab.addressGroup.city",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Nested Groups & Dynamic Arrays / HQ Physical Address / Postal Code",
+      "ref": "nestedStructuresTab.addressGroup.postalCode",
+      "required": false,
+    },
+    {
+      "arrayIndex": 0,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 1",
+      "ref": "nestedStructuresTab.emergencyContacts.0.contactName",
+      "required": true,
+    },
+    {
+      "arrayIndex": 1,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 2",
+      "ref": "nestedStructuresTab.emergencyContacts.1.contactName",
+      "required": true,
+    },
+    {
+      "arrayIndex": 2,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 3",
+      "ref": "nestedStructuresTab.emergencyContacts.2.contactName",
+      "required": true,
+    },
+    {
+      "arrayIndex": 0,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 1",
+      "ref": "nestedStructuresTab.emergencyContacts.0.relationship",
+      "required": false,
+    },
+    {
+      "arrayIndex": 1,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 2",
+      "ref": "nestedStructuresTab.emergencyContacts.1.relationship",
+      "required": false,
+    },
+    {
+      "arrayIndex": 2,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 3",
+      "ref": "nestedStructuresTab.emergencyContacts.2.relationship",
+      "required": false,
+    },
+    {
+      "arrayIndex": 0,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 1",
+      "ref": "nestedStructuresTab.emergencyContacts.0.phoneNumber",
+      "required": false,
+    },
+    {
+      "arrayIndex": 1,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 2",
+      "ref": "nestedStructuresTab.emergencyContacts.1.phoneNumber",
+      "required": false,
+    },
+    {
+      "arrayIndex": 2,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 3",
+      "ref": "nestedStructuresTab.emergencyContacts.2.phoneNumber",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "RBAC Masking & Critical Fields / Executive Salary (RBAC Masked)",
+      "ref": "securityAndRulesTab.executiveSalary",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "RBAC Masking & Critical Fields / Tax Identifier (Critical Field)",
+      "ref": "securityAndRulesTab.taxIdNumber",
+      "required": false,
+    },
+  ],
+  "unsupported": [
+    {
+      "reason": "An image is a file reference, which a spreadsheet cell cannot carry.",
+      "ref": "datesAndFilesTab.avatarImage",
+    },
+    {
+      "reason": "An attachment is a file reference, which a spreadsheet cell cannot carry.",
+      "ref": "datesAndFilesTab.complianceDoc",
+    },
+  ],
+}
+`;
+
+exports[`every field type employees uses derives the same columns as the 2.2 baseline 1`] = `
+{
+  "columns": [
+    {
+      "arrayIndex": undefined,
+      "header": "Personal Info / First Name",
+      "ref": "personalInfo.firstName",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Personal Info / Last Name",
+      "ref": "personalInfo.lastName",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Personal Info / Department",
+      "ref": "personalInfo.department",
+      "required": false,
+    },
+  ],
+  "unsupported": [],
+}
+`;
+
+exports[`every field type insuranceClaims uses derives the same columns as the 2.2 baseline 1`] = `
+{
+  "columns": [
+    {
+      "arrayIndex": undefined,
+      "header": "Claim Reference",
+      "ref": "claimRef",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Claimant Email",
+      "ref": "claimantEmail",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "National Insurance No.",
+      "ref": "nationalId",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Client Tier",
+      "ref": "tier",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Staff Member?",
+      "ref": "isEmployee",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Staff Id",
+      "ref": "staffId",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Reuse reference as policy note",
+      "ref": "copyRefToPolicy",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Policy / Insurer",
+      "ref": "policy.insurer",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Policy / Country",
+      "ref": "policy.country",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Policy / City",
+      "ref": "policy.city",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Policy / Sum Insured",
+      "ref": "policy.sumInsured",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Policy / Excess",
+      "ref": "policy.excess",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Policy / Cover Start",
+      "ref": "policy.coverStart",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Policy / Policy Note",
+      "ref": "policy.policyNote",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Policy / Synced Client Tier (Referenced)",
+      "ref": "policy.syncedClientTier",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Incident / Details / Incident Date",
+      "ref": "incident.incidentDetails.incidentDate",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Incident / Details / Time of Incident",
+      "ref": "incident.incidentDetails.incidentTime",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Incident / Details / Reported At",
+      "ref": "incident.incidentDetails.reportedAt",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Incident / Details / Severity",
+      "ref": "incident.incidentDetails.severity",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Incident / Details / Damage Types",
+      "ref": "incident.incidentDetails.damageTypes",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Incident / Details / What happened",
+      "ref": "incident.incidentDetails.narrative",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Incident / Details / Location / Street",
+      "ref": "incident.incidentDetails.location.street",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Incident / Details / Location / Postcode",
+      "ref": "incident.incidentDetails.location.postcode",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Incident / Details / Location / Town",
+      "ref": "incident.incidentDetails.location.locality",
+      "required": false,
+    },
+    {
+      "arrayIndex": 0,
+      "header": "Settlement / Settlement Line Items / Description 1",
+      "ref": "settlement.lineItems.0.itemDescription",
+      "required": true,
+    },
+    {
+      "arrayIndex": 1,
+      "header": "Settlement / Settlement Line Items / Description 2",
+      "ref": "settlement.lineItems.1.itemDescription",
+      "required": true,
+    },
+    {
+      "arrayIndex": 2,
+      "header": "Settlement / Settlement Line Items / Description 3",
+      "ref": "settlement.lineItems.2.itemDescription",
+      "required": true,
+    },
+    {
+      "arrayIndex": 0,
+      "header": "Settlement / Settlement Line Items / Amount 1",
+      "ref": "settlement.lineItems.0.itemAmount",
+      "required": true,
+    },
+    {
+      "arrayIndex": 1,
+      "header": "Settlement / Settlement Line Items / Amount 2",
+      "ref": "settlement.lineItems.1.itemAmount",
+      "required": true,
+    },
+    {
+      "arrayIndex": 2,
+      "header": "Settlement / Settlement Line Items / Amount 3",
+      "ref": "settlement.lineItems.2.itemAmount",
+      "required": true,
+    },
+    {
+      "arrayIndex": 0,
+      "header": "Settlement / Settlement Line Items / Approved 1",
+      "ref": "settlement.lineItems.0.itemApproved",
+      "required": false,
+    },
+    {
+      "arrayIndex": 1,
+      "header": "Settlement / Settlement Line Items / Approved 2",
+      "ref": "settlement.lineItems.1.itemApproved",
+      "required": false,
+    },
+    {
+      "arrayIndex": 2,
+      "header": "Settlement / Settlement Line Items / Approved 3",
+      "ref": "settlement.lineItems.2.itemApproved",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Settlement / Settlement Total",
+      "ref": "settlement.settlementTotal",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Settlement / Auditor PIN",
+      "ref": "settlement.auditorPin",
+      "required": false,
+    },
+  ],
+  "unsupported": [
+    {
+      "reason": "An image is a file reference, which a spreadsheet cell cannot carry.",
+      "ref": "incident.incidentAttachments.claimantPhoto",
+    },
+    {
+      "reason": "An attachment is a file reference, which a spreadsheet cell cannot carry.",
+      "ref": "incident.incidentAttachments.lossReport",
+    },
+  ],
+}
+`;
+
+exports[`every field type organizations uses derives the same columns as the 2.2 baseline 1`] = `
+{
+  "columns": [
+    {
+      "arrayIndex": undefined,
+      "header": "Organization Details / Organization Name",
+      "ref": "orgInfo.orgName",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Organization Details / Website",
+      "ref": "orgInfo.website",
+      "required": false,
+    },
+  ],
+  "unsupported": [],
+}
+`;
+
+exports[`every field type people uses derives the same columns as the 2.2 baseline 1`] = `
+{
+  "columns": [
+    {
+      "arrayIndex": undefined,
+      "header": "Personal Details / Full Name",
+      "ref": "personal.fullName",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Personal Details / Address",
+      "ref": "personal.address",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Work Details / Address",
+      "ref": "work.address",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Work Details / Desk Number",
+      "ref": "work.deskNumber",
+      "required": false,
+    },
+  ],
+  "unsupported": [],
+}
+`;
+
+exports[`every field type visitNotes uses derives the same columns as the 2.2 baseline 1`] = `
+{
+  "columns": [
+    {
+      "arrayIndex": undefined,
+      "header": "Visit Summary / Patient Name",
+      "ref": "visitSummaryTab.patientName",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Visit Summary / Visit Date",
+      "ref": "visitSummaryTab.visitDate",
+      "required": true,
+    },
+    {
+      "arrayIndex": undefined,
+      "header": "Visit Summary / Clinical Diagnosis & Notes",
+      "ref": "visitSummaryTab.diagnosisNotes",
+      "required": false,
+    },
+  ],
+  "unsupported": [],
+}
+`;

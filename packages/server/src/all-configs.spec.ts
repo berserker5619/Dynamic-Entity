@@ -137,6 +137,23 @@ describe.each(CONFIGS.map(config => [config.entity, config] as const))(
       expect(new Set(plan.entries.map(entry => entry.ref)).size).toBe(headers.length);
     });
 
+    /**
+     * The column set itself, frozen.
+     *
+     * Every other assertion here is relative — the template maps back to itself, three paths
+     * agree with each other — so a change to how columns are derived passes all of them as
+     * long as it changes every path at once. This is the one absolute: what 2.2 derived for
+     * each shipped config. A diff here is a contract change for every stored plan, and must be
+     * deliberate.
+     */
+    it('derives the same columns as the 2.2 baseline', () => {
+      const { columns, unsupported } = deriveImportColumns(config, { lang: 'en', maxArrayRows: 3 });
+      expect({
+        columns: columns.map(({ ref, header, required, arrayIndex }) => ({ ref, header, required, arrayIndex })),
+        unsupported: unsupported.map(({ ref, reason }) => ({ ref, reason })),
+      }).toMatchSnapshot();
+    });
+
     it('imports a synthesised row in the browser, with no errors at all', () => {
       const { plan, row } = setUp(config);
       const result = applyMapping([row], plan, config, {
