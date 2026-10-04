@@ -16,10 +16,12 @@ import {
   arrayBoundOf,
   collectLeafTargets,
   deriveImportColumns,
+  stripIndices,
   upgradeLegacyRefs,
   validateMappingPlan,
   type LeafTarget,
 } from './import-columns';
+import { normalizeHeader, slotKey, slotPatterns } from './array-headers';
 import {
   ROOT_SCOPE,
   collectFieldRefs,
@@ -490,13 +492,6 @@ function checkScale(field: NestedFieldConfig, value: number, text: string): Coer
   return { value };
 }
 
-/** Lowercase alphanumerics only, so "First Name", `first_name` and `firstName` collapse. */
-function normalizeHeader(text: string): string {
-  return String(text ?? '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '');
-}
-
 /**
  * Guess which sheet column feeds which field.
  *
@@ -525,10 +520,37 @@ export function suggestMapping(
     entries.push({ ref: column.ref, column: index, header: headers[index], confidence });
   };
 
-  const candidates = (column: ImportColumn): { exact: string[]; loose: string[] } => ({
-    exact: [column.ref, column.header],
-    loose: [resolveLabel(column.field.label) || '', column.field.id],
-  });
+  // How many children each array has, so a bare `Phone 2` is only read as the one child of
+  // an array that has one.
+  const childrenOf = new Map<string, Set<string>>();
+  for (const column of columns) {
+    if (column.arrayRef === undefined) continue;
+    const children = childrenOf.get(column.arrayRef) ?? new Set<string>();
+    children.add(stripIndices(column.ref));
+    childrenOf.set(column.arrayRef, children);
+  }
+
+  /**
+   * A field's own label and id, and for a row of a repeating field every numbered spelling
+   * of it a sheet might use — `Phone 2 Number`, `phone_2_number`, `Number (2)`. Before these
+   * existed every slot shared one label and one id, tripped the ambiguity guard below, and
+   * matched only its own ref or generated heading.
+   */
+  const candidates = (column: ImportColumn): { exact: string[]; loose: string[] } => {
+    const label = resolveLabel(column.field.label) || '';
+    const loose = [label, column.field.id];
+    if (column.arrayRef !== undefined && column.arrayIndex !== undefined) {
+      const patterns = slotPatterns({
+        arrayLabel: column.arrayLabel,
+        arrayId: column.arrayRef.split('.').pop(),
+        childLabel: label,
+        childId: column.field.id,
+        onlyChild: childrenOf.get(column.arrayRef)?.size === 1,
+      });
+      loose.push(...patterns.map(pattern => slotKey(pattern, column.arrayIndex! + 1)));
+    }
+    return { exact: [column.ref, column.header], loose };
+  };
 
   /**
    * Loose keys that more than one field answers to.

@@ -254,6 +254,12 @@ export function deriveImportColumns(
       scopeLabels.set(field.id, resolveLabel(field.label, lang) || field.id);
     }
   }
+  // Keyed by address, not id: two arrays may share an id in different scopes.
+  const arrayLabels = new Map(
+    collectFieldRefs(config)
+      .filter(entry => entry.field?.type === 'array' && entry.field.id)
+      .map(entry => [entry.ref, resolveLabel(entry.field.label, lang) || entry.field.id] as const),
+  );
 
   for (const target of targets) {
     const { field, ref } = target;
@@ -296,12 +302,15 @@ export function deriveImportColumns(
 
     // One column per row of the repeating parent. The index goes into the ref at the array's
     // own boundary, not at the end, because that is where the record nests it.
+    const arrayLabel = arrayLabels.get(target.arrayRef);
     for (let index = 0; index < maxArrayRows; index++) {
       columns.push({
         ...base,
         ref: `${formatArrayHeader(target.arrayRef, index)}.${target.tail}`,
         header: `${header} ${index + 1}`,
         arrayIndex: index,
+        arrayRef: target.arrayRef,
+        ...(arrayLabel ? { arrayLabel } : {}),
       });
     }
   }

@@ -38,6 +38,10 @@ export interface ImportColumn {
   format?: string;
   /** Index within the repeating parent, for a column produced by an `array` field. */
   arrayIndex?: number;
+  /** The repeating parent's address with no row number, e.g. `work.contacts`. */
+  arrayRef?: string;
+  /** The repeating parent's label, resolved — what a sheet's own numbered headers start with. */
+  arrayLabel?: string;
 }
 
 /**

@@ -35,6 +35,12 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   in core; the form's `flattenValues` now uses them.
 
 ### Added
+- **Numbered array headers are recognised.** `suggestMapping` now matches the spellings
+  customer sheets use for a row of a repeating field: `Phone 2 Number`, `phone_2_number`,
+  `PhoneNumber2`, `Number (2)`, and a bare `Phone 2` for an array with one child. These matches
+  are `guess`es. A spelling that more than one field answers to (`Number 1` when phones and
+  faxes both have a `number`) matches neither. Before this, array columns only matched their ref
+  or the generated heading. `ImportColumn` gains `arrayRef` and `arrayLabel`.
 - `validateConfig` rejects an authored `refererField` on a field inside an array, because it
   cannot say which row it means. It warns about an override on a container that is not directly
   on a tab, which the form ignores. A ref the builder stamped (the field's own position) is never
