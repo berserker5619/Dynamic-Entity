@@ -22,6 +22,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { lookupValuesToOptions, normalizeLookupValues } from '@dynamic-entity/core';
 import { createImportRouter } from '@dynamic-entity/server/express';
+/*
+ * The rules the browser renders and imports with, from the same module. Node 24 strips the
+ * types from a .ts import, so there is one copy; a second would be a server that accepts rows
+ * the browser refuses. Node prints a one-line MODULE_TYPELESS_PACKAGE_JSON notice for it,
+ * which is harmless — marking the package `type: module` would change how Angular's own
+ * tooling reads every file in it.
+ */
+import { DEMO_RULES } from './src/app/mock/demo-rules.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const read = path => JSON.parse(readFileSync(join(HERE, path), 'utf8'));
@@ -82,6 +90,7 @@ app.use(
   createImportRouter({
     configs,
     lookups,
+    rules: DEMO_RULES,
     onImport(records, { entity }) {
       const existing = imported.get(entity) ?? [];
       imported.set(entity, [...existing, ...records]);

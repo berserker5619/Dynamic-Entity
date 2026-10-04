@@ -82,11 +82,12 @@ export class ImportPageComponent {
   @Input() config: EntityFormConfig | null = null;
   @Input() uiLanguage: 'en' | 'de' = 'en';
   /**
-   * The rules the form is rendered with.
+   * The rules the form is rendered with — the app binds the same `rules()` it gives the form.
    *
-   * Empty in this demo because its sample entities carry none. It is an input rather than an
-   * omission so the wiring a real host needs is visible here: leave it out and an import
-   * checks field validators only, which is not what the form enforces.
+   * Leave it out and an import checks field validators only, which is not what the form
+   * enforces: a required field a rule hides still rejects the row, and a `validation` rule
+   * never fires. The demo shipped without this binding until 2.3.1, so `patientIntake` rows
+   * for a minor were refused for the consent the form does not ask for.
    */
   @Input() rules: readonly FormRule[] = [];
 

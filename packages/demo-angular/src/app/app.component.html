@@ -215,7 +215,7 @@
     }
 
     @if (view() === 'import') {
-    <app-import-page [config]="$any(config())" [uiLanguage]="language()"></app-import-page>
+    <app-import-page [config]="$any(config())" [rules]="rules()" [uiLanguage]="language()"></app-import-page>
     }
 
     @if (view() === 'builder') {
