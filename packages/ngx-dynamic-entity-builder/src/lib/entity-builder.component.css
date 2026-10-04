@@ -744,8 +744,16 @@ mat-toolbar.deb-toolbar {
     flex-wrap: wrap;
     row-gap: 4px;
   }
-  /* Still hard right, now on the second line. */
+  /*
+   * Still hard right, now on the second line — always. `.deb-field-meta` is `flex: 1`, a
+   * basis of 0, so wrapping alone let the buttons stay on the first line whenever they fit
+   * beside a zero-width name: every top-level row showed its badge and id and no label at
+   * all, and the selected row's buttons sat on top of the badge. A full-width basis is what
+   * actually gives them a line of their own.
+   */
   .deb-field-row__actions {
+    flex-basis: 100%;
+    justify-content: flex-end;
     margin-left: auto;
   }
 }

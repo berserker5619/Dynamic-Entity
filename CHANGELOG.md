@@ -35,6 +35,9 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Remove, duplicate, move and every property setter also did nothing for it. A group child
   now resolves like any other field. It moves only among its siblings, and its duplicate lands
   beside it in the same group.
+- **Builder rows show their field name on a phone.** Below 560px a top-level row's name
+  collapsed to zero width, leaving only the type badge and id, and the selected row's buttons
+  overlapped the badge. The buttons now always take a line of their own, as intended.
 - **Required fields in the demo's `patientIntake` and `itAssets` configs are now required.**
   Fifteen fields set `required: true` on the field rather than under `validators`.
 - **A typo'd rule operator no longer validates clean.** `evaluateCondition` returns `false` for
