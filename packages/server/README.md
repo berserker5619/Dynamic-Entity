@@ -59,7 +59,7 @@ app.use(
 | Route | Does |
 |---|---|
 | `GET /:entity/template?fields=&format=` | Streams a CSV or xlsx template. No `fields` means every column |
-| `POST /:entity/preview` | multipart → headers, a sample, a suggested mapping, a row count |
+| `POST /:entity/preview` | multipart → headers, a sample, a suggested mapping, a row count, the `arrayBound` the suggestion was sized for, and a CSV's `delimiter` |
 | `POST /:entity/validate` | The identical import pipeline with **no** writing — every error, nothing stored. Answers `written: false` |
 | `POST /:entity/import` | multipart + a `plan` field → runs the import, calling `onImport` per batch. Answers `written: true` |
 

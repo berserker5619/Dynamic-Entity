@@ -510,6 +510,11 @@ Four things worth knowing before you wire it up:
 - **There is no deduplication**, because a config has no natural-key concept to deduplicate on.
 - **The router has no authentication.** It is an upload endpoint; guarding it is yours.
 
+Comma CSV, semicolon CSV and TSV are read with nothing registered: the separator is detected
+from the header line, and a semicolon file reads `1,5` as one and a half. Repeating fields are
+offered as many rows as the sheet names, and numbered headers like `Phone 2 Number` are matched
+to their row.
+
 Fields a cell cannot carry — `image`, `file`, an array nested inside another array — are
 *reported* rather than dropped, because a missing column looks identical to one nobody thought
 of. `[templateFormat]="'xlsx'"` writes a real workbook through a server transport, and is

@@ -71,6 +71,14 @@ config is loaded, and the builder maintains it as you edit:
 
 Two fields may share `address`; only one is `work.address`.
 
+A `refererField` that differs from the field's position is an **override**: the value is
+written there instead. On a `group` or `array` placed directly on a tab, the override moves the
+whole container. The form saves the container's value at the override, and an import addresses
+the children under it (`contact.phones.0.number`). An override on a container nested deeper is
+ignored by the form, and `validateConfig` warns about it. An override on a field *inside* an
+array is an error, because it cannot say which row it means. A ref the builder stamped is a
+field's own position, so it is never an override and never flagged.
+
 ### Naming a field in a reference
 
 Anywhere the config points at a field — a `showWhen` key, `entityReference.parentField`, an
@@ -659,7 +667,10 @@ in dev mode naming the keys it could not place.
 
 `<ngx-entity-import>` turns a CSV or spreadsheet into records. **It works with no backend and
 nothing registered** — the file is read in the tab by a dependency-free parser and mapped by
-`@dynamic-entity/core`. Two seams exist for the cases where that has to change, and they answer
+`@dynamic-entity/core`. That parser reads comma CSV, semicolon CSV and TSV. The separator is
+detected from the header line (`.tsv` always means tab), and a semicolon file's numbers are
+read with a decimal comma, because Excel writes `;` exactly where `1,5` means one and a half.
+The server reads delimited text the same way. Two seams exist for the cases where that has to change, and they answer
 different questions: `sheetParser` reads the file, `importTransport` decides *where the work
 happens*. Collapsing them into one option would make each answer imply the other.
 
@@ -745,11 +756,32 @@ A field inside an array *inside another array* gets no columns at all — the co
 product of both limits, and a template nobody can read is not a template. It is reported as
 `unsupported`, so the gap is visible rather than mysterious.
 
+**The wizard sizes itself from the sheet.** The mapper, the in-browser preview and the server's
+preview all derive with `arrayBoundFor(headers, config, plan?)`. That is the highest row any
+header names, or the highest row an existing plan maps, and never fewer than 3. So a sheet with
+`Phone 6 Number` is offered six rows, and the preview reports the number it used as
+`arrayBound`. The mapper also has an "Add a … row" button per repeating field.
+
+**Numbered headers are recognised.** Besides a column's ref (`phones.1.number`) and its
+generated heading (`Phone / Number 2`), suggestion matches the spellings customer sheets use:
+`Phone 2 Number`, `phone_2_number`, `PhoneNumber2`, `Number (2)`, and a bare `Phone 2` when
+the array has one child. These are tagged `guess`. A spelling that two arrays answer to
+(`Number 1`, when phones and faxes both have a `number`) matches neither.
+
 **Never pass `maxArrayRows` when applying a plan.** `applyMapping` reads the bound out of the
-plan's own refs. That parameter used to be the caller's to supply and was a source of silent
-data loss: a plan authored for five rows, applied with the default three, had two of its
-columns quietly discarded and reported a clean import. The information was in the plan all
-along, and asking for it again is what created the chance to disagree.
+plan's own refs, and the option is deprecated (it has no effect, and is removed in 3.0). That
+parameter used to be the caller's to supply and was a source of silent data loss: a plan
+authored for five rows, applied with the default three, had two of its columns quietly
+discarded and reported a clean import. The information was in the plan all along, and asking
+for it again is what created the chance to disagree.
+
+A stored plan opened in the mapper keeps every entry it arrived with — a fixed value
+(`constant`), a row beyond the default three, a ref the config no longer has — and an
+untouched entry is emitted exactly as it arrived. A ref for a field that no longer exists is
+listed for the user to remove, because the import refuses the plan until it is gone.
+
+Rows are compacted: data only in `Phone 2` is imported as `phones[0]`. A plan that relies on
+position (Phone 1 = primary) cannot say so yet.
 
 The template picker offers a repeating field **once**, as `contacts.email`, and
 `buildTemplateSpec` matches a column by its ref *or* by its ref with row numbers stripped.
@@ -762,6 +794,13 @@ that is the renderer's actual contract: a `validation` rule attaches an error, a
 `visibility` rule hides a field, which must relax its `required`. Checking only the validators
 would both accept records the form rejects and reject records the form accepts — a required
 field hidden by a rule being the case that bites first.
+
+The rules are evaluated exactly as the form evaluates them. Every rule runs against one value
+map in which each field answers to its bare id and to its `[ref]`, so a rule the builder wrote
+with refs applies on import too. The precedence is also the form's: a hide beats a show, and a
+show beats `showWhen` or `visibility: false`. A hidden container hides its children, and a
+hidden tab relaxes every field it owns. A bare id that two scopes share hides both fields, as
+it does in the form, and `validateConfig` reports that reference as ambiguous.
 
 So pass the rules. A wizard given none checks field validators only:
 

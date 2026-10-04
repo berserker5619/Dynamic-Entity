@@ -26,6 +26,7 @@ npm install @dynamic-entity/core
 - **Entity reference contracts** — `EntityReferenceLoader`, option normalisation, and pure cascade filtering (`lookupFilter` / `lookupPath`).
 - **File contracts** — canonical `FileRef` and `FileUploadHandler`, shared by the image and file field types.
 - **Config validation** — `validateConfig` checks structure, field types against the catalog, ids unique per scope, and references that would never resolve — including bracketed field paths and, when passed, `FormRule`s. A JSON Schema for editor completion ships alongside it at `@dynamic-entity/core/schema`. The same check is the `dynamic-entity validate` command, for gating configs in CI.
+- **Spreadsheet import engine** — `deriveImportColumns`, `suggestMapping` and `applyMapping` turn sheet rows into records against a config, applying the field validators and the rules the way the form does. The engine also includes a streaming CSV reader that detects `,` / `;` / tab (`createCsvReader`, `parseCsv`), numbered-header matching for repeating fields, `arrayBoundFor` to size them from a sheet, and `cellText` for rendering typed cells. It is pure, so the same engine runs in the browser and in `@dynamic-entity/server`.
 - **Record migration** — `migrateRecord`, `needsMigration`, `stampRecord` and `validateMigrations` move a saved record forward as a config's `version` changes. Pure, so the same steps run in the browser and on a server.
 
 ---
