@@ -243,6 +243,21 @@ describe('guardZip', () => {
     });
   });
 
+  /**
+   * Every zip starts `PK`, so format sniffing sends a Word file here. It is not a broken
+   * workbook, and calling it one sends the user off to repair a file that was never a sheet.
+   */
+  it.each([
+    ['a .docx', ['[Content_Types].xml', 'word/document.xml', 'word/_rels/document.xml.rels']],
+    ['a plain zip', ['notes.txt', 'photo.jpg']],
+  ])('names %s as an unsupported format, not a malformed workbook', async (_label, names) => {
+    const bytes = rawZip(names.map(name => ({ name, data: deflate('<x/>') })));
+    await expect(guardZip(chunked(bytes, 16), LIMITS)).rejects.toMatchObject({
+      code: 'UNSUPPORTED_FORMAT',
+      message: expect.stringContaining('zip archive that is not an Excel workbook'),
+    });
+  });
+
   it('treats a zip64 size sentinel as no size at all', async () => {
     // Declaring 0xFFFFFFFF means "the real size is in the extra field", which is a size this
     // never reads — so the entry is measured by what comes out of it instead. A file that

@@ -119,6 +119,9 @@ describe('reading a workbook', () => {
     const { default: JSZip } = await import('jszip');
     const zip = new JSZip();
     zip.file('[Content_Types].xml', '<Types/>');
+    // A workbook part, or this is not a workbook at all — a different refusal, covered in
+    // guard-zip.spec.ts.
+    zip.file('xl/workbook.xml', '<workbook/>');
     const bytes = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
     await expect(readSheet({ stream: bytes })).rejects.toMatchObject({ code: 'MALFORMED_FILE' });
   });

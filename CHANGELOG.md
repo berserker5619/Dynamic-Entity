@@ -77,6 +77,15 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   has both, and points at SheetJS's CDN, because the npm `xlsx` package stopped at a vulnerable
   0.18.5.
 
+- **A `.docx` or plain `.zip` is named as the wrong kind of file.** Any zip passes the `PK`
+  sniff, so these reached the workbook reader and failed as a `MALFORMED_FILE` workbook with no
+  worksheet. An archive with no `xl/workbook.xml` is now `UNSUPPORTED_FORMAT` (415): "a zip
+  archive that is not an Excel workbook". It is still refused before exceljs is constructed.
+
+### Deprecated
+- `ApplyMappingOptions.maxArrayRows`. It has had no effect since 2.1, because the plan decides
+  how far its array rows reach. It will be removed in 3.0.
+
 ### Added
 - **Numbered array headers are recognised.** `suggestMapping` now matches the spellings
   customer sheets use for a row of a repeating field: `Phone 2 Number`, `phone_2_number`,

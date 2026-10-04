@@ -205,6 +205,12 @@ createImportRouter({ ...options, limits: { maxBytes: 50 * 1024 * 1024, batchSize
 | `maxFields` / `maxFieldBytes` / `maxFieldNameBytes` / `maxFiles` | 16 / 1 MB / 200 / 1 | Multipart abuse |
 | `idleTimeoutMs` / `totalTimeoutMs` | 30 s / 10 min | Stalled and never-ending uploads |
 
+A limit refuses with a code, never a stack: `maxBytes` → `TOO_LARGE` (413); the sheet bounds →
+`SHEET_TOO_LARGE` (413); the three archive bounds → `ARCHIVE_REFUSED` (400), raised while the
+entry inflates, before anything reaches exceljs; the timeouts → `TIMEOUT` (408). A zip that is
+not a workbook at all — a `.docx`, say — is `UNSUPPORTED_FORMAT` (415), as are `.xls` and
+UTF-16 text.
+
 `maxCellLength` is doing double duty: `validators.pattern` is a config-supplied regex that runs
 against cell text, and on a server that text is attacker-chosen. Bounding the input bounds a
 catastrophic backtrack. See [SECURITY.md](../../SECURITY.md).

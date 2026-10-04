@@ -851,7 +851,11 @@ export interface ApplyMappingOptions extends CoerceOptions, ValidateRecordOption
    * header is row 1 and that is the number they see in the gutter.
    */
   firstRowNumber?: number;
-  /** Must match what the columns were derived with, or indexed refs will not line up. */
+  /**
+   * @deprecated Has no effect, and has not since 2.1: the plan decides how far its array rows
+   * reach (`arrayBoundOf`), so a plan can never be applied shorter than it was written.
+   * Removed in 3.0.
+   */
   maxArrayRows?: number;
 }
 

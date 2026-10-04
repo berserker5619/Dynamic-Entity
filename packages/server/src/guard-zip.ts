@@ -538,6 +538,15 @@ export async function guardZip(
   }
 
   if (!sheet) {
+    // Any zip starts `PK`, so a `.docx` or a plain archive reaches here too. Without a workbook
+    // part it is not a broken workbook but a different kind of file, and saying so is what
+    // tells the user to export the right thing rather than to repair this one.
+    if (!kept.has('xl/workbook.xml')) {
+      throw new ImportError(
+        'UNSUPPORTED_FORMAT',
+        'This is a zip archive that is not an Excel workbook. Upload an .xlsx or .csv file.',
+      );
+    }
     throw new ImportError('MALFORMED_FILE', 'This workbook has no worksheet.');
   }
 
