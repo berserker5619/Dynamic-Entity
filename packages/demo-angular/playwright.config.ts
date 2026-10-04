@@ -121,6 +121,7 @@ export default defineConfig({
       testMatch: [
         /accessibility\.spec\.ts/,
         /demo\.spec\.ts/,
+        /field-types-2-2\.spec\.ts/,
         /markdown-field\.spec\.ts/,
         /record-presentation-modes\.spec\.ts/,
         /rules-banners-and-tabs\.spec\.ts/,
