@@ -372,6 +372,17 @@ describe('validateConfig', () => {
     expect(errors(bad)[0].message).toContain('never load');
   });
 
+  // Nothing reads a field-level `required`, so the field was silently optional everywhere.
+  it('rejects required set on the field instead of under validators', () => {
+    const misplaced = {
+      ...ok,
+      tabs: [{ id: 'main', label: {}, fields: [{ id: 'name', type: 'text', label: {}, required: true }] }],
+    };
+    expect(errors(misplaced)).toEqual([
+      expect.objectContaining({ path: 'tabs[0].fields[0].required', message: expect.stringContaining('validators.required') }),
+    ]);
+  });
+
   it('rejects a colSpan outside the grid', () => {
     const bad = { ...ok, tabs: [{ ...ok.tabs![0], fields: [{ id: 'x', type: 'text', label: {}, colSpan: 13 }] }] };
     expect(errors(bad)[0].path).toBe('tabs[0].fields[0].colSpan');

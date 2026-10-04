@@ -27,7 +27,7 @@
             "en": "Full Name",
             "de": "Vollständiger Name"
           },
-          "required": true,
+          "validators": { "required": true },
           "colSpan": 6,
           "table": {
             "visible": true,
@@ -41,7 +41,7 @@
             "en": "Date of Birth",
             "de": "Geburtsdatum"
           },
-          "required": true,
+          "validators": { "required": true },
           "colSpan": 6,
           "table": {
             "visible": true
@@ -111,7 +111,7 @@
             "en": "Triage Acuity",
             "de": "Triage-Dringlichkeit"
           },
-          "required": true,
+          "validators": { "required": true },
           "colSpan": 4,
           "options": [
             { "en": "1 - Immediate / Resuscitation", "de": "1 - Sofort / Wiederbelebung" },
@@ -158,7 +158,7 @@
             "de": "Notfallkontakt & Telefon"
           },
           "colSpan": 12,
-          "required": true
+          "validators": { "required": true }
         }
       ]
     },
@@ -237,7 +237,7 @@
             "en": "Chief Medical Complaint",
             "de": "Hauptbeschwerde"
           },
-          "required": true,
+          "validators": { "required": true },
           "colSpan": 12
         },
         {
@@ -276,7 +276,7 @@
             "en": "Coverage Type",
             "de": "Versicherungsart"
           },
-          "required": true,
+          "validators": { "required": true },
           "colSpan": 6,
           "options": [
             { "en": "Commercial / Private", "de": "Privatversicherung" },
@@ -337,7 +337,7 @@
             "en": "HIPAA / GDPR Data Processing Acknowledged",
             "de": "Datenschutzerklärung (DSGVO) zur Kenntnis genommen"
           },
-          "required": true,
+          "validators": { "required": true },
           "colSpan": 12
         },
         {
@@ -347,7 +347,7 @@
             "en": "Consent for Examination & Diagnostic Testing",
             "de": "Einwilligung in Untersuchung und Diagnostik"
           },
-          "required": true,
+          "validators": { "required": true },
           "colSpan": 12
         },
         {
@@ -357,7 +357,7 @@
             "en": "Admitting Clinician / Triage Nurse",
             "de": "Aufnehmende Fachkraft / Pflegekraft"
           },
-          "required": true,
+          "validators": { "required": true },
           "colSpan": 6
         },
         {

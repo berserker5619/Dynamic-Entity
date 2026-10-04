@@ -17,8 +17,20 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `compareToField` are errors. Each of those rules was already dead at runtime, so fixing the
   config changes behaviour only in that the rule starts to fire. A rule with no targets is a
   warning.
+- **`validateConfig` reports `required` set on a field instead of under `validators`.** Nothing
+  reads a field-level `required`, so such a field was optional everywhere. Move it to
+  `validators.required`. The field is then required in the form and in import, which can
+  refuse records and rows that used to pass.
 
 ### Fixed
+- **A tab hidden by a rule no longer blocks Save.** The form took hidden *fields* out of
+  validity but not the fields of a hidden *tab*. A required field on a rule-hidden tab kept the
+  form invalid, and the error summary lists only visible tabs, so Save did nothing and said
+  nothing. A tab that does not render now relaxes every field it owns, sub-tabs and group
+  children included. This applies both to a rule-hidden tab and to `visibility: false` with no
+  rule showing it. Import already behaved this way.
+- **Required fields in the demo's `patientIntake` and `itAssets` configs are now required.**
+  Fifteen fields set `required: true` on the field rather than under `validators`.
 - **A typo'd rule operator no longer validates clean.** `evaluateCondition` returns `false` for
   an operator it has no case for, so a misspelling disabled its rule without a word. The error
   suggests the operator that was probably meant (`EQUALS` → `EQUAL`, `GREATER_THAN` →

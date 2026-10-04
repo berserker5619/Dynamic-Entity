@@ -433,6 +433,17 @@ export function validateConfig(
       add('error', `${path}.colSpan`, 'colSpan must be between 1 and 12.');
     }
 
+    // The commonest misplaced key there is, and it fails silent: nothing reads a field-level
+    // `required`, so the field renders, imports and saves as optional. Two of the demo's own
+    // configs carried it on fifteen fields before this check existed.
+    if ('required' in (field as object)) {
+      add(
+        'error',
+        `${path}.required`,
+        '`required` is not a field property, so this field is not required. Move it to `validators.required`.',
+      );
+    }
+
     checkValidators(field, path);
     checkDefaultValue(field, path);
     checkOptions(field, path);

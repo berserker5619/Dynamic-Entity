@@ -27,9 +27,9 @@
             "en": "Asset Tag (Internal ID)",
             "de": "Inventarnummer"
           },
-          "required": true,
           "colSpan": 4,
           "validators": {
+            "validators": { "required": true },
             "pattern": "^AST-[0-9]{5}$"
           },
           "hint": {
@@ -48,7 +48,7 @@
             "en": "Device Category",
             "de": "Gerätekategorie"
           },
-          "required": true,
+          "validators": { "required": true },
           "colSpan": 4,
           "options": [
             { "en": "Workstation / Laptop", "de": "Notebook / Arbeitsplatz" },
@@ -67,7 +67,7 @@
             "en": "Manufacturer / OEM",
             "de": "Hersteller"
           },
-          "required": true,
+          "validators": { "required": true },
           "colSpan": 4,
           "options": [
             { "en": "Apple Inc." },
@@ -87,7 +87,7 @@
             "en": "Hardware Model",
             "de": "Modellbezeichnung"
           },
-          "required": true,
+          "validators": { "required": true },
           "colSpan": 6
         },
         {
@@ -97,7 +97,7 @@
             "en": "OEM Serial Number",
             "de": "Seriennummer"
           },
-          "required": true,
+          "validators": { "required": true },
           "colSpan": 6,
           "table": {
             "visible": true
@@ -141,7 +141,7 @@
             "en": "Lifecycle Status",
             "de": "Status"
           },
-          "required": true,
+          "validators": { "required": true },
           "colSpan": 6,
           "options": [
             { "en": "In Service / Deployed", "de": "Im Einsatz" },
