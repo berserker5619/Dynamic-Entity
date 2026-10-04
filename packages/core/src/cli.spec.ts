@@ -202,6 +202,27 @@ describe('runValidateCli', () => {
     expect(stdout.join('\n')).toContain('rules[0].fieldId');
   });
 
+  // A typo'd operator used to validate clean and leave the rule dead. CI runs this CLI, so
+  // the exit code is what turns the typo into a red build.
+  it('exits 1 on an unknown rule operator', () => {
+    const rules = [
+      {
+        formConfigId: 'clients',
+        fieldId: 'name',
+        conditions: [{ operator: 'EQUALS', compareType: 'value', value: 'x' }],
+        action: { type: 'visibility', value: false },
+        targets: [{ id: 'name', type: 'field' }],
+        enabled: true,
+        priority: 1,
+      },
+    ];
+    const { impl, stdout } = io({ 'c.json': JSON.stringify(ok), 'r.json': JSON.stringify(rules) });
+    expect(runValidateCli(['validate', '--rules', 'r.json', 'c.json'], impl)).toBe(1);
+    const out = stdout.join('\n');
+    expect(out).toContain('Unknown operator "EQUALS"');
+    expect(out).toContain('Did you mean "EQUAL"?');
+  });
+
   it('exits 2 when --rules is not an array', () => {
     const { impl, stderr } = io({
       'c.json': JSON.stringify(ok),

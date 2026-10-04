@@ -21,6 +21,7 @@ import {
   refOf,
 } from './field-scopes';
 import { OPTION_KEY, UNSAFE_PATH_KEYS, isUnsafePath, resolveLabel } from './form-logic';
+import { RULE_ACTION_TYPES, RULE_OPERATORS } from './form-model.types';
 import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from './form-model.types';
 
 export interface ConfigProblem {
@@ -61,6 +62,41 @@ export interface ValidateConfigOptions {
 }
 
 const ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+
+const KNOWN_OPERATORS = new Set<string>(RULE_OPERATORS);
+const KNOWN_ACTION_TYPES = new Set<string>(RULE_ACTION_TYPES);
+
+/**
+ * Operator spellings people reach for that the engine does not use.
+ *
+ * Every one of these has shipped in a real config: `test_data.json` carried `EQUALS` and
+ * `GREATER_THAN` for two releases, and both rules were dead the whole time.
+ */
+const OPERATOR_NEAR_MISSES: Readonly<Record<string, string>> = {
+  EQUALS: 'EQUAL',
+  EQ: 'EQUAL',
+  NOT_EQUALS: 'NOT_EQUAL',
+  NEQ: 'NOT_EQUAL',
+  GREATER_THAN: 'MORE_THAN',
+  GT: 'MORE_THAN',
+  GREATER_THAN_OR_EQUAL: 'MORE_THAN_EQUAL',
+  GREATER_THAN_EQUAL: 'MORE_THAN_EQUAL',
+  MORE_THAN_OR_EQUAL: 'MORE_THAN_EQUAL',
+  GTE: 'MORE_THAN_EQUAL',
+  LT: 'LESS_THAN',
+  LESS_THAN_OR_EQUAL: 'LESS_THAN_EQUAL',
+  LTE: 'LESS_THAN_EQUAL',
+  BEFORE: 'DATE_BEFORE',
+  AFTER: 'DATE_AFTER',
+  CHANGED: 'VALUE_CHANGED',
+};
+
+/** The known operator a misspelling most likely meant, or `undefined`. */
+function suggestOperator(operator: string): string | undefined {
+  const upper = operator.trim().toUpperCase().replace(/[\s-]+/g, '_');
+  if (KNOWN_OPERATORS.has(upper)) return upper;
+  return OPERATOR_NEAR_MISSES[upper];
+}
 
 /** Built-in validator names the registry resolves without anything registered. */
 const PARAMETERISED_BUILTINS = new Set(['min', 'max', 'minLength', 'maxLength']);
@@ -618,13 +654,59 @@ export function validateConfig(
       add('error', `${base}.action`, 'An action object is required; the rule is skipped at runtime.');
     }
 
+    // The engine has no branch for an action type outside the list, so a rule carrying one
+    // fires and changes nothing.
+    if (
+      rule.action &&
+      typeof rule.action === 'object' &&
+      !Array.isArray(rule.action) &&
+      !KNOWN_ACTION_TYPES.has(rule.action.type as string)
+    ) {
+      add(
+        'error',
+        `${base}.action.type`,
+        `Unknown action type "${String(rule.action.type)}"; the rule changes nothing when it fires. ` +
+          `Expected one of: ${RULE_ACTION_TYPES.join(', ')}.`,
+      );
+    }
+    // A warning, not an error: a rule saved half-authored, before its targets were picked,
+    // is a legitimate draft. It is still worth saying, because it looks like it works.
+    if (Array.isArray(rule.targets) && rule.targets.length === 0) {
+      add('warning', `${base}.targets`, 'This rule has no targets; it changes nothing when it fires.');
+    }
+
     flagRef(rule.fieldId, `${base}.fieldId`, 'The rule will never trigger.');
     asArray(rule.conditions).forEach((condition, j) => {
-      flagRef(
-        condition?.compareToField,
-        `${base}.conditions[${j}].compareToField`,
-        'The comparison will never match.',
-      );
+      const at = `${base}.conditions[${j}]`;
+      if (!condition || typeof condition !== 'object') {
+        add('error', at, 'Condition is missing or not an object; the rule can never fire.');
+        return;
+      }
+      // `evaluateCondition` returns `false` for an operator it has no case for, so a typo
+      // does not fail loudly — the rule simply never fires.
+      if (!KNOWN_OPERATORS.has(condition.operator as string)) {
+        const suggestion = typeof condition.operator === 'string' ? suggestOperator(condition.operator) : undefined;
+        add(
+          'error',
+          `${at}.operator`,
+          `Unknown operator "${String(condition.operator)}"; the condition can never hold.` +
+            (suggestion ? ` Did you mean "${suggestion}"?` : ''),
+        );
+      }
+      // Without `compareToField` the engine falls back to `value`, so the condition compares
+      // against a literal the author never meant — usually `undefined`.
+      if (
+        condition.compareType === 'field' &&
+        (typeof condition.compareToField !== 'string' || !condition.compareToField.trim())
+      ) {
+        add(
+          'error',
+          `${at}.compareToField`,
+          'compareType "field" needs a compareToField; without one the condition compares against `value` instead.',
+        );
+        return;
+      }
+      flagRef(condition.compareToField, `${at}.compareToField`, 'The comparison will never match.');
     });
     asArray(rule.targets).forEach((target, j) => {
       if (!target?.id) return;
@@ -642,6 +724,14 @@ export function validateConfig(
               `to a tab. Target the fields instead.`,
           );
         }
+        return;
+      }
+      if (target.type !== 'field') {
+        add(
+          'error',
+          `${base}.targets[${j}].type`,
+          `Unknown target type "${String(target.type)}"; expected "field" or "tab". The action will never apply.`,
+        );
         return;
       }
       flagRef(target.id, `${base}.targets[${j}].id`, 'The action will never apply.');

@@ -1,3 +1,4 @@
+import { RULE_ACTION_TYPES, RULE_OPERATORS } from './form-model.types';
 import type { EntityFormConfig, FormRule } from './form-model.types';
 import { FIELD_TYPE_CATALOG } from './field-catalog';
 import { formatConfigProblems, isConfigValid, validateConfig } from './validate-config';
@@ -485,6 +486,87 @@ describe('validateConfig', () => {
       ],
     });
     expect(problems.some(p => p.message.includes('never match'))).toBe(true);
+  });
+
+  /**
+   * The engine returns `false` for an operator it has no case for, so a typo does not fail —
+   * the rule just never fires. `test_data.json` shipped `EQUALS` and `GREATER_THAN` that way.
+   */
+  describe('rule vocabulary', () => {
+    const ruleErrors = (rule: FormRule) =>
+      validateConfig(ok, { rules: [rule] }).filter(p => p.level === 'error');
+
+    it.each([
+      ['EQUALS', 'EQUAL'],
+      ['GREATER_THAN', 'MORE_THAN'],
+      ['LESS_THAN_OR_EQUAL', 'LESS_THAN_EQUAL'],
+      ['equal', 'EQUAL'],
+    ])('rejects the operator %s and suggests %s', (typo, meant) => {
+      const problems = ruleErrors(
+        aRule({ conditions: [{ operator: typo as never, compareType: 'value', value: 1 }] }),
+      );
+      expect(problems).toHaveLength(1);
+      expect(problems[0].path).toBe('rules[0].conditions[0].operator');
+      expect(problems[0].message).toContain(`Unknown operator "${typo}"`);
+      expect(problems[0].message).toContain(`Did you mean "${meant}"?`);
+    });
+
+    it('rejects an operator with no near miss, without a suggestion', () => {
+      const [problem] = ruleErrors(
+        aRule({ conditions: [{ operator: 'SOUNDS_LIKE' as never, compareType: 'value' }] }),
+      );
+      expect(problem.message).toContain('can never hold');
+      expect(problem.message).not.toContain('Did you mean');
+    });
+
+    it('accepts every operator the engine evaluates', () => {
+      for (const operator of RULE_OPERATORS) {
+        expect(ruleErrors(aRule({ conditions: [{ operator, compareType: 'value', value: 1 }] }))).toEqual([]);
+      }
+    });
+
+    it('rejects a condition that is not an object', () => {
+      const problems = ruleErrors(aRule({ conditions: [null as never] }));
+      expect(problems.map(p => p.path)).toEqual(['rules[0].conditions[0]']);
+    });
+
+    it('rejects an unknown action type', () => {
+      const problems = ruleErrors(aRule({ action: { type: 'hide' as never, value: true } }));
+      expect(problems.map(p => p.path)).toEqual(['rules[0].action.type']);
+      expect(problems[0].message).toContain('visibility, validation, info');
+    });
+
+    it('accepts every action type the engine applies', () => {
+      for (const type of RULE_ACTION_TYPES) {
+        expect(ruleErrors(aRule({ action: { type, value: type === 'visibility' ? false : 'msg' } }))).toEqual([]);
+      }
+    });
+
+    it('rejects a target type that is neither field nor tab', () => {
+      const problems = ruleErrors(aRule({ targets: [{ id: 'name', type: 'section' as never }] }));
+      expect(problems.map(p => p.path)).toEqual(['rules[0].targets[0].type']);
+    });
+
+    // A draft rule saved before its targets were picked is legitimate, so this only warns.
+    it('warns, without erroring, on a rule with no targets', () => {
+      const problems = validateConfig(ok, { rules: [aRule({ targets: [] })] });
+      expect(problems).toEqual([
+        {
+          level: 'warning',
+          path: 'rules[0].targets',
+          message: 'This rule has no targets; it changes nothing when it fires.',
+        },
+      ]);
+    });
+
+    // The engine falls back to `value` when `compareToField` is missing, so the condition
+    // quietly compares against something the author never meant.
+    it.each([undefined, '', '  '])('rejects compareType "field" with compareToField %p', compareToField => {
+      const problems = ruleErrors(
+        aRule({ conditions: [{ operator: 'EQUAL', compareType: 'field', compareToField }] }),
+      );
+      expect(problems.map(p => p.path)).toEqual(['rules[0].conditions[0].compareToField']);
+    });
   });
 });
 

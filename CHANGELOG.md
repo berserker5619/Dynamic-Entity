@@ -8,6 +8,24 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.3.1]
+
+### Upgrading
+- **`validateConfig({ rules })` and `dynamic-entity validate --rules` now fail on a rule the
+  engine cannot apply.** An unknown operator (`EQUALS`, `GREATER_THAN`), an unknown
+  `action.type`, a target type other than `field` or `tab`, and `compareType: 'field'` without a
+  `compareToField` are errors. Each of those rules was already dead at runtime, so fixing the
+  config changes behaviour only in that the rule starts to fire. A rule with no targets is a
+  warning.
+
+### Fixed
+- **A typo'd rule operator no longer validates clean.** `evaluateCondition` returns `false` for
+  an operator it has no case for, so a misspelling disabled its rule without a word. The error
+  suggests the operator that was probably meant (`EQUALS` → `EQUAL`, `GREATER_THAN` →
+  `MORE_THAN`). New `RULE_OPERATORS` and `RULE_ACTION_TYPES` export the vocabulary the check
+  uses, and `RuleOperator` / `RuleActionType` are derived from them, so the type and the check
+  cannot drift.
+
 ## [2.3.0]
 
 Import fixes ahead of extracting the import engine. The persisted `MappingPlan` shape is

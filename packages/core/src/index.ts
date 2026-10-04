@@ -33,6 +33,7 @@ export type {
   RuleOperator,
   RuleTarget,
 } from './form-model.types';
+export { RULE_ACTION_TYPES, RULE_OPERATORS } from './form-model.types';
 export type { EntityPermissions, RbacContext } from './rbac.types';
 export type { VersionedRecord } from './versioning.types';
 

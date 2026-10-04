@@ -314,28 +314,43 @@ export interface EntityFormConfig {
 
 // ─── Rules ──────────────────────────────────────────────────────────────────
 
-export type RuleActionType = 'visibility' | 'validation' | 'info';
+/**
+ * Every action type the engine applies, as data.
+ *
+ * The type is derived from the list so the two cannot drift: `validateConfig` checks a rule's
+ * `action.type` against this exact array, and an action the engine has no branch for is
+ * otherwise skipped without a word.
+ */
+export const RULE_ACTION_TYPES = ['visibility', 'validation', 'info'] as const;
+export type RuleActionType = (typeof RULE_ACTION_TYPES)[number];
 export type RuleCompareType = 'value' | 'field';
 
-export type RuleOperator =
-  | 'EQUAL'
-  | 'NOT_EQUAL'
-  | 'CONTAINS'
-  | 'NOT_CONTAINS'
-  | 'STARTS_WITH'
-  | 'ENDS_WITH'
-  | 'IS_EMPTY'
-  | 'IS_NOT_EMPTY'
-  | 'LESS_THAN'
-  | 'MORE_THAN'
-  | 'LESS_THAN_EQUAL'
-  | 'MORE_THAN_EQUAL'
-  | 'DATE_BEFORE'
-  | 'DATE_AFTER'
-  | 'IN'
-  | 'NOT_IN'
-  | 'HAS_ITEMS'
-  | 'VALUE_CHANGED';
+/**
+ * Every operator `evaluateCondition` understands, as data — the same reason as
+ * `RULE_ACTION_TYPES`. An operator outside this list falls to the engine's `default` branch,
+ * which returns `false`, so a typo silently disables its rule.
+ */
+export const RULE_OPERATORS = [
+  'EQUAL',
+  'NOT_EQUAL',
+  'CONTAINS',
+  'NOT_CONTAINS',
+  'STARTS_WITH',
+  'ENDS_WITH',
+  'IS_EMPTY',
+  'IS_NOT_EMPTY',
+  'LESS_THAN',
+  'MORE_THAN',
+  'LESS_THAN_EQUAL',
+  'MORE_THAN_EQUAL',
+  'DATE_BEFORE',
+  'DATE_AFTER',
+  'IN',
+  'NOT_IN',
+  'HAS_ITEMS',
+  'VALUE_CHANGED',
+] as const;
+export type RuleOperator = (typeof RULE_OPERATORS)[number];
 
 export interface RuleCondition {
   operator: RuleOperator;
