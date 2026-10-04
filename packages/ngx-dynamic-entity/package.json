@@ -5,7 +5,7 @@
   "//typings": "Local workspace resolution only: ng-packagr 21 writes types/ngx-dynamic-entity.d.ts into dist/package.json. Do NOT add a 'main' field here — ng-packagr does not generate one, so it would be copied verbatim and resolve wrongly in the published package.",
   "typings": "./dist/types/ngx-dynamic-entity.d.ts",
   "scripts": {
-    "build": "npx ng-packagr -p ng-package.json",
+    "build": "npx ng-packagr -p ng-package.json && node export-styles.mjs",
     "test": "jest",
     "lint": "tsc --noEmit && tsc --noEmit -p tsconfig.spec.json",
     "test:coverage": "jest --coverage"

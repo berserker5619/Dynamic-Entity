@@ -37,6 +37,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -650,6 +651,18 @@ try {
 } catch {
   console.error(`\nFAIL: consumer compile failed against Angular ${angularMajor}.`);
   console.error(`      Project kept at ${proj}`);
+  process.exit(1);
+}
+
+// The README tells consumers to `@import 'ngx-dynamic-entity/styles.css'`. ng-packagr writes an
+// `exports` map, and a subpath it does not list cannot be imported — by Node, by esbuild, or by
+// the Angular builder. Inside the workspace the import resolves through a symlink to the source
+// folder, which has no map, so only a packed tarball can show this.
+step('Resolving ngx-dynamic-entity/styles.css as a consumer would');
+try {
+  createRequire(path.join(proj, 'package.json')).resolve('ngx-dynamic-entity/styles.css');
+} catch (error) {
+  console.error(`\nFAIL: ngx-dynamic-entity/styles.css does not resolve: ${error.message}`);
   process.exit(1);
 }
 

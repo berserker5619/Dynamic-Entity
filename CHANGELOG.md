@@ -98,6 +98,12 @@ unchanged, and every API change is additive.
   worksheet. An archive with no `xl/workbook.xml` is now `UNSUPPORTED_FORMAT` (415): "a zip
   archive that is not an Excel workbook". It is still refused before exceljs is constructed.
 
+- **`@import 'ngx-dynamic-entity/styles.css'` resolves.** The README has given this line since
+  the stylesheet shipped, but ng-packagr's `exports` map listed only the entry point, so the
+  import failed in every consumer build. The workspace never noticed because it resolves the
+  package through a symlink to the source folder. The published manifest now exports
+  `./styles.css`, and `verify-consumer.mjs` resolves it from a packed tarball.
+
 ### Deprecated
 - `ApplyMappingOptions.maxArrayRows`. It has had no effect since 2.1, because the plan decides
   how far its array rows reach. It will be removed in 3.0.
