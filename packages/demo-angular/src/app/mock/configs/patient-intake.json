@@ -212,6 +212,25 @@
           }
         },
         {
+          "id": "knownAllergens",
+          "type": "tags",
+          "label": {
+            "en": "Known Allergens",
+            "de": "Bekannte Allergene"
+          },
+          "colSpan": 6
+        },
+        {
+          "id": "allergyActionPlan",
+          "type": "textarea",
+          "label": {
+            "en": "Allergy Emergency Action Plan",
+            "de": "Notfallplan bei allergischer Reaktion"
+          },
+          "colSpan": 6,
+          "visibility": false
+        },
+        {
           "id": "chiefComplaint",
           "type": "textarea",
           "label": {

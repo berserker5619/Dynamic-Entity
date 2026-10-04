@@ -47,7 +47,75 @@ export const DEMO_RULES: Readonly<Record<string, FormRule[]>> = {
       priority: 1,
     },
   ],
+  /*
+   * One rule per behaviour that only a browser can show: a banner a person dismisses, a tab
+   * that leaves the form, a warning that depends on what the record was loaded with, and a
+   * field that answers an array growing. `rules-banners-and-tabs.spec.ts` drives each.
+   */
+  patientIntake: [
+    {
+      id: 'severe-pain-banner',
+      formConfigId: 'patientIntake',
+      fieldId: '[clinicalHistory.painLevel]',
+      // `info` is always a dismissible banner. It is keyed by target, so it sits on the slider
+      // that raised it rather than at the top of the form.
+      conditions: [{ operator: 'MORE_THAN_EQUAL', compareType: 'value', value: 8 }],
+      action: { type: 'info', value: 'Severe pain reported: notify the attending physician.' },
+      targets: [{ id: '[clinicalHistory.painLevel]', type: 'field' }],
+      enabled: true,
+      priority: 1,
+    },
+    {
+      id: 'hide-consent-for-minors',
+      formConfigId: 'patientIntake',
+      fieldId: '[demographics.dateOfBirth]',
+      // A minor's consent is a guardian's, recorded elsewhere, so the whole tab goes — and with
+      // it the three required fields on it, which a hidden tab must not hold a Save hostage to.
+      // The cut-off is computed when the demo loads: a fixed date would make every patient
+      // an adult eventually, and the rule would quietly stop firing.
+      conditions: [{ operator: 'DATE_AFTER', compareType: 'value', value: adultCutoff() }],
+      action: { type: 'visibility', value: false },
+      targets: [{ id: 'consentSignoff', type: 'tab' }],
+      enabled: true,
+      priority: 1,
+    },
+    {
+      id: 'triage-change-warning',
+      formConfigId: 'patientIntake',
+      fieldId: '[demographics.triageLevel]',
+      // Against the record as it was loaded, not the previous keystroke: re-selecting the
+      // original level clears the warning again.
+      conditions: [{ operator: 'VALUE_CHANGED', compareType: 'value' }],
+      action: {
+        type: 'validation',
+        value: 'Triage level changed: record the reason in the chief complaint.',
+        severity: 'warning',
+      },
+      targets: [{ id: '[demographics.triageLevel]', type: 'field' }],
+      enabled: true,
+      priority: 1,
+    },
+    {
+      id: 'show-allergy-action-plan',
+      formConfigId: 'patientIntake',
+      fieldId: '[clinicalHistory.knownAllergens]',
+      // `allergyActionPlan` carries `visibility: false`, so this show is the only way onto the
+      // screen — the first allergen added puts it there, removing the last takes it away.
+      conditions: [{ operator: 'HAS_ITEMS', compareType: 'value' }],
+      action: { type: 'visibility', value: true },
+      targets: [{ id: '[clinicalHistory.allergyActionPlan]', type: 'field' }],
+      enabled: true,
+      priority: 1,
+    },
+  ],
 };
+
+/** Eighteen years before today, as the bare `YYYY-MM-DD` a date field stores. */
+function adultCutoff(): string {
+  const today = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${today.getFullYear() - 18}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+}
 
 const STORAGE_KEY = 'de_demo_rules';
 
