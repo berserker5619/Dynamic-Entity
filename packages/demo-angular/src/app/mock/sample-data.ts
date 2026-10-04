@@ -205,6 +205,11 @@ export const ORDER_REFERENCE_DATA = {
   ],
 };
 
+/**
+ * Nested under the `order` tab, which does not set `flatData`. This seed used to hold its
+ * values at the record root, where the form reads nothing: the record opened with every field
+ * empty and its required `reference` refused the first save. `seed-records.spec.ts` checks it.
+ */
 export const ORDERS_RECORDS: Record<string, unknown>[] = [
-  { _id: 'order_001', reference: 'ORD-1001', iban: 'DE89370400440532013000', billingCity: 'Berlin' },
+  { _id: 'order_001', order: { reference: 'ORD-1001', iban: 'DE89370400440532013000', billingCity: 'Berlin' } },
 ];

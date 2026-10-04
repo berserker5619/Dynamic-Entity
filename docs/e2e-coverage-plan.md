@@ -245,11 +245,16 @@ its own commit ahead of the test that found it.
   contrived failing-load path in the demo. `rules-and-record-form.spec.ts` is deleted: both its
   checks were already asserted elsewhere, more strongly.
 
-**Follow-ups, not done**
+**Follow-ups**
 
-- `import-all-configs.spec.ts` covers nine entities and skips `patientIntake` and `itAssets`.
-- No check verifies that seeded demo records pass their own config's validators. The claims
-  bug above would have been caught by one.
-- On a new record every field counts as changed, so `VALUE_CHANGED` fires as soon as a value
-  is entered. That is correct by the operator's definition, but noisy for the triage warning.
-
+- *Done:* `import-all-configs.spec.ts` now covers `patientIntake` and `itAssets` on both
+  transports, and a new test compares its entity list with the picker, so the next entity
+  cannot be skipped.
+- *Done:* `demo-angular/src/app/mock/seed-records.spec.ts` renders every seeded record in the
+  real form, with the app's providers and rules, and fails if Save would be blocked. It fails
+  on the old claims seed, and it found one more bug: `order_001` held its values at the record
+  root instead of under the `order` tab, so it opened empty and could not be saved. That seed is
+  now fixed.
+- *Open:* on a new record every field counts as changed, so `VALUE_CHANGED` fires as soon as a
+  value is entered. That is correct by the operator's definition, but noisy for the triage
+  warning.
