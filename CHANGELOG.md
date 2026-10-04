@@ -8,7 +8,12 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [2.3.1]
+## [2.3.0]
+
+Import fixes ahead of extracting the import engine, plus fixes found by the end-to-end
+coverage work: `validateConfig` catches rules and `required` keys the runtime silently
+ignored, a rule-hidden tab no longer blocks Save, and the builder can edit fields inside a
+`group`. The persisted `MappingPlan` shape is unchanged, and every API change is additive.
 
 ### Upgrading
 - **`validateConfig({ rules })` and `dynamic-entity validate --rules` now fail on a rule the
@@ -21,6 +26,17 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   reads a field-level `required`, so such a field was optional everywhere. Move it to
   `validators.required`. The field is then required in the form and in import, which can
   refuse records and rows that used to pass.
+- **Every package needs core 2.3.** The server and the renderer import core's new helpers, so
+  their peer ranges are now `^2.3.0`.
+- **A 2.3 browser against a 2.2 server works, and logs an engine-version warning.** That
+  warning is expected until both are upgraded, and is not a refusal. Until then the old server
+  sizes previews for three array rows and reads only comma CSV. Deploy the server first.
+- **`validateConfig` may report a new error** on a config that puts an authored `refererField`
+  on a field inside an `array`. Refs the builder stamped are never flagged.
+- **Some rows that 2.2 rejected now import**, because rules addressed by `[ref]` now apply.
+  Each of them is a row the form would have saved.
+- **Stored plans that reference moved containers** produce a warning and keep importing. Save
+  them again before 3.0.
 
 ### Fixed
 - **A tab hidden by a rule no longer blocks Save.** The form took hidden *fields* out of
@@ -49,26 +65,6 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **The two rules in `test_data.json`'s `complexFullTest` now fire.** Both used a misspelt
   operator, and the info rule had no target. A test now validates every config the repository
   ships, rules included, so a typo fails `npm test`.
-
-## [2.3.0]
-
-Import fixes ahead of extracting the import engine. The persisted `MappingPlan` shape is
-unchanged, and every API change is additive.
-
-### Upgrading
-- **Every package needs core 2.3.** The server and the renderer import core's new helpers, so
-  their peer ranges are now `^2.3.0`.
-- **A 2.3 browser against a 2.2 server works, and logs an engine-version warning.** That
-  warning is expected until both are upgraded, and is not a refusal. Until then the old server
-  sizes previews for three array rows and reads only comma CSV. Deploy the server first.
-- **`validateConfig` may report a new error** on a config that puts an authored `refererField`
-  on a field inside an `array`. Refs the builder stamped are never flagged.
-- **Some rows that 2.2 rejected now import**, because rules addressed by `[ref]` now apply.
-  Each of them is a row the form would have saved.
-- **Stored plans that reference moved containers** produce a warning and keep importing. Save
-  them again before 3.0.
-
-### Fixed
 - **A `group` or `array` moved by `refererField` now imports where the form reads it.** The
   renderer moves a tab-level container's whole value to its override, but import built its
   children's addresses from ids. A moved array was therefore not unrolled at all

@@ -86,7 +86,7 @@ export class ImportPageComponent {
    *
    * Leave it out and an import checks field validators only, which is not what the form
    * enforces: a required field a rule hides still rejects the row, and a `validation` rule
-   * never fires. The demo shipped without this binding until 2.3.1, so `patientIntake` rows
+   * never fires. The demo shipped without this binding until 2.3.0, so `patientIntake` rows
    * for a minor were refused for the consent the form does not ask for.
    */
   @Input() rules: readonly FormRule[] = [];

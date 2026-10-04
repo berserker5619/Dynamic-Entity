@@ -56,7 +56,7 @@ uses.
 **Specs:** each case in `validate-config.spec.ts`; the CLI exits `1` on the operator typo
 (`cli.spec.ts`).
 
-**Changelog:** under 2.3.1 / Fixed. A config with a typo'd operator now fails validation, which
+**Changelog:** under 2.3.0 / Fixed (2.3.0 had not shipped, so it took these). A config with a typo'd operator now fails validation, which
 is the point, so note it under Upgrading.
 
 ## Step 2 — Fix the shipped data, and keep it fixed
