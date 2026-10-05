@@ -90,6 +90,30 @@ jobs:
       - name: SSR renderApplication (zoneless)
         run: node scripts/verify-consumer.mjs --angular 20 --ssr --zoneless
 
+      # E2E was the one gate this workflow did not repeat, and that gap shipped: 2.2.0 and
+      # 2.3.0 both went out while E2E on main was red (stale Linux screenshots, fixed in
+      # 33a1f5d). The cause was harmless that time; nothing stopped the next one from not
+      # being. It runs here for the same reason as the gates above rather than reading the
+      # result of the E2E workflow: a tag is usually pushed seconds after its commit, while
+      # that commit's E2E run is still going, so there is no result to read yet. It costs
+      # about ten minutes per release.
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: packages/demo-angular
+
+      - name: E2E
+        run: npx playwright test
+        working-directory: packages/demo-angular
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: release-playwright-report-${{ github.run_id }}
+          path: |
+            packages/demo-angular/playwright-report/
+            packages/demo-angular/test-results/
+          retention-days: 7
+
       # Trusted publishing needs npm >= 11.5.1, which is newer than the npm bundled with any
       # Node release, so it is installed rather than assumed. The whole job used to build on
       # Node 20 and switch to 24 only here, on the grounds that Angular 17's build tooling

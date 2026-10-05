@@ -96,7 +96,7 @@ Maintainers only, and mostly automatic:
 2. Add a `CHANGELOG.md` entry.
 3. Tag `vX.Y.Z` and push it.
 
-The Release workflow re-runs every gate, verifies the tag matches the manifests, and publishes
+The Release workflow re-runs every gate, the Playwright E2E suite included, verifies the tag matches the manifests, and publishes
 core → renderer → builder in that order (each peer-depends on the previous), then
 `@dynamic-entity/server`, which peer-depends only on core and is independent of the Angular
 two. Authentication is npm trusted publishing via OIDC — there is no token to manage.
