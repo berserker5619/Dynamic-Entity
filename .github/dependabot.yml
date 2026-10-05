@@ -39,10 +39,27 @@ updates:
           - 'angular-eslint'
           - '@angular-eslint/*'
       # Everything else, batched by risk. Minor and patch are the ones worth taking on sight.
+      #
+      # The exclusions repeat the three groups above, and they are not redundant. Without
+      # them Angular patches landed here instead of in `angular`: five PRs running (#18, #20,
+      # #22, #23, #25) moved 7–9 of the framework packages to the next patch and left the
+      # rest, whose exact `@angular/core` peer then has no resolution, so `npm ci` failed in
+      # ten seconds and each PR was closed. That held every Angular patch, and every unrelated
+      # bump batched with them, from mid-September. Keep this list in step with the groups.
       dev-minor-and-patch:
         update-types:
           - minor
           - patch
+        exclude-patterns:
+          - '@angular/*'
+          - '@angular-devkit/*'
+          - '@nguniversal/*'
+          - ng-packagr
+          - zone.js
+          - 'typescript-eslint'
+          - '@typescript-eslint/*'
+          - 'angular-eslint'
+          - '@angular-eslint/*'
     ignore:
       # No majors in the toolchain. Each of these breaks something that a group cannot
       # repair on its own.
