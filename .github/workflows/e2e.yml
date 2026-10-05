@@ -11,7 +11,16 @@ name: E2E
 #
 # Three and a half minutes does not justify splitting the signal, so there is one command and
 # every pull request gets the whole thing. The nightly stays: it catches flakiness that a
-# single run per change cannot, and drift in anything the browser depends on.
+# single run per change cannot, and drift in anything the browser depends on. (The suite has
+# since grown to 266 tests in about 8.5 minutes, which still does not justify a split.)
+#
+# CI compares screenshots against the *-linux.png baselines only. Run this workflow by hand
+# with update_snapshots ticked to regenerate them: it runs just the visual suite with
+# --update-snapshots=all and uploads the Linux set as an artifact. "all", not "changed": the
+# tests allow a 5% pixel difference, so "changed" leaves alone a baseline that has drifted
+# by less than that, which is how a stale layout survives. Linux baselines then never have
+# to be made on Windows or in a hand-built Docker container. Look at every image before
+# committing it, side by side with its *-win32.png twin.
 
 on:
   pull_request:
@@ -20,9 +29,15 @@ on:
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
+    inputs:
+      update_snapshots:
+        description: 'Regenerate the Linux visual baselines and upload them as an artifact'
+        type: boolean
+        default: false
 
 concurrency:
-  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  # A regeneration run gets a group of its own, so a push to main does not cancel it.
+  group: e2e-${{ github.workflow }}-${{ github.ref }}${{ inputs.update_snapshots && '-snapshots' || '' }}
   cancel-in-progress: true
 
 env:
@@ -59,8 +74,22 @@ jobs:
       # previously watched only for uncaught exceptions and so passed green over three field
       # types the renderer refused to draw.
       - name: E2E
+        if: ${{ !inputs.update_snapshots }}
         run: npx playwright test
         working-directory: packages/demo-angular
+
+      - name: Regenerate Linux visual baselines
+        if: ${{ inputs.update_snapshots }}
+        run: npx playwright test e2e/visual-regression.spec.ts --update-snapshots=all
+        working-directory: packages/demo-angular
+
+      - uses: actions/upload-artifact@v7
+        if: ${{ inputs.update_snapshots }}
+        with:
+          name: linux-snapshots-${{ github.run_id }}
+          path: packages/demo-angular/e2e/visual-regression.spec.ts-snapshots/*-linux.png
+          if-no-files-found: error
+          retention-days: 7
 
       - uses: actions/upload-artifact@v7
         if: failure()
