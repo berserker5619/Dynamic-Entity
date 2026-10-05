@@ -19,7 +19,7 @@ Everything CI enforces, you can run locally:
 
 | Command | What it checks |
 |---|---|
-| `npm run lint` | Control characters, build order, extension-point coverage, eslint, and each package's typecheck |
+| `npm run lint` | Control characters, build order, extension-point coverage, visual baselines in Linux/Windows pairs, eslint, and each package's typecheck |
 | `npm run check:build-graph` | Every sibling a package imports is one turbo will build first |
 | `npm run build` | All five packages via turbo |
 | `npm test` | Unit tests |
@@ -69,6 +69,12 @@ subpath.
   `npm run check:timezones` is what catches this — CI runs UTC and cannot.
 - **A test that cannot fail.** If you add a guard, check that reintroducing the bug it guards
   against actually breaks the test.
+- **A UI change with only one set of screenshots regenerated.** CI compares the
+  `*-linux.png` baselines; local runs on Windows compare `*-win32.png`. After changing what
+  the demo renders, regenerate both: Windows with `npx playwright test
+  e2e/visual-regression.spec.ts --update-snapshots=all` in `packages/demo-angular`, Linux by
+  running the E2E workflow by hand with `update_snapshots` ticked and committing the images
+  from its artifact. Look at every image first. `npm run lint` fails if a pair differs in size.
 - **A new field type without a catalog entry**, or a catalog entry without a component. The
   two registries are independent by design; both need updating. See `EXTENDING.md`.
 
