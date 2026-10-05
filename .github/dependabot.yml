@@ -21,6 +21,15 @@ updates:
     groups:
       # Angular ships its packages in lockstep and they must move together — a partial bump
       # does not install. One PR per release, not fifteen.
+      #
+      # The group is necessary but not sufficient. For a lockfile-only patch Dependabot still
+      # moved 7 of the 9 framework packages (#27, 21.2.24 -> 21.2.25) and left animations and
+      # platform-browser-dynamic, whose exact @angular/core peer then fails `npm ci`; plain
+      # `npm update` of the full set fails the same way. When that PR goes red, do the patch
+      # by hand: delete the nine node_modules/@angular/<pkg> entries (animations, common,
+      # compiler, compiler-cli, core, forms, platform-browser, platform-browser-dynamic,
+      # router) from package-lock.json and run `npm install`. It re-resolves them together
+      # within the existing ranges, and Dependabot closes its PR as superseded.
       angular:
         patterns:
           - '@angular/*'
