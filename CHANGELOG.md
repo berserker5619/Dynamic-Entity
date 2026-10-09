@@ -8,6 +8,39 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.3.1]
+
+Two places where an import on the server, an import in the browser and a record saved by the
+form did not agree. Both are behaviour changes; the persisted `MappingPlan` shape is
+unchanged.
+
+### Upgrading
+- **Every package needs core 2.3.1.** The renderer saves records through core's new
+  `placeTabFields`, so the internal ranges are now `^2.3.1`.
+- **Deploy the server along with the browser packages.** A 2.3.0 server keeps splitting a
+  comma-heavy `.tsv` on commas, and keeps writing moved containers at their override only.
+
+### Fixed
+- **`.tsv` uploads to the server now split on tabs.** The server chose the separator from the
+  header line alone, so a `.tsv` whose header held more commas than tabs (`Name`, a tab, `Note, if any`)
+  was split on commas into the wrong columns, and nothing was suggested. The browser always
+  read `.tsv` by tabs, and 2.3.0 promised exactly that. Now, once the bytes have said the file
+  is text, a name ending in `.tsv` fixes the separator as a tab on the server too. The
+  filename still never decides the format: a workbook named `.tsv` is read as a workbook.
+- **Imported records now also carry moved tab-level arrays and groups at their original
+  position, matching saved records.** The form saves a tab-level field at its position *and*
+  at its `refererField`. Import wrote a moved container only at its override, so
+  `record.<tab>.<arrayId>` was missing (or `[]` in a `flatData` tab) on an imported record
+  while a saved one held the rows. Imported records now hold them in both places. The same
+  goes for a tab-level leaf with an authored `refererField`, which the form also saved in both
+  places. Code that read only the override sees no difference; code that read the position
+  now finds the value there.
+
+### Added
+- `placeTabFields(record, tab, values, config?)` in core writes a tab's own fields at their
+  position and at each `refererField`. `extractRecord` and `applyMapping` both use it, so the
+  form and import cannot place a field differently again.
+
 ## [2.3.0]
 
 Import fixes ahead of extracting the import engine, plus fixes found by the end-to-end
