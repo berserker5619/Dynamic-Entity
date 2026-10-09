@@ -3,6 +3,7 @@ import type { EntityFormConfig, MappingPlan } from '@dynamic-entity/core';
 import { SHEET_PARSER } from '../tokens/injection-tokens';
 import { LocalImportTransport } from './local-import-transport';
 import type { ImportContext } from './import-contracts';
+import { PREVIEW_PARITY_CASES, suggestedEntries } from '../../../../core/test-fixtures/preview-parity';
 
 const STATUS = [
   { en: 'Active', de: 'Aktiv' },
@@ -171,49 +172,36 @@ describe('LocalImportTransport', () => {
 });
 
 /**
- * The same sheet and config are in `server/src/run-import.spec.ts`. Both previews must offer the
- * same number of rows, or a plan made in one wizard does not fit the other.
+ * Preview parity with the server. Every case in `core/test-fixtures/preview-parity.ts` also runs
+ * through the server's `previewSheet` in `server/src/run-import.spec.ts`, against the same
+ * `expected`, so a plan made in one wizard fits the other.
+ *
+ * Covers: `LocalImportTransport.preview` (`local-import-transport.ts:73`) →
+ * `defaultSheetParser` (`sheet-parser.ts`, `.tsv` forced to tabs, otherwise `parseCsv`'s
+ * `detectDelimiter`) → `arrayBoundFor` → `deriveImportColumns` → `suggestMapping`, with the
+ * sample rendered by `cellText`.
  */
-describe('LocalImportTransport.preview sizing', () => {
-  const PHONES: EntityFormConfig = {
-    entity: 'people',
-    tabs: [
-      {
-        id: 'main',
-        label: { en: 'Main' },
-        flatData: true,
-        fields: [
-          { id: 'name', type: 'text', label: { en: 'Name' } },
-          {
-            id: 'phones',
-            type: 'array',
-            label: { en: 'Phone' },
-            children: [
-              { id: 'number', type: 'text', label: { en: 'Number' } },
-              { id: 'kind', type: 'text', label: { en: 'Type' } },
-            ],
-          },
-        ],
-      },
-    ],
-  };
+describe('LocalImportTransport.preview, against the shared parity cases', () => {
+  for (const parity of PREVIEW_PARITY_CASES) {
+    const run = parity.knownDifference?.side === 'browser' ? it.failing : it;
+    run(parity.name, async () => {
+      TestBed.configureTestingModule({});
+      const preview = await TestBed.inject(LocalImportTransport).preview(csvFile(parity.filename, parity.text), {
+        config: parity.config,
+        lang: 'en',
+      });
 
-  it('sizes repeating fields from the headers, and suggests every named row', async () => {
-    TestBed.configureTestingModule({});
-    const transport = TestBed.inject(LocalImportTransport);
-    const preview = await transport.preview(
-      csvFile('people.csv', 'Name,Phone 1 Number,Phone 6 Number,phone_6_type\nAda,1,6,home\n'),
-      { config: PHONES },
-    );
-
-    expect(preview.arrayBound).toBe(6);
-    expect(preview.suggestion.entries.map(entry => entry.ref)).toEqual([
-      'name',
-      'phones.0.number',
-      'phones.5.number',
-      'phones.5.kind',
-    ]);
-  });
+      expect({
+        headers: preview.headers,
+        sample: preview.sample,
+        rowCount: preview.rowCount,
+        delimiter: preview.delimiter,
+        arrayBound: preview.arrayBound,
+        suggestion: suggestedEntries(preview.suggestion),
+      }).toEqual(parity.expected);
+      expect(preview.suggestion.entity).toBe(parity.config.entity);
+    });
+  }
 });
 
 /**

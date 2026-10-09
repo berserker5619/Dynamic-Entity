@@ -20,6 +20,7 @@ import {
   PLAN,
   trackedStream,
 } from './sheet.fixtures';
+import { PREVIEW_PARITY_CASES, suggestedEntries } from '../../core/test-fixtures/preview-parity';
 
 /** Collect what `onBatch` was handed, for the tests that are about the records themselves. */
 function collector(): { onBatch: OnBatch; records: Record<string, unknown>[] } {
@@ -614,45 +615,38 @@ describe('previewSheet', () => {
   });
 });
 
-/** The same sheet and config are in the Angular package's `local-import-transport.spec.ts`. */
-describe('previewSheet sizing', () => {
-  const PHONES: EntityFormConfig = {
-    entity: 'people',
-    tabs: [
-      {
-        id: 'main',
-        label: { en: 'Main' },
-        flatData: true,
-        fields: [
-          { id: 'name', type: 'text', label: { en: 'Name' } },
-          {
-            id: 'phones',
-            type: 'array',
-            label: { en: 'Phone' },
-            children: [
-              { id: 'number', type: 'text', label: { en: 'Number' } },
-              { id: 'kind', type: 'text', label: { en: 'Type' } },
-            ],
-          },
-        ],
-      },
-    ],
-  };
+/**
+ * Preview parity with the browser. Every case in `core/test-fixtures/preview-parity.ts` also runs
+ * through the Angular package's `LocalImportTransport.preview` (`local-import-transport.spec.ts`),
+ * against the same `expected`, so a plan made in one wizard fits the other.
+ *
+ * Covers: `previewSheet` (`run-import.ts:286`) → `readSheet` (`read-sheet.ts`: format by content,
+ * the header line held until `completeFirstLine`, then `detectDelimiter`) → `arrayBoundFor` →
+ * `deriveImportColumns` → `suggestMapping`, with the sample rendered by `sampleText` (core's
+ * `cellText`). Fed one byte at a time, so the held header line is split at every boundary.
+ */
+describe('previewSheet, against the shared parity cases', () => {
+  for (const parity of PREVIEW_PARITY_CASES) {
+    const run = parity.knownDifference?.side === 'server' ? it.failing : it;
+    run(parity.name, async () => {
+      const preview = await previewSheet({
+        stream: chunked(parity.text, 1),
+        filename: parity.filename,
+        config: parity.config,
+        lang: 'en',
+      });
 
-  it('sizes repeating fields from the headers, and suggests every named row', async () => {
-    const preview = await previewSheet({
-      stream: chunked('Name,Phone 1 Number,Phone 6 Number,phone_6_type\nAda,1,6,home\n'),
-      config: PHONES,
+      expect({
+        headers: preview.headers,
+        sample: preview.sample,
+        rowCount: preview.rowCount,
+        delimiter: preview.delimiter,
+        arrayBound: preview.arrayBound,
+        suggestion: suggestedEntries(preview.suggestion),
+      }).toEqual(parity.expected);
+      expect(preview.suggestion.entity).toBe(parity.config.entity);
     });
-
-    expect(preview.arrayBound).toBe(6);
-    expect(preview.suggestion.entries.map(entry => entry.ref)).toEqual([
-      'name',
-      'phones.0.number',
-      'phones.5.number',
-      'phones.5.kind',
-    ]);
-  });
+  }
 });
 
 describe('delimited text that is not comma-separated', () => {
