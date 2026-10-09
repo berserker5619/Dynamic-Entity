@@ -270,7 +270,9 @@ will name their zip `.csv`.
 
 - **CSV** — through core's dependency-free incremental parser. UTF-8, with or without a BOM.
   The separator — `,`, `;` or tab — is detected from the header line, exactly as the browser
-  detects it, and returned as `delimiter` from a preview. A `;` file is read with a **decimal
+  detects it, and returned as `delimiter` from a preview. A file named `.tsv` is always split
+  on tabs, as in the browser; that is the one thing a name decides, and only once the bytes
+  have said the file is text. A `;` file is read with a **decimal
   comma** (`1,5` is one and a half), because Excel writes `;` in precisely the locales that
   use one; pass `decimal` to `runImport` to override. Generated CSV templates stay
   comma-separated, so Excel in those locales opens them as one column — offer `xlsx` there.

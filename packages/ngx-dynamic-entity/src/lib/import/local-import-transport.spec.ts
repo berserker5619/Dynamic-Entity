@@ -183,8 +183,7 @@ describe('LocalImportTransport', () => {
  */
 describe('LocalImportTransport.preview, against the shared parity cases', () => {
   for (const parity of PREVIEW_PARITY_CASES) {
-    const run = parity.knownDifference?.side === 'browser' ? it.failing : it;
-    run(parity.name, async () => {
+    it(parity.name, async () => {
       TestBed.configureTestingModule({});
       const preview = await TestBed.inject(LocalImportTransport).preview(csvFile(parity.filename, parity.text), {
         config: parity.config,
@@ -218,8 +217,7 @@ describe('LocalImportTransport.commit, against the shared parity cases', () => {
   for (const parity of PREVIEW_PARITY_CASES) {
     if (!parity.plan || !parity.expectedCommit) continue;
     const { plan, expectedCommit } = parity;
-    const run = parity.knownDifference?.side === 'browser' ? it.failing : it;
-    run(parity.name, async () => {
+    it(parity.name, async () => {
       TestBed.configureTestingModule({});
       const result = await TestBed.inject(LocalImportTransport).commit(csvFile(parity.filename, parity.text), plan, {
         config: parity.config,

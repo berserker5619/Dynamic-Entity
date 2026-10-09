@@ -196,6 +196,18 @@ describe('POST /:entity/preview', () => {
     expect(response.body.sample[0]).toEqual(['Alice', '34', '2024-03-07', 'true', 'Active']);
   });
 
+  it('reads a .tsv upload by tabs, by the name the client sent', async () => {
+    // The multipart filename (`multipart.ts`) reaches `readSheet` through `previewSheet`. The
+    // header has more commas than tabs, so only the name can make this a tab split.
+    const response = await request(app())
+      .post('/import/employee/preview')
+      .attach('file', Buffer.from('First Name\tNote, if any\nAlice\tfine\n'), 'people.tsv');
+
+    expect(response.status).toBe(200);
+    expect(response.body.delimiter).toBe('\t');
+    expect(response.body.headers).toEqual(['First Name', 'Note, if any']);
+  });
+
   it('400s a request with no file', async () => {
     const response = await request(app()).post('/import/employee/preview').field('plan', '{}');
     expect(response.status).toBe(400);

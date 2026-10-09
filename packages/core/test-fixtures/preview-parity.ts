@@ -40,7 +40,7 @@ export interface SuggestedEntry {
 
 export interface PreviewParityCase {
   name: string;
-  /** The upload's name. The browser reads `.tsv` by it; the server reads content only. */
+  /** The upload's name. Both sides read a `.tsv` by tabs; neither lets it decide the format. */
   filename: string;
   text: string;
   config: EntityFormConfig;
@@ -49,12 +49,6 @@ export interface PreviewParityCase {
   expected: ExpectedPreview;
   /** What committing `plan` must produce on both sides: the browser's `commit`, the server's `runImport`. */
   expectedCommit?: ExpectedCommit;
-  /**
-   * A difference between the two paths that a test has exposed and nobody has fixed yet. The
-   * named side runs as `it.failing`, so the case starts failing — and has to be cleaned up —
-   * the day the difference is fixed.
-   */
-  knownDifference?: { side: 'browser' | 'server'; reason: string };
 }
 
 /** A suggestion's entries in a comparable form: ref, column and confidence, sorted by ref. */
@@ -175,9 +169,9 @@ export const PREVIEW_PARITY_CASES: readonly PreviewParityCase[] = [
     },
   },
   {
-    // The CHANGELOG [2.3.0] promises "`.tsv` always means tab". The browser keeps that by
-    // name (`sheet-parser.ts`); the server decides by content alone (`read-sheet.ts`, whose
-    // `filename` "decides nothing"), and this header has more commas than tabs.
+    // "`.tsv` always means tab", on both sides: the browser by name (`sheet-parser.ts`), the
+    // server by the same name once the bytes have said the file is text (`read-sheet.ts`).
+    // Counted, this header has more commas than tabs, so detection alone would pick `,`.
     name: 'a .tsv whose header line has more commas than tabs',
     filename: 'notes.tsv',
     text: 'Name\tNote, if any, here\nAda\tfine\n',
@@ -192,12 +186,6 @@ export const PREVIEW_PARITY_CASES: readonly PreviewParityCase[] = [
         { ref: 'name', column: 0, confidence: 'exact' },
         { ref: 'note', column: 1, confidence: 'exact' },
       ],
-    },
-    knownDifference: {
-      side: 'server',
-      reason:
-        'readSheet ignores the filename, so a .tsv is split by whichever separator its header ' +
-        'line uses most; the browser always reads .tsv by tabs.',
     },
   },
   {

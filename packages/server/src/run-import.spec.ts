@@ -627,8 +627,7 @@ describe('previewSheet', () => {
  */
 describe('previewSheet, against the shared parity cases', () => {
   for (const parity of PREVIEW_PARITY_CASES) {
-    const run = parity.knownDifference?.side === 'server' ? it.failing : it;
-    run(parity.name, async () => {
+    it(parity.name, async () => {
       const preview = await previewSheet({
         stream: chunked(parity.text, 1),
         filename: parity.filename,
@@ -662,8 +661,7 @@ describe('runImport, against the shared parity cases', () => {
   for (const parity of PREVIEW_PARITY_CASES) {
     if (!parity.plan || !parity.expectedCommit) continue;
     const { plan, expectedCommit } = parity;
-    const run = parity.knownDifference?.side === 'server' ? it.failing : it;
-    run(parity.name, async () => {
+    it(parity.name, async () => {
       const { onBatch, records } = collector();
       const result = await runImport({
         stream: chunked(parity.text, 1),

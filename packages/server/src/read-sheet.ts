@@ -6,7 +6,8 @@
  * 1. **Format is decided by content, never by the filename.** `.csv` is client-controlled and
  *    an attacker who wants a zip parsed will name their zip `.csv`. The first four bytes are
  *    not. Both readers then meet the same row guards, so a workbook cannot buy itself a
- *    larger sheet by being a workbook.
+ *    larger sheet by being a workbook. The name is consulted only after the bytes have said
+ *    the file is text, and only for its separator: `.tsv` means tab, as it does in the browser.
  * 2. **Rows arrive one at a time.** Nothing here ever holds the sheet. `rows` is an
  *    `AsyncIterable`, so a consumer that stops pulling stops the read.
  *
@@ -44,7 +45,12 @@ export interface SheetSource {
 
 export interface ReadSheetOptions {
   stream: ByteSource;
-  /** Display only — it names the file in an error message and decides nothing. */
+  /**
+   * The client's name for the upload. It never decides the format — the bytes do. Once they
+   * have said the file is text, a name ending in `.tsv` fixes the separator as a tab, the way
+   * the browser reads one; any other name leaves the separator to `detectDelimiter`. A wrong
+   * name can at worst split a text file oddly, which the preview shows before anything imports.
+   */
   filename?: string;
   limits?: Partial<ImportLimits>;
 }
@@ -101,6 +107,8 @@ async function* csvRows(
   stream: AsyncIterable<Uint8Array>,
   limits: ImportLimits,
   found: { delimiter?: CsvDelimiter },
+  /** A separator the filename settled (`.tsv`), which detection then does not override. */
+  forced?: CsvDelimiter,
 ): AsyncGenerator<string[]> {
   // Not `fatal`: a sheet is user data from somewhere else, and one bad byte replaced with
   // U+FFFD is a cell the importer can report on. Rejecting the whole file for it is a worse
@@ -111,7 +119,7 @@ async function* csvRows(
   let reader: CsvReader | null = null;
 
   const open = (headerLine: string): CsvReader => {
-    found.delimiter = detectDelimiter(headerLine);
+    found.delimiter = forced ?? detectDelimiter(headerLine);
     return createCsvReader({ delimiter: found.delimiter });
   };
 
@@ -194,7 +202,9 @@ export async function readSheet(options: ReadSheetOptions): Promise<SheetSource>
     const { head, stream } = await peek(counted, MAGIC_BYTES);
     const format = detectFormat(head);
     const found: { delimiter?: CsvDelimiter } = {};
-    const rows = format === 'xlsx' ? xlsxRows(stream, limits) : csvRows(stream, limits, found);
+    // Decided after `detectFormat`, so the name can never make a zip text or text a zip.
+    const forced: CsvDelimiter | undefined = /\.tsv$/i.test(options.filename ?? '') ? '\t' : undefined;
+    const rows = format === 'xlsx' ? xlsxRows(stream, limits) : csvRows(stream, limits, found, forced);
 
     const iterator = rows[Symbol.asyncIterator]();
     const first = await iterator.next();

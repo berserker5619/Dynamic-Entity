@@ -2,6 +2,7 @@ import { parseCsv } from '@dynamic-entity/core';
 import { detectFormat, guardRows, readSheet } from './read-sheet';
 import { DEFAULT_LIMITS, resolveLimits } from './limits';
 import { chunked, CSV_TEXT, HEADERS, OLE2_HEAD, trackedStream, ZIP_HEAD } from './sheet.fixtures';
+import { workbook } from './workbook.fixtures';
 
 const drain = async (rows: AsyncIterable<unknown[]>): Promise<unknown[][]> => {
   const out: unknown[][] = [];
@@ -61,6 +62,37 @@ describe('readSheet over CSV', () => {
     }
     const sheet = await readSheet({ stream: split() });
     expect(await drain(sheet.rows)).toEqual([['José']]);
+  });
+
+  /**
+   * What the filename decides, and what it does not (`read-sheet.ts`, `ReadSheetOptions.filename`
+   * and the `forced` separator in `readSheet`): after `detectFormat` has said the bytes are text,
+   * `.tsv` fixes the separator as a tab, the way the browser's `defaultSheetParser` reads one.
+   */
+  describe('the filename', () => {
+    // Counted, this header has more commas than tabs, so detection alone would pick `,`.
+    const TSV = 'Name\tNote, if any, here\nAda\tfine, thanks\n';
+
+    it('reads a .tsv by tabs, whatever its header line holds', async () => {
+      const sheet = await readSheet({ stream: chunked(TSV, 1), filename: 'notes.TSV' });
+      expect(sheet.delimiter).toBe('\t');
+      expect(sheet.headers).toEqual(['Name', 'Note, if any, here']);
+      expect(await drain(sheet.rows)).toEqual([['Ada', 'fine, thanks']]);
+    });
+
+    it('leaves the separator to detection for any other name', async () => {
+      for (const filename of ['notes.csv', 'notes.txt', 'notes.tsv.csv', undefined]) {
+        const sheet = await readSheet({ stream: chunked(TSV), filename });
+        expect({ filename, delimiter: sheet.delimiter }).toEqual({ filename, delimiter: ',' });
+      }
+    });
+
+    it('never decides the format: a workbook named .tsv is still a workbook', async () => {
+      const sheet = await readSheet({ stream: chunked(await workbook(), 1024), filename: 'people.tsv' });
+      expect(sheet.format).toBe('xlsx');
+      expect(sheet.delimiter).toBeUndefined();
+      expect(sheet.headers).toEqual(HEADERS);
+    });
   });
 
   it('strips the BOM Excel writes, so the first header still matches something', async () => {
