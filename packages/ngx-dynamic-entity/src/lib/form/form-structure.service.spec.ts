@@ -308,6 +308,38 @@ describe('FormStructureService', () => {
       });
     });
 
+    /**
+     * Exposed while freezing the moved-container imports (core `import-moved-containers.spec.ts`).
+     *
+     * `extractRecord` (`form-structure.service.ts:197`) writes a tab-level field at its position
+     * (`setTabData`) *and* at its `refererField`, so the form saves a moved array's rows twice.
+     * `applyMapping` writes them only at the override (`import-engine.ts:913`). Here nothing is
+     * left at the position; in a `flatData` tab it is `[]`, because `normalizeArrayStructures`
+     * walks by id. The form reads the override first, so the record opens correctly — but
+     * `record.personal.contacts` is absent for an imported record and holds the rows for a saved
+     * one. The 2.3 plan scoped import to "write where `patchForm` reads", so this may be
+     * intended; it is a difference either way, and is left for its own issue.
+     */
+    it.failing('stores a moved array at its position too, as the form saves it', () => {
+      const config = CONFIG();
+      config.tabs[0].fields![2].refererField = 'people.contacts';
+      const plan = {
+        entity: 'people',
+        entries: [
+          { ref: 'people.contacts.0.name', column: 0 },
+          { ref: 'people.contacts.1.name', column: 1 },
+        ],
+      };
+      const imported = applyMapping([['Ada', 'Bo']], plan, config, { stamp: false }).records[0];
+
+      const form = service.buildForm(config);
+      service.patchForm(form, config, imported, fieldsById(config));
+      const saved = service.extractRecord(form, config);
+
+      expect(saved['personal'].contacts).toEqual([{ name: 'Ada' }, { name: 'Bo' }]);
+      expect((imported['personal'] as Record<string, unknown> | undefined)?.['contacts']).toEqual(saved['personal'].contacts);
+    });
+
     it('reports a top-level key that names a field but reached no control', () => {
       // The flat-record mistake: `{ firstName }` handed to a form nested by tab id. Nothing
       // errors, the field stays empty, and this is the only thing that says so.

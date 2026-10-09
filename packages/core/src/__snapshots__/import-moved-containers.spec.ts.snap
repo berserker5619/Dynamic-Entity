@@ -1,0 +1,215 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`moved containers, frozen a moved array derives the same columns 1`] = `
+{
+  "columns": [
+    {
+      "arrayIndex": undefined,
+      "arrayLabel": undefined,
+      "arrayRef": undefined,
+      "header": "Name",
+      "ref": "name",
+      "required": false,
+    },
+    {
+      "arrayIndex": 0,
+      "arrayLabel": "Phone",
+      "arrayRef": "contact.phones",
+      "header": "Phone / Number 1",
+      "ref": "contact.phones.0.number",
+      "required": false,
+    },
+    {
+      "arrayIndex": 1,
+      "arrayLabel": "Phone",
+      "arrayRef": "contact.phones",
+      "header": "Phone / Number 2",
+      "ref": "contact.phones.1.number",
+      "required": false,
+    },
+    {
+      "arrayIndex": 2,
+      "arrayLabel": "Phone",
+      "arrayRef": "contact.phones",
+      "header": "Phone / Number 3",
+      "ref": "contact.phones.2.number",
+      "required": false,
+    },
+    {
+      "arrayIndex": 0,
+      "arrayLabel": "Phone",
+      "arrayRef": "contact.phones",
+      "header": "Phone / Kind 1",
+      "ref": "contact.phones.0.kind",
+      "required": false,
+    },
+    {
+      "arrayIndex": 1,
+      "arrayLabel": "Phone",
+      "arrayRef": "contact.phones",
+      "header": "Phone / Kind 2",
+      "ref": "contact.phones.1.kind",
+      "required": false,
+    },
+    {
+      "arrayIndex": 2,
+      "arrayLabel": "Phone",
+      "arrayRef": "contact.phones",
+      "header": "Phone / Kind 3",
+      "ref": "contact.phones.2.kind",
+      "required": false,
+    },
+  ],
+  "unsupported": [],
+}
+`;
+
+exports[`moved containers, frozen a moved array imports a representative row to the same record 1`] = `
+{
+  "errors": [],
+  "records": [
+    {
+      "contact": {
+        "phones": [
+          {
+            "kind": "home",
+            "number": "111",
+          },
+          {
+            "kind": "work",
+            "number": "222",
+          },
+        ],
+      },
+      "name": "Ada",
+      "phones": [],
+    },
+  ],
+  "skipped": 0,
+}
+`;
+
+exports[`moved containers, frozen a moved group derives the same columns 1`] = `
+{
+  "columns": [
+    {
+      "arrayIndex": undefined,
+      "arrayLabel": undefined,
+      "arrayRef": undefined,
+      "header": "Name",
+      "ref": "name",
+      "required": false,
+    },
+    {
+      "arrayIndex": undefined,
+      "arrayLabel": undefined,
+      "arrayRef": undefined,
+      "header": "Address / City",
+      "ref": "customer.address.city",
+      "required": false,
+    },
+  ],
+  "unsupported": [],
+}
+`;
+
+exports[`moved containers, frozen a moved group imports a representative row to the same record 1`] = `
+{
+  "errors": [],
+  "records": [
+    {
+      "customer": {
+        "address": {
+          "city": "Paris",
+        },
+      },
+      "name": "Ada",
+    },
+  ],
+  "skipped": 0,
+}
+`;
+
+exports[`moved containers, frozen an array override the form does not honour derives the same columns 1`] = `
+{
+  "columns": [
+    {
+      "arrayIndex": undefined,
+      "arrayLabel": undefined,
+      "arrayRef": undefined,
+      "header": "Name",
+      "ref": "name",
+      "required": false,
+    },
+    {
+      "arrayIndex": 0,
+      "arrayLabel": "Phone",
+      "arrayRef": "wrap.phones",
+      "header": "Wrap / Phone / Number 1",
+      "ref": "wrap.phones.0.number",
+      "required": false,
+    },
+    {
+      "arrayIndex": 1,
+      "arrayLabel": "Phone",
+      "arrayRef": "wrap.phones",
+      "header": "Wrap / Phone / Number 2",
+      "ref": "wrap.phones.1.number",
+      "required": false,
+    },
+    {
+      "arrayIndex": 2,
+      "arrayLabel": "Phone",
+      "arrayRef": "wrap.phones",
+      "header": "Wrap / Phone / Number 3",
+      "ref": "wrap.phones.2.number",
+      "required": false,
+    },
+    {
+      "arrayIndex": 0,
+      "arrayLabel": "Phone",
+      "arrayRef": "wrap.phones",
+      "header": "Wrap / Phone / Kind 1",
+      "ref": "wrap.phones.0.kind",
+      "required": false,
+    },
+    {
+      "arrayIndex": 1,
+      "arrayLabel": "Phone",
+      "arrayRef": "wrap.phones",
+      "header": "Wrap / Phone / Kind 2",
+      "ref": "wrap.phones.1.kind",
+      "required": false,
+    },
+    {
+      "arrayIndex": 2,
+      "arrayLabel": "Phone",
+      "arrayRef": "wrap.phones",
+      "header": "Wrap / Phone / Kind 3",
+      "ref": "wrap.phones.2.kind",
+      "required": false,
+    },
+  ],
+  "unsupported": [],
+}
+`;
+
+exports[`moved containers, frozen an array override the form does not honour imports a representative row to the same record 1`] = `
+{
+  "errors": [],
+  "records": [
+    {
+      "name": "Ada",
+      "wrap": {
+        "phones": [
+          {
+            "kind": "home",
+            "number": "111",
+          },
+        ],
+      },
+    },
+  ],
+  "skipped": 0,
+}
+`;

@@ -80,15 +80,15 @@ describe('a moved array', () => {
   });
 });
 
-describe('a moved group', () => {
-  const address: NestedFieldConfig = {
-    id: 'addr',
-    type: 'group',
-    label: { en: 'Address' },
-    refererField: 'customer.address',
-    children: [{ id: 'city', type: 'text', label: { en: 'City' } }],
-  };
+const address: NestedFieldConfig = {
+  id: 'addr',
+  type: 'group',
+  label: { en: 'Address' },
+  refererField: 'customer.address',
+  children: [{ id: 'city', type: 'text', label: { en: 'City' } }],
+};
 
+describe('a moved group', () => {
   it('takes its children with it, and keeps the heading its position gives it', () => {
     const column = deriveImportColumns(configWith(address)).columns.find(c => c.field.id === 'city');
     expect(column).toMatchObject({ ref: 'customer.address.city', header: 'Address / City' });
@@ -175,5 +175,56 @@ describe('plans saved against 2.2', () => {
     expect(validateMappingPlan(plan, configWith(phones()))).toContainEqual(
       expect.objectContaining({ level: 'error', message: expect.stringContaining('more than once') }),
     );
+  });
+});
+
+/**
+ * The moved-container derivations, frozen beside the `all-configs` baseline
+ * (`server/src/all-configs.spec.ts`), which covers only `test_data.json` and so no override at
+ * all. The extraction treats these as parity: a diff here moves stored plans and records.
+ *
+ * Covers: `deriveImportColumns` (`import-columns.ts`) → `collectLeafTargets` →
+ * `collectFieldRefs` (`field-scopes.ts:220`, which rebases a tab-level container's subtree under
+ * its override); and `applyMapping` (`import-engine.ts`), which normalises a moved array at its
+ * override (`import-engine.ts:913`) and writes each leaf at its `recordScope`.
+ */
+describe('moved containers, frozen', () => {
+  const nestedInGroup = configWith({ id: 'wrap', type: 'group', label: { en: 'Wrap' }, children: [phones()] });
+
+  const cases: { name: string; config: EntityFormConfig; row: string[] }[] = [
+    { name: 'a moved array', config: configWith(phones()), row: ['Ada', '111', '222', '', 'home', 'work', ''] },
+    { name: 'a moved group', config: configWith(address), row: ['Ada', 'Paris'] },
+    // The override the form ignores: the array stays at `wrap.phones`, where its id puts it.
+    {
+      name: 'an array override the form does not honour',
+      config: nestedInGroup,
+      row: ['Ada', '111', '', '', 'home', '', ''],
+    },
+  ];
+
+  describe.each(cases)('$name', ({ config, row }) => {
+    const derived = deriveImportColumns(config, { lang: 'en', maxArrayRows: 3 });
+
+    it('derives the same columns', () => {
+      expect({
+        columns: derived.columns.map(({ ref, header, required, arrayIndex, arrayRef, arrayLabel }) => ({
+          ref,
+          header,
+          required,
+          arrayIndex,
+          arrayRef,
+          arrayLabel,
+        })),
+        unsupported: derived.unsupported.map(({ ref, reason }) => ({ ref, reason })),
+      }).toMatchSnapshot();
+    });
+
+    it('imports a representative row to the same record', () => {
+      // One sheet column per derived column, in derivation order.
+      const plan = planFor(derived.columns.map(column => column.ref));
+      expect(row).toHaveLength(plan.entries.length);
+      const { records, errors, skipped } = applyMapping([row], plan, config, { stamp: false });
+      expect({ records, errors, skipped }).toMatchSnapshot();
+    });
   });
 });
