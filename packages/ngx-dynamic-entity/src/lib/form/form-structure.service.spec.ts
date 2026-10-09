@@ -309,18 +309,13 @@ describe('FormStructureService', () => {
     });
 
     /**
-     * Exposed while freezing the moved-container imports (core `import-moved-containers.spec.ts`).
-     *
-     * `extractRecord` (`form-structure.service.ts:197`) writes a tab-level field at its position
-     * (`setTabData`) *and* at its `refererField`, so the form saves a moved array's rows twice.
-     * `applyMapping` writes them only at the override (`import-engine.ts:913`). Here nothing is
-     * left at the position; in a `flatData` tab it is `[]`, because `normalizeArrayStructures`
-     * walks by id. The form reads the override first, so the record opens correctly — but
-     * `record.personal.contacts` is absent for an imported record and holds the rows for a saved
-     * one. The 2.3 plan scoped import to "write where `patchForm` reads", so this may be
-     * intended; it is a difference either way, and is left for its own issue.
+     * An imported record carries a moved array where a saved one does: at its position and at
+     * its `refererField`. Both `extractRecord` and `applyMapping` place a tab's fields through
+     * core's `placeTabFields`. Until 2.3.1 import wrote only the override, so
+     * `record.personal.contacts` was absent for an imported record and held the rows for a saved
+     * one.
      */
-    it.failing('stores a moved array at its position too, as the form saves it', () => {
+    it('stores a moved array at its position too, as the form saves it', () => {
       const config = CONFIG();
       config.tabs[0].fields![2].refererField = 'people.contacts';
       const plan = {

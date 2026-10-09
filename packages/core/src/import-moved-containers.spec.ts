@@ -94,11 +94,13 @@ describe('a moved group', () => {
     expect(column).toMatchObject({ ref: 'customer.address.city', header: 'Address / City' });
   });
 
-  it('imports to the override', () => {
+  it('imports to the override, and to its position as the form saves it', () => {
+    // `placeTabFields` (`form-logic.ts`) is how `extractRecord` saves a tab-level field: at its
+    // position and at its `refererField`. Import finishes each record through it too.
     const result = applyMapping([['Paris']], planFor(['customer.address.city']), configWith(address), {
       stamp: false,
     });
-    expect(result.records[0]).toEqual({ customer: { address: { city: 'Paris' } } });
+    expect(result.records[0]).toEqual({ customer: { address: { city: 'Paris' } }, addr: { city: 'Paris' } });
   });
 });
 
@@ -141,6 +143,42 @@ describe('an override the form does not honour', () => {
     expect(collectFieldRefs(config).find(entry => entry.field.id === 'city')?.authored).toBe(true);
     expect(validateConfig(config).filter(problem => problem.path.includes('refererField'))).toEqual([]);
   });
+
+  it('imports a tab-level leaf override to both addresses, as the form saves it', () => {
+    const config = configWith({ id: 'city', type: 'text', label: { en: 'City' }, refererField: 'customer.city' });
+    const result = applyMapping([['Ada', 'Paris']], planFor(['name', 'customer.city']), config, { stamp: false });
+    expect(result.records[0]).toEqual({ name: 'Ada', city: 'Paris', customer: { city: 'Paris' } });
+  });
+});
+
+/**
+ * Placement in a nested tab: a sub-tab's record lives under its parent's, so placing the parent
+ * must not disturb it, and a moved array on the sub-tab lands at its position under both.
+ * Covers `tabPlacements` and the placement loop in `applyMapping` (`import-engine.ts`).
+ */
+describe('a moved array on a sub-tab', () => {
+  const config: EntityFormConfig = {
+    entity: 'people',
+    tabs: [
+      {
+        id: 'personal',
+        label: { en: 'Personal' },
+        fields: [{ id: 'name', type: 'text', label: { en: 'Name' } }],
+        children: [{ id: 'contact', label: { en: 'Contact' }, fields: [phones({ refererField: 'reach.phones' })] }],
+      },
+    ],
+  };
+
+  it('is at its override and at its position, and the parent tab keeps its own field', () => {
+    const plan = planFor(['personal.name', 'reach.phones.0.number', 'reach.phones.1.number']);
+    const result = applyMapping([['Ada', '111', '222']], plan, config, { stamp: false });
+    expect(result.errors).toEqual([]);
+    const rows = [{ number: '111' }, { number: '222' }];
+    expect(result.records[0]).toEqual({
+      personal: { name: 'Ada', contact: { phones: rows } },
+      reach: { phones: rows },
+    });
+  });
 });
 
 describe('plans saved against 2.2', () => {
@@ -167,7 +205,7 @@ describe('plans saved against 2.2', () => {
       children: [{ id: 'city', type: 'text', label: { en: 'City' } }],
     });
     const result = applyMapping([['Paris']], planFor(['addr.city']), config, { stamp: false });
-    expect(result.records[0]).toEqual({ customer: { address: { city: 'Paris' } } });
+    expect(result.records[0]).toEqual({ customer: { address: { city: 'Paris' } }, addr: { city: 'Paris' } });
   });
 
   it('still rejects an old ref mapped alongside its new one', () => {

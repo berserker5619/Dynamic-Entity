@@ -82,7 +82,16 @@ exports[`moved containers, frozen a moved array imports a representative row to 
         ],
       },
       "name": "Ada",
-      "phones": [],
+      "phones": [
+        {
+          "kind": "home",
+          "number": "111",
+        },
+        {
+          "kind": "work",
+          "number": "222",
+        },
+      ],
     },
   ],
   "skipped": 0,
@@ -118,6 +127,9 @@ exports[`moved containers, frozen a moved group imports a representative row to 
   "errors": [],
   "records": [
     {
+      "addr": {
+        "city": "Paris",
+      },
       "customer": {
         "address": {
           "city": "Paris",

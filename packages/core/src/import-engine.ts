@@ -34,9 +34,11 @@ import { stampRecord } from './migration';
 import { evaluateFormRules } from './rules-engine';
 import {
   evaluateFieldVisibility,
+  getTabPath,
   getValueByPath,
   isUnsafePath,
   normalizeArrayStructures,
+  placeTabFields,
   resolveLabel,
   resolveOptionLabel,
   valuesMatch,
@@ -54,6 +56,7 @@ import type {
   EntityFormConfig,
   FormRule,
   NestedFieldConfig,
+  NestedTabConfig,
 } from './form-model.types';
 import type {
   ImportColumn,
@@ -700,6 +703,42 @@ function evaluateRuleState(
   return state;
 }
 
+/** A tab and the record address each of its own fields is imported to. */
+interface TabPlacement {
+  tab: NestedTabConfig;
+  fields: { id: string; ref: string }[];
+}
+
+/**
+ * Every tab, parents before sub-tabs, with where each of its direct fields was written.
+ *
+ * The address is `collectFieldRefs`'s: the position, or the override for a moved container or
+ * an authored leaf. Config-level, so `applyMapping` works it out once rather than per row.
+ */
+function tabPlacements(config: EntityFormConfig | null | undefined): TabPlacement[] {
+  const addressOf = new Map<string, string>();
+  for (const entry of collectFieldRefs(config)) {
+    if (entry.tabLevel && entry.field?.id) addressOf.set(fieldRefFor(entry.scope, entry.field.id), entry.ref);
+  }
+  const placements: TabPlacement[] = [];
+  const walk = (tabs: NestedTabConfig[] | undefined): void => {
+    for (const tab of tabs ?? []) {
+      if (!tab?.id) continue;
+      const scope = (getTabPath(config?.tabs, tab.id) ?? [tab.id]).join('.') || ROOT_SCOPE;
+      const fields = (tab.fields ?? [])
+        .filter(field => field?.id)
+        .map(field => {
+          const position = fieldRefFor(scope, field.id);
+          return { id: field.id, ref: addressOf.get(position) ?? position };
+        });
+      placements.push({ tab, fields });
+      walk(tab.children);
+    }
+  };
+  walk(config?.tabs);
+  return placements;
+}
+
 /** Apply a field's declared validators to a coerced value. */
 function applyFieldValidators(field: NestedFieldConfig, value: unknown, lang: string): string[] {
   const messages: string[] = [];
@@ -913,6 +952,7 @@ export function applyMapping(
   const movedArrays = collectFieldRefs(config)
     .filter(entry => entry.field?.type === 'array' && entry.ref !== fieldRefFor(entry.scope, entry.field.id))
     .map(entry => entry.ref);
+  const placements = tabPlacements(config);
 
   rows.forEach((row, i) => {
     const rowNumber = firstRowNumber + i;
@@ -965,6 +1005,17 @@ export function applyMapping(
     for (const ref of movedArrays) {
       const value = getValueByPath(cleaned, ref);
       if (!Array.isArray(value)) setRecordValue(cleaned, ref, value == null ? [] : [value]);
+    }
+    // Then each tab's own fields where a saved record holds them: at the position and at the
+    // `refererField` both, through the placement the form saves with. Values were written at
+    // their record address above, which for a moved container is the override only.
+    for (const { tab, fields } of placements) {
+      const values: Record<string, unknown> = {};
+      for (const { id, ref } of fields) {
+        const value = getValueByPath(cleaned, ref);
+        if (value !== undefined) values[id] = value;
+      }
+      if (Object.keys(values).length) placeTabFields(cleaned, tab, values, config);
     }
 
     // `targets` is hoisted out of the loop: deriving it per row re-walked the whole config

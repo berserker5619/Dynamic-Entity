@@ -98,6 +98,7 @@ export {
   normalizeOption,
   normalizeTab,
   optionKeyOf,
+  placeTabFields,
   resolveEffectiveMask,
   resolveLabel,
   resolveOptionLabel,

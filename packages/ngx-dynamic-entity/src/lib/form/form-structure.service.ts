@@ -9,8 +9,7 @@ import {
   getValueByPath,
   normalizeArrayStructures,
   parseFieldRef,
-  setTabData,
-  setValueByPath,
+  placeTabFields,
 } from '@dynamic-entity/core';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
 
@@ -206,14 +205,8 @@ export class FormStructureService {
           if (ctrl) fieldValBag[field.id] = ctrl.value;
         }
 
-        setTabData(record, tab.id, fieldValBag, config);
-
-        for (const field of tab.fields || []) {
-          if (field.refererField) {
-            const ctrl = this.getControl(form, config, field.id, tab.id);
-            if (ctrl) setValueByPath(record, field.refererField, ctrl.value);
-          }
-        }
+        // At its position and at its `refererField` — the placement import uses too.
+        placeTabFields(record, tab, fieldValBag, config);
 
         if (tab.children) walkTabs(tab.children);
       }

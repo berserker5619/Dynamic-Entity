@@ -643,6 +643,35 @@ export function setTabData(
   return target;
 }
 
+/**
+ * Write a tab's own fields into a record the way a saved record holds them.
+ *
+ * Each value goes to its position (`setTabData`, honouring `flatData`) and, when its field
+ * carries a `refererField`, to that path as well — so a tab-level `array` or `group` moved by an
+ * override is in both places, and so is a leaf. A stamped ref is the field's own position, so
+ * writing it again changes nothing. Only the tab's direct `fields` are placed, because those are
+ * the only ones whose override the form honours; sub-tabs are their own call.
+ *
+ * `values` is keyed by field id. A field with no key is left alone at both addresses.
+ *
+ * The form saves through this (`extractRecord`), and so does import (`applyMapping`), so an
+ * imported record and a saved one carry the same keys.
+ */
+export function placeTabFields(
+  record: any,
+  tab: NestedTabConfig,
+  values: Record<string, unknown>,
+  config?: EntityFormConfig,
+): any {
+  const target = setTabData(record, tab.id, values, config);
+  for (const field of tab.fields ?? []) {
+    if (field.refererField && Object.prototype.hasOwnProperty.call(values, field.id)) {
+      setValueByPath(target, field.refererField, values[field.id]);
+    }
+  }
+  return target;
+}
+
 /** Ensure every `array` field in the config is stored as an array (coerce null/undefined → []). */
 export function normalizeArrayStructures(record: any, config: EntityFormConfig): any {
   if (!record) return record;
