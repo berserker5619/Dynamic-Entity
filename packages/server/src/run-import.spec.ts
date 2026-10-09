@@ -649,6 +649,36 @@ describe('previewSheet, against the shared parity cases', () => {
   }
 });
 
+/**
+ * Commit parity with the browser, for the shared cases that carry a plan. The same plans and
+ * the same `expectedCommit` run through `LocalImportTransport.commit` in the Angular package.
+ *
+ * Covers: `runImport` (`run-import.ts:140`) → `readSheet` → `decimalMarkFor(sheet.delimiter)`
+ * (`run-import.ts:167`) → batched `applyMapping` → `coerceCell` → `parseNumberText`
+ * (`import-engine.ts:262`). One byte at a time, and two rows per batch, so the row numbers in
+ * `errors` have to survive the batch seam the browser does not have.
+ */
+describe('runImport, against the shared parity cases', () => {
+  for (const parity of PREVIEW_PARITY_CASES) {
+    if (!parity.plan || !parity.expectedCommit) continue;
+    const { plan, expectedCommit } = parity;
+    const run = parity.knownDifference?.side === 'server' ? it.failing : it;
+    run(parity.name, async () => {
+      const { onBatch, records } = collector();
+      const result = await runImport({
+        stream: chunked(parity.text, 1),
+        filename: parity.filename,
+        plan,
+        config: parity.config,
+        lang: 'en',
+        limits: { batchSize: 2 },
+        onBatch,
+      });
+      expect({ records, errors: result.errors }).toEqual(expectedCommit);
+    });
+  }
+});
+
 describe('delimited text that is not comma-separated', () => {
   const AMOUNTS: EntityFormConfig = {
     entity: 'claims',

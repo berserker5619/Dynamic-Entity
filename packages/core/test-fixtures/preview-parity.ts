@@ -12,7 +12,7 @@
  * by core's per-file coverage gate. Imported by relative path, the way `test_data.json` is.
  */
 
-import type { CsvDelimiter, EntityFormConfig, MappingPlan, NestedFieldConfig } from '../src/index';
+import type { CsvDelimiter, EntityFormConfig, ImportRowError, MappingPlan, NestedFieldConfig } from '../src/index';
 
 /** What a preview must report for a case, on both sides. */
 export interface ExpectedPreview {
@@ -24,6 +24,12 @@ export interface ExpectedPreview {
   arrayBound: number;
   /** Suggested entries, sorted by ref (see `suggestedEntries`). */
   suggestion: SuggestedEntry[];
+}
+
+export interface ExpectedCommit {
+  /** Stamped with `_configVersion`, as both sides stamp by default. */
+  records: Record<string, unknown>[];
+  errors: ImportRowError[];
 }
 
 export interface SuggestedEntry {
@@ -41,6 +47,8 @@ export interface PreviewParityCase {
   /** A stored plan, for the cases that are also committed. */
   plan?: MappingPlan;
   expected: ExpectedPreview;
+  /** What committing `plan` must produce on both sides: the browser's `commit`, the server's `runImport`. */
+  expectedCommit?: ExpectedCommit;
   /**
    * A difference between the two paths that a test has exposed and nobody has fixed yet. The
    * named side runs as `it.failing`, so the case starts failing — and has to be cleaned up —
@@ -137,6 +145,16 @@ export const PREVIEW_PARITY_CASES: readonly PreviewParityCase[] = [
         { ref: 'amount', column: 1, confidence: 'exact' },
         { ref: 'name', column: 0, confidence: 'exact' },
       ],
+    },
+    // A `;` file reads numbers with a decimal comma (`decimalMarkFor`). `1,500` is one and a
+    // half — never fifteen hundred — and a point-decimal `1.5` is refused rather than guessed.
+    expectedCommit: {
+      records: [
+        { name: 'Rao; Jr.', amount: 1.5, _configVersion: 1 },
+        { name: 'Ada', amount: 1234.5, _configVersion: 1 },
+        { name: 'Bo', amount: 1.5, _configVersion: 1 },
+      ],
+      errors: [{ row: 5, ref: 'amount', column: 1, message: '"1.5" is not a number', raw: '1.5' }],
     },
   },
   {

@@ -205,6 +205,32 @@ describe('LocalImportTransport.preview, against the shared parity cases', () => 
 });
 
 /**
+ * Commit parity with the server, for the shared cases that carry a plan. The same plans and
+ * the same `expectedCommit` run through `runImport` in `server/src/run-import.spec.ts`.
+ *
+ * Covers: `LocalImportTransport.commit` (`local-import-transport.ts:91`) → `applyMapping` with
+ * `decimal: decimalMarkFor(sheet.delimiter)` (`csv.ts:285`) → `coerceCell` → `parseNumberText`
+ * (`import-engine.ts:262`, `NUMERIC_COMMA` for a `,` decimal mark). The browser has no unit test
+ * of its own for the decimal comma otherwise; the server's is `run-import.spec.ts`
+ * "imports it with a decimal comma, so 1,500 is one and a half".
+ */
+describe('LocalImportTransport.commit, against the shared parity cases', () => {
+  for (const parity of PREVIEW_PARITY_CASES) {
+    if (!parity.plan || !parity.expectedCommit) continue;
+    const { plan, expectedCommit } = parity;
+    const run = parity.knownDifference?.side === 'browser' ? it.failing : it;
+    run(parity.name, async () => {
+      TestBed.configureTestingModule({});
+      const result = await TestBed.inject(LocalImportTransport).commit(csvFile(parity.filename, parity.text), plan, {
+        config: parity.config,
+        lang: 'en',
+      });
+      expect({ records: result.records, errors: result.errors }).toEqual(expectedCommit);
+    });
+  }
+});
+
+/**
  * A parser that keeps cell types — what a workbook library produces when asked to. The date is
  * built with `Date.UTC`, which is how a workbook stores a calendar date and how the server's
  * reader hands one over, so the result is the same in every timezone this runs in.
