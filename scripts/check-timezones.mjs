@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CORE = path.join(ROOT, 'packages', 'core');
 const SERVER = path.join(ROOT, 'packages', 'server');
+const NGX = path.join(ROOT, 'packages', 'ngx-dynamic-entity');
 
 /**
  * Chosen to straddle Greenwich rather than to be exhaustive.
@@ -50,10 +51,17 @@ const ZONES = [
  * typed path reach the same bug from different doors, and the gate only ever watched one of
  * them: `coerceTypedCell` exists precisely because `String(date)` renders local time, and no
  * zone ran over it until this line.
+ *
+ * `ngx/local-import-transport` is the browser's door to the same path: a registered
+ * `SheetParser` hands `LocalImportTransport` typed cells, which reach `coerceTypedCell` through
+ * `applyMapping`, and its samples render through `cellText`. The server's typed cells come from
+ * its own workbook reader; these come from whatever parser a consumer registers, so they are
+ * watched separately.
  */
 const SUITES = [
   { cwd: CORE, label: 'core', pattern: 'timezone|import-columns|import-engine' },
   { cwd: SERVER, label: 'server', pattern: 'all-configs' },
+  { cwd: NGX, label: 'ngx', pattern: 'local-import-transport' },
 ];
 
 const failures = [];
