@@ -57,11 +57,15 @@ const ZONES = [
  * `applyMapping`, and its samples render through `cellText`. The server's typed cells come from
  * its own workbook reader; these come from whatever parser a consumer registers, so they are
  * watched separately.
+ *
+ * `xlsx-parity`, on both sides, reads one workbook (`core/test-fixtures/xlsx-parity.ts`) through
+ * the server's reader and through a typed browser parser, and holds both to the same records:
+ * the case where a zone-dependent date would show up as the two disagreeing.
  */
 const SUITES = [
   { cwd: CORE, label: 'core', pattern: 'timezone|import-columns|import-engine' },
-  { cwd: SERVER, label: 'server', pattern: 'all-configs' },
-  { cwd: NGX, label: 'ngx', pattern: 'local-import-transport' },
+  { cwd: SERVER, label: 'server', pattern: 'all-configs|xlsx-parity' },
+  { cwd: NGX, label: 'ngx', pattern: 'local-import-transport|xlsx-parity' },
 ];
 
 const failures = [];
