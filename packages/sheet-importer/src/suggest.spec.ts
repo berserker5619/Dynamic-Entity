@@ -146,6 +146,13 @@ describe('suggestMapping', () => {
     ]);
   });
 
+  it('matches a ref with no slot in it in any case, as exact', () => {
+    // `dob` is labelled "Date of Birth", so "DOB" can only be the ref, read normalised.
+    expect(suggestMapping(['DOB'], people([['dob', 'Date of Birth']])).entries).toEqual([
+      expect.objectContaining({ ref: 'dob', column: 0, confidence: 'exact' }),
+    ]);
+  });
+
   it('matches a header that is a ref, exactly', () => {
     expect(suggestMapping(['phones.1.kind'], PHONES).entries).toEqual([
       expect.objectContaining({ ref: 'phones.1.kind', column: 0, confidence: 'exact' }),

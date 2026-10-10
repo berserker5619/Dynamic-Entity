@@ -92,12 +92,16 @@ export function suggestMapping<TMeta, TCtx>(
   const candidates = (target: ImportTarget<TMeta>): { exact: string[]; loose: string[] } => {
     const loose = [...(target.matchKeys ?? [])];
     for (const pattern of targetSlotPatterns(target, childCount)) loose.push(slotKey(pattern, (target.arrayIndex as number) + 1));
-    // The ref is matched as written, never normalised. Normalised, `phones.1.number` is
-    // `phones1number`, which is also how "Phones 1 Number" — slot 1, counted from one — reads,
-    // and the header would be claimed, as exact, for the slot after the one it names.
-    return { exact: [target.header], loose };
+    // A ref with a slot in it is matched only as written (`isSlotRef`); any other ref, normalised.
+    return { exact: target.arrayIndex === undefined ? [target.ref, target.header] : [target.header], loose };
   };
-  const isRef = (header: string, target: ImportTarget<TMeta>): boolean => String(header ?? '').trim() === target.ref;
+  /**
+   * Normalised, `phones.1.number` is `phones1number`, which is also how "Phones 1 Number" —
+   * slot 1, counted from one — reads, so that header would be claimed, as exact, for the slot
+   * after the one it names. The same rule as Dynamic Entity 2.4.1.
+   */
+  const isSlotRef = (header: string, target: ImportTarget<TMeta>): boolean =>
+    target.arrayIndex !== undefined && String(header ?? '').trim() === target.ref;
 
   // Counted once per target: a label and an id normalise alike more often than not, and
   // counting them twice would make every such target collide with itself.
@@ -120,7 +124,7 @@ export function suggestMapping<TMeta, TCtx>(
         .filter(key => pass === 'exact' || !ambiguous.has(key));
       const index = headers.findIndex(
         (header, i) =>
-          !takenColumns.has(i) && ((pass === 'exact' && isRef(header, target)) || wanted.includes(normalizeHeader(header))),
+          !takenColumns.has(i) && ((pass === 'exact' && isSlotRef(header, target)) || wanted.includes(normalizeHeader(header))),
       );
       if (index < 0) continue;
       takenColumns.add(index);
