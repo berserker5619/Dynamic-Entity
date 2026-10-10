@@ -51,3 +51,7 @@ export type { SuggestOptions } from './suggest';
 export { matchSlot, normalizeHeader, slotPatterns } from './header-grammar';
 export type { SlotNames } from './header-grammar';
 export type { ImportFailureCode, ImportFailureDetails } from './import-failure';
+
+// ─── Adapters ───────────────────────────────────────────────────────────────
+export { jsonSchemaAdapter } from './json-schema-adapter';
+export type { JsonSchemaAdapterOptions, JsonSchemaMeta, JsonSchemaNode } from './json-schema-adapter';
