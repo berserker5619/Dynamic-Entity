@@ -36,6 +36,15 @@ function isValidPhone(value: string): boolean {
   return digits >= 7 && digits <= 15;
 }
 
+/** A schema's pattern as a `RegExp`, or `null` when it does not compile. */
+function compile(pattern: string): RegExp | null {
+  try {
+    return new RegExp(pattern);
+  } catch {
+    return null;
+  }
+}
+
 const absent = (value: unknown): boolean =>
   value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0);
 
@@ -62,12 +71,7 @@ function check(target: ImportTarget, value: unknown, ref: string, problems: Reco
     }
     if (kind.pattern !== undefined) {
       // A pattern is schema data; an unparseable one is the schema's problem, not a reason to throw mid-import.
-      let pattern: RegExp | null = null;
-      try {
-        pattern = new RegExp(kind.pattern);
-      } catch {
-        pattern = null;
-      }
+      const pattern = compile(kind.pattern);
       if (pattern && !pattern.test(value)) report('RECORD_FORMAT', `${name} does not match the required format`);
     }
     if (kind.format === 'email' && !EMAIL.test(value)) report('RECORD_FORMAT', `${name} is not a valid email address`);
