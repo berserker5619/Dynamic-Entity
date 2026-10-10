@@ -16,8 +16,9 @@ one problem from another without matching message text. Additive only: no check 
 removed, no level changed, and every message is unchanged except the one correction below.
 
 ### Upgrading
-- **Nothing is required.** `code` is optional on the `ConfigProblem` type, so code that builds
-  its own problems still compiles.
+- **Upgrade the four packages together.** They share a version train, so the server, renderer
+  and builder require core `^2.4.0`. No code change is needed: `code` is optional on the
+  `ConfigProblem` type, so code that builds its own problems still compiles.
 - **Compare codes, never messages.** Codes are stable identifiers: once shipped, a code keeps its
   meaning, and a check that changes meaning gets a new one. Messages are written for people and
   may be reworded in any release.

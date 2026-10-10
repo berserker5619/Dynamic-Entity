@@ -14,7 +14,7 @@
     "@angular/common": "^17.0.0 || ^18.0.0 || ^19.0.0 || ^20.0.0 || ^21.0.0 || ^22.0.0",
     "@angular/core": "^17.0.0 || ^18.0.0 || ^19.0.0 || ^20.0.0 || ^21.0.0 || ^22.0.0",
     "@angular/forms": "^17.0.0 || ^18.0.0 || ^19.0.0 || ^20.0.0 || ^21.0.0 || ^22.0.0",
-    "@dynamic-entity/core": "^2.3.1",
+    "@dynamic-entity/core": "^2.4.0",
     "rxjs": "^7.0.0"
   },
   "devDependencies": {
@@ -29,7 +29,7 @@
     "@angular/material": "^21.0.0",
     "@angular/platform-browser": "^21.0.0",
     "@angular/platform-browser-dynamic": "^21.0.0",
-    "@dynamic-entity/core": "^2.3.1",
+    "@dynamic-entity/core": "^2.4.0",
     "@types/jest": "^30.0.0",
     "exceljs": "4.4.0",
     "jest": "^30.0.0",
