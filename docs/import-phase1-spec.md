@@ -310,7 +310,7 @@ export interface SchemaAdapter<TMeta = unknown, TCtx = unknown> {
 | --- | --- | --- |
 | `entityFormConfigAdapter(config, { rules, lookups })` | `NestedFieldConfig` | Target refs come from `collectFieldRefs`, never `refOf` or `getTabData`, so moved tab-level containers land at their override. `validate` evaluates rules once against the whole config through `flattenFieldValues`, with 2.3's precedence. `upgradeRefs` = `upgradeLegacyRefs`. `positional: false` on every array. `coerce` = `coerceCell` with `decimal`. MUST be behaviour-identical to 2.3; the hardened parity suite (§10) is the gate. |
 | `jsonSchemaAdapter(schema, { id?, version?, validator? })` | JSON Schema node | Local `$ref`, `allOf`, first non-null `oneOf`/`anyOf`; a `oneOf` of `const`s is a labelled enum. `enum` stores the raw value. An array of objects is numbered slots (`positional: true`), and an array of primitives is one split `list`. A field is `required` only when every object above it is (per item inside an array). `validator` is a function `(record) => RecordProblem[]` replacing the generic checks, so an Ajv-compiled schema can be wrapped in one and Ajv is never a dependency. A list inside a list, a free-form object, an untyped node and an unresolvable or looping `$ref` are reported in `unsupported`. |
-| `exampleJsonAdapter(sample)` | inferred node | Kinds inferred from values; array lengths seed `slots`. Nothing is `required`. `positional: true`. |
+| `exampleJsonAdapter(sample, { id?, version?, validator? })` | `{ sample }`, the first value seen | `sample` is one record or an array of them, merged. Kinds inferred from values: a number is `number` (never `integer`, since one sample is not a bound), a string shaped like an ISO date, date-time or time is that kind, and any other is `string`. Where samples disagree the field is `string`, and a `null` gives way to any value. An array of objects is numbered slots, with every key any item has; its longest sample length is the fewest slots `targets` returns, whatever `slots` asks. An array of primitives is one split `list`. Nothing is `required`. `positional: true`. A field only ever `null`, an empty object or array, a list inside a list, mixed array items, and an object in one sample but a value in another are reported in `unsupported`. |
 
 ## Engine API and coercion
 
@@ -622,3 +622,11 @@ A `custom` kind reaching `coerceValue` throws (§7).
   - what goes to `unsupported`.
 - **Still open:** the acceptance item wants "the order schema from the prototype" and its sample run. Neither is in this repository, so the item waits for them.
 - **A defect fixed in the importer, still live in DE 2.4.0.** `suggestMapping`'s exact pass compared refs after normalising them. Whenever an array's label equals its id, that read "Phones 1 Number" as the ref `phones.1.number`, the second slot, and marked it `exact`. The importer now matches a ref only as written. DE 2.4.0 still has the defect.
+
+**2026-10-10: `exampleJsonAdapter`.**
+- **Its choices** are now stated in §7's adapter table. Three are judgement calls:
+  - a field only ever `null` goes to `unsupported` rather than becoming `string`, as `jsonSchemaAdapter` does for an untyped node;
+  - "array lengths seed `slots`" is read as a floor: `targets` returns at least the sample's length, and more when `slots` asks, so suggestion still offers `DEFAULT_SLOTS`;
+  - the sample may be an array of records, merged, since an export is usually a list.
+- **The student example** is in `example-json-adapter.spec.ts` and passes its acceptance item.
+- **The suggestion defect** noted above is fixed in DE 2.4.1. Every DE release with `suggestMapping`, 1.14.0 through 2.4.0, had it.
