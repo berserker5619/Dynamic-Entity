@@ -73,6 +73,29 @@ describe('suggestMapping with numbered headers', () => {
     expect(suggest(PHONES, ['Number (3)'])).toEqual({ 'Number (3)': 'phones.2.number' });
   });
 
+  /**
+   * Normalised, the ref `phones.1.number` is `phones1number`, which is also how the header
+   * "Phones 1 Number" reads — and that header names the first row. When the array's label
+   * equals its id, comparing refs normalised claimed every numbered header, as exact, for the
+   * row after the one it names. A ref with a row in it is now matched only as written.
+   */
+  it('reads "Phones 1 Number" as row 0 when the array label is its id, not as the ref phones.1.number', () => {
+    const { columns } = deriveImportColumns(PHONES);
+    expect(suggestMapping(['Phones 1 Number', 'Phones 2 Number'], columns).entries).toEqual([
+      expect.objectContaining({ ref: 'phones.0.number', column: 0, confidence: 'guess' }),
+      expect.objectContaining({ ref: 'phones.1.number', column: 1, confidence: 'guess' }),
+    ]);
+  });
+
+  it('still matches a header that is a ref, and a ref with no row in it in any case', () => {
+    // `dob` is labelled "Date of Birth", so "DOB" can only be the ref, read normalised.
+    const { columns } = deriveImportColumns(configOf(text('dob', 'Date of Birth'), PHONES.tabs[0].fields![1]));
+    expect(suggestMapping(['phones.1.kind', 'DOB'], columns).entries).toEqual([
+      expect.objectContaining({ ref: 'dob', column: 1, confidence: 'exact' }),
+      expect.objectContaining({ ref: 'phones.1.kind', column: 0, confidence: 'exact' }),
+    ]);
+  });
+
   it('tells two children of one row apart', () => {
     expect(suggest(PHONES, ['Phone 1 Type', 'Phone 1 Number'])).toEqual({
       'Phone 1 Type': 'phones.0.kind',

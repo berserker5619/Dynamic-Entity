@@ -561,8 +561,16 @@ export function suggestMapping(
     for (const pattern of columnSlotPatterns(column, childCount)) {
       loose.push(slotKey(pattern, column.arrayIndex! + 1));
     }
-    return { exact: [column.ref, column.header], loose };
+    // A ref with a row in it is matched only as written (see `isRowRef`), never normalised.
+    return { exact: column.arrayIndex === undefined ? [column.ref, column.header] : [column.header], loose };
   };
+  /**
+   * Normalised, the ref `phones.1.number` is `phones1number`, which is also how the header
+   * "Phones 1 Number" reads, and that header names the *first* row. Matching such refs
+   * normalised claimed every numbered header, as exact, for the row after the one it names.
+   */
+  const isRowRef = (header: string, column: ImportColumn): boolean =>
+    column.arrayIndex !== undefined && String(header ?? '').trim() === column.ref;
 
   /**
    * Loose keys that more than one field answers to.
@@ -594,9 +602,10 @@ export function suggestMapping(
         .filter(Boolean)
         .map(normalizeHeader)
         .filter(key => pass === 'exact' || !ambiguousLooseKeys.has(key));
-      if (!wanted.length) continue;
       const index = headers.findIndex(
-        (header, i) => !takenColumns.has(i) && wanted.includes(normalizeHeader(header)),
+        (header, i) =>
+          !takenColumns.has(i) &&
+          ((pass === 'exact' && isRowRef(header, column)) || wanted.includes(normalizeHeader(header))),
       );
       if (index >= 0) claim(index, column, pass === 'exact' ? 'exact' : 'guess');
     }
