@@ -1,7 +1,7 @@
 # DE 2.4 — problem code inventory
 
 **Baseline:** `d63b183` (2.3.1) · **Source:** Decisions 3 and 4, and the "Problem codes" table in
-Reading rules, of [`Sheet Importer — Phase 1 Spec Plan v2 & Schema Adapter Contracts.md`](Sheet%20Importer%20—%20Phase%201%20Spec%20Plan%20v2%20&%20Schema%20Adapter%20Contracts.md)
+Reading rules, of [`import-phase1-spec.md`](import-phase1-spec.md)
 
 Every place DE creates a `ConfigProblem`, with the code each gets in 2.4. Codes are stable
 identifiers; messages are not, and are unchanged by 2.4. Line numbers are at `d63b183`.
