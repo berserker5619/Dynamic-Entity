@@ -564,6 +564,7 @@ describe('validateConfig', () => {
       expect(problems).toEqual([
         {
           level: 'warning',
+          code: 'CONFIG_RULE_NO_TARGETS',
           path: 'rules[0].targets',
           message: 'This rule has no targets; it changes nothing when it fires.',
         },

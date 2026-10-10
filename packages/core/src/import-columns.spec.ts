@@ -364,14 +364,14 @@ describe('validateMappingPlan', () => {
 
   it('reports a missing plan rather than throwing', () => {
     expect(validateMappingPlan(null, CONFIG)).toEqual([
-      { level: 'error', path: '', message: 'Mapping plan is missing or not an object.' },
+      { level: 'error', code: 'PLAN_SHAPE', path: '', message: 'Mapping plan is missing or not an object.' },
     ]);
   });
 
   it('reports entries that are not a list, which is what a hand-edited plan looks like', () => {
     const problems = validateMappingPlan({ entity: 'employees', entries: 'nope' } as never, CONFIG);
     expect(problems).toEqual([
-      { level: 'error', path: 'entries', message: 'entries must be an array.' },
+      { level: 'error', code: 'PLAN_SHAPE', path: 'entries', message: 'entries must be an array.' },
     ]);
   });
 

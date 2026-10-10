@@ -170,17 +170,16 @@ These are the `flagRef` sites and their suffixes:
 
 ## `validateMappingPlan` — `PLAN_*`
 
-All in `core/src/import-columns.ts`. Only these six names, from the spec's table, may be used:
-`PLAN_UNKNOWN_REF`, `PLAN_DUPLICATE_REF`, `PLAN_SOURCE`, `PLAN_TARGET_MISMATCH`, `PLAN_LEGACY_REF`, `PLAN_UNSAFE_PATH`.
+All in `core/src/import-columns.ts`. Only names from the spec's table are used: the six the task permitted (`PLAN_UNKNOWN_REF`, `PLAN_DUPLICATE_REF`, `PLAN_SOURCE`, `PLAN_TARGET_MISMATCH`, `PLAN_LEGACY_REF`, `PLAN_UNSAFE_PATH`) and, by decision below, `PLAN_SHAPE`.
 
 | # | Line | Level | Path | Message | Code |
 |---|---|---|---|---|---|
-| P1 | 499 | error | `''` | Mapping plan is missing or not an object. | **unmatched** |
-| P2 | 503 | error | `entries` | entries must be an array. | **unmatched** |
+| P1 | 499 | error | `''` | Mapping plan is missing or not an object. | `PLAN_SHAPE` |
+| P2 | 503 | error | `entries` | entries must be an array. | `PLAN_SHAPE` |
 | P3 | 508 | warning | `entity` | Plan targets "‹plan›" but the config is "‹config›". | `PLAN_TARGET_MISMATCH` |
 | P4 | 515 | warning | `configVersion` | Plan was authored against config version ‹n›; the config is now ‹m›. | `PLAN_TARGET_MISMATCH` |
-| P5 | 535 | error | `entries[i]` | Entry is not an object. | **unmatched** |
-| P6 | 539 | error | `entries[i].ref` | An entry needs a target field ref. | **unmatched** |
+| P5 | 535 | error | `entries[i]` | Entry is not an object. | `PLAN_SHAPE` |
+| P6 | 539 | error | `entries[i].ref` | An entry needs a target field ref. | `PLAN_SHAPE` |
 | P7 | 545 | warning | `entries[i].ref` | "‹old›" is the 2.2 address of "‹new›"; it is read as "‹new›" until 3.0. Save the plan again to update it. | `PLAN_LEGACY_REF` |
 | P8 | 551 | error | `entries[i].ref` | References unknown field "‹ref›". | `PLAN_UNKNOWN_REF` |
 | P9 | 556 | error | `entries[i].ref` | "‹ref›" is mapped more than once. | `PLAN_DUPLICATE_REF` |
@@ -192,13 +191,19 @@ All in `core/src/import-columns.ts`. Only these six names, from the spec's table
 A ref such as `__proto__.x` is reported as P8 (`PLAN_UNKNOWN_REF`), because no field can have
 that address.
 
-### Open: the four unmatched checks
+### Decided: the four shape checks
 
-P1, P2, P5 and P6 match none of the six permitted names. The spec's table has `PLAN_SHAPE` ("Not
-an object, or no `entries` array"), which fits P1 and P2 exactly, but it is not on the permitted
-list. Nothing in the table fits P5 or P6. They stay unnamed until that is decided.
+P1, P2, P5 and P6 matched none of the six permitted names. Decided on 2026-10-10: all four are
+`PLAN_SHAPE`, a name already in the spec's table, so DE mints no new one. P1 and P2 are exactly
+the table's "Not an object, or no `entries` array"; P5 and P6 are the same failure one level
+down, and the spec's row is widened to say so.
 
-### Open: "until 3.0" in P7's message
+### Decided: `PLAN_UNSAFE_PATH` is not exported
 
-Decision 3 moves the alias's removal from 3.0 to 4.0. P7's message tells the user "until 3.0",
-which becomes false. Correcting it changes a message, which the codes task says not to do.
+No 2.3 check produces it, so `PLAN_PROBLEM_CODES` leaves it out, and every exported code is
+produced by something. The importer adds it with the check that produces it.
+
+### Decided: "until 3.0" in P7's message
+
+Decision 3 moves the alias's removal from 3.0 to 4.0, so P7's "until 3.0" became false. Decided on
+2026-10-10: it is corrected to "until 4.0" with the Decision 3 correction. That is the only message 2.4 changes.

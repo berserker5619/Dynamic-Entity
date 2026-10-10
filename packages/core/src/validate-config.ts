@@ -23,7 +23,7 @@ import {
 import { OPTION_KEY, UNSAFE_PATH_KEYS, isUnsafePath, resolveLabel } from './form-logic';
 import { RULE_ACTION_TYPES, RULE_OPERATORS } from './form-model.types';
 import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from './form-model.types';
-import type { ProblemCode } from './problem-codes';
+import type { ConfigProblemCode, ProblemCode } from './problem-codes';
 
 export interface ConfigProblem {
   /** `error` means it will not render correctly; `warning` means it is suspicious but usable. */
@@ -144,20 +144,20 @@ export function validateConfig(
   options: ValidateConfigOptions = {},
 ): ConfigProblem[] {
   const problems: ConfigProblem[] = [];
-  const add = (level: ConfigProblem['level'], path: string, message: string) =>
-    problems.push({ level, path, message });
+  const add = (level: ConfigProblem['level'], code: ConfigProblemCode, path: string, message: string) =>
+    problems.push({ level, code, path, message });
 
   if (!config || typeof config !== 'object') {
-    add('error', '', 'Config is missing or not an object.');
+    add('error', 'CONFIG_NOT_AN_OBJECT', '', 'Config is missing or not an object.');
     return problems;
   }
 
   if (!config.entity || typeof config.entity !== 'string' || !config.entity.trim()) {
-    add('error', 'entity', 'An entity name is required.');
+    add('error', 'CONFIG_ENTITY_REQUIRED', 'entity', 'An entity name is required.');
   }
 
   if (config.version !== undefined && (typeof config.version !== 'number' || config.version < 1)) {
-    add('error', 'version', 'version must be a positive number when present.');
+    add('error', 'CONFIG_INVALID_VERSION', 'version', 'version must be a positive number when present.');
   }
 
   const knownTypes = new Set<string>([
@@ -201,7 +201,7 @@ export function validateConfig(
 
     if (v.pattern !== undefined) {
       if (typeof v.pattern !== 'string' || !v.pattern) {
-        add('error', `${path}.validators.pattern`, 'pattern must be a non-empty string.');
+        add('error', 'CONFIG_PATTERN_NOT_STRING', `${path}.validators.pattern`, 'pattern must be a non-empty string.');
       } else {
         try {
           new RegExp(v.pattern);
@@ -209,6 +209,7 @@ export function validateConfig(
           const reason = err instanceof Error ? err.message : String(err);
           add(
             'error',
+            'CONFIG_INVALID_PATTERN',
             `${path}.validators.pattern`,
             `"${v.pattern}" is not a valid regular expression (${reason}). It is skipped ` +
               `server-side and throws when the control is built.`,
@@ -220,6 +221,7 @@ export function validateConfig(
     if (typeof v.min === 'number' && typeof v.max === 'number' && v.min > v.max) {
       add(
         'error',
+        'CONFIG_MIN_EXCEEDS_MAX',
         `${path}.validators`,
         `min (${v.min}) is greater than max (${v.max}); no value can satisfy both.`,
       );
@@ -227,6 +229,7 @@ export function validateConfig(
     if (typeof v.minLength === 'number' && typeof v.maxLength === 'number' && v.minLength > v.maxLength) {
       add(
         'error',
+        'CONFIG_MIN_LENGTH_EXCEEDS_MAX_LENGTH',
         `${path}.validators`,
         `minLength (${v.minLength}) is greater than maxLength (${v.maxLength}); no value can satisfy both.`,
       );
@@ -241,12 +244,12 @@ export function validateConfig(
       ['customAsync', v.customAsync],
     ] as const) {
       if (list !== undefined && !Array.isArray(list)) {
-        add('error', `${path}.validators.${key}`, `${key} must be an array of validator names.`);
+        add('error', 'CONFIG_VALIDATOR_LIST_NOT_ARRAY', `${path}.validators.${key}`, `${key} must be an array of validator names.`);
         continue;
       }
       (list ?? []).forEach((name, i) => {
         if (typeof name !== 'string' || !name) {
-          add('error', `${path}.validators.${key}[${i}]`, 'A validator name must be a non-empty string.');
+          add('error', 'CONFIG_VALIDATOR_NAME_INVALID', `${path}.validators.${key}[${i}]`, 'A validator name must be a non-empty string.');
           return;
         }
         if (known.has(name)) return;
@@ -257,6 +260,7 @@ export function validateConfig(
             : '';
         add(
           'error',
+          'CONFIG_UNKNOWN_VALIDATOR',
           `${path}.validators.${key}[${i}]`,
           `No validator named "${name}" is registered, so it is dropped and never runs.${consequence}`,
         );
@@ -272,6 +276,7 @@ export function validateConfig(
     if (numeric && typeof value !== 'number') {
       add(
         'error',
+        'CONFIG_DEFAULT_TYPE_MISMATCH',
         `${path}.defaultValue`,
         `A "${field.type}" field's default must be a number; this is a ${typeof value}.`,
       );
@@ -279,15 +284,16 @@ export function validateConfig(
     if ((field.type === 'boolean' || field.type === 'checkbox') && typeof value !== 'boolean') {
       add(
         'error',
+        'CONFIG_DEFAULT_TYPE_MISMATCH',
         `${path}.defaultValue`,
         `A "${field.type}" field's default must be a boolean; this is a ${typeof value}.`,
       );
     }
     if (field.type === 'color' && normalizeHexColor(value) !== value) {
-      add('error', `${path}.defaultValue`, `A "color" field's default must be a lowercase #rrggbb colour.`);
+      add('error', 'CONFIG_DEFAULT_TYPE_MISMATCH', `${path}.defaultValue`, `A "color" field's default must be a lowercase #rrggbb colour.`);
     }
     if (field.type === 'tags' && (!Array.isArray(value) || value.some(item => typeof item !== 'string'))) {
-      add('error', `${path}.defaultValue`, `A "tags" field's default must be an array of strings.`);
+      add('error', 'CONFIG_DEFAULT_TYPE_MISMATCH', `${path}.defaultValue`, `A "tags" field's default must be an array of strings.`);
     }
   };
 
@@ -308,7 +314,7 @@ export function validateConfig(
     field.options.forEach((option, i) => {
       const at = `${path}.options[${i}]`;
       if (!option || typeof option !== 'object' || Array.isArray(option)) {
-        add('error', at, 'An option must be a language-keyed object.');
+        add('error', 'CONFIG_OPTION_NOT_OBJECT', at, 'An option must be a language-keyed object.');
         return;
       }
 
@@ -316,6 +322,7 @@ export function validateConfig(
         if (key.startsWith('$') && key !== OPTION_KEY) {
           add(
             'error',
+            'CONFIG_OPTION_RESERVED_KEY',
             `${at}.${key}`,
             `"${key}" is reserved. "$" cannot begin a language subtag, so the only "$" key an ` +
               `option may carry is "${OPTION_KEY}".`,
@@ -326,11 +333,11 @@ export function validateConfig(
       const key = (option as Record<string, unknown>)[OPTION_KEY];
       if (key !== undefined) {
         if (typeof key !== 'string' || !key) {
-          add('error', `${at}.${OPTION_KEY}`, `${OPTION_KEY} must be a non-empty string.`);
+          add('error', 'CONFIG_OPTION_KEY_INVALID', `${at}.${OPTION_KEY}`, `${OPTION_KEY} must be a non-empty string.`);
         } else {
           const clash = keys.get(key);
           if (clash !== undefined) {
-            add('error', `${at}.${OPTION_KEY}`, `Duplicate option key "${key}" (also at index ${clash}).`);
+            add('error', 'CONFIG_DUPLICATE_OPTION_KEY', `${at}.${OPTION_KEY}`, `Duplicate option key "${key}" (also at index ${clash}).`);
           } else {
             keys.set(key, i);
           }
@@ -343,6 +350,7 @@ export function validateConfig(
       if (seen !== undefined) {
         add(
           'warning',
+          'CONFIG_DUPLICATE_OPTION_LABEL',
           at,
           `Two options both read "${label}" in "${lang}" (also at index ${seen}). The ` +
             `displayed text is the stored value, so a record cannot say which was picked.`,
@@ -355,12 +363,12 @@ export function validateConfig(
 
   const visitField = (field: NestedFieldConfig, path: string, scope: readonly string[]) => {
     if (!field || typeof field !== 'object') {
-      add('error', path, 'Field is missing or not an object.');
+      add('error', 'CONFIG_FIELD_NOT_OBJECT', path, 'Field is missing or not an object.');
       return;
     }
 
     if (!field.id || typeof field.id !== 'string') {
-      add('error', `${path}.id`, 'A field id is required.');
+      add('error', 'CONFIG_FIELD_ID_REQUIRED', `${path}.id`, 'A field id is required.');
     } else {
       if (UNSAFE_PATH_KEYS.has(field.id)) {
         // `__proto__` and `constructor` sail through ID_PATTERN, and then every path guard
@@ -369,6 +377,7 @@ export function validateConfig(
         // problem, so it is not a warning.
         add(
           'error',
+          'CONFIG_RESERVED_FIELD_ID',
           `${path}.id`,
           `"${field.id}" is a reserved object key. A field with this id can never store a ` +
             `value: every path guard refuses to read or write it. Rename the field.`,
@@ -376,6 +385,7 @@ export function validateConfig(
       } else if (!ID_PATTERN.test(field.id)) {
         add(
           'warning',
+          'CONFIG_FIELD_ID_NOT_IDENTIFIER',
           `${path}.id`,
           `"${field.id}" is not a plain identifier; it is used as an object key in saved records.`,
         );
@@ -385,6 +395,7 @@ export function validateConfig(
       if (seenAt) {
         add(
           'error',
+          'CONFIG_DUPLICATE_FIELD_ID',
           `${path}.id`,
           `Duplicate field id "${field.id}" (also at ${seenAt}). Two fields in ${scopeKey(scope)} would share one control and one record key.`,
         );
@@ -394,37 +405,39 @@ export function validateConfig(
     }
 
     if (!field.type) {
-      add('error', `${path}.type`, 'A field type is required.');
+      add('error', 'CONFIG_FIELD_TYPE_REQUIRED', `${path}.type`, 'A field type is required.');
     } else if (!knownTypes.has(field.type)) {
       add(
         'error',
+        'CONFIG_UNKNOWN_FIELD_TYPE',
         `${path}.type`,
         `Unknown field type "${field.type}". It will not render. Known types: ${[...knownTypes].sort().join(', ')}.`,
       );
     }
 
     if (field.label === undefined) {
-      add('warning', `${path}.label`, 'No label; the field will render without one.');
+      add('warning', 'CONFIG_FIELD_NO_LABEL', `${path}.label`, 'No label; the field will render without one.');
     }
 
     const isContainer = field.type === 'group' || field.type === 'array';
     if (isContainer && (!field.children || field.children.length === 0)) {
-      add('warning', `${path}.children`, `A "${field.type}" field with no children renders nothing.`);
+      add('warning', 'CONFIG_CONTAINER_NO_CHILDREN', `${path}.children`, `A "${field.type}" field with no children renders nothing.`);
     }
     if (!isContainer && field.children?.length) {
-      add('warning', `${path}.children`, `Children on a "${field.type}" field are ignored.`);
+      add('warning', 'CONFIG_CHILDREN_IGNORED', `${path}.children`, `Children on a "${field.type}" field are ignored.`);
     }
 
     if (field.options?.length && field.listName) {
       add(
         'warning',
+        'CONFIG_OPTIONS_AND_LIST_NAME',
         `${path}.listName`,
         'Both inline options and listName are set; inline options win and listName is dropped.',
       );
     }
 
     if (field.step !== undefined && !(typeof field.step === 'number' && Number.isFinite(field.step) && field.step > 0)) {
-      add('error', `${path}.step`, 'step must be a number greater than 0. The slider falls back to 1.');
+      add('error', 'CONFIG_INVALID_STEP', `${path}.step`, 'step must be a number greater than 0. The slider falls back to 1.');
     }
     if (field.type === 'slider') {
       const min = field.validators?.min;
@@ -432,13 +445,14 @@ export function validateConfig(
       if (typeof min === 'number' && typeof max === 'number' && max <= min) {
         add(
           'error',
+          'CONFIG_SLIDER_RANGE_EMPTY',
           `${path}.validators`,
           `A slider's max (${max}) must be greater than its min (${min}). The track falls back to 0–100 and the form still enforces both bounds, so no value can be valid.`,
         );
       }
     }
     if (field.colSpan !== undefined && (field.colSpan < 1 || field.colSpan > 12)) {
-      add('error', `${path}.colSpan`, 'colSpan must be between 1 and 12.');
+      add('error', 'CONFIG_INVALID_COL_SPAN', `${path}.colSpan`, 'colSpan must be between 1 and 12.');
     }
 
     // The commonest misplaced key there is, and it fails silent: nothing reads a field-level
@@ -447,6 +461,7 @@ export function validateConfig(
     if ('required' in (field as object)) {
       add(
         'error',
+        'CONFIG_FIELD_LEVEL_REQUIRED',
         `${path}.required`,
         '`required` is not a field property, so this field is not required. Move it to `validators.required`.',
       );
@@ -462,39 +477,40 @@ export function validateConfig(
     // Present but not a collection: the children are dropped, and without this nothing says
     // so. `asArray` stops the crash; this is what stops the silence.
     if (field.children !== undefined && !Array.isArray(field.children)) {
-      add('error', `${path}.children`, 'children must be an array; it will be ignored.');
+      add('error', 'CONFIG_CHILDREN_NOT_ARRAY', `${path}.children`, 'children must be an array; it will be ignored.');
     }
     asArray(field.children).forEach((child, i) => visitField(child, `${path}.children[${i}]`, childScope));
   };
 
   const visitTab = (tab: NestedTabConfig, path: string, scope: readonly string[]) => {
     if (!tab || typeof tab !== 'object') {
-      add('error', path, 'Tab is missing or not an object.');
+      add('error', 'CONFIG_TAB_NOT_OBJECT', path, 'Tab is missing or not an object.');
       return;
     }
 
     if (!tab.id || typeof tab.id !== 'string') {
-      add('error', `${path}.id`, 'A tab id is required.');
+      add('error', 'CONFIG_TAB_ID_REQUIRED', `${path}.id`, 'A tab id is required.');
     } else {
       if (UNSAFE_PATH_KEYS.has(tab.id)) {
         // A tab id is a scope segment, so it meets the same path guards a field id does —
         // and takes every field on the tab down with it.
         add(
           'error',
+          'CONFIG_RESERVED_TAB_ID',
           `${path}.id`,
           `"${tab.id}" is a reserved object key. No field on this tab could store a value.`,
         );
       }
       const seenAt = tabIds.get(tab.id);
       if (seenAt) {
-        add('error', `${path}.id`, `Duplicate tab id "${tab.id}" (also at ${seenAt}).`);
+        add('error', 'CONFIG_DUPLICATE_TAB_ID', `${path}.id`, `Duplicate tab id "${tab.id}" (also at ${seenAt}).`);
       } else {
         tabIds.set(tab.id, path);
       }
     }
 
     if (!tab.fields?.length && !tab.children?.length && !tab.moduleName) {
-      add('warning', path, 'Tab has no fields, no sub-tabs and no module; it renders empty.');
+      add('warning', 'CONFIG_EMPTY_TAB', path, 'Tab has no fields, no sub-tabs and no module; it renders empty.');
     }
 
     // `flatData` puts the tab's fields at the parent's level instead of under the tab id,
@@ -505,7 +521,7 @@ export function validateConfig(
       ['children', tab.children],
     ] as const) {
       if (value !== undefined && !Array.isArray(value)) {
-        add('error', `${path}.${key}`, `${key} must be an array; it will be ignored.`);
+        add('error', 'CONFIG_TAB_LIST_NOT_ARRAY', `${path}.${key}`, `${key} must be an array; it will be ignored.`);
       }
     }
     asArray(tab.fields).forEach((f, i) => visitField(f, `${path}.fields[${i}]`, tabScope));
@@ -513,7 +529,7 @@ export function validateConfig(
   };
 
   if (!Array.isArray(config.tabs) || config.tabs.length === 0) {
-    add('error', 'tabs', 'At least one tab is required.');
+    add('error', 'CONFIG_NO_TABS', 'tabs', 'At least one tab is required.');
   } else {
     config.tabs.forEach((tab, i) => visitTab(tab, `tabs[${i}]`, []));
   }
@@ -533,17 +549,22 @@ export function validateConfig(
    * is a field id, which is how every config written before paths existed addresses a field;
    * it resolves only while one scope defines it.
    */
-  const referenceProblem = (reference: string): string | null => {
+  const referenceProblem = (reference: string): { code: ConfigProblemCode; text: string } | null => {
     const parsed = parseFieldRef(reference);
     if (parsed.kind === 'ref') {
       return allPaths.has(parsed.value)
         ? null
-        : `No field at path "${parsed.value}".`;
+        : { code: 'CONFIG_UNKNOWN_FIELD_REF', text: `No field at path "${parsed.value}".` };
     }
-    if (!allIds.has(parsed.value)) return `References unknown field "${parsed.value}".`;
+    if (!allIds.has(parsed.value)) {
+      return { code: 'CONFIG_UNKNOWN_FIELD_REF', text: `References unknown field "${parsed.value}".` };
+    }
     const scopes = scopesById.get(parsed.value);
     return scopes
-      ? `Ambiguous reference to "${parsed.value}": defined in ${scopes.join(' and ')}. Name it by path instead, as [${scopes[0]}.${parsed.value}].`
+      ? {
+          code: 'CONFIG_AMBIGUOUS_FIELD_REF',
+          text: `Ambiguous reference to "${parsed.value}": defined in ${scopes.join(' and ')}. Name it by path instead, as [${scopes[0]}.${parsed.value}].`,
+        }
       : null;
   };
 
@@ -558,7 +579,7 @@ export function validateConfig(
   const flagRef = (reference: string | undefined, path: string, suffix: string) => {
     if (!reference) return;
     const problem = referenceProblem(reference);
-    if (problem) add('error', path, `${problem} ${suffix}`);
+    if (problem) add('error', problem.code, path, `${problem.text} ${suffix}`);
   };
 
   /**
@@ -574,6 +595,7 @@ export function validateConfig(
     if (!key || !isUnsafePath(key)) return;
     add(
       'error',
+      'CONFIG_UNSAFE_PATH',
       path,
       `"${key}" names a reserved object key, so it is skipped rather than written. ` +
         `Rename the field it points at.`,
@@ -634,6 +656,7 @@ export function validateConfig(
     if (arrayPositions.some(arrayRef => position.startsWith(`${arrayRef}.`))) {
       add(
         'error',
+        'CONFIG_REFERER_INSIDE_ARRAY',
         `${entry.path}.refererField`,
         `refererField is not allowed on a field inside an array: "${field.refererField}" cannot say which row it means.`,
       );
@@ -642,6 +665,7 @@ export function validateConfig(
     if ((field.type === 'group' || field.type === 'array') && !entry.tabLevel) {
       add(
         'warning',
+        'CONFIG_REFERER_OVERRIDE_IGNORED',
         `${entry.path}.refererField`,
         `refererField on a ${field.type} that is not directly on a tab is ignored: the form only moves tab-level containers, so the value stays at "${position}".`,
       );
@@ -650,7 +674,7 @@ export function validateConfig(
 
   options.rules?.forEach((rule, i) => {
     if (!rule || typeof rule !== 'object') {
-      add('error', `rules[${i}]`, 'Rule is missing or not an object.');
+      add('error', 'CONFIG_RULE_NOT_OBJECT', `rules[${i}]`, 'Rule is missing or not an object.');
       return;
     }
     const base = `rules[${i}]`;
@@ -664,13 +688,13 @@ export function validateConfig(
      * exactly the failure this validator is for.
      */
     if (!Array.isArray(rule.conditions)) {
-      add('error', `${base}.conditions`, 'conditions must be an array; the rule is skipped at runtime.');
+      add('error', 'CONFIG_RULE_LIST_NOT_ARRAY', `${base}.conditions`, 'conditions must be an array; the rule is skipped at runtime.');
     }
     if (!Array.isArray(rule.targets)) {
-      add('error', `${base}.targets`, 'targets must be an array; the rule is skipped at runtime.');
+      add('error', 'CONFIG_RULE_LIST_NOT_ARRAY', `${base}.targets`, 'targets must be an array; the rule is skipped at runtime.');
     }
     if (!rule.action || typeof rule.action !== 'object' || Array.isArray(rule.action)) {
-      add('error', `${base}.action`, 'An action object is required; the rule is skipped at runtime.');
+      add('error', 'CONFIG_RULE_ACTION_REQUIRED', `${base}.action`, 'An action object is required; the rule is skipped at runtime.');
     }
 
     // The engine has no branch for an action type outside the list, so a rule carrying one
@@ -683,6 +707,7 @@ export function validateConfig(
     ) {
       add(
         'error',
+        'CONFIG_UNKNOWN_RULE_ACTION',
         `${base}.action.type`,
         `Unknown action type "${String(rule.action.type)}"; the rule changes nothing when it fires. ` +
           `Expected one of: ${RULE_ACTION_TYPES.join(', ')}.`,
@@ -691,14 +716,14 @@ export function validateConfig(
     // A warning, not an error: a rule saved half-authored, before its targets were picked,
     // is a legitimate draft. It is still worth saying, because it looks like it works.
     if (Array.isArray(rule.targets) && rule.targets.length === 0) {
-      add('warning', `${base}.targets`, 'This rule has no targets; it changes nothing when it fires.');
+      add('warning', 'CONFIG_RULE_NO_TARGETS', `${base}.targets`, 'This rule has no targets; it changes nothing when it fires.');
     }
 
     flagRef(rule.fieldId, `${base}.fieldId`, 'The rule will never trigger.');
     asArray(rule.conditions).forEach((condition, j) => {
       const at = `${base}.conditions[${j}]`;
       if (!condition || typeof condition !== 'object') {
-        add('error', at, 'Condition is missing or not an object; the rule can never fire.');
+        add('error', 'CONFIG_CONDITION_NOT_OBJECT', at, 'Condition is missing or not an object; the rule can never fire.');
         return;
       }
       // `evaluateCondition` returns `false` for an operator it has no case for, so a typo
@@ -707,6 +732,7 @@ export function validateConfig(
         const suggestion = typeof condition.operator === 'string' ? suggestOperator(condition.operator) : undefined;
         add(
           'error',
+          'CONFIG_UNKNOWN_RULE_OPERATOR',
           `${at}.operator`,
           `Unknown operator "${String(condition.operator)}"; the condition can never hold.` +
             (suggestion ? ` Did you mean "${suggestion}"?` : ''),
@@ -720,6 +746,7 @@ export function validateConfig(
       ) {
         add(
           'error',
+          'CONFIG_COMPARE_FIELD_REQUIRED',
           `${at}.compareToField`,
           'compareType "field" needs a compareToField; without one the condition compares against `value` instead.',
         );
@@ -731,13 +758,14 @@ export function validateConfig(
       if (!target?.id) return;
       if (target.type === 'tab') {
         if (!tabIds.has(target.id)) {
-          add('error', `${base}.targets[${j}].id`, `References unknown tab "${target.id}".`);
+          add('error', 'CONFIG_UNKNOWN_TAB_REF', `${base}.targets[${j}].id`, `References unknown tab "${target.id}".`);
         }
         // Only `visibility` reaches a tab. `validationErrors` and `infoBanners` are keyed by
         // target and read per field, so a tab-targeted message is written and never rendered.
         if (rule.action?.type === 'validation' || rule.action?.type === 'info') {
           add(
             'warning',
+            'CONFIG_TAB_ACTION_IGNORED',
             `${base}.targets[${j}]`,
             `A "${rule.action.type}" action on a tab has no effect — only "visibility" applies ` +
               `to a tab. Target the fields instead.`,
@@ -748,6 +776,7 @@ export function validateConfig(
       if (target.type !== 'field') {
         add(
           'error',
+          'CONFIG_UNKNOWN_TARGET_TYPE',
           `${base}.targets[${j}].type`,
           `Unknown target type "${String(target.type)}"; expected "field" or "tab". The action will never apply.`,
         );

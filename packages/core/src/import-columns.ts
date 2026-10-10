@@ -21,6 +21,7 @@ import type {
   UnsupportedColumn,
 } from './import-model.types';
 import type { ConfigProblem } from './validate-config';
+import type { PlanProblemCode } from './problem-codes';
 
 export interface DeriveColumnsOptions {
   /** Language used to resolve labels and option text into header strings. Default `en`. */
@@ -491,21 +492,21 @@ export function validateMappingPlan(
   options: DeriveColumnsOptions = {},
 ): ConfigProblem[] {
   const problems: ConfigProblem[] = [];
-  const add = (level: ConfigProblem['level'], path: string, message: string): void => {
-    problems.push({ level, path, message });
+  const add = (level: ConfigProblem['level'], code: PlanProblemCode, path: string, message: string): void => {
+    problems.push({ level, code, path, message });
   };
 
   if (!plan || typeof plan !== 'object') {
-    add('error', '', 'Mapping plan is missing or not an object.');
+    add('error', 'PLAN_SHAPE', '', 'Mapping plan is missing or not an object.');
     return problems;
   }
   if (!Array.isArray(plan.entries)) {
-    add('error', 'entries', 'entries must be an array.');
+    add('error', 'PLAN_SHAPE', 'entries', 'entries must be an array.');
     return problems;
   }
 
   if (config?.entity && plan.entity && plan.entity !== config.entity) {
-    add('warning', 'entity', `Plan targets "${plan.entity}" but the config is "${config.entity}".`);
+    add('warning', 'PLAN_TARGET_MISMATCH', 'entity', `Plan targets "${plan.entity}" but the config is "${config.entity}".`);
   }
   if (
     typeof plan.configVersion === 'number' &&
@@ -514,6 +515,7 @@ export function validateMappingPlan(
   ) {
     add(
       'warning',
+      'PLAN_TARGET_MISMATCH',
       'configVersion',
       `Plan was authored against config version ${plan.configVersion}; the config is now ${config.version}.`,
     );
@@ -532,11 +534,11 @@ export function validateMappingPlan(
   plan.entries.forEach((entry, i) => {
     const at = `entries[${i}]`;
     if (!entry || typeof entry !== 'object') {
-      add('error', at, 'Entry is not an object.');
+      add('error', 'PLAN_SHAPE', at, 'Entry is not an object.');
       return;
     }
     if (!entry.ref || typeof entry.ref !== 'string') {
-      add('error', `${at}.ref`, 'An entry needs a target field ref.');
+      add('error', 'PLAN_SHAPE', `${at}.ref`, 'An entry needs a target field ref.');
       return;
     }
     const alias = aliases.get(entry.ref);
@@ -544,29 +546,30 @@ export function validateMappingPlan(
     if (ref !== entry.ref) {
       add(
         'warning',
+        'PLAN_LEGACY_REF',
         `${at}.ref`,
         `"${entry.ref}" is the 2.2 address of "${ref}"; it is read as "${ref}" until 3.0. Save the plan again to update it.`,
       );
     } else if (!known.has(entry.ref)) {
-      add('error', `${at}.ref`, `References unknown field "${entry.ref}".`);
+      add('error', 'PLAN_UNKNOWN_REF', `${at}.ref`, `References unknown field "${entry.ref}".`);
     }
     // One entry per target. Two entries for one field is not a merge, it is a race between
     // whichever the writer applies last — so it is rejected rather than resolved.
     if (seen.has(ref)) {
-      add('error', `${at}.ref`, `"${ref}" is mapped more than once.`);
+      add('error', 'PLAN_DUPLICATE_REF', `${at}.ref`, `"${ref}" is mapped more than once.`);
     }
     seen.add(ref);
 
     const hasColumn = entry.column !== undefined;
     const hasConstant = entry.constant !== undefined;
     if (hasColumn && hasConstant) {
-      add('error', at, 'An entry takes either a column or a constant, not both.');
+      add('error', 'PLAN_SOURCE', at, 'An entry takes either a column or a constant, not both.');
     }
     if (!hasColumn && !hasConstant) {
-      add('error', at, 'An entry needs either a column or a constant.');
+      add('error', 'PLAN_SOURCE', at, 'An entry needs either a column or a constant.');
     }
     if (hasColumn && (!Number.isInteger(entry.column) || (entry.column as number) < 0)) {
-      add('error', `${at}.column`, 'column must be a zero-based integer index.');
+      add('error', 'PLAN_SOURCE', `${at}.column`, 'column must be a zero-based integer index.');
     }
   });
 
