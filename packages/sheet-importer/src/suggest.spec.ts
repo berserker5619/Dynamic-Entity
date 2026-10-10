@@ -138,6 +138,14 @@ describe('suggestMapping', () => {
     );
   });
 
+  it('reads "Phones 1 Number" as slot 0 when the array label is its id, not as the ref phones.1.number', () => {
+    // DE 2.4.0 compares refs after normalising, so this header was claimed, as exact, for phones.1.
+    expect(suggestMapping(['Phones 1 Number', 'Phones 2 Number'], PHONES).entries).toEqual([
+      expect.objectContaining({ ref: 'phones.0.number', column: 0, confidence: 'guess' }),
+      expect.objectContaining({ ref: 'phones.1.number', column: 1, confidence: 'guess' }),
+    ]);
+  });
+
   it('matches a header that is a ref, exactly', () => {
     expect(suggestMapping(['phones.1.kind'], PHONES).entries).toEqual([
       expect.objectContaining({ ref: 'phones.1.kind', column: 0, confidence: 'exact' }),
