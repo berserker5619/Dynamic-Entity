@@ -188,7 +188,7 @@ With `group` set, consecutive sheet rows sharing a key produce one record, and e
 **Building a grouped record**
 
 1. Each row is mapped as in v1 into a row record. Entries whose ref sits under a `collect` array produce that row's item for the array; every other entry is a *parent field*.
-2. The first row's parent fields seed the record. Later rows' parent fields are compared with it: a blank cell is ignored, an equal value is fine, a different value is a `RECORD_GROUP_CONFLICT` warning ("rows disagree on customer.email; kept row 4"). First row wins.
+2. The first row's parent fields seed the record. Later rows' parent fields are compared with it: a blank cell is ignored, an equal value is fine, a different value is a `RECORD_GROUP_CONFLICT` warning ("rows disagree on customer.email; kept row 4"), once per field. First row wins. A field the first row left blank is filled from the first later row that has it: nothing disagrees.
 3. Each row's collected item is appended to its array, unless every leaf of the item is blank. Items are not de-duplicated: two identical line items are two items.
 4. Non-collected arrays (numbered-column slots) follow the parent-field rule as a whole.
 5. `finalize` and `validate` run once, on the finished record, after the last row of the group.
@@ -199,6 +199,7 @@ With `group` set, consecutive sheet rows sharing a key produce one record, and e
   - `maxGroups` (default 200,000) bounds the number of keys;
   - `maxGroupKeyBytes` (default 8 MiB) bounds their total encoded length.
   Exceeding either fails the import with `TOO_MANY_GROUPS`.
+- **In `applyMapping`**, a contiguity failure is thrown as an `ImportFailure` with code `GROUP_NOT_CONTIGUOUS` and `details: { key, rows }`. The server maps the same code onto 422. A row with a blank key closes the open run: it is its own record, so a key after it is not adjacent to the key before it. The memory limits (`maxGroups`, `maxGroupKeyBytes`, `maxGroupRows`) bound the streaming runner, and `applyMapping`, which already holds the whole sheet, does not apply them.
 - `contiguous: false` lets rows of a group appear anywhere. The browser transport MAY support it, since it holds the whole sheet. `runImport` MUST refuse it before reading a row: the `INVALID_PLAN` error, carrying a `PLAN_GROUP` problem whose message says "non-contiguous grouping is not supported for streaming imports; sort the sheet by the key columns" (Decision 7).
 
 **Streaming (`runImport`)**
@@ -213,6 +214,7 @@ With `group` set, consecutive sheet rows sharing a key produce one record, and e
 - Group warnings go in `warnings`, never in `errors` (§9). A record with warnings is imported.
 - `rowsRead`, `skipped` and `failed` keep counting sheet rows; `imported` counts records. `failed` counts rows with an **error** only. The reconciliation becomes `rowsInImported + skipped + failed === rowsRead`, where `rowsInImported` is reported too.
 - If any row of a group fails coercion, the whole record fails and all its rows count as `failed`.
+- As in 2.3, a cell that fails coercion is also absent from the record, so a required target fed by it is reported as `RECORD_REQUIRED` as well. The record is judged as it stands.
 
 ## Lists
 
@@ -607,3 +609,5 @@ Three errata were fixed:
 - `opts.split` carries the entry's separator, so `coerceValue`'s signature gains `split`.
 
 A `custom` kind reaching `coerceValue` throws (§7).
+
+**2026-10-10: `applyMapping` and grouping.** Three points §5 left open for the in-memory engine are now stated there: a contiguity failure is thrown as an `ImportFailure` (`GROUP_NOT_CONTIGUOUS`), which the server maps onto 422; a blank-key row closes the open run; the memory limits are the streaming runner's. Two rules are also stated: a blank first-row parent field is filled from a later row, and 2.3's double report of a failed required cell (`CELL_*` and `RECORD_REQUIRED`) is kept.
