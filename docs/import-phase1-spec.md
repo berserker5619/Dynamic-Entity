@@ -319,8 +319,8 @@ The engine is 2.3's algorithm with `config` replaced by `adapter` and grouping a
 ```typescript
 export function readPlan(input: unknown, opts?: { allowUnknownKeys?: boolean }): { plan?: MappingPlan; problems: PlanProblem[] };
 export function validatePlan<M, C>(plan: MappingPlan, adapter: SchemaAdapter<M, C>): PlanProblem[];
-export function slotsFor<M, C>(headers: readonly string[], adapter: SchemaAdapter<M, C>, plan?: MappingPlan): Record<string, number>;
-export function suggestMapping<M, C>(headers: readonly string[], adapter: SchemaAdapter<M, C>): MappingPlan;
+export function slotsFor<M, C>(headers: readonly string[], adapter: SchemaAdapter<M, C>, plan?: MappingPlan, opts?: { lang?: string }): Record<string, number>;
+export function suggestMapping<M, C>(headers: readonly string[], adapter: SchemaAdapter<M, C>, opts?: { lang?: string }): MappingPlan;
 export function applyMapping<M, C>(
   rows: readonly (readonly unknown[])[],
   plan: MappingPlan,
@@ -611,3 +611,5 @@ Three errata were fixed:
 A `custom` kind reaching `coerceValue` throws (§7).
 
 **2026-10-10: `applyMapping` and grouping.** Three points §5 left open for the in-memory engine are now stated there: a contiguity failure is thrown as an `ImportFailure` (`GROUP_NOT_CONTIGUOUS`), which the server maps onto 422; a blank-key row closes the open run; the memory limits are the streaming runner's. Two rules are also stated: a blank first-row parent field is filled from a later row, and 2.3's double report of a failed required cell (`CELL_*` and `RECORD_REQUIRED`) is kept.
+
+**2026-10-10: `suggestMapping` and `slotsFor`.** The 2.3 header grammar moved unchanged, keyed by `ImportTarget`: a target's `matchKeys` stand where 2.3 used the field's label and id, both for loose matching and for the child names of slot patterns. Both functions take an optional `{ lang }`, passed to `targets()`, and §8's signatures now say so.
