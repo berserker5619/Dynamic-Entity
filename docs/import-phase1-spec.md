@@ -237,6 +237,7 @@ An array reaches a sheet in one of three layouts. v2 gives each an explicit, tes
 - `lists[arrayRef].compact` defaults to `true`: 2.3's `compactArrays` behaviour, holes removed and items renumbered.
 - `compact: false` keeps position: data only in slot 2 yields `[null, {…}]`, with `null` for every empty slot before the last filled one. Trailing empty slots are trimmed. This is Issue 2, deferred from 2.3.
 - `compact` applies only to numbered-column arrays. Setting it on a `collect` array is `PLAN_LIST_OPTION`.
+- A collected array is mapped by item refs with no slot index (`items.sku`). An entry with a slot index into a collected array (`items.0.sku`) is a `PLAN_GROUP` error. To learn a collected array's item targets, `validatePlan` asks the adapter for one slot of it.
 - **Adapter capability.** Each entry in `TargetSet.arrays` declares `positional: boolean`. `compact: false` on an array whose adapter says `false` is `PLAN_LIST_OPTION`, never silently compacted.
 - **DE adapter: `positional: false` until the renderer keeps `null` slots.** Today a `null` slot renders as an empty row and is saved back as an object, so a record would differ depending on whether it came from import or the form. Turning it on requires a renderer contract (render a placeholder row, save `null` back) shipped in DE first. JSON Schema and example adapters declare `positional: true`.
 
@@ -590,3 +591,7 @@ Three errata were fixed:
 - the `GroupSpec.key` comment still said "values joined", against §5's tuple rule;
 - §4's `readPlan` signature now matches §8's optional `plan`;
 - the stored-v1-plans acceptance item is marked as landing with the DE adapter, which is the only place the plans can be built without the importer importing DE.
+
+**2026-10-10: the adapter contracts and `validatePlan`.** Implemented as §7 gives them, with `CoerceOutcome` and `RecordProblem` each carrying their code.
+- **Collected arrays:** one rule §6's layout table implied is now stated in §6. A collected array is mapped without slot indices, and a slot index into one is `PLAN_GROUP`.
+- **Still open:** the "a `custom` kind without `coerce` throws at construction" criterion belongs to adapter construction, so it lands with the adapters themselves.
