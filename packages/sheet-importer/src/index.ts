@@ -32,3 +32,8 @@ export type {
 } from './adapter.types';
 export { MAX_SLOTS, planSlots, shapeOf, slotOf } from './plan-slots';
 export { validatePlan } from './validate-plan';
+
+// ─── Coercion ───────────────────────────────────────────────────────────────
+export { DEFAULT_LIST_SEPARATOR, coerceValue } from './coerce';
+export type { CoerceValueOptions } from './coerce';
+export { cellText } from './cell-text';

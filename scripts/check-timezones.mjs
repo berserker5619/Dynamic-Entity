@@ -24,6 +24,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CORE = path.join(ROOT, 'packages', 'core');
 const SERVER = path.join(ROOT, 'packages', 'server');
 const NGX = path.join(ROOT, 'packages', 'ngx-dynamic-entity');
+const IMPORTER = path.join(ROOT, 'packages', 'sheet-importer');
 
 /**
  * Chosen to straddle Greenwich rather than to be exhaustive.
@@ -61,11 +62,15 @@ const ZONES = [
  * `xlsx-parity`, on both sides, reads one workbook (`core/test-fixtures/xlsx-parity.ts`) through
  * the server's reader and through a typed browser parser, and holds both to the same records:
  * the case where a zone-dependent date would show up as the two disagreeing.
+ *
+ * `importer/coerce` is the schema-agnostic coercer the extraction moves the rules into; it has to
+ * hold in every zone before any adapter is built on it.
  */
 const SUITES = [
   { cwd: CORE, label: 'core', pattern: 'timezone|import-columns|import-engine' },
   { cwd: SERVER, label: 'server', pattern: 'all-configs|xlsx-parity' },
   { cwd: NGX, label: 'ngx', pattern: 'local-import-transport|xlsx-parity' },
+  { cwd: IMPORTER, label: 'importer', pattern: 'coerce' },
 ];
 
 const failures = [];
