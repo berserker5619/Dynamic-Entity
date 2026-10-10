@@ -269,10 +269,4 @@ describe('preparePlan', () => {
     expect(() => preparePlan(planFor(['orderId']), adapter)).toThrow(/only rewrite refs/);
   });
 
-  it('refuses a grouped plan until grouping is built, rather than importing one record per row', () => {
-    const plan = planFor(['orderId'], { group: { key: [0], collect: ['phones'] } });
-    const result = run([['A-1'], ['A-1']], plan);
-    expect(result.records).toEqual([]);
-    expect(result.planProblems.map(p => p.code)).toEqual(['PLAN_GROUP']);
-  });
 });

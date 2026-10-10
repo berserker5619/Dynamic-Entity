@@ -43,3 +43,5 @@ export { applyMapping, preparePlan } from './apply-mapping';
 export type { ApplyMappingOptions, PreparedPlan } from './apply-mapping';
 export { validateRecord } from './validate-record';
 export type { ImportResult, ImportRowError } from './result.types';
+export { IMPORT_FAILURE_CODES, ImportFailure } from './import-failure';
+export type { ImportFailureCode, ImportFailureDetails } from './import-failure';

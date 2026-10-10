@@ -2,7 +2,7 @@
  * adapter.fixtures.ts — a small adapter written to the `SchemaAdapter` contract, for tests.
  *
  * An order with a customer, a split `tags` list, numbered `phones` (not positional, as DE's
- * arrays are), and positional numbered `guardians`. Each test overrides the hooks it is about.
+ * arrays are), positional numbered `guardians`, and `items` collected one per row. Each test overrides the hooks it is about.
  * Excluded from coverage, like the server's `*.fixtures.ts`.
  */
 import type { ImportTarget, SchemaAdapter, TargetSet, ValueKind } from './adapter.types';
@@ -43,10 +43,13 @@ export function ordersAdapter(overrides: Partial<TestAdapter> = {}): TestAdapter
           ...slotted('phones', 'number', { kind: 'string', format: 'phone' }, slots['phones'] ?? 0, { required: true }),
           ...slotted('phones', 'kind', text, slots['phones'] ?? 0),
           ...slotted('guardians', 'name', text, slots['guardians'] ?? 0),
+          ...slotted('items', 'sku', text, slots['items'] ?? 0, { required: true }),
+          ...slotted('items', 'qty', { kind: 'number', integer: true, min: 1 }, slots['items'] ?? 0),
         ],
         arrays: [
           { ref: 'phones', label: 'Phones', itemKind: 'object', required: false, positional: false },
           { ref: 'guardians', label: 'Guardians', itemKind: 'object', required: false, positional: true },
+          { ref: 'items', label: 'Items', itemKind: 'object', required: false, positional: false },
         ],
         unsupported: [],
       };

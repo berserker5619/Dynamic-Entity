@@ -1,21 +1,24 @@
 /**
- * apply-mapping.ts — rows in, records out, over any adapter (spec §8).
+ * apply-mapping.ts — rows in, records out, over any adapter (spec §5, §8).
  *
  * Dynamic Entity 2.3's algorithm (`core/src/import-engine.ts`, `applyMapping`) with the config
- * replaced by an adapter. A row that fails is collected, never thrown: an import of 400 rows
- * that stops at row 3 makes someone fix one thing and run it again, forty times.
+ * replaced by an adapter, and grouping added. A row that fails is collected, never thrown: an
+ * import of 400 rows that stops at row 3 makes someone fix one thing and run it again, forty
+ * times.
  *
- * For each row:
- * 1. map it, entry by entry: the adapter's `coerce`, else `coerceValue`;
- * 2. compact or keep each array's slots, as the plan's `lists` say (§6);
- * 3. `finalize`, then `validate` (the adapter's, else the generic checks).
- *
- * Grouping (§5) is the next step, and a grouped plan is refused until then rather than
- * imported one record per row.
+ * 1. Each row is mapped, entry by entry (the adapter's `coerce`, else `coerceValue`), into its
+ *    parent fields and one item per collected array. Its numbered-column arrays are compacted
+ *    or kept by position, as the plan's `lists` say (§6).
+ * 2. Without `group`, each row is a record. With it, consecutive rows sharing a key are one
+ *    record: parent fields first-row-wins, collected items appended (§5).
+ * 3. Each record is finalized, then validated (the adapter's `validate`, else the generic
+ *    checks), once, after its last row.
  */
 import type { CoerceOutcome, ImportTarget, SchemaAdapter, TargetSet, ValueKind } from './adapter.types';
+import { cellText } from './cell-text';
 import { coerceValue } from './coerce';
-import type { NormalizedPlan, PlanProblem } from './plan.types';
+import { ImportFailure } from './import-failure';
+import type { GroupSpec, NormalizedPlan, PlanProblem } from './plan.types';
 import { planSlots } from './plan-slots';
 import { readPlan } from './read-plan';
 import { getRecordValue, isEmptyValue, setRecordValue } from './record-path';
@@ -97,9 +100,87 @@ function settleArray(items: unknown[], compact: boolean): unknown[] {
   return Array.from({ length: last + 1 }, (_, i) => (isEmptyValue(items[i]) ? null : items[i]));
 }
 
+/** One sheet row, mapped: its cells, parent fields, item per collected array, and cell errors. */
+interface MappedRow {
+  rowNumber: number;
+  cells: readonly unknown[];
+  parent: Record<string, unknown>;
+  items: Map<string, Record<string, unknown>>;
+  errors: ImportRowError[];
+}
+
+/** The rows of one record. A keyless group is a row with a blank key, imported on its own. */
+interface Group {
+  keyless: boolean;
+  members: MappedRow[];
+}
+
+/**
+ * Rows into groups (§5). A key is the tuple of trimmed `cellText` at the key columns, compared
+ * as a tuple, so `["a|b", "c"]` and `["a", "b|c"]` are two keys. A row whose key cells are all
+ * blank is its own group and never merged.
+ *
+ * Contiguous (the default): a group is a run of adjacent rows, and a key that comes back after
+ * its run closed fails the whole import, naming the key and both rows. Otherwise rows of one
+ * key gather wherever they are, in sheet order, and groups keep the order they first appear in.
+ */
+function groupRows(mapped: MappedRow[], group: Required<GroupSpec>): Group[] {
+  const groups: Group[] = [];
+  const open = new Map<string, Group>();
+  const closed = new Map<string, number>();
+  // Asserted, not annotated: it is reassigned inside close(), which narrowing cannot see.
+  let current = null as { key: string; group: Group } | null;
+
+  const close = (): void => {
+    if (current) closed.set(current.key, current.group.members[current.group.members.length - 1].rowNumber);
+    current = null;
+  };
+
+  for (const row of mapped) {
+    const tuple = group.key.map(column => cellText(row.cells[column]).trim());
+    if (tuple.every(part => part === '')) {
+      if (group.contiguous) close();
+      groups.push({ keyless: true, members: [row] });
+      continue;
+    }
+    const key = JSON.stringify(tuple);
+
+    if (!group.contiguous) {
+      const existing = open.get(key);
+      if (existing) existing.members.push(row);
+      else {
+        const fresh: Group = { keyless: false, members: [row] };
+        open.set(key, fresh);
+        groups.push(fresh);
+      }
+      continue;
+    }
+
+    if (current?.key === key) {
+      current.group.members.push(row);
+      continue;
+    }
+    close();
+    const lastRow = closed.get(key);
+    if (lastRow !== undefined) {
+      throw new ImportFailure(
+        'GROUP_NOT_CONTIGUOUS',
+        `The rows for group ${tuple.join(' / ')} are not together: the group ended at row ${lastRow} and starts again at row ${row.rowNumber}. Sort the sheet by the key columns.`,
+        { key: tuple, rows: [lastRow, row.rowNumber] },
+      );
+    }
+    const fresh: Group = { keyless: false, members: [row] };
+    groups.push(fresh);
+    current = { key, group: fresh };
+  }
+  return groups;
+}
+
 /**
  * Turn rows into records. `plan` may be anything a plan arrived as: it is read, upgraded and
  * validated here, and an `error` among those stops the run before the first row is read.
+ *
+ * Throws `ImportFailure` (`GROUP_NOT_CONTIGUOUS`) when a contiguous group's key comes back.
  */
 export function applyMapping<TMeta, TCtx>(
   rows: readonly (readonly unknown[])[],
@@ -109,50 +190,58 @@ export function applyMapping<TMeta, TCtx>(
   options: ApplyMappingOptions = {},
 ): ImportResult {
   const prepared = preparePlan(plan, adapter);
-  const nothing = (planProblems: PlanProblem[]): ImportResult => ({
-    records: [],
-    errors: [],
-    warnings: [],
-    skipped: 0,
-    planProblems,
-    rowsRead: 0,
-    imported: 0,
-    rowsInImported: 0,
-    failed: 0,
-  });
-  if (!prepared.plan) return nothing(prepared.problems);
-  const ready = prepared.plan;
-
-  if (ready.group) {
-    return nothing([
-      ...prepared.problems,
-      { level: 'error', code: 'PLAN_GROUP', path: 'group', message: 'Grouping is not implemented in this build yet.' },
-    ]);
+  if (!prepared.plan) {
+    return {
+      records: [],
+      errors: [],
+      warnings: [],
+      skipped: 0,
+      planProblems: prepared.problems,
+      rowsRead: 0,
+      imported: 0,
+      rowsInImported: 0,
+      failed: 0,
+    };
   }
+  const ready = prepared.plan;
+  const group = ready.group;
 
-  const set: TargetSet<TMeta> = adapter.targets({ slots: planSlots(ready) });
+  // A collected array is mapped by shape ref with no slot (§6), so it is asked for one slot to
+  // learn its item targets, exactly as validatePlan does.
+  const slots = planSlots(ready);
+  for (const ref of group?.collect ?? []) slots[ref] = Math.max(slots[ref] ?? 0, 1);
+  const set: TargetSet<TMeta> = adapter.targets({ slots });
   if (!adapter.coerce && set.targets.some(target => holdsCustom(target.value))) {
     throw new Error(`${adapter.id}: a target has a "custom" value kind but the adapter has no coerce.`);
   }
+
+  const collected = new Set(group?.collect ?? []);
   const byRef = new Map<string, ImportTarget<TMeta>>(set.targets.map(target => [target.ref, target]));
-  const firstRow = options.firstRowNumber ?? 2;
+  const byShape = new Map<string, ImportTarget<TMeta>>();
+  for (const target of set.targets) {
+    if (target.arrayRef !== undefined && collected.has(target.arrayRef)) byShape.set(target.shapeRef, target);
+  }
+  const collectOf = (ref: string): string | undefined => group?.collect.find(array => ref.startsWith(`${array}.`));
 
-  const records: Record<string, unknown>[] = [];
-  const errors: ImportRowError[] = [];
-  let skipped = 0;
-  let failed = 0;
+  /**
+   * What a grouped record compares across its rows: each parent leaf, and each numbered-column
+   * array as a whole (§5, rule 4). Collected arrays are appended, never compared.
+   */
+  const parentUnits: string[] = [];
+  for (const target of set.targets) {
+    const unit = target.arrayRef === undefined ? target.ref : collected.has(target.arrayRef) ? null : target.arrayRef;
+    if (unit !== null && !parentUnits.includes(unit)) parentUnits.push(unit);
+  }
 
-  rows.forEach((row, i) => {
-    const rowNumber = firstRow + i;
-    const record: Record<string, unknown> = {};
-    const rowErrors: ImportRowError[] = [];
+  const mapRow = (cells: readonly unknown[], rowNumber: number): { row: MappedRow; sawValue: boolean } => {
+    const row: MappedRow = { rowNumber, cells, parent: {}, items: new Map(), errors: [] };
     let sawValue = false;
-
     for (const entry of ready.entries) {
-      // validatePlan has established that every ref is a target.
-      const target = byRef.get(entry.ref) as ImportTarget<TMeta>;
+      const collect = collectOf(entry.ref);
+      // validatePlan has established that every ref is a target, by shape for a collected array.
+      const target = (collect ? byShape.get(entry.ref) : byRef.get(entry.ref)) as ImportTarget<TMeta>;
       const fromColumn = entry.column !== undefined;
-      const raw = fromColumn ? row[entry.column as number] : entry.constant;
+      const raw = fromColumn ? cells[entry.column as number] : entry.constant;
 
       // A non-text constant is already a value, authored against the schema; coercing it would
       // stringify an object to "[object Object]". Typed text is read like any cell.
@@ -162,7 +251,7 @@ export function applyMapping<TMeta, TCtx>(
           : (adapter.coerce?.(target, raw, ctx) ?? coerceValue(target.value, raw, { decimal: options.decimal, split: entry.split }));
 
       if ('error' in outcome) {
-        rowErrors.push({
+        row.errors.push({
           row: rowNumber,
           ref: entry.ref,
           ...(fromColumn ? { column: entry.column } : {}),
@@ -176,44 +265,109 @@ export function applyMapping<TMeta, TCtx>(
       if (outcome.value === undefined) continue;
       // A constant is not evidence the user put anything in this row.
       if (fromColumn) sawValue = true;
-      setRecordValue(record, entry.ref, outcome.value);
+      if (collect) {
+        const item = row.items.get(collect) ?? {};
+        setRecordValue(item, entry.ref.slice(collect.length + 1), outcome.value);
+        row.items.set(collect, item);
+      } else {
+        setRecordValue(row.parent, entry.ref, outcome.value);
+      }
     }
-
-    if (!sawValue) {
-      skipped++;
-      return;
-    }
-
     for (const array of set.arrays) {
-      const items = getRecordValue(record, array.ref);
-      if (!Array.isArray(items)) continue;
-      const compact = ready.lists?.[array.ref]?.compact ?? true;
-      setRecordValue(record, array.ref, settleArray(items, compact));
+      if (collected.has(array.ref)) continue;
+      const items = getRecordValue(row.parent, array.ref);
+      if (Array.isArray(items)) setRecordValue(row.parent, array.ref, settleArray(items, ready.lists?.[array.ref]?.compact ?? true));
     }
+    return { row, sawValue };
+  };
 
+  const records: Record<string, unknown>[] = [];
+  const errors: ImportRowError[] = [];
+  const warnings: ImportRowError[] = [];
+  let skipped = 0;
+  let failed = 0;
+  let rowsInImported = 0;
+
+  /** Finalize and judge one record. A grouped record's problems carry every row it came from. */
+  const finish = (record: Record<string, unknown>, rowNumbers: number[], cellErrors: ImportRowError[], recordWarnings: ImportRowError[]): void => {
+    const stamp = (problem: ImportRowError): ImportRowError => (group ? { ...problem, row: rowNumbers[0], rows: rowNumbers } : problem);
     const finished = adapter.finalize ? adapter.finalize(record, ctx) : record;
     const problems = adapter.validate ? adapter.validate(finished, ctx) : validateRecord(finished, set);
-    for (const problem of problems) {
-      rowErrors.push({ row: rowNumber, ref: problem.ref, code: problem.code, message: problem.message, raw: problem.raw });
-    }
-
-    if (rowErrors.length) {
-      errors.push(...rowErrors);
-      failed++;
+    const recordErrors = [
+      ...cellErrors,
+      ...problems.map(problem => ({ row: rowNumbers[0], ref: problem.ref, code: problem.code, message: problem.message, raw: problem.raw })),
+    ].map(stamp);
+    warnings.push(...recordWarnings.map(stamp));
+    if (recordErrors.length) {
+      errors.push(...recordErrors);
+      // §5: if any row of a group fails, the whole record fails and every row of it counts.
+      failed += rowNumbers.length;
       return;
     }
     records.push(finished);
+    rowsInImported += rowNumbers.length;
+  };
+
+  /** §5: one record from a group's rows. First row wins, later blanks are ignored, items append. */
+  const buildGroup = ({ keyless, members }: Group): void => {
+    const record: Record<string, unknown> = {};
+    const origin = new Map<string, number>();
+    const conflicted = new Set<string>();
+    const rowNumbers = members.map(member => member.rowNumber);
+    const recordWarnings: ImportRowError[] = keyless
+      ? [{ row: rowNumbers[0], ref: '', code: 'RECORD_GROUP_NO_KEY', message: 'No group key; imported as its own record.' }]
+      : [];
+    for (const unit of parentUnits) {
+      for (const member of members) {
+        const value = getRecordValue(member.parent, unit);
+        if (value === undefined) continue;
+        const kept = origin.get(unit);
+        if (kept === undefined) {
+          origin.set(unit, member.rowNumber);
+          setRecordValue(record, unit, value);
+        } else if (!conflicted.has(unit) && JSON.stringify(value) !== JSON.stringify(getRecordValue(record, unit))) {
+          conflicted.add(unit);
+          recordWarnings.push({
+            row: rowNumbers[0],
+            ref: unit,
+            code: 'RECORD_GROUP_CONFLICT',
+            message: `Rows disagree on ${unit}; kept row ${kept}.`,
+            raw: value,
+          });
+        }
+      }
+    }
+    for (const array of collected) {
+      // Not de-duplicated: two identical line items are two items. An all-blank item is no item.
+      const items = members.flatMap(member => {
+        const item = member.items.get(array);
+        return item && !isEmptyValue(item) ? [item] : [];
+      });
+      if (items.length) setRecordValue(record, array, items);
+    }
+    finish(record, rowNumbers, members.flatMap(member => member.errors), recordWarnings);
+  };
+
+  const firstRow = options.firstRowNumber ?? 2;
+  const mapped: MappedRow[] = [];
+  rows.forEach((cells, i) => {
+    const { row, sawValue } = mapRow(cells, firstRow + i);
+    if (sawValue) mapped.push(row);
+    else skipped++;
   });
+
+  if (group) for (const members of groupRows(mapped, group)) buildGroup(members);
+  else for (const row of mapped) finish(row.parent, [row.rowNumber], row.errors, []);
 
   return {
     records,
     errors,
-    warnings: [],
+    warnings,
     skipped,
     planProblems: prepared.problems,
     rowsRead: rows.length,
     imported: records.length,
-    rowsInImported: records.length,
+    rowsInImported,
     failed,
   };
 }
