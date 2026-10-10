@@ -309,7 +309,7 @@ export interface SchemaAdapter<TMeta = unknown, TCtx = unknown> {
 | Adapter | `meta` | Notes |
 | --- | --- | --- |
 | `entityFormConfigAdapter(config, { rules, lookups })` | `NestedFieldConfig` | Target refs come from `collectFieldRefs`, never `refOf` or `getTabData`, so moved tab-level containers land at their override. `validate` evaluates rules once against the whole config through `flattenFieldValues`, with 2.3's precedence. `upgradeRefs` = `upgradeLegacyRefs`. `positional: false` on every array. `coerce` = `coerceCell` with `decimal`. MUST be behaviour-identical to 2.3; the hardened parity suite (§10) is the gate. |
-| `jsonSchemaAdapter(schema, { validator? })` | JSON Schema node | Local `$ref`, `allOf`, first non-null `oneOf`/`anyOf`. `enum` stores the raw value. `positional: true`. Optional Ajv via `validator` (peer dependency, not bundled). |
+| `jsonSchemaAdapter(schema, { id?, version?, validator? })` | JSON Schema node | Local `$ref`, `allOf`, first non-null `oneOf`/`anyOf`; a `oneOf` of `const`s is a labelled enum. `enum` stores the raw value. An array of objects is numbered slots (`positional: true`), and an array of primitives is one split `list`. A field is `required` only when every object above it is (per item inside an array). `validator` is a function `(record) => RecordProblem[]` replacing the generic checks, so an Ajv-compiled schema can be wrapped in one and Ajv is never a dependency. A list inside a list, a free-form object, an untyped node and an unresolvable or looping `$ref` are reported in `unsupported`. |
 | `exampleJsonAdapter(sample)` | inferred node | Kinds inferred from values; array lengths seed `slots`. Nothing is `required`. `positional: true`. |
 
 ## Engine API and coercion
@@ -613,3 +613,12 @@ A `custom` kind reaching `coerceValue` throws (§7).
 **2026-10-10: `applyMapping` and grouping.** Three points §5 left open for the in-memory engine are now stated there: a contiguity failure is thrown as an `ImportFailure` (`GROUP_NOT_CONTIGUOUS`), which the server maps onto 422; a blank-key row closes the open run; the memory limits are the streaming runner's. Two rules are also stated: a blank first-row parent field is filled from a later row, and 2.3's double report of a failed required cell (`CELL_*` and `RECORD_REQUIRED`) is kept.
 
 **2026-10-10: `suggestMapping` and `slotsFor`.** The 2.3 header grammar moved unchanged, keyed by `ImportTarget`: a target's `matchKeys` stand where 2.3 used the field's label and id, both for loose matching and for the child names of slot patterns. Both functions take an optional `{ lang }`, passed to `targets()`, and §8's signatures now say so.
+
+**2026-10-10: `jsonSchemaAdapter`, and a suggestion defect.**
+- **The adapter's choices** are now stated in §7's adapter table:
+  - primitive arrays are split lists;
+  - a field is required only when its whole chain of parent objects is;
+  - `validator` is a function, not an Ajv dependency;
+  - what goes to `unsupported`.
+- **Still open:** the acceptance item wants "the order schema from the prototype" and its sample run. Neither is in this repository, so the item waits for them.
+- **A defect fixed in the importer, still live in DE 2.4.0.** `suggestMapping`'s exact pass compared refs after normalising them. Whenever an array's label equals its id, that read "Phones 1 Number" as the ref `phones.1.number`, the second slot, and marked it `exact`. The importer now matches a ref only as written. DE 2.4.0 still has the defect.
