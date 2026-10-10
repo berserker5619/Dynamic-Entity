@@ -23,12 +23,20 @@ import {
 import { OPTION_KEY, UNSAFE_PATH_KEYS, isUnsafePath, resolveLabel } from './form-logic';
 import { RULE_ACTION_TYPES, RULE_OPERATORS } from './form-model.types';
 import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from './form-model.types';
+import type { ProblemCode } from './problem-codes';
 
 export interface ConfigProblem {
   /** `error` means it will not render correctly; `warning` means it is suspicious but usable. */
   level: 'error' | 'warning';
-  /** Where the problem is, e.g. `tabs[0].fields[2]` or `tabs[1].id`. */
+  /**
+   * Which check this is, as a stable identifier (`CONFIG_PROBLEM_CODES`, `PLAN_PROBLEM_CODES`).
+   * Compare this, never `message`, to tell problems apart. Every problem Dynamic Entity emits
+   * sets it; it is optional so that code building its own `ConfigProblem`s still compiles.
+   */
+  code?: ProblemCode;
+  /** Where the problem is, e.g. `tabs[0].fields[2]` or `tabs[1].id`. Not a stable grammar. */
   path: string;
+  /** For a person to read. May be reworded in any release. */
   message: string;
 }
 

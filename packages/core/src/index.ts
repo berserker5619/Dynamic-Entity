@@ -72,6 +72,8 @@ export type { FieldRefEntry, FieldScopeEntry } from './field-scopes';
 // ─── Config validation ──────────────────────────────────────────────────────
 export { formatConfigProblems, isConfigValid, validateConfig } from './validate-config';
 export type { ConfigProblem, ValidateConfigOptions } from './validate-config';
+export { CONFIG_PROBLEM_CODES, PLAN_PROBLEM_CODES } from './problem-codes';
+export type { ConfigProblemCode, PlanProblemCode, ProblemCode } from './problem-codes';
 
 // ─── Pure form logic ────────────────────────────────────────────────────────
 export {
