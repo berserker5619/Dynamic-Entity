@@ -326,12 +326,17 @@ export function applyMapping<M, C>(
   ctx: C,
   opts?: { firstRowNumber?: number; decimal?: '.' | ',' },
 ): ImportResult;
-export function coerceValue(kind: ValueKind, raw: unknown, opts?: { decimal?: '.' | ',' }): CoerceOutcome;
+export function coerceValue(kind: ValueKind, raw: unknown, opts?: { decimal?: '.' | ','; split?: string }): CoerceOutcome;
 ```
 
 `suggestMapping` derives `slots` from the headers (§6), then returns a v2 plan. `applyMapping` calls `readPlan` and `validatePlan` itself; callers MAY call them earlier to fail fast. `firstRowNumber` defaults to 2, because the header is sheet row 1.
 
 **Generic coercion** (`coerceValue`), lifted from today's `coerceCell` and `coerceTypedCell`. `null`, `undefined` and blank text are always "no value".
+
+- A typed cell the kind does not take is read as its `cellText`, never `String()`. A `Date` given to a `number` is `"2024-03-07"`, a `CELL_FORMAT` error.
+- `integer` applies to text and typed input alike.
+- `opts.split` carries the entry's `split`, which beats the kind's `separator` (§6).
+- A `custom` kind reaching `coerceValue` throws, because only the adapter can read it.
 
 | Kind | Text input | Typed input |
 | --- | --- | --- |
@@ -595,3 +600,10 @@ Three errata were fixed:
 **2026-10-10: the adapter contracts and `validatePlan`.** Implemented as §7 gives them, with `CoerceOutcome` and `RecordProblem` each carrying their code.
 - **Collected arrays:** one rule §6's layout table implied is now stated in §6. A collected array is mapped without slot indices, and a slot index into one is `PLAN_GROUP`.
 - **Still open:** the "a `custom` kind without `coerce` throws at construction" criterion belongs to adapter construction, so it lands with the adapters themselves.
+
+**2026-10-10: `coerceValue`.** Three readings of §8 that the coercer depends on are now stated under "Generic coercion":
+- a typed cell the kind does not take is read through `cellText`;
+- `integer` applies to typed input too;
+- `opts.split` carries the entry's separator, so `coerceValue`'s signature gains `split`.
+
+A `custom` kind reaching `coerceValue` throws (§7).
