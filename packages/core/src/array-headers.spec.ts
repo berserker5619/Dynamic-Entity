@@ -1,6 +1,6 @@
 import { arrayBoundFor, inferArrayBound, matchSlot, slotKey, slotPatterns } from './array-headers';
 import { deriveImportColumns } from './import-columns';
-import { suggestMapping } from './import-engine';
+import { applyMapping, suggestMapping } from './import-engine';
 import type { EntityFormConfig, NestedFieldConfig } from './form-model.types';
 
 const array = (id: string, label: string, children: NestedFieldConfig[]): NestedFieldConfig => ({
@@ -85,6 +85,43 @@ describe('suggestMapping with numbered headers', () => {
       expect.objectContaining({ ref: 'phones.0.number', column: 0, confidence: 'guess' }),
       expect.objectContaining({ ref: 'phones.1.number', column: 1, confidence: 'guess' }),
     ]);
+  });
+
+  /**
+   * What the off-by-one did to records, from 1.14.0 through 2.4.0, when a suggestion was
+   * accepted: the last numbered column fell past the row bound and was left unmapped, so its
+   * value was dropped without an error. With two children, the slot grammar matched "Type"
+   * correctly while "Number" was shifted, so each number landed beside the next row's type.
+   */
+  describe('suggest, then import, for an array whose label is its id', () => {
+    const run = (config: EntityFormConfig, headers: string[], row: string[]) => {
+      const { columns } = deriveImportColumns(config, { maxArrayRows: arrayBoundFor(headers, config) });
+      const plan = suggestMapping(headers, columns);
+      return { plan, record: applyMapping([row], plan, config, { stamp: false }).records[0] };
+    };
+
+    it('keeps every numbered column, the last one included', () => {
+      const { plan, record } = run(
+        configOf(text('name', 'Name'), array('phones', 'Phones', [text('number', 'Number')])),
+        ['Name', 'Phones 1 Number', 'Phones 2 Number', 'Phones 3 Number'],
+        ['Ada', '111', '222', '333'],
+      );
+      expect(plan.entries).toHaveLength(4);
+      expect(record['phones']).toEqual([{ number: '111' }, { number: '222' }, { number: '333' }]);
+    });
+
+    it('keeps each row\'s children together', () => {
+      const { record } = run(
+        PHONES,
+        ['Name', 'Phones 1 Number', 'Phones 1 Type', 'Phones 2 Number', 'Phones 2 Type', 'Phones 3 Number', 'Phones 3 Type'],
+        ['Ada', '111', 'home', '222', 'work', '333', 'cell'],
+      );
+      expect(record['phones']).toEqual([
+        { number: '111', kind: 'home' },
+        { number: '222', kind: 'work' },
+        { number: '333', kind: 'cell' },
+      ]);
+    });
   });
 
   it('still matches a header that is a ref, and a ref with no row in it in any case', () => {
