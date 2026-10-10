@@ -44,4 +44,10 @@ export type { ApplyMappingOptions, PreparedPlan } from './apply-mapping';
 export { validateRecord } from './validate-record';
 export type { ImportResult, ImportRowError } from './result.types';
 export { IMPORT_FAILURE_CODES, ImportFailure } from './import-failure';
+
+// ─── Suggesting a mapping ───────────────────────────────────────────────────
+export { DEFAULT_SLOTS, slotsFor, suggestMapping } from './suggest';
+export type { SuggestOptions } from './suggest';
+export { matchSlot, normalizeHeader, slotPatterns } from './header-grammar';
+export type { SlotNames } from './header-grammar';
 export type { ImportFailureCode, ImportFailureDetails } from './import-failure';
