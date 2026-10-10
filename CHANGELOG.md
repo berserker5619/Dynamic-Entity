@@ -8,6 +8,47 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.4.1]
+
+### Fixed
+- **Suggested mappings dropped, and could mismatch, numbered array columns.** This affects
+  every release with `suggestMapping`, from **1.14.0 through 2.4.0**, in the browser wizard and
+  in the server's preview alike.
+
+  It happens for an array whose label equals its id (an array "Phones" with id `phones`)
+  and headers numbered from one ("Phones 1 Number", "Phones 2 Number", …). Each such header
+  was read as the ref `phones.<n>.number`, the row *after* the one it names, and marked
+  `exact`, so the mapper showed no guess badge that would have prompted a check. When the
+  suggestion was accepted:
+  - **The last numbered column was dropped.** A sheet with Phones 1–3 imported two phones,
+    `[111, 222]`, not three. "Phones 3 Number" names a row past the three the wizard offered,
+    so it was left unmapped, and its values were never imported. No error was reported. The
+    first two still landed in order, because empty rows are removed.
+  - **Since 2.3.0, rows with more than one child came apart.** With "Phones N Number" and
+    "Phones N Type", the type columns were matched to the right row and the number columns to
+    the row after. Each phone's number was stored beside the *next* phone's type: `[{ kind:
+    'home' }, { number: '111', kind: 'work' }, { number: '222', kind: 'cell' }]`. The first
+    phone had no number, and the last number was dropped.
+  - With only one or two numbered columns and one child per row, the imported records came out
+    right. Only the plan's refs were off by one.
+
+  The cause was comparing refs after normalising them: `phones.1.number` normalises to
+  `phones1number`, which is also how "Phones 1 Number" reads. A ref with a row in it is now
+  matched only as written. A ref without one, such as `dob` for a field labelled "Date of
+  Birth", still matches in any case, as before.
+
+  **What to re-check**, for any array whose label equals its id:
+  - **Stored plans** saved from a suggestion. 2.4.1 imports a stored plan exactly as before,
+    so a plan that maps "Phones 1 Number" to `phones.1.number` still drops the last column.
+    Open it in the mapper and save it again.
+  - **Records already imported** through such a plan. They may be missing the last numbered
+    item, and, for arrays with more than one child, have each item's fields split across
+    neighbouring items. Re-importing the original sheet with a corrected plan restores them.
+
+### Upgrading
+- Upgrade the four packages together. They share a version train, so the internal ranges are
+  now `^2.4.1`.
+
 ## [2.4.0]
 
 Machine-readable problem codes. Every `ConfigProblem` that `validateConfig` and
