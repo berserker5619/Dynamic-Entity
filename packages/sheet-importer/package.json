@@ -1,0 +1,31 @@
+{
+  "name": "sheet-importer-placeholder",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Schema-agnostic spreadsheet import engine (Phase 1, docs/import-phase1-spec.md). Placeholder name until the package name is chosen; never published.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "jest",
+    "lint": "tsc --noEmit",
+    "test:coverage": "jest --coverage"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "jest": "^30.0.0",
+    "ts-jest": "^29.4.14",
+    "tsup": "^8.0.0",
+    "typescript": "~5.9.3"
+  },
+  "license": "MIT",
+  "sideEffects": false
+}

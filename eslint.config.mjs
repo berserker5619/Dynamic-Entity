@@ -55,6 +55,7 @@ export default tseslint.config(
           './packages/ngx-dynamic-entity-builder/tsconfig.json',
           './packages/ngx-dynamic-entity-builder/tsconfig.spec.json',
           './packages/demo-angular/tsconfig.json',
+          './packages/sheet-importer/tsconfig.json',
         ],
         tsconfigRootDir: import.meta.dirname,
       },
@@ -129,6 +130,24 @@ export default tseslint.config(
       // A spec that asserts on a promise's result awaits it; one that asserts a call was
       // made does not have to.
       '@typescript-eslint/no-floating-promises': 'off',
+    },
+  },
+
+  {
+    // The importer depends on nothing in Dynamic Entity (docs/import-phase1-spec.md, "Package
+    // boundaries"): the DE adapter imports it, never the reverse, or core's re-exports make a
+    // cycle. A rule rather than a convention, so a stray import fails `npm run lint`.
+    files: ['packages/sheet-importer/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: ['@dynamic-entity/*', 'ngx-dynamic-entity', 'ngx-dynamic-entity-builder'], message: 'The importer must not depend on Dynamic Entity.' },
+            { group: ['../../*'], message: 'The importer must not reach into another package.' },
+          ],
+        },
+      ],
     },
   },
 
