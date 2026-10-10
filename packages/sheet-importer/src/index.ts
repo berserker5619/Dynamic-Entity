@@ -16,3 +16,19 @@ export type { PlanProblemCode } from './problem-codes';
 export { readPlan } from './read-plan';
 export type { ReadPlanOptions, ReadPlanResult } from './read-plan';
 export { UNSAFE_PATH_KEYS, isUnsafePath } from './safe-path';
+export { CELL_PROBLEM_CODES, RECORD_PROBLEM_CODES } from './problem-codes';
+export type { CellProblemCode, RecordProblemCode, RowProblemCode } from './problem-codes';
+
+// ─── Schema adapters ────────────────────────────────────────────────────────
+export type {
+  CoerceOutcome,
+  ImportTarget,
+  RecordProblem,
+  SchemaAdapter,
+  TargetArray,
+  TargetOptions,
+  TargetSet,
+  ValueKind,
+} from './adapter.types';
+export { MAX_SLOTS, planSlots, shapeOf, slotOf } from './plan-slots';
+export { validatePlan } from './validate-plan';
