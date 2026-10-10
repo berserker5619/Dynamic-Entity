@@ -96,7 +96,7 @@ export interface ListOptions {
 }
 
 export interface GroupSpec {
-  key: number[];                    // column indices; non-empty; values joined form the group key
+  key: number[];                    // column indices; non-empty; their trimmed cells, compared as a tuple, form the group key (§5)
   collect: string[];                // array refs that accumulate across the group's rows; non-empty
   contiguous?: boolean;             // default true; see §5
 }
@@ -128,7 +128,7 @@ The header is always sheet row 1, and data starts at row 2 (Decision 8). v2 has 
 
 ## Reading rules
 
-Every plan enters the engine through one function, `readPlan(input: unknown): { plan: MappingPlan; problems: PlanProblem[] }`. Nothing else parses a plan, on either side of the wire.
+Every plan enters the engine through one function, `readPlan(input: unknown): { plan?: MappingPlan; problems: PlanProblem[] }`. `plan` is absent whenever a problem is an `error`. Nothing else parses a plan, on either side of the wire. `readPlan` makes every check that needs no adapter; `validatePlan` makes only those that need targets (Decision 10).
 
 1. **Shape check.** Input MUST be a plain object with an `entries` array. Anything else is an `error` and no plan is returned.
 2. **Aliasing.** `entity` is read as `target` and `configVersion` as `schemaVersion`. If both names are present with different values, that is an `error`. If both agree, a `warning` asks the writer to drop the old name.
@@ -435,7 +435,7 @@ Phase 1 is done when these types compile and the reader and contract tests below
 
 **Plan reading**
 
-- [ ] A stored v1 plan from each fixture in server/src/`all-configs.spec.ts` reads without errors and normalises to `planVersion: 2`.
+- [ ] A stored v1 plan from each fixture in server/src/`all-configs.spec.ts` reads without errors and normalises to `planVersion: 2`. *(Those plans are built by DE code, which the importer may not import, so this test lands with the DE adapter. The importer's own tests read representative 2.3-shaped plans.)*
 - [ ] `entity` + `target` with different values → `error`; same values → `warning`.
 - [ ] On a v2 plan, an unknown top-level key or an unknown entry key → `error`, no plan returned. `planVersion: 3` → `error`, no plan returned.
 - [ ] A v1 plan carrying `id`, `name` and `createdAt` → reads, with one `PLAN_UNKNOWN_KEY` warning per key, and the keys are dropped from the returned plan. An unknown *entry* key on a v1 plan → `error`.
@@ -501,6 +501,10 @@ Settled on 2026-10-10. These are binding; Claude Code MUST NOT reopen them in co
 | 7 | Non-contiguous grouping on the server | Refused with `PLAN_GROUP`, and the message says to sort by the key columns. The browser path supports it. |
 | 8 | Header row | *Revised by the owner on 2026-10-10:* "Cut from v2. The header is always sheet row 1. Choosing another row needs reader, SheetParser and preview changes and comes in a later version, with the Phase 4 header-row hint." The specification is kept in the appendix **Deferred: header row**. |
 | 9 | Dual write of moved containers | Kept in 3.0. Storing once is a separate later release using DE's migration system, not part of the extraction. |
+| 10 | Where plan checks run | `readPlan` makes every check that needs no adapter: shape, version, aliases, unknown keys, unsafe paths, `PLAN_SOURCE`, `PLAN_DUPLICATE_REF`, and the structure of `group`, `lists` and `split` (including `compact` on a collected array). `validatePlan` makes only those that need targets: `PLAN_UNKNOWN_REF`, `PLAN_SPLIT_TARGET`, a `lists` key or `collect` entry that is not one of the adapter's arrays, positional support, and `PLAN_TARGET_MISMATCH`. *(2026-10-10)* |
+| 11 | A plan with no target | Neither `target` nor `entity` present is a `PLAN_SHAPE` error: such a plan cannot be checked against any adapter. *(2026-10-10)* |
+| 12 | Malformed values of known fields | A wrongly typed value gets its feature's code where one exists: `PLAN_LIST_OPTION` inside `lists`, `PLAN_GROUP` inside `group`. Anything else is `PLAN_SHAPE`: `target`, `schemaVersion`, `sourceHeaders`, `header`, `confidence`, and a `split` that is not 1 to 8 characters. *(2026-10-10)* |
+| 13 | v1 names on a v2 plan | `entity` and `configVersion` are known aliases on both versions, so rule 2 applies to every plan. On a v1 plan the old name alone is normal; an agreeing pair is `PLAN_ALIAS_USED`. On a v2 plan any old name is `PLAN_ALIAS_USED`, because v2 writers emit v2 names only. *(2026-10-10)* |
 
 **Still open**
 
@@ -575,3 +579,14 @@ The decisions table is unchanged apart from the two status notes.
 - **Group keys are unchanged:** exact tuple comparison, plus the `maxGroupKeyBytes` limit (default 8 MiB).
 
 Of the names the previous entry asked to be confirmed, these stand: `CELL_FORMAT`, `CELL_UNKNOWN_OPTION`, `RECORD_GROUP_CONFLICT`, `RECORD_GROUP_NO_KEY`, `maxGroupKeyBytes` and `planVersions`. `CELL_LIST_ITEM` is added. `INVALID_OPTIONS` is withdrawn.
+
+**2026-10-10: decisions from implementing `readPlan`.** Phase 1 started with the plan types and `readPlan` (`packages/sheet-importer`, placeholder name `sheet-importer-placeholder`). Four points §3 and §4 left open were decided, and are added as Decisions 10–13:
+- where each check runs;
+- a plan with no target;
+- the code for a malformed value;
+- v1 names on a v2 plan.
+
+Three errata were fixed:
+- the `GroupSpec.key` comment still said "values joined", against §5's tuple rule;
+- §4's `readPlan` signature now matches §8's optional `plan`;
+- the stored-v1-plans acceptance item is marked as landing with the DE adapter, which is the only place the plans can be built without the importer importing DE.
