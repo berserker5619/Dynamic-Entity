@@ -151,7 +151,7 @@ exports[`formatConfigProblems prints every case as it always has 1`] = `
 # a plan for an older config version
   [warning] configVersion: Plan was authored against config version 1; the config is now 2.
 # a 2.2 ref of a moved array
-  [warning] entries[0].ref: "phones.number" is the 2.2 address of "contact.phones.0.number"; it is read as "contact.phones.0.number" until 3.0. Save the plan again to update it.
+  [warning] entries[0].ref: "phones.number" is the 2.2 address of "contact.phones.0.number"; it is read as "contact.phones.0.number" until 4.0. Save the plan again to update it.
 # a ref no field has
   [error] entries[0].ref: References unknown field "main.nope".
 # a ref into __proto__

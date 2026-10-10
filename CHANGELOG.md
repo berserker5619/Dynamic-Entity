@@ -8,6 +8,14 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.4.0]
+
+### Changed
+- **The 2.2 legacy-ref alias stays through 3.x and is removed in 4.0, not 3.0.** The [2.3.0]
+  notes below said 3.0, and so did the plan warning (`PLAN_LEGACY_REF`): both now say 4.0. That
+  warning's message is the one message this release changes. A stored plan that names a moved
+  container by its 2.2 address keeps importing, with the warning, until then.
+
 ## [2.3.1]
 
 Two places where an import on the server, an import in the browser and a record saved by the
@@ -69,7 +77,7 @@ ignored, a rule-hidden tab no longer blocks Save, and the builder can edit field
 - **Some rows that 2.2 rejected now import**, because rules addressed by `[ref]` now apply.
   Each of them is a row the form would have saved.
 - **Stored plans that reference moved containers** produce a warning and keep importing. Save
-  them again before 3.0.
+  them again before 4.0.
 
 ### Fixed
 - **A tab hidden by a rule no longer blocks Save.** The form took hidden *fields* out of
@@ -107,7 +115,7 @@ ignored, a rule-hidden tab no longer blocks Save, and the builder can edit field
   field's record address, and `LeafTarget` gains `recordScope`.
 - **Plans saved against 2.2 keep working.** A 2.2 ref for a moved container's child resolves to
   its new address with a plan warning. An un-indexed child of a moved array resolves to slot 0.
-  The alias will be removed in 3.0, so save the plan again to update it.
+  The alias will be removed in 4.0, so save the plan again to update it.
 - **Import now applies rules the way the form does.** Rules the builder writes name fields as
   `[tab.field]` refs, but import evaluated rules per tab against values keyed only by bare id.
   So a ref trigger never matched and a ref target was never hidden, and a required field the form

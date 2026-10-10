@@ -9,8 +9,9 @@
  *   core, so they are checked in `server/src/shipped-configs.spec.ts`. Those configs emit no
  *   problems today, so that check is a guard; the broken fixtures are the coverage.
  *
- * The `formatConfigProblems` snapshot holds the printed form of every case. 2.4 changed no
- * message; that the snapshot equals 2.3.1's output was checked when it was written.
+ * The `formatConfigProblems` snapshot holds the printed form of every case. It was checked equal
+ * to 2.3.1's output when it was written. 2.4 then changes exactly one message: the legacy-ref
+ * warning says the alias lasts "until 4.0" rather than "until 3.0" (Decision 3).
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';

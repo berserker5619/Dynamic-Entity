@@ -180,7 +180,7 @@ All in `core/src/import-columns.ts`. Only names from the spec's table are used: 
 | P4 | 515 | warning | `configVersion` | Plan was authored against config version ‹n›; the config is now ‹m›. | `PLAN_TARGET_MISMATCH` |
 | P5 | 535 | error | `entries[i]` | Entry is not an object. | `PLAN_SHAPE` |
 | P6 | 539 | error | `entries[i].ref` | An entry needs a target field ref. | `PLAN_SHAPE` |
-| P7 | 545 | warning | `entries[i].ref` | "‹old›" is the 2.2 address of "‹new›"; it is read as "‹new›" until 3.0. Save the plan again to update it. | `PLAN_LEGACY_REF` |
+| P7 | 545 | warning | `entries[i].ref` | "‹old›" is the 2.2 address of "‹new›"; it is read as "‹new›" until 4.0 (2.3.1: "until 3.0"). Save the plan again to update it. | `PLAN_LEGACY_REF` |
 | P8 | 551 | error | `entries[i].ref` | References unknown field "‹ref›". | `PLAN_UNKNOWN_REF` |
 | P9 | 556 | error | `entries[i].ref` | "‹ref›" is mapped more than once. | `PLAN_DUPLICATE_REF` |
 | P10 | 563 | error | `entries[i]` | An entry takes either a column or a constant, not both. | `PLAN_SOURCE` |

@@ -401,7 +401,7 @@ export function buildTemplateSpec(
  * 2.2 took every address from `refOf`, so a moved container's children kept their id-built
  * position, and a moved array's children were not unrolled at all (`phones.number`). Plans
  * saved against those refs are persisted and posted, so they keep resolving — with a warning —
- * until 3.0. An un-indexed ref that now repeats means slot 0, which is the only slot it ever
+ * through 3.x, and are removed in 4.0. An un-indexed ref that now repeats means slot 0, which is the only slot it ever
  * filled.
  *
  * `rows` is how many array slots to alias, and only matters for refs that repeated in 2.2.
@@ -459,7 +459,7 @@ export function legacyRefAliases(
  * when nothing needed rewriting.
  *
  * Exported for a UI that edits a stored plan, so it shows the field a 2.2 ref now means
- * rather than an unknown one. Goes away with the alias in 3.0.
+ * rather than an unknown one. Goes away with the alias in 4.0.
  */
 export function upgradeLegacyRefs(
   plan: MappingPlan,
@@ -548,7 +548,7 @@ export function validateMappingPlan(
         'warning',
         'PLAN_LEGACY_REF',
         `${at}.ref`,
-        `"${entry.ref}" is the 2.2 address of "${ref}"; it is read as "${ref}" until 3.0. Save the plan again to update it.`,
+        `"${entry.ref}" is the 2.2 address of "${ref}"; it is read as "${ref}" until 4.0. Save the plan again to update it.`,
       );
     } else if (!known.has(entry.ref)) {
       add('error', 'PLAN_UNKNOWN_REF', `${at}.ref`, `References unknown field "${entry.ref}".`);

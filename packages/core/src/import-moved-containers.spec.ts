@@ -197,6 +197,8 @@ describe('plans saved against 2.2', () => {
         message: expect.stringContaining('contact.phones.0.number'),
       }),
     );
+    // The alias is kept through 3.x and removed in 4.0, and the warning says so.
+    expect(problems.find(problem => problem.code === 'PLAN_LEGACY_REF')?.message).toContain('until 4.0');
 
     const result = applyMapping([['Ada', '111']], plan, config, { stamp: false });
     expect(result.records[0]['contact']).toEqual({ phones: [{ number: '111' }] });
