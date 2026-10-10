@@ -11,6 +11,8 @@ import type { EntityFormConfig } from './form-model.types';
  */
 const messages = (config: unknown): string[] =>
   validateConfig(config as unknown as EntityFormConfig).map(issue => issue.message);
+const codes = (config: unknown): (string | undefined)[] =>
+  validateConfig(config as unknown as EntityFormConfig).map(issue => issue.code);
 
 describe('validateConfig — malformed input', () => {
   it('reports a field that is not an object instead of throwing', () => {
@@ -20,6 +22,7 @@ describe('validateConfig — malformed input', () => {
     };
     expect(() => messages(config)).not.toThrow();
     expect(messages(config).filter(m => /Field is missing or not an object/.test(m))).toHaveLength(3);
+    expect(codes(config).filter(code => code === 'CONFIG_FIELD_NOT_OBJECT')).toHaveLength(3);
   });
 
   it('reports a field with no id', () => {
@@ -28,6 +31,7 @@ describe('validateConfig — malformed input', () => {
       tabs: [{ id: 'main', label: { en: 'Main' }, fields: [{ type: 'text' }] }],
     };
     expect(messages(config)).toContain('A field id is required.');
+    expect(codes(config)).toContain('CONFIG_FIELD_ID_REQUIRED');
   });
 
   it('reports a field with no type', () => {
@@ -36,6 +40,7 @@ describe('validateConfig — malformed input', () => {
       tabs: [{ id: 'main', label: { en: 'Main' }, fields: [{ id: 'name' }] }],
     };
     expect(messages(config)).toContain('A field type is required.');
+    expect(codes(config)).toContain('CONFIG_FIELD_TYPE_REQUIRED');
   });
 
   it('warns about a field with no label, without failing the config', () => {
@@ -47,6 +52,7 @@ describe('validateConfig — malformed input', () => {
     const label = issues.find(i => /No label/.test(i.message));
     // A missing label is ugly, not broken — it must not stop a config being saved.
     expect(label?.level).toBe('warning');
+    expect(label?.code).toBe('CONFIG_FIELD_NO_LABEL');
   });
 
   it('warns when children hang off a field type that cannot hold them', () => {
@@ -70,23 +76,27 @@ describe('validateConfig — malformed input', () => {
     // Only `group` and `array` render children; anywhere else they are silently dropped,
     // which looks like data loss unless something says so.
     expect(messages(config).some(m => /Children on a "text" field are ignored/.test(m))).toBe(true);
+    expect(codes(config)).toContain('CONFIG_CHILDREN_IGNORED');
   });
 
   it('reports a tab that is not an object', () => {
     const config = { entity: 'clients', tabs: [null, 7] };
     expect(() => messages(config)).not.toThrow();
     expect(messages(config).filter(m => /Tab is missing or not an object/.test(m))).toHaveLength(2);
+    expect(codes(config).filter(code => code === 'CONFIG_TAB_NOT_OBJECT')).toHaveLength(2);
   });
 
   it('reports a tab with no id', () => {
     const config = { entity: 'clients', tabs: [{ label: { en: 'Main' }, fields: [] }] };
     expect(messages(config)).toContain('A tab id is required.');
+    expect(codes(config)).toContain('CONFIG_TAB_ID_REQUIRED');
   });
 
   it('warns about a tab that would render nothing', () => {
     const config = { entity: 'clients', tabs: [{ id: 'empty', label: { en: 'Empty' } }] };
     // No fields, no sub-tabs, no module: a tab strip entry that opens onto blank space.
     expect(messages(config).some(m => /renders empty/.test(m))).toBe(true);
+    expect(codes(config)).toContain('CONFIG_EMPTY_TAB');
   });
 
   it('accepts a tab that has only a module', () => {
@@ -96,6 +106,7 @@ describe('validateConfig — malformed input', () => {
     };
     // A module tab legitimately has no fields — its content comes from a component.
     expect(messages(config).some(m => /renders empty/.test(m))).toBe(false);
+    expect(codes(config)).not.toContain('CONFIG_EMPTY_TAB');
   });
 
   it('reports a rule that is not an object', () => {
@@ -105,6 +116,7 @@ describe('validateConfig — malformed input', () => {
     };
     const issues = validateConfig(config, { rules: [null, 'nope'] as never });
     expect(issues.filter(i => /Rule is missing or not an object/.test(i.message))).toHaveLength(2);
+    expect(issues.filter(i => i.code === 'CONFIG_RULE_NOT_OBJECT')).toHaveLength(2);
   });
 
   it('reports a collection that is present but is not an array', () => {
@@ -116,6 +128,7 @@ describe('validateConfig — malformed input', () => {
       tabs: [{ id: 'main', label: { en: 'Main' }, fields: 'not-an-array' }],
     };
     expect(messages(config)).toContain('fields must be an array; it will be ignored.');
+    expect(codes(config)).toContain('CONFIG_TAB_LIST_NOT_ARRAY');
   });
 
   it('reports non-array children on a tab and on a field', () => {
@@ -133,6 +146,8 @@ describe('validateConfig — malformed input', () => {
     const found = messages(config);
     expect(found).toContain('children must be an array; it will be ignored.');
     expect(found.filter(m => /children must be an array/.test(m))).toHaveLength(2);
+    // The same words from two checks: only the code says which collection was wrong.
+    expect(codes(config)).toEqual(expect.arrayContaining(['CONFIG_CHILDREN_NOT_ARRAY', 'CONFIG_TAB_LIST_NOT_ARRAY']));
   });
 
   it('survives a config that is not an object at all', () => {

@@ -234,6 +234,10 @@ describe('validateConfig for the newer types', () => {
     validateConfig(configWith(f))
       .filter(issue => issue.level === 'error')
       .map(issue => issue.path);
+  const codesFor = (f: NestedFieldConfig) =>
+    validateConfig(configWith(f))
+      .filter(issue => issue.level === 'error')
+      .map(issue => issue.code);
 
   it('accepts every newer type as known', () => {
     for (const type of ['url', 'phone', 'slider', 'rating', 'color', 'tags'] as const) {
@@ -243,22 +247,26 @@ describe('validateConfig for the newer types', () => {
 
   it('requires a numeric default on a slider and a rating', () => {
     expect(errorsFor(field('slider', { defaultValue: '5' }))).toContain('tabs[0].fields[0].defaultValue');
+    expect(codesFor(field('slider', { defaultValue: '5' }))).toContain('CONFIG_DEFAULT_TYPE_MISMATCH');
     expect(errorsFor(field('rating', { defaultValue: 3 }))).toEqual([]);
   });
 
   it('requires a colour default in the form the picker stores', () => {
     expect(errorsFor(field('color', { defaultValue: 'red' }))).toContain('tabs[0].fields[0].defaultValue');
+    expect(codesFor(field('color', { defaultValue: 'red' }))).toContain('CONFIG_DEFAULT_TYPE_MISMATCH');
     expect(errorsFor(field('color', { defaultValue: '#FF0000' }))).toContain('tabs[0].fields[0].defaultValue');
     expect(errorsFor(field('color', { defaultValue: '#ff0000' }))).toEqual([]);
   });
 
   it('requires a tags default to be a list of strings', () => {
     expect(errorsFor(field('tags', { defaultValue: 'a' }))).toContain('tabs[0].fields[0].defaultValue');
+    expect(codesFor(field('tags', { defaultValue: 'a' }))).toContain('CONFIG_DEFAULT_TYPE_MISMATCH');
     expect(errorsFor(field('tags', { defaultValue: ['a', 'b'] }))).toEqual([]);
   });
 
   it('refuses a step that is not a positive number', () => {
     expect(errorsFor(field('slider', { step: 0 }))).toContain('tabs[0].fields[0].step');
+    expect(codesFor(field('slider', { step: 0 }))).toContain('CONFIG_INVALID_STEP');
     expect(errorsFor(field('slider', { step: 0.25 }))).toEqual([]);
   });
 
@@ -266,6 +274,7 @@ describe('validateConfig for the newer types', () => {
     expect(errorsFor(field('slider', { validators: { min: 10, max: 10 } }))).toContain(
       'tabs[0].fields[0].validators',
     );
+    expect(codesFor(field('slider', { validators: { min: 10, max: 10 } }))).toEqual(['CONFIG_SLIDER_RANGE_EMPTY']);
   });
 
   it('accepts url and phone as built-in validator names', () => {

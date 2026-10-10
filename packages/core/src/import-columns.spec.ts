@@ -312,7 +312,7 @@ describe('validateMappingPlan', () => {
   it('rejects a ref the config does not define', () => {
     const problems = validateMappingPlan(plan([{ ref: 'personal.nope', column: 0 }]), CONFIG);
     expect(problems).toContainEqual(
-      expect.objectContaining({ level: 'error', path: 'entries[0].ref' }),
+      expect.objectContaining({ level: 'error', code: 'PLAN_UNKNOWN_REF', path: 'entries[0].ref' }),
     );
   });
 
@@ -324,23 +324,23 @@ describe('validateMappingPlan', () => {
       ]),
       CONFIG,
     );
-    expect(problems.some(p => p.message.includes('mapped more than once'))).toBe(true);
+    expect(problems.some(p => p.code === 'PLAN_DUPLICATE_REF' && p.message.includes('mapped more than once'))).toBe(true);
   });
 
   it('rejects an entry with both a column and a constant, or with neither', () => {
     expect(
       validateMappingPlan(plan([{ ref: 'personal.firstName', column: 0, constant: 'x' }]), CONFIG),
-    ).toContainEqual(expect.objectContaining({ message: expect.stringContaining('not both') }));
+    ).toContainEqual(expect.objectContaining({ code: 'PLAN_SOURCE', message: expect.stringContaining('not both') }));
 
     expect(validateMappingPlan(plan([{ ref: 'personal.firstName' }]), CONFIG)).toContainEqual(
-      expect.objectContaining({ message: expect.stringContaining('needs either') }),
+      expect.objectContaining({ code: 'PLAN_SOURCE', message: expect.stringContaining('needs either') }),
     );
   });
 
   it('rejects a column that is not a zero-based integer', () => {
     const problems = validateMappingPlan(plan([{ ref: 'personal.firstName', column: -1 }]), CONFIG);
     expect(problems).toContainEqual(
-      expect.objectContaining({ path: 'entries[0].column', level: 'error' }),
+      expect.objectContaining({ path: 'entries[0].column', level: 'error', code: 'PLAN_SOURCE' }),
     );
   });
 
@@ -350,7 +350,7 @@ describe('validateMappingPlan', () => {
       CONFIG,
     );
     expect(problems).toEqual([
-      expect.objectContaining({ level: 'warning', path: 'configVersion' }),
+      expect.objectContaining({ level: 'warning', code: 'PLAN_TARGET_MISMATCH', path: 'configVersion' }),
     ]);
   });
 
@@ -359,7 +359,7 @@ describe('validateMappingPlan', () => {
       { entity: 'clients', entries: [{ ref: 'personal.firstName', column: 0 }] },
       CONFIG,
     );
-    expect(problems).toEqual([expect.objectContaining({ level: 'warning', path: 'entity' })]);
+    expect(problems).toEqual([expect.objectContaining({ level: 'warning', code: 'PLAN_TARGET_MISMATCH', path: 'entity' })]);
   });
 
   it('reports a missing plan rather than throwing', () => {

@@ -116,6 +116,7 @@ describe('an override the form does not honour', () => {
     expect(validateConfig(config)).toContainEqual(
       expect.objectContaining({
         level: 'warning',
+        code: 'CONFIG_REFERER_OVERRIDE_IGNORED',
         path: 'tabs[0].fields[1].children[0].refererField',
       }),
     );
@@ -131,6 +132,7 @@ describe('an override the form does not honour', () => {
     expect(validateConfig(config)).toContainEqual(
       expect.objectContaining({
         level: 'error',
+        code: 'CONFIG_REFERER_INSIDE_ARRAY',
         path: 'tabs[0].fields[1].children[0].refererField',
         message: expect.stringContaining('inside an array'),
       }),
@@ -189,7 +191,11 @@ describe('plans saved against 2.2', () => {
     const problems = validateMappingPlan(plan, config);
     expect(problems.filter(problem => problem.level === 'error')).toEqual([]);
     expect(problems).toContainEqual(
-      expect.objectContaining({ level: 'warning', message: expect.stringContaining('contact.phones.0.number') }),
+      expect.objectContaining({
+        level: 'warning',
+        code: 'PLAN_LEGACY_REF',
+        message: expect.stringContaining('contact.phones.0.number'),
+      }),
     );
 
     const result = applyMapping([['Ada', '111']], plan, config, { stamp: false });
@@ -211,7 +217,7 @@ describe('plans saved against 2.2', () => {
   it('still rejects an old ref mapped alongside its new one', () => {
     const plan = planFor(['phones.number', 'contact.phones.0.number']);
     expect(validateMappingPlan(plan, configWith(phones()))).toContainEqual(
-      expect.objectContaining({ level: 'error', message: expect.stringContaining('more than once') }),
+      expect.objectContaining({ level: 'error', code: 'PLAN_DUPLICATE_REF', message: expect.stringContaining('more than once') }),
     );
   });
 });

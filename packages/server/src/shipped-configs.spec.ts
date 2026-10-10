@@ -13,7 +13,14 @@
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { formatConfigProblems, validateConfig, type EntityFormConfig, type FormRule } from '@dynamic-entity/core';
+import {
+  CONFIG_PROBLEM_CODES,
+  PLAN_PROBLEM_CODES,
+  formatConfigProblems,
+  validateConfig,
+  type EntityFormConfig,
+  type FormRule,
+} from '@dynamic-entity/core';
 import { DEMO_RULES } from '../../demo-angular/src/app/mock/demo-rules';
 
 const ROOT = join(__dirname, '..', '..', '..');
@@ -58,5 +65,13 @@ describe('every shipped config', () => {
     );
     // The formatted text is the useful failure message: it names the path and the reason.
     expect(formatConfigProblems(errors)).toBe('');
+  });
+
+  // Warnings included. The shipped configs emit no problems at all today, so this guards the
+  // next one that does; the broken fixtures in core carry the real code coverage.
+  const known = new Set<string>([...CONFIG_PROBLEM_CODES, ...PLAN_PROBLEM_CODES]);
+  it.each([...testData, ...demoConfigs])('%s gives every problem an exported code', (_name, config, rules) => {
+    const problems = validateConfig(config, { rules, additionalFieldTypes: ADDITIONAL_FIELD_TYPES });
+    expect(problems.filter(problem => !problem.code || !known.has(problem.code))).toEqual([]);
   });
 });

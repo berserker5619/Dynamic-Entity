@@ -690,7 +690,7 @@ describe('applyMapping', () => {
 
     expect(result.records).toEqual([]);
     expect(result.planProblems).toContainEqual(
-      expect.objectContaining({ level: 'error', path: 'entries[1].ref' }),
+      expect.objectContaining({ level: 'error', code: 'PLAN_UNKNOWN_REF', path: 'entries[1].ref' }),
     );
   });
 
@@ -709,7 +709,7 @@ describe('applyMapping', () => {
 
     // A warning, not an error: the refs all resolve, so the import runs — but it says so.
     expect(result.planProblems).toContainEqual(
-      expect.objectContaining({ level: 'warning', path: 'entity' }),
+      expect.objectContaining({ level: 'warning', code: 'PLAN_TARGET_MISMATCH', path: 'entity' }),
     );
     expect(result.records).toHaveLength(1);
   });

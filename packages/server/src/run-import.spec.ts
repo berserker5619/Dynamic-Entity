@@ -124,7 +124,7 @@ describe('the plan is checked before a single row is read', () => {
 
     const result = await runImport({ stream: watched(), plan: broken, config: CONFIG });
 
-    expect(result.planProblems.some(p => p.level === 'error')).toBe(true);
+    expect(result.planProblems.some(p => p.level === 'error' && p.code === 'PLAN_UNKNOWN_REF')).toBe(true);
     expect(result.imported).toBe(0);
     expect(result.rowsRead).toBe(0);
     expect(pulled).toBe(false);

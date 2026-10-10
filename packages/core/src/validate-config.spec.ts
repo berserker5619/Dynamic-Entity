@@ -28,12 +28,14 @@ describe('validateConfig', () => {
 
   it('rejects a missing config rather than throwing', () => {
     expect(errors(null)).toHaveLength(1);
+    expect(errors(null)[0].code).toBe('CONFIG_NOT_AN_OBJECT');
     expect(isConfigValid(undefined)).toBe(false);
   });
 
   it('requires an entity name and at least one tab', () => {
     const problems = errors({ entity: '  ', tabs: [] });
     expect(problems.map(p => p.path)).toEqual(expect.arrayContaining(['entity', 'tabs']));
+    expect(problems.map(p => p.code)).toEqual(expect.arrayContaining(['CONFIG_ENTITY_REQUIRED', 'CONFIG_NO_TABS']));
   });
 
   /**
@@ -45,6 +47,7 @@ describe('validateConfig', () => {
     const problems = errors(bad);
 
     expect(problems).toHaveLength(1);
+    expect(problems[0].code).toBe('CONFIG_UNKNOWN_FIELD_TYPE');
     expect(problems[0].message).toContain('Unknown field type "signature"');
     expect(problems[0].path).toBe('tabs[0].fields[0].type');
   });
@@ -93,6 +96,7 @@ describe('validateConfig', () => {
     const problems = errors(dup);
 
     expect(problems).toHaveLength(1);
+    expect(problems[0].code).toBe('CONFIG_DUPLICATE_FIELD_ID');
     expect(problems[0].message).toContain('Duplicate field id "notes"');
     expect(problems[0].message).toContain('would share one control and one record key');
   });
@@ -142,7 +146,7 @@ describe('validateConfig', () => {
         },
       ],
     };
-    expect(errors(dup).some(p => p.message.includes('Duplicate field id "line1"'))).toBe(true);
+    expect(errors(dup).some(p => p.code === 'CONFIG_DUPLICATE_FIELD_ID' && p.message.includes('Duplicate field id "line1"'))).toBe(true);
   });
 
   // A `flatData` tab stores its fields at the parent's level, so it shares that scope
@@ -155,7 +159,7 @@ describe('validateConfig', () => {
         { id: 'b', label: {}, flatData: true, fields: [{ id: 'notes', type: 'text', label: {} }] },
       ],
     };
-    expect(errors(dup).some(p => p.message.includes('Duplicate field id "notes"'))).toBe(true);
+    expect(errors(dup).some(p => p.code === 'CONFIG_DUPLICATE_FIELD_ID' && p.message.includes('Duplicate field id "notes"'))).toBe(true);
   });
 
   /**
@@ -180,8 +184,8 @@ describe('validateConfig', () => {
     };
     const problems = errors(dup);
 
-    expect(problems.some(p => p.message.includes('Ambiguous reference to "address"'))).toBe(true);
-    expect(problems.some(p => p.message.includes('personal and work'))).toBe(true);
+    expect(problems.some(p => p.code === 'CONFIG_AMBIGUOUS_FIELD_REF' && p.message.includes('Ambiguous reference to "address"'))).toBe(true);
+    expect(problems.some(p => p.code === 'CONFIG_AMBIGUOUS_FIELD_REF' && p.message.includes('personal and work'))).toBe(true);
   });
 
   it('rejects a cascade parent that names an id defined in two scopes', () => {
@@ -204,7 +208,7 @@ describe('validateConfig', () => {
         },
       ],
     };
-    expect(errors(dup).some(p => p.message.includes('Ambiguous reference to "country"'))).toBe(true);
+    expect(errors(dup).some(p => p.code === 'CONFIG_AMBIGUOUS_FIELD_REF' && p.message.includes('Ambiguous reference to "country"'))).toBe(true);
   });
 
   /**
@@ -240,7 +244,7 @@ describe('validateConfig', () => {
         },
       ],
     };
-    expect(errors(bad).some(p => p.message.includes('No field at path "work.nothing"'))).toBe(true);
+    expect(errors(bad).some(p => p.code === 'CONFIG_UNKNOWN_FIELD_REF' && p.message.includes('No field at path "work.nothing"'))).toBe(true);
   });
 
   it('accepts a cascade parent named by path', () => {
@@ -282,7 +286,7 @@ describe('validateConfig', () => {
         },
       ],
     };
-    expect(errors(dup).some(p => p.message.includes('[personal.address]'))).toBe(true);
+    expect(errors(dup).some(p => p.code === 'CONFIG_AMBIGUOUS_FIELD_REF' && p.message.includes('[personal.address]'))).toBe(true);
   });
 
   it('rejects a patchOnTrue mapping that names a missing field', () => {
@@ -303,7 +307,7 @@ describe('validateConfig', () => {
         },
       ],
     };
-    expect(errors(bad).some(p => p.message.includes('Nothing will be copied to.'))).toBe(true);
+    expect(errors(bad).some(p => p.code === 'CONFIG_UNKNOWN_FIELD_REF' && p.message.includes('Nothing will be copied to.'))).toBe(true);
   });
 
   it('still allows a showWhen naming an id that exists in only one scope', () => {
@@ -333,7 +337,7 @@ describe('validateConfig', () => {
         { id: 'same', label: {}, fields: [{ id: 'b', type: 'text', label: {} }] },
       ],
     };
-    expect(errors(dup).some(p => p.message.includes('Duplicate tab id'))).toBe(true);
+    expect(errors(dup).some(p => p.code === 'CONFIG_DUPLICATE_TAB_ID' && p.message.includes('Duplicate tab id'))).toBe(true);
   });
 
   it('rejects a showWhen naming a field that does not exist', () => {
@@ -348,6 +352,7 @@ describe('validateConfig', () => {
       ],
     };
     const problems = errors(bad);
+    expect(problems[0].code).toBe('CONFIG_UNKNOWN_FIELD_REF');
     expect(problems[0].message).toContain('never show');
   });
 
@@ -369,6 +374,7 @@ describe('validateConfig', () => {
         },
       ],
     };
+    expect(errors(bad)[0].code).toBe('CONFIG_UNKNOWN_FIELD_REF');
     expect(errors(bad)[0].message).toContain('never load');
   });
 
@@ -379,13 +385,18 @@ describe('validateConfig', () => {
       tabs: [{ id: 'main', label: {}, fields: [{ id: 'name', type: 'text', label: {}, required: true }] }],
     };
     expect(errors(misplaced)).toEqual([
-      expect.objectContaining({ path: 'tabs[0].fields[0].required', message: expect.stringContaining('validators.required') }),
+      expect.objectContaining({
+        code: 'CONFIG_FIELD_LEVEL_REQUIRED',
+        path: 'tabs[0].fields[0].required',
+        message: expect.stringContaining('validators.required'),
+      }),
     ]);
   });
 
   it('rejects a colSpan outside the grid', () => {
     const bad = { ...ok, tabs: [{ ...ok.tabs![0], fields: [{ id: 'x', type: 'text', label: {}, colSpan: 13 }] }] };
     expect(errors(bad)[0].path).toBe('tabs[0].fields[0].colSpan');
+    expect(errors(bad)[0].code).toBe('CONFIG_INVALID_COL_SPAN');
   });
 
   it('warns, without erroring, on usable-but-suspicious shapes', () => {
@@ -409,6 +420,9 @@ describe('validateConfig', () => {
     expect(messages).toContain('renders nothing');
     expect(messages).toContain('listName is dropped');
     expect(messages).toContain('plain identifier');
+    expect(warnings(odd).map(p => p.code)).toEqual(
+      expect.arrayContaining(['CONFIG_CONTAINER_NO_CHILDREN', 'CONFIG_OPTIONS_AND_LIST_NAME', 'CONFIG_FIELD_ID_NOT_IDENTIFIER']),
+    );
   });
 
   it('reports every problem, not just the first', () => {
@@ -447,8 +461,8 @@ describe('validateConfig', () => {
   it('does not check rules unless they are passed', () => {
     expect(errors({ ...ok })).toEqual([]);
     expect(
-      validateConfig(ok, { rules: [aRule({ fieldId: 'nope' })] }).some(p =>
-        p.message.includes('never trigger'),
+      validateConfig(ok, { rules: [aRule({ fieldId: 'nope' })] }).some(
+        p => p.code === 'CONFIG_UNKNOWN_FIELD_REF' && p.message.includes('never trigger'),
       ),
     ).toBe(true);
   });
@@ -477,15 +491,15 @@ describe('validateConfig', () => {
       ],
     };
     const problems = validateConfig(two, { rules: [aRule({ fieldId: 'address' })] });
-    expect(problems.some(p => p.path === 'rules[0].fieldId')).toBe(true);
-    expect(problems.some(p => p.message.includes('[personal.address]'))).toBe(true);
+    expect(problems.some(p => p.path === 'rules[0].fieldId' && p.code === 'CONFIG_AMBIGUOUS_FIELD_REF')).toBe(true);
+    expect(problems.some(p => p.code === 'CONFIG_AMBIGUOUS_FIELD_REF' && p.message.includes('[personal.address]'))).toBe(true);
   });
 
   it('rejects a rule that names an unknown tab', () => {
     const problems = validateConfig(ok, {
       rules: [aRule({ targets: [{ id: 'missing', type: 'tab' }] })],
     });
-    expect(problems.some(p => p.message.includes('unknown tab "missing"'))).toBe(true);
+    expect(problems.some(p => p.code === 'CONFIG_UNKNOWN_TAB_REF' && p.message.includes('unknown tab "missing"'))).toBe(true);
   });
 
   it('rejects a compareToField that does not exist', () => {
@@ -496,7 +510,7 @@ describe('validateConfig', () => {
         }),
       ],
     });
-    expect(problems.some(p => p.message.includes('never match'))).toBe(true);
+    expect(problems.some(p => p.code === 'CONFIG_UNKNOWN_FIELD_REF' && p.message.includes('never match'))).toBe(true);
   });
 
   /**
@@ -518,6 +532,7 @@ describe('validateConfig', () => {
       );
       expect(problems).toHaveLength(1);
       expect(problems[0].path).toBe('rules[0].conditions[0].operator');
+      expect(problems[0].code).toBe('CONFIG_UNKNOWN_RULE_OPERATOR');
       expect(problems[0].message).toContain(`Unknown operator "${typo}"`);
       expect(problems[0].message).toContain(`Did you mean "${meant}"?`);
     });
@@ -526,6 +541,7 @@ describe('validateConfig', () => {
       const [problem] = ruleErrors(
         aRule({ conditions: [{ operator: 'SOUNDS_LIKE' as never, compareType: 'value' }] }),
       );
+      expect(problem.code).toBe('CONFIG_UNKNOWN_RULE_OPERATOR');
       expect(problem.message).toContain('can never hold');
       expect(problem.message).not.toContain('Did you mean');
     });
@@ -539,11 +555,13 @@ describe('validateConfig', () => {
     it('rejects a condition that is not an object', () => {
       const problems = ruleErrors(aRule({ conditions: [null as never] }));
       expect(problems.map(p => p.path)).toEqual(['rules[0].conditions[0]']);
+      expect(problems.map(p => p.code)).toEqual(['CONFIG_CONDITION_NOT_OBJECT']);
     });
 
     it('rejects an unknown action type', () => {
       const problems = ruleErrors(aRule({ action: { type: 'hide' as never, value: true } }));
       expect(problems.map(p => p.path)).toEqual(['rules[0].action.type']);
+      expect(problems[0].code).toBe('CONFIG_UNKNOWN_RULE_ACTION');
       expect(problems[0].message).toContain('visibility, validation, info');
     });
 
@@ -556,6 +574,7 @@ describe('validateConfig', () => {
     it('rejects a target type that is neither field nor tab', () => {
       const problems = ruleErrors(aRule({ targets: [{ id: 'name', type: 'section' as never }] }));
       expect(problems.map(p => p.path)).toEqual(['rules[0].targets[0].type']);
+      expect(problems.map(p => p.code)).toEqual(['CONFIG_UNKNOWN_TARGET_TYPE']);
     });
 
     // A draft rule saved before its targets were picked is legitimate, so this only warns.
@@ -578,6 +597,7 @@ describe('validateConfig', () => {
         aRule({ conditions: [{ operator: 'EQUAL', compareType: 'field', compareToField }] }),
       );
       expect(problems.map(p => p.path)).toEqual(['rules[0].conditions[0].compareToField']);
+      expect(problems.map(p => p.code)).toEqual(['CONFIG_COMPARE_FIELD_REQUIRED']);
     });
   });
 });

@@ -30,6 +30,7 @@ describe('validators.pattern', () => {
     const problems = errorsAt(config, 'tabs[0].fields[0].validators.pattern');
     expect(problems).toHaveLength(1);
     expect(problems[0].message).toContain('not a valid regular expression');
+    expect(problems[0].code).toBe('CONFIG_INVALID_PATTERN');
   });
 
   it('accepts a valid one', () => {
@@ -40,6 +41,7 @@ describe('validators.pattern', () => {
   it('rejects a non-string pattern', () => {
     const config = wrap([text('code', { validators: { pattern: 7 as never } })]);
     expect(errorsAt(config, 'tabs[0].fields[0].validators.pattern')).toHaveLength(1);
+    expect(errorsAt(config, 'tabs[0].fields[0].validators.pattern').map(p => p.code)).toEqual(['CONFIG_PATTERN_NOT_STRING']);
   });
 });
 
@@ -47,11 +49,13 @@ describe('bounds that contradict each other', () => {
   it('reports min greater than max', () => {
     const config = wrap([{ ...text('n'), type: 'number', validators: { min: 10, max: 1 } }]);
     expect(errorsAt(config, 'tabs[0].fields[0].validators')[0].message).toContain('no value can satisfy both');
+    expect(errorsAt(config, 'tabs[0].fields[0].validators')[0].code).toBe('CONFIG_MIN_EXCEEDS_MAX');
   });
 
   it('reports minLength greater than maxLength', () => {
     const config = wrap([text('s', { validators: { minLength: 20, maxLength: 5 } })]);
     expect(errorsAt(config, 'tabs[0].fields[0].validators')).toHaveLength(1);
+    expect(errorsAt(config, 'tabs[0].fields[0].validators').map(p => p.code)).toEqual(['CONFIG_MIN_LENGTH_EXCEEDS_MAX_LENGTH']);
   });
 
   it('accepts equal bounds', () => {
@@ -64,11 +68,13 @@ describe('defaultValue', () => {
   it('reports a string default on a number field', () => {
     const config = wrap([{ ...text('n'), type: 'number', defaultValue: '5' }]);
     expect(errorsAt(config, 'tabs[0].fields[0].defaultValue')[0].message).toContain('must be a number');
+    expect(errorsAt(config, 'tabs[0].fields[0].defaultValue')[0].code).toBe('CONFIG_DEFAULT_TYPE_MISMATCH');
   });
 
   it('reports a string default on a boolean field', () => {
     const config = wrap([{ ...text('b'), type: 'boolean', defaultValue: 'true' }]);
     expect(errorsAt(config, 'tabs[0].fields[0].defaultValue')).toHaveLength(1);
+    expect(errorsAt(config, 'tabs[0].fields[0].defaultValue').map(p => p.code)).toEqual(['CONFIG_DEFAULT_TYPE_MISMATCH']);
   });
 
   it('leaves an absent default alone', () => {
@@ -90,6 +96,7 @@ describe('named validators', () => {
     const problems = errorsAt(config, 'tabs[0].fields[0].validators', { knownValidators: [] });
     expect(problems).toHaveLength(2);
     expect(problems.map(p => p.message).join(' ')).toContain('"noDisposable"');
+    expect(problems.map(p => p.code)).toEqual(['CONFIG_UNKNOWN_VALIDATOR', 'CONFIG_UNKNOWN_VALIDATOR']);
   });
 
   it('says what an unresolved async validator costs', () => {
@@ -97,6 +104,7 @@ describe('named validators', () => {
       knownValidators: ['noDisposable'],
     });
     expect(problems[0].message).toContain('duplicate');
+    expect(problems[0].code).toBe('CONFIG_UNKNOWN_VALIDATOR');
   });
 
   it('accepts registered names', () => {
@@ -114,6 +122,7 @@ describe('named validators', () => {
   it('rejects a parameterised built-in with a non-numeric argument', () => {
     const bad = wrap([text('n', { validators: { custom: ['min:abc'] } })]);
     expect(errorsAt(bad, 'tabs[0].fields[0].validators', { knownValidators: [] })).toHaveLength(1);
+    expect(errorsAt(bad, 'tabs[0].fields[0].validators', { knownValidators: [] }).map(p => p.code)).toEqual(['CONFIG_UNKNOWN_VALIDATOR']);
   });
 });
 
@@ -123,10 +132,12 @@ describe('reserved ids', () => {
     // write it: a field that renders, accepts input, and can never hold a value.
     const config = wrap([text('__proto__')]);
     expect(errorsAt(config, 'tabs[0].fields[0].id')[0].message).toContain('reserved object key');
+    expect(errorsAt(config, 'tabs[0].fields[0].id')[0].code).toBe('CONFIG_RESERVED_FIELD_ID');
   });
 
   it('reports a field named constructor', () => {
     expect(errorsAt(wrap([text('constructor')]), 'tabs[0].fields[0].id')).toHaveLength(1);
+    expect(errorsAt(wrap([text('constructor')]), 'tabs[0].fields[0].id').map(p => p.code)).toEqual(['CONFIG_RESERVED_FIELD_ID']);
   });
 
   it('reports a tab named prototype', () => {
@@ -135,6 +146,7 @@ describe('reserved ids', () => {
       tabs: [{ id: 'prototype', label: { en: 'P' }, fields: [text('a')] }],
     };
     expect(errorsAt(config, 'tabs[0].id')).toHaveLength(1);
+    expect(errorsAt(config, 'tabs[0].id').map(p => p.code)).toEqual(['CONFIG_RESERVED_TAB_ID']);
   });
 });
 
@@ -146,6 +158,7 @@ describe('prototype-reaching mappings', () => {
       }),
     ]);
     expect(errorsAt(config, 'tabs[0].fields[0].autoPatch')[0].message).toContain('reserved object key');
+    expect(errorsAt(config, 'tabs[0].fields[0].autoPatch')[0].code).toBe('CONFIG_UNSAFE_PATH');
   });
 
   it('reports a patchOnTrue destination that names a reserved key', () => {
@@ -154,7 +167,7 @@ describe('prototype-reaching mappings', () => {
       text('company'),
     ]);
     const problems = errorsAt(config, 'tabs[0].fields[0].patchOnTrue[0].to');
-    expect(problems.some(p => p.message.includes('reserved object key'))).toBe(true);
+    expect(problems.some(p => p.code === 'CONFIG_UNSAFE_PATH' && p.message.includes('reserved object key'))).toBe(true);
   });
 });
 
@@ -166,6 +179,7 @@ describe('options', () => {
     const warnings = validateConfig(config).filter(p => p.level === 'warning' && p.path.includes('options'));
     expect(warnings).toHaveLength(1);
     expect(warnings[0].message).toContain('cannot say which was picked');
+    expect(warnings[0].code).toBe('CONFIG_DUPLICATE_OPTION_LABEL');
   });
 
   it('does not warn when they differ in the active language', () => {
@@ -188,6 +202,7 @@ describe('options', () => {
       },
     ]);
     expect(errorsAt(config, 'tabs[0].fields[0].options[1].$key')[0].message).toContain('Duplicate option key');
+    expect(errorsAt(config, 'tabs[0].fields[0].options[1].$key')[0].code).toBe('CONFIG_DUPLICATE_OPTION_KEY');
   });
 
   it('reports a reserved $-prefixed key other than $key', () => {
@@ -195,11 +210,13 @@ describe('options', () => {
       { ...text('status'), type: 'dropdown', options: [{ $id: 'open', en: 'Open' } as never] },
     ]);
     expect(errorsAt(config, 'tabs[0].fields[0].options[0].$id')).toHaveLength(1);
+    expect(errorsAt(config, 'tabs[0].fields[0].options[0].$id').map(p => p.code)).toEqual(['CONFIG_OPTION_RESERVED_KEY']);
   });
 
   it('reports an option that is not an object', () => {
     const config = wrap([{ ...text('status'), type: 'dropdown', options: ['Open' as never] }]);
     expect(errorsAt(config, 'tabs[0].fields[0].options[0]')).toHaveLength(1);
+    expect(errorsAt(config, 'tabs[0].fields[0].options[0]').map(p => p.code)).toEqual(['CONFIG_OPTION_NOT_OBJECT']);
   });
 });
 
@@ -225,16 +242,19 @@ describe('rule shape', () => {
     const rules = [{ ...base, conditions: undefined as never }];
     expect(errorsAt(config, 'rules[0].conditions')).toHaveLength(0);
     expect(errorsAt(config, 'rules[0].conditions', { rules })).toHaveLength(1);
+    expect(errorsAt(config, 'rules[0].conditions', { rules }).map(p => p.code)).toEqual(['CONFIG_RULE_LIST_NOT_ARRAY']);
   });
 
   it('reports non-array targets', () => {
     const rules = [{ ...base, targets: 'status' as never }];
     expect(errorsAt(config, 'rules[0].targets', { rules })).toHaveLength(1);
+    expect(errorsAt(config, 'rules[0].targets', { rules }).map(p => p.code)).toEqual(['CONFIG_RULE_LIST_NOT_ARRAY']);
   });
 
   it('reports a missing action', () => {
     const rules = [{ ...base, action: undefined as never }];
     expect(errorsAt(config, 'rules[0].action', { rules })).toHaveLength(1);
+    expect(errorsAt(config, 'rules[0].action', { rules }).map(p => p.code)).toEqual(['CONFIG_RULE_ACTION_REQUIRED']);
   });
 
   it('warns that a validation action on a tab does nothing', () => {
@@ -242,6 +262,6 @@ describe('rule shape', () => {
       { ...base, action: { type: 'validation', value: 'nope' }, targets: [{ id: 'personal', type: 'tab' }] },
     ];
     const warnings = validateConfig(config, { rules }).filter(p => p.level === 'warning');
-    expect(warnings.some(w => w.message.includes('only "visibility"'))).toBe(true);
+    expect(warnings.some(w => w.code === 'CONFIG_TAB_ACTION_IGNORED' && w.message.includes('only "visibility"'))).toBe(true);
   });
 });

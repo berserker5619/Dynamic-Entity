@@ -1,0 +1,167 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`formatConfigProblems prints every case as it always has 1`] = `
+"# a config that is not an object
+  [error] (root): Config is missing or not an object.
+# a blank entity name
+  [error] entity: An entity name is required.
+# a version below 1
+  [error] version: version must be a positive number when present.
+# no tabs
+  [error] tabs: At least one tab is required.
+# a field that is not an object
+  [error] tabs[0].fields[0]: Field is missing or not an object.
+# a field with no id
+  [error] tabs[0].fields[0].id: A field id is required.
+# a field named __proto__
+  [error] tabs[0].fields[0].id: "__proto__" is a reserved object key. A field with this id can never store a value: every path guard refuses to read or write it. Rename the field.
+# a field id with a space
+  [warning] tabs[0].fields[0].id: "has space" is not a plain identifier; it is used as an object key in saved records.
+# one id twice in a scope
+  [error] tabs[0].fields[1].id: Duplicate field id "a" (also at tabs[0].fields[0]). Two fields in main would share one control and one record key.
+# a field with no type
+  [error] tabs[0].fields[0].type: A field type is required.
+# a type not in the catalog
+  [error] tabs[0].fields[0].type: Unknown field type "signature". It will not render. Known types: array, boolean, checkbox, color, currency, date, datetime, dropdown, email, entity-ref, file, group, image, markdown, monthYear, multiSelect, number, password, phone, radio, rating, slider, tags, text, textarea, time, url.
+# a field with no label
+  [warning] tabs[0].fields[0].label: No label; the field will render without one.
+# a group with no children
+  [warning] tabs[0].fields[0].children: A "group" field with no children renders nothing.
+# children on a text field
+  [warning] tabs[0].fields[0].children: Children on a "text" field are ignored.
+# inline options and a listName
+  [warning] tabs[0].fields[0].listName: Both inline options and listName are set; inline options win and listName is dropped.
+# a step of 0
+  [error] tabs[0].fields[0].step: step must be a number greater than 0. The slider falls back to 1.
+# a slider whose max is its min
+  [error] tabs[0].fields[0].validators: A slider's max (5) must be greater than its min (5). The track falls back to 0–100 and the form still enforces both bounds, so no value can be valid.
+# a colSpan of 13
+  [error] tabs[0].fields[0].colSpan: colSpan must be between 1 and 12.
+# required on the field
+  [error] tabs[0].fields[0].required: \`required\` is not a field property, so this field is not required. Move it to \`validators.required\`.
+# group children that are not an array
+  [error] tabs[0].fields[0].children: children must be an array; it will be ignored.
+# an empty pattern
+  [error] tabs[0].fields[0].validators.pattern: pattern must be a non-empty string.
+# a pattern that does not compile
+  [error] tabs[0].fields[0].validators.pattern: "(" is not a valid regular expression (Invalid regular expression: /(/: Unterminated group). It is skipped server-side and throws when the control is built.
+# min above max
+  [error] tabs[0].fields[0].validators: min (5) is greater than max (1); no value can satisfy both.
+# minLength above maxLength
+  [error] tabs[0].fields[0].validators: minLength (5) is greater than maxLength (1); no value can satisfy both.
+# custom validators that are not a list
+  [error] tabs[0].fields[0].validators.custom: custom must be an array of validator names.
+# a blank validator name
+  [error] tabs[0].fields[0].validators.customAsync[0]: A validator name must be a non-empty string.
+# a validator nothing registered
+  [error] tabs[0].fields[0].validators.custom[0]: No validator named "noDisposable" is registered, so it is dropped and never runs.
+# a text default on a number
+  [error] tabs[0].fields[0].defaultValue: A "number" field's default must be a number; this is a string.
+# a text default on a boolean
+  [error] tabs[0].fields[0].defaultValue: A "boolean" field's default must be a boolean; this is a string.
+# an upper-case colour default
+  [error] tabs[0].fields[0].defaultValue: A "color" field's default must be a lowercase #rrggbb colour.
+# a text default on tags
+  [error] tabs[0].fields[0].defaultValue: A "tags" field's default must be an array of strings.
+# an option that is a bare string
+  [error] tabs[0].fields[0].options[0]: An option must be a language-keyed object.
+# an option with a $-key other than $key
+  [error] tabs[0].fields[0].options[0].$id: "$id" is reserved. "$" cannot begin a language subtag, so the only "$" key an option may carry is "$key".
+# a blank $key
+  [error] tabs[0].fields[0].options[0].$key: $key must be a non-empty string.
+# two options with one $key
+  [error] tabs[0].fields[0].options[1].$key: Duplicate option key "k" (also at index 0).
+# two options that read the same
+  [warning] tabs[0].fields[0].options[1]: Two options both read "A" in "en" (also at index 0). The displayed text is the stored value, so a record cannot say which was picked.
+# a tab that is not an object
+  [error] tabs[0]: Tab is missing or not an object.
+# a tab with no id
+  [error] tabs[0].id: A tab id is required.
+# a tab named prototype
+  [error] tabs[0].id: "prototype" is a reserved object key. No field on this tab could store a value.
+# one tab id twice
+  [error] tabs[1].id: Duplicate tab id "a" (also at tabs[0]).
+# a tab with nothing in it
+  [warning] tabs[0]: Tab has no fields, no sub-tabs and no module; it renders empty.
+# tab fields that are not an array
+  [error] tabs[0].fields: fields must be an array; it will be ignored.
+# sub-tabs that are not an array
+  [error] tabs[0].children: children must be an array; it will be ignored.
+# a showWhen naming no field
+  [error] tabs[0].fields[0].showWhen: References unknown field "missing". This field will never show.
+# a showWhen path no field occupies
+  [error] tabs[0].fields[0].showWhen: No field at path "main.nothing". This field will never show.
+# a cascade parent naming no field
+  [error] tabs[0].fields[0].entityReference.parentField: References unknown field "missing". The cascade will never load.
+# a patchOnTrue naming no field
+  [error] tabs[0].fields[0].patchOnTrue[0].from: References unknown field "missing". Nothing will be copied from.
+# a showWhen naming an id two scopes define
+  [error] tabs[1].fields[1].showWhen: Ambiguous reference to "address": defined in personal and work. Name it by path instead, as [personal.address]. This field will never show.
+# a patchOnTrue writing to __proto__
+  [error] tabs[0].fields[1].patchOnTrue[0].to: References unknown field "__proto__". Nothing will be copied to.
+  [error] tabs[0].fields[1].patchOnTrue[0].to: "__proto__" names a reserved object key, so it is skipped rather than written. Rename the field it points at.
+# an autoPatch target of constructor
+  [error] tabs[0].fields[0].autoPatch.mappings[0].target: "constructor" names a reserved object key, so it is skipped rather than written. Rename the field it points at.
+# a refererField into __proto__
+  [error] tabs[0].fields[0].refererField: "__proto__.a" names a reserved object key, so it is skipped rather than written. Rename the field it points at.
+# an authored refererField inside an array
+  [error] tabs[0].fields[0].children[0].refererField: refererField is not allowed on a field inside an array: "primaryPhone" cannot say which row it means.
+# a refererField on an array inside a group
+  [warning] tabs[0].fields[0].children[0].refererField: refererField on a array that is not directly on a tab is ignored: the form only moves tab-level containers, so the value stays at "main.wrap.phones".
+# a rule that is not an object
+  [error] rules[0]: Rule is missing or not an object.
+# conditions that are not a list
+  [error] rules[0].conditions: conditions must be an array; the rule is skipped at runtime.
+# targets that are not a list
+  [error] rules[0].targets: targets must be an array; the rule is skipped at runtime.
+# a rule with no action
+  [error] rules[0].action: An action object is required; the rule is skipped at runtime.
+# an action type the engine has no branch for
+  [error] rules[0].action.type: Unknown action type "hide"; the rule changes nothing when it fires. Expected one of: visibility, validation, info.
+# a rule with no targets
+  [warning] rules[0].targets: This rule has no targets; it changes nothing when it fires.
+# a condition that is not an object
+  [error] rules[0].conditions[0]: Condition is missing or not an object; the rule can never fire.
+# a misspelt operator
+  [error] rules[0].conditions[0].operator: Unknown operator "EQUALS"; the condition can never hold. Did you mean "EQUAL"?
+# compareType field with no compareToField
+  [error] rules[0].conditions[0].compareToField: compareType "field" needs a compareToField; without one the condition compares against \`value\` instead.
+# a rule triggered by no field
+  [error] rules[0].fieldId: References unknown field "missing". The rule will never trigger.
+# a compareToField naming no field
+  [error] rules[0].conditions[0].compareToField: References unknown field "missing". The comparison will never match.
+# a rule targeting no field
+  [error] rules[0].targets[0].id: References unknown field "missing". The action will never apply.
+# a rule targeting no tab
+  [error] rules[0].targets[0].id: References unknown tab "missing".
+# a validation action on a tab
+  [warning] rules[0].targets[0]: A "validation" action on a tab has no effect — only "visibility" applies to a tab. Target the fields instead.
+# a target that is neither field nor tab
+  [error] rules[0].targets[0].type: Unknown target type "section"; expected "field" or "tab". The action will never apply.
+# a plan that is not an object
+  [error] (root): Mapping plan is missing or not an object.
+# entries that are not a list
+  [error] entries: entries must be an array.
+# an entry that is not an object
+  [error] entries[0]: Entry is not an object.
+# an entry with no ref
+  [error] entries[0].ref: An entry needs a target field ref.
+# a plan for another entity
+  [warning] entity: Plan targets "other" but the config is "e".
+# a plan for an older config version
+  [warning] configVersion: Plan was authored against config version 1; the config is now 2.
+# a 2.2 ref of a moved array
+  [warning] entries[0].ref: "phones.number" is the 2.2 address of "contact.phones.0.number"; it is read as "contact.phones.0.number" until 3.0. Save the plan again to update it.
+# a ref no field has
+  [error] entries[0].ref: References unknown field "main.nope".
+# a ref into __proto__
+  [error] entries[0].ref: References unknown field "__proto__.polluted".
+# one ref mapped twice
+  [error] entries[1].ref: "main.name" is mapped more than once.
+# an entry with a column and a constant
+  [error] entries[0]: An entry takes either a column or a constant, not both.
+# an entry with neither
+  [error] entries[0]: An entry needs either a column or a constant.
+# a negative column
+  [error] entries[0].column: column must be a zero-based integer index."
+`;

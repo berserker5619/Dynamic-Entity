@@ -307,6 +307,8 @@ describe('POST /:entity/import', () => {
     expect(response.status).toBe(200);
     expect(response.body.imported).toBe(0);
     expect(response.body.planProblems.some((p: { level: string }) => p.level === 'error')).toBe(true);
+    // The code crosses the wire with the problem.
+    expect(response.body.planProblems.map((p: { code?: string }) => p.code)).toContain('PLAN_UNKNOWN_REF');
     expect(written).toEqual([]);
   });
 
@@ -352,6 +354,9 @@ describe('POST /:entity/import', () => {
     expect((Object.prototype as { polluted?: unknown }).polluted).toBeUndefined();
     // And the refs it did not recognise are reported rather than quietly dropped.
     expect(response.body.planProblems.some((p: { level: string }) => p.level === 'error')).toBe(true);
+    expect(
+      response.body.planProblems.filter((p: { code?: string }) => p.code === 'PLAN_UNKNOWN_REF').map((p: { path: string }) => p.path),
+    ).toEqual(['entries[0].ref', 'entries[1].ref']);
     expect(written).toEqual([]);
   });
 
