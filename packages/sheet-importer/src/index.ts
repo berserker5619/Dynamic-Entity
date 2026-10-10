@@ -37,3 +37,9 @@ export { validatePlan } from './validate-plan';
 export { DEFAULT_LIST_SEPARATOR, coerceValue } from './coerce';
 export type { CoerceValueOptions } from './coerce';
 export { cellText } from './cell-text';
+
+// ─── Applying a plan ────────────────────────────────────────────────────────
+export { applyMapping, preparePlan } from './apply-mapping';
+export type { ApplyMappingOptions, PreparedPlan } from './apply-mapping';
+export { validateRecord } from './validate-record';
+export type { ImportResult, ImportRowError } from './result.types';

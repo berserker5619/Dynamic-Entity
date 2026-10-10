@@ -3,7 +3,7 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ['<rootDir>/src/**/*.spec.ts'],
   // Coverage is measured on shipped source only: barrels and specs are excluded.
-  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/index.ts'],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/**/*.fixtures.ts', '!src/index.ts'],
   coverageReporters: ['text-summary', 'lcov'],
   // Per-file, not aggregate, for the reason given in packages/core/jest.config.js.
   coverageThreshold: {
