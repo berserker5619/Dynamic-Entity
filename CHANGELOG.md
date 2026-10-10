@@ -10,6 +10,36 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [2.4.0]
 
+Machine-readable problem codes. Every `ConfigProblem` that `validateConfig` and
+`validateMappingPlan` emit now carries a stable `code`, so a UI, a test or a CI gate can tell
+one problem from another without matching message text. Additive only: no check was added or
+removed, no level changed, and every message is unchanged except the one correction below.
+
+### Upgrading
+- **Nothing is required.** `code` is optional on the `ConfigProblem` type, so code that builds
+  its own problems still compiles.
+- **Compare codes, never messages.** Codes are stable identifiers: once shipped, a code keeps its
+  meaning, and a check that changes meaning gets a new one. Messages are written for people and
+  may be reworded in any release.
+- **A 2.4 browser against a 2.3 server logs the usual engine-version warning,** because the
+  check compares major.minor. Nothing else differs: a 2.3 server's `planProblems` simply arrive
+  without codes.
+
+### Added
+- **`ConfigProblem.code`**, set on every problem Dynamic Entity emits, and carried in
+  `planProblems` on the wire.
+- **`CONFIG_PROBLEM_CODES`** (55 codes, from `validateConfig`) and **`PLAN_PROBLEM_CODES`** (6, from
+  `validateMappingPlan`), exported as `const` arrays, with the derived `ConfigProblemCode`,
+  `PlanProblemCode` and `ProblemCode` types. They follow the `RULE_OPERATORS` pattern, so the
+  type and the list cannot drift.
+  - `CONFIG_*` is Dynamic Entity's namespace, and `PLAN_*` the spreadsheet importer's. The plan
+    codes are the names from the importer's spec that a check here actually produces:
+    `PLAN_SHAPE`, `PLAN_TARGET_MISMATCH`, `PLAN_LEGACY_REF`, `PLAN_UNKNOWN_REF`,
+    `PLAN_DUPLICATE_REF`, `PLAN_SOURCE`.
+  - Which check emits which code is listed in `docs/de-2.4-problem-codes.md`.
+- Some checks that read alike now say which one they are. For example, a field's and a tab's
+  "children must be an array" are `CONFIG_CHILDREN_NOT_ARRAY` and `CONFIG_TAB_LIST_NOT_ARRAY`.
+
 ### Changed
 - **The 2.2 legacy-ref alias stays through 3.x and is removed in 4.0, not 3.0.** The [2.3.0]
   notes below said 3.0, and so did the plan warning (`PLAN_LEGACY_REF`): both now say 4.0. That

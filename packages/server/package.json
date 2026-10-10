@@ -1,6 +1,6 @@
 {
   "name": "@dynamic-entity/server",
-  "version": "2.3.1",
+  "version": "2.4.0",
   "description": "Streaming spreadsheet import for @dynamic-entity/core, with an Express adapter.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

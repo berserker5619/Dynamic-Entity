@@ -1,6 +1,6 @@
 {
   "name": "ngx-dynamic-entity",
-  "version": "2.3.1",
+  "version": "2.4.0",
   "description": "Angular standalone UI library for rendering dynamic entity forms.",
   "//typings": "Local workspace resolution only: ng-packagr 21 writes types/ngx-dynamic-entity.d.ts into dist/package.json. Do NOT add a 'main' field here — ng-packagr does not generate one, so it would be copied verbatim and resolve wrongly in the published package.",
   "typings": "./dist/types/ngx-dynamic-entity.d.ts",
