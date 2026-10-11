@@ -648,4 +648,5 @@ A `custom` kind reaching `coerceValue` throws (§7).
 - **Still Phase 2:** the gate itself. 2.x's `applyMapping`, the server and the wizard still run the old engine; swapping them onto the adapter, with the full core and server suites as the test, is the extraction.
 
 **2026-10-11: the package is named `sheet-to-schema`.** Decision 1 and the open item are updated. The workspace package was renamed from `sheet-importer-placeholder`, in its manifest, core's `devDependencies`, and core's `tsconfig.json` and `jest.config.js` mappings. Earlier entries in this log keep the placeholder name they were written with.
-- **Unchanged:** it stays `private: true`, and its folder stays `packages/sheet-importer`. Publishing, and moving the folder, are Phase 2.
+- **The folder moved too,** from `packages/sheet-importer` to `packages/sheet-to-schema`, on the owner's word the same day. Earlier entries keep the old path.
+- **Unchanged:** it stays `private: true`. Publishing is Phase 2.

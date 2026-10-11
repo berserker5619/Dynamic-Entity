@@ -24,7 +24,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CORE = path.join(ROOT, 'packages', 'core');
 const SERVER = path.join(ROOT, 'packages', 'server');
 const NGX = path.join(ROOT, 'packages', 'ngx-dynamic-entity');
-const IMPORTER = path.join(ROOT, 'packages', 'sheet-importer');
+const IMPORTER = path.join(ROOT, 'packages', 'sheet-to-schema');
 
 /**
  * Chosen to straddle Greenwich rather than to be exhaustive.

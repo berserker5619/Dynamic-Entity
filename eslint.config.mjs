@@ -55,7 +55,7 @@ export default tseslint.config(
           './packages/ngx-dynamic-entity-builder/tsconfig.json',
           './packages/ngx-dynamic-entity-builder/tsconfig.spec.json',
           './packages/demo-angular/tsconfig.json',
-          './packages/sheet-importer/tsconfig.json',
+          './packages/sheet-to-schema/tsconfig.json',
         ],
         tsconfigRootDir: import.meta.dirname,
       },
@@ -137,7 +137,7 @@ export default tseslint.config(
     // The importer depends on nothing in Dynamic Entity (docs/import-phase1-spec.md, "Package
     // boundaries"): the DE adapter imports it, never the reverse, or core's re-exports make a
     // cycle. A rule rather than a convention, so a stray import fails `npm run lint`.
-    files: ['packages/sheet-importer/**/*.ts'],
+    files: ['packages/sheet-to-schema/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
