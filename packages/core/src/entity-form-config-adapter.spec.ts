@@ -15,7 +15,7 @@ import {
   suggestMapping as suggestGeneric,
   validatePlan,
   type ImportRowError as GenericRowError,
-} from 'sheet-importer-placeholder';
+} from 'sheet-to-schema';
 
 import { arrayBoundFor } from './array-headers';
 import { CORE_VERSION } from './constants';

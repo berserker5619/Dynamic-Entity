@@ -500,7 +500,7 @@ Settled on 2026-10-10. These are binding; Claude Code MUST NOT reopen them in co
 
 | # | Question | Decision |
 | --- | --- | --- |
-| 1 | Package name and scope | A new standalone name, not under `@dynamic-entity`. The name itself is still open (below). |
+| 1 | Package name and scope | A new standalone name, not under `@dynamic-entity`: **`sheet-to-schema`**, unscoped. *(Named by the owner on 2026-10-11.)* |
 | 2 | Re-exports from `@dynamic-entity/core` | Keep deprecated re-exports of moved functions through 3.x; remove in 4.0. |
 | 3 | Legacy-ref alias | Keep `upgradeLegacyRefs` behind the DE adapter's `upgradeRefs` through 3.x, with its warning; remove in 4.0. Correct the 2.3 changelog note that announced removal in 3.0. *(Correction shipped in DE 2.4.0.)* |
 | 4 | Problem codes in DE | Add an optional `code` to `ConfigProblem`, same `{ level, code, path, message }` shape. DE owns `CONFIG_*`; the importer owns `PLAN_*` and `RECORD_*`. Additive, so it ships in **DE 2.4**, before any extraction. *(Shipped in DE 2.4.0; see `docs/de-2.4-problem-codes.md`.)* |
@@ -516,7 +516,7 @@ Settled on 2026-10-10. These are binding; Claude Code MUST NOT reopen them in co
 
 **Still open**
 
-- [ ] **The package name.** Check npm availability for the name and for any org scope before Phase 2 creates the package. Phase 1 code uses a placeholder workspace name.
+- [x] **The package name:** `sheet-to-schema`. On 2026-10-11 the name returned 404 from the npm registry, as did the spellings npm treats as the same name (`sheettoschema`, `sheet_to_schema`, `sheet.to.schema`). Whether an npm org of that name exists could not be read; the package is unscoped, so none is needed. The name is not reserved until something is published under it.
 
 **Later** (not v2, recorded so they are not lost)
 
@@ -646,3 +646,6 @@ A `custom` kind reaching `coerceValue` throws (§7).
   - A cell's code comes from the field's type: a `dropdown`, `radio` or `multiSelect` cell that cannot be read is `CELL_UNKNOWN_OPTION`, unless the cell was an invalid date; anything else is `CELL_FORMAT`.
 - **Tested for parity** in `entity-form-config-adapter.spec.ts`: the same rows and stored v1 plan through 2.x's `applyMapping` and through the generic engine give the same records, errors (but for the added `code`) and skips. Covered: all seven configs in `test_data.json`, as text and as typed cells; moved arrays and groups with 2.2 refs; rules; lookups; constants; the decimal comma. Three acceptance items pass there: stored v1 plans, the DE half of `compact: false`, and per-array `slotsFor`.
 - **Still Phase 2:** the gate itself. 2.x's `applyMapping`, the server and the wizard still run the old engine; swapping them onto the adapter, with the full core and server suites as the test, is the extraction.
+
+**2026-10-11: the package is named `sheet-to-schema`.** Decision 1 and the open item are updated. The workspace package was renamed from `sheet-importer-placeholder`, in its manifest, core's `devDependencies`, and core's `tsconfig.json` and `jest.config.js` mappings. Earlier entries in this log keep the placeholder name they were written with.
+- **Unchanged:** it stays `private: true`, and its folder stays `packages/sheet-importer`. Publishing, and moving the folder, are Phase 2.

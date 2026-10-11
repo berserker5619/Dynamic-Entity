@@ -1,8 +1,8 @@
 {
-  "name": "sheet-importer-placeholder",
+  "name": "sheet-to-schema",
   "version": "0.0.0",
   "private": true,
-  "description": "Schema-agnostic spreadsheet import engine (Phase 1, docs/import-phase1-spec.md). Placeholder name until the package name is chosen; never published.",
+  "description": "Schema-agnostic spreadsheet import engine (Phase 1, docs/import-phase1-spec.md). Private until Phase 2 publishes it.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",

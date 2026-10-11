@@ -11,7 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["jest", "node"],
     "paths": {
-      "sheet-importer-placeholder": ["../sheet-importer/src/index.ts"]
+      "sheet-to-schema": ["../sheet-importer/src/index.ts"]
     }
   },
   "include": ["src/**/*.ts"]

@@ -25,7 +25,7 @@ module.exports = {
   // workspace only `entity-form-config-adapter.ts` and its specs import, and resolving its
   // `dist` would make core's tests depend on another package having been built.
   moduleNameMapper: {
-    '^sheet-importer-placeholder$': '<rootDir>/../sheet-importer/src/index.ts',
+    '^sheet-to-schema$': '<rootDir>/../sheet-importer/src/index.ts',
   },
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: { strict: true, esModuleInterop: true, skipLibCheck: true } }],

@@ -15,8 +15,8 @@
  *
  * Arrays are not positional: a `null` slot does not survive the form (spec, Decision 5).
  *
- * Not exported from the package yet. The importer is still a private workspace under a
- * placeholder name, so nothing published may reach it; this file is wired in by Phase 2.
+ * Not exported from the package yet. The importer (`sheet-to-schema`) is still a private
+ * workspace, so nothing published may reach it; this file is wired in by Phase 2.
  */
 import type {
   CoerceOutcome as ImporterCoerceOutcome,
@@ -27,7 +27,7 @@ import type {
   SchemaAdapter,
   TargetArray,
   TargetSet,
-} from 'sheet-importer-placeholder';
+} from 'sheet-to-schema';
 
 import { CORE_VERSION } from './constants';
 import { collectFieldRefs } from './field-scopes';
