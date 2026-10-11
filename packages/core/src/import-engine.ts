@@ -748,9 +748,22 @@ function tabPlacements(config: EntityFormConfig | null | undefined): TabPlacemen
   return placements;
 }
 
+/** Why a record was judged wrong: the importer's record codes a validator or a rule can raise. */
+export type RecordCheckCode = 'RECORD_REQUIRED' | 'RECORD_FORMAT' | 'RECORD_RANGE' | 'RECORD_RULE';
+
+/** A `RecordProblem` with its code, for the schema adapter. Not part of the package's API. */
+export type CodedRecordProblem = RecordProblem & { code: RecordCheckCode };
+
 /** Apply a field's declared validators to a coerced value. */
-function applyFieldValidators(field: NestedFieldConfig, value: unknown, lang: string): string[] {
-  const messages: string[] = [];
+function applyFieldValidators(
+  field: NestedFieldConfig,
+  value: unknown,
+  lang: string,
+): { message: string; code: RecordCheckCode }[] {
+  const messages: { message: string; code: RecordCheckCode }[] = [];
+  const add = (code: RecordCheckCode, message: string): void => {
+    messages.push({ message, code });
+  };
   const validators = field.validators;
   if (!validators) return messages;
 
@@ -759,7 +772,7 @@ function applyFieldValidators(field: NestedFieldConfig, value: unknown, lang: st
     (Array.isArray(value) && value.length === 0);
 
   if (validators.required && absent) {
-    messages.push(`${label} is required`);
+    add('RECORD_REQUIRED', `${label} is required`);
     // Every other validator describes a value, and there is not one.
     return messages;
   }
@@ -767,10 +780,10 @@ function applyFieldValidators(field: NestedFieldConfig, value: unknown, lang: st
 
   if (typeof value === 'number') {
     if (typeof validators.min === 'number' && value < validators.min) {
-      messages.push(`${label} must be at least ${validators.min}`);
+      add('RECORD_RANGE', `${label} must be at least ${validators.min}`);
     }
     if (typeof validators.max === 'number' && value > validators.max) {
-      messages.push(`${label} must be at most ${validators.max}`);
+      add('RECORD_RANGE', `${label} must be at most ${validators.max}`);
     }
   }
 
@@ -778,39 +791,39 @@ function applyFieldValidators(field: NestedFieldConfig, value: unknown, lang: st
   // and the form applies them to both. Checking only strings passed rows the form refuses.
   if (Array.isArray(value)) {
     if (typeof validators.minLength === 'number' && value.length < validators.minLength) {
-      messages.push(`${label} must have at least ${validators.minLength} items`);
+      add('RECORD_RANGE', `${label} must have at least ${validators.minLength} items`);
     }
     if (typeof validators.maxLength === 'number' && value.length > validators.maxLength) {
-      messages.push(`${label} must have at most ${validators.maxLength} items`);
+      add('RECORD_RANGE', `${label} must have at most ${validators.maxLength} items`);
     }
   }
 
   if (typeof value === 'string') {
     if (typeof validators.minLength === 'number' && value.length < validators.minLength) {
-      messages.push(`${label} must be at least ${validators.minLength} characters`);
+      add('RECORD_RANGE', `${label} must be at least ${validators.minLength} characters`);
     }
     if (typeof validators.maxLength === 'number' && value.length > validators.maxLength) {
-      messages.push(`${label} must be at most ${validators.maxLength} characters`);
+      add('RECORD_RANGE', `${label} must be at most ${validators.maxLength} characters`);
     }
     if (validators.pattern) {
       // A pattern comes from config, which is authored data — an unparseable one is a config
       // problem for `validateConfig` to report, not a reason to throw mid-import.
       try {
         if (!new RegExp(validators.pattern).test(value)) {
-          messages.push(`${label} does not match the required format`);
+          add('RECORD_FORMAT', `${label} does not match the required format`);
         }
       } catch {
         /* reported by validateConfig */
       }
     }
     if (validators.email && !EMAIL_PATTERN.test(value)) {
-      messages.push(`${label} is not a valid email address`);
+      add('RECORD_FORMAT', `${label} is not a valid email address`);
     }
     if (validators.url && !isValidUrl(value)) {
-      messages.push(`${label} is not a valid web address`);
+      add('RECORD_FORMAT', `${label} is not a valid web address`);
     }
     if (validators.phone && !isValidPhone(value)) {
-      messages.push(`${label} is not a valid phone number`);
+      add('RECORD_FORMAT', `${label} is not a valid phone number`);
     }
   }
 
@@ -837,8 +850,21 @@ export function validateImportedRecord(
   config: EntityFormConfig,
   options: ValidateRecordOptions = {},
 ): RecordProblem[] {
+  // Row errors carry no code in 2.x; the coded form is what the schema adapter reads.
+  return validateImportedRecordCoded(record, config, options).map(({ ref, message, raw }) => ({ ref, message, raw }));
+}
+
+/**
+ * `validateImportedRecord`, with each problem's code: which validator failed, or that a rule
+ * raised it. For `entityFormConfigAdapter`; not exported from the package.
+ */
+export function validateImportedRecordCoded(
+  record: Record<string, unknown>,
+  config: EntityFormConfig,
+  options: ValidateRecordOptions = {},
+): CodedRecordProblem[] {
   const lang = options.lang ?? 'en';
-  const problems: RecordProblem[] = [];
+  const problems: CodedRecordProblem[] = [];
   if (!record || !config) return problems;
 
   const rules = evaluateRuleState(record, config, options.rules);
@@ -851,11 +877,11 @@ export function validateImportedRecord(
     // a bare sibling id means the sibling beside it — in an array row, the same row's.
     if (!rules.shown.has(field) && !evaluateFieldVisibility(field, { ...rules.values, ...scopeValues })) return;
 
-    for (const message of applyFieldValidators(field, value, lang)) {
-      problems.push({ ref, message, raw: value });
+    for (const { message, code } of applyFieldValidators(field, value, lang)) {
+      problems.push({ ref, message, raw: value, code });
     }
     const ruleMessage = rules.ruleErrors.get(field);
-    if (ruleMessage) problems.push({ ref, message: ruleMessage, raw: value });
+    if (ruleMessage) problems.push({ ref, message: ruleMessage, raw: value, code: 'RECORD_RULE' });
   };
 
   for (const target of options.targets ?? collectLeafTargets(config)) {
@@ -890,6 +916,46 @@ export function validateImportedRecord(
 }
 
 // ─── Applying a plan ──────────────────────────────────────────────────────────
+
+/**
+ * Give a mapped row the shape a saved record has: holes compacted, arrays as arrays, and each
+ * tab's own fields placed where the form places them.
+ *
+ * The config-level work is done once, here, and the returned function is applied per record.
+ * `applyMapping` and `entityFormConfigAdapter`'s `finalize` both call it, so an imported
+ * record has one shape whichever engine built it. Does not mutate its argument.
+ */
+export function recordShaper(
+  config: EntityFormConfig,
+): (record: Record<string, unknown>) => Record<string, unknown> {
+  // `normalizeArrayStructures` walks by id, so it finds an array where its id puts it. A moved
+  // array lives at its override instead, which is where the renderer reads it from.
+  const movedArrays = collectFieldRefs(config)
+    .filter(entry => entry.field?.type === 'array' && entry.ref !== fieldRefFor(entry.scope, entry.field.id))
+    .map(entry => entry.ref);
+  const placements = tabPlacements(config);
+
+  return record => {
+    const cleaned = compactArrays(record);
+    normalizeArrayStructures(cleaned, config);
+    for (const ref of movedArrays) {
+      const value = getValueByPath(cleaned, ref);
+      if (!Array.isArray(value)) setRecordValue(cleaned, ref, value == null ? [] : [value]);
+    }
+    // Then each tab's own fields where a saved record holds them: at the position and at the
+    // `refererField` both, through the placement the form saves with. Values were written at
+    // their record address above, which for a moved container is the override only.
+    for (const { tab, fields } of placements) {
+      const values: Record<string, unknown> = {};
+      for (const { id, ref } of fields) {
+        const value = getValueByPath(cleaned, ref);
+        if (value !== undefined) values[id] = value;
+      }
+      if (Object.keys(values).length) placeTabFields(cleaned, tab, values, config);
+    }
+    return cleaned;
+  };
+}
 
 export interface ApplyMappingOptions extends CoerceOptions, ValidateRecordOptions {
   /** Stamp each record with the config's version. Default `true`. */
@@ -956,12 +1022,7 @@ export function applyMapping(
   );
   const targets = collectLeafTargets(config);
   const entries = (upgraded?.entries ?? []).filter(entry => entry && byRef.has(entry.ref));
-  // `normalizeArrayStructures` walks by id, so it finds an array where its id puts it. A moved
-  // array lives at its override instead, which is where the renderer reads it from.
-  const movedArrays = collectFieldRefs(config)
-    .filter(entry => entry.field?.type === 'array' && entry.ref !== fieldRefFor(entry.scope, entry.field.id))
-    .map(entry => entry.ref);
-  const placements = tabPlacements(config);
+  const shape = recordShaper(config);
 
   rows.forEach((row, i) => {
     const rowNumber = firstRowNumber + i;
@@ -1009,23 +1070,7 @@ export function applyMapping(
       return;
     }
 
-    const cleaned = compactArrays(record);
-    normalizeArrayStructures(cleaned, config);
-    for (const ref of movedArrays) {
-      const value = getValueByPath(cleaned, ref);
-      if (!Array.isArray(value)) setRecordValue(cleaned, ref, value == null ? [] : [value]);
-    }
-    // Then each tab's own fields where a saved record holds them: at the position and at the
-    // `refererField` both, through the placement the form saves with. Values were written at
-    // their record address above, which for a moved container is the override only.
-    for (const { tab, fields } of placements) {
-      const values: Record<string, unknown> = {};
-      for (const { id, ref } of fields) {
-        const value = getValueByPath(cleaned, ref);
-        if (value !== undefined) values[id] = value;
-      }
-      if (Object.keys(values).length) placeTabFields(cleaned, tab, values, config);
-    }
+    const cleaned = shape(record);
 
     // `targets` is hoisted out of the loop: deriving it per row re-walked the whole config
     // once per row, which is pure waste on the large files the streaming path exists for.
