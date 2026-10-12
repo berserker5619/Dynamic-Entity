@@ -89,6 +89,7 @@ export interface MappingEntry {
   constant?: unknown;               // literal for every row; exclusive with column
   confidence?: 'exact' | 'guess';
   split?: string;                   // v2: separator; only valid on a list target (§6)
+  dateOrder?: 'DMY' | 'MDY' | 'YMD'; // v2: the order of a date written in digits (§8)
 }
 
 export interface ListOptions {
@@ -114,11 +115,12 @@ export interface MappingPlan {
 
 | Field | Rule |
 | --- | --- |
-| `planVersion` | MUST be `2` when any v2-only field (`split`, `lists`, `group`) is present. Writers MUST always emit it. |
+| `planVersion` | MUST be `2` when any v2-only field (`split`, `dateOrder`, `lists`, `group`) is present. Writers MUST always emit it. |
 | `target`, `schemaVersion` | Compared with the adapter's `id` and `version`. Mismatch is a warning, never an error (unchanged from v1). |
 | `entries[].ref` | MUST resolve to a target the adapter produced for this plan's array bound. Duplicate refs are an error. |
 | `entries[].column` / `constant` | Exactly one MUST be present. `column` MUST be a non-negative integer. |
 | `entries[].split` | Non-empty string, max 8 characters. Error if the target's value kind is not `list`. |
+| `entries[].dateOrder` | `DMY`, `MDY` or `YMD`; anything else is `PLAN_SHAPE`. The order a date written in digits is read in (§8). It has no effect on a target that holds no date. |
 | `lists` | Keys MUST be array refs the adapter knows. Unknown key is an error. |
 | `group` | See §5. Every `collect` entry MUST be an array ref; every `key` index MUST be a valid column. |
 
@@ -133,7 +135,7 @@ Every plan enters the engine through one function, `readPlan(input: unknown): { 
 1. **Shape check.** Input MUST be a plain object with an `entries` array. Anything else is an `error` and no plan is returned.
 2. **Aliasing.** `entity` is read as `target` and `configVersion` as `schemaVersion`. If both names are present with different values, that is an `error`. If both agree, a `warning` asks the writer to drop the old name.
 3. **Version.** Absent `planVersion` means v1. `planVersion: 2` means v2. Any other value is an `error`: a reader MUST NOT guess at a future version.
-4. **v1 plans with v2 fields.** A plan without `planVersion` that carries `split`, `lists` or `group` is an `error`, not an upgrade. This catches a v2 writer that forgot to stamp the version.
+4. **v1 plans with v2 fields.** A plan without `planVersion` that carries `split`, `dateOrder`, `lists` or `group` is an `error`, not an upgrade. This catches a v2 writer that forgot to stamp the version.
 5. **Unknown keys.** On a **v2** plan, any top-level or entry key not in §3 is an `error`. Ignoring `group` would silently import N records instead of 1, so strictness is the default.
    - On a **v1** plan, an unknown **top-level** key is a `PLAN_UNKNOWN_KEY` **warning**, and the key is dropped from the returned plan. 2.3's `validateMappingPlan` never checked keys, so consumers have stored v1 plans carrying their own fields (`id`, `name`, `createdAt`). Those plans must keep importing after an upgrade. They cannot carry v2 semantics either: a v1 plan with a v2 field is already an error under rule 4.
    - An unknown **entry** key is an `error` on both versions.
@@ -148,7 +150,7 @@ Every plan enters the engine through one function, `readPlan(input: unknown): { 
 **Talking to an older server.** A DE 2.x server reads every plan as v1, and ignores keys it does not know. So a v2 plan with `group`, posted to it, is accepted and imports one record per row: a silent wrong result, which rule 5 exists to prevent. A warning about the engine version (§9) is not enough, so:
 
 - Preview responses carry `planVersions: number[]`, the plan versions the server reads. A response without it, from any pre-v2 server, means `[1]`.
-- Before committing, a client MUST check the plan against the server it is talking to. If the plan uses any v2-only feature (`split`, `lists`, `group`) and the server does not list `2`, the client MUST refuse to commit, and say the server needs upgrading.
+- Before committing, a client MUST check the plan against the server it is talking to. If the plan uses any v2-only feature (`split`, `dateOrder`, `lists`, `group`) and the server does not list `2`, the client MUST refuse to commit, and say the server needs upgrading.
 - A plan that uses no v2-only feature MAY be sent to such a server in v1 form (`entity`, `configVersion`, no `planVersion`), since it means the same thing there.
 
 **Legacy refs.** 2.3's `upgradeLegacyRefs` rewrites 2.2 refs of moved containers with a `PLAN_LEGACY_REF` warning. It moves behind an optional adapter hook, `upgradeRefs?(plan): { plan; problems }`, which `readPlan`'s caller runs after reading and before `validatePlan`. The DE adapter implements it with `upgradeLegacyRefs`; generic adapters omit it. The alias is kept through DE 3.x and removed in 4.0 (Decision 3).
@@ -320,7 +322,7 @@ The engine is 2.3's algorithm with `config` replaced by `adapter` and grouping a
 export function readPlan(input: unknown, opts?: { allowUnknownKeys?: boolean }): { plan?: MappingPlan; problems: PlanProblem[] };
 export function validatePlan<M, C>(plan: MappingPlan, adapter: SchemaAdapter<M, C>): PlanProblem[];
 export function slotsFor<M, C>(headers: readonly string[], adapter: SchemaAdapter<M, C>, plan?: MappingPlan, opts?: { lang?: string }): Record<string, number>;
-export function suggestMapping<M, C>(headers: readonly string[], adapter: SchemaAdapter<M, C>, opts?: { lang?: string }): MappingPlan;
+export function suggestMapping<M, C>(headers: readonly string[], adapter: SchemaAdapter<M, C>, opts?: { lang?: string; sample?: readonly (readonly unknown[])[] }): MappingPlan;
 export function applyMapping<M, C>(
   rows: readonly (readonly unknown[])[],
   plan: MappingPlan,
@@ -328,7 +330,7 @@ export function applyMapping<M, C>(
   ctx: C,
   opts?: { firstRowNumber?: number; decimal?: '.' | ',' },
 ): ImportResult;
-export function coerceValue(kind: ValueKind, raw: unknown, opts?: { decimal?: '.' | ','; split?: string }): CoerceOutcome;
+export function coerceValue(kind: ValueKind, raw: unknown, opts?: { decimal?: '.' | ','; split?: string; dateOrder?: 'DMY' | 'MDY' | 'YMD' }): CoerceOutcome;
 ```
 
 `suggestMapping` derives `slots` from the headers (§6), then returns a v2 plan. `applyMapping` calls `readPlan` and `validatePlan` itself; callers MAY call them earlier to fail fast. `firstRowNumber` defaults to 2, because the header is sheet row 1.
@@ -338,6 +340,15 @@ export function coerceValue(kind: ValueKind, raw: unknown, opts?: { decimal?: '.
 - A typed cell the kind does not take is read as its `cellText`, never `String()`. A `Date` given to a `number` is `"2024-03-07"`, a `CELL_FORMAT` error.
 - `integer` applies to text and typed input alike.
 - `opts.split` carries the entry's `split`, which beats the kind's `separator` (§6).
+- `opts.dateOrder` carries the entry's `dateOrder`. **A date written in digits MUST NOT be guessed** (`05/09/2026` is 5 September or 9 May):
+  - a four-digit first part is the year, whatever `dateOrder` says: `2026-09-05`, `2026/9/5`;
+  - otherwise the year is the last part and MUST be four digits, so no century is guessed;
+  - with `dateOrder`, the first two parts are read in that order;
+  - without it, a first part over 12 makes the date day first and a second part over 12 makes it month first. When both are 12 or less, the cell is a `CELL_FORMAT` error whose message says to set the column's date order;
+  - a date that does not exist in the order used (`31/09/2026`) is `CELL_FORMAT`.
+
+  This applies to `date`, to `month`, to the date part of a `datetime` that is not year first, and to each item of a `list` of them. A typed `Date` cell has no order and is unaffected. Text with a month's name (`March 7, 2024`) is still parsed. Other text made only of digits and marks (`05/09`, `5/9/26`) is `CELL_FORMAT`.
+- `suggestMapping`, given `sample` rows, sets `dateOrder` on each entry whose target holds a date, from that column's sample cells: any four-digit first part is `YMD`, any first part over 12 is `DMY`, any second part over 12 is `MDY`. When the sample shows no evidence, or evidence for two orders, `dateOrder` is left unset. Only text is evidence. Without `sample`, no `dateOrder` is set.
 - A `custom` kind reaching `coerceValue` throws, because only the adapter can read it.
 
 | Kind | Text input | Typed input |
@@ -345,10 +356,10 @@ export function coerceValue(kind: ValueKind, raw: unknown, opts?: { decimal?: '.
 | `string` | Trimmed | Rendered with `cellText` (midnight-UTC `Date` → `YYYY-MM-DD`, else ISO) |
 | `number` | `NUMERIC` shape. Decimal `.`: commas are grouping and stripped. Decimal `,` (default when the delimiter is `;`): `1,5` → 1.5, `1.234,5` → 1234.5, `1,500` → 1.5, point-decimal rejected. `integer` rejects fractions | Number as-is |
 | `boolean` | `true t yes y 1` / `false f no n 0`, case-insensitive | Boolean as-is |
-| `date` | Bare ISO read textually (no TZ shift, rejects 2024-02-30), else parsed → `YYYY-MM-DD` | `Date` by UTC parts |
-| `datetime` | Parsed → ISO string | `Date` → ISO |
+| `date` | Digits read textually in the stated order (above; no TZ shift, rejects 2024-02-30), a month's name parsed → `YYYY-MM-DD` | `Date` by UTC parts |
+| `datetime` | Parsed → ISO string. A day-first or month-first date part is read in the stated order, as local time | `Date` → ISO |
 | `time` | `H:mm[:ss]` or UTC instant → `HH:mm` | `Date` UTC hours and minutes |
-| `month` | `YYYY-M(M)` or any calendar date → `YYYY-MM` | `Date` UTC year and month |
+| `month` | `YYYY-M(M)` or any calendar date, read as `date` is → `YYYY-MM` | `Date` UTC year and month |
 | `enum` | Case-insensitive match against `values` (as text) and `labels`; stores the matching value. No match is `CELL_UNKNOWN_OPTION` | Matched by `cellText` form; no match is `CELL_UNKNOWN_OPTION` |
 | `list` | Split per §6, each part via `of` | One-item list |
 
@@ -511,7 +522,7 @@ Settled on 2026-10-10. These are binding; Claude Code MUST NOT reopen them in co
 | 9 | Dual write of moved containers | Kept in 3.0. Storing once is a separate later release using DE's migration system, not part of the extraction. |
 | 10 | Where plan checks run | `readPlan` makes every check that needs no adapter: shape, version, aliases, unknown keys, unsafe paths, `PLAN_SOURCE`, `PLAN_DUPLICATE_REF`, and the structure of `group`, `lists` and `split` (including `compact` on a collected array). `validatePlan` makes only those that need targets: `PLAN_UNKNOWN_REF`, `PLAN_SPLIT_TARGET`, a `lists` key or `collect` entry that is not one of the adapter's arrays, positional support, and `PLAN_TARGET_MISMATCH`. *(2026-10-10)* |
 | 11 | A plan with no target | Neither `target` nor `entity` present is a `PLAN_SHAPE` error: such a plan cannot be checked against any adapter. *(2026-10-10)* |
-| 12 | Malformed values of known fields | A wrongly typed value gets its feature's code where one exists: `PLAN_LIST_OPTION` inside `lists`, `PLAN_GROUP` inside `group`. Anything else is `PLAN_SHAPE`: `target`, `schemaVersion`, `sourceHeaders`, `header`, `confidence`, and a `split` that is not 1 to 8 characters. *(2026-10-10)* |
+| 12 | Malformed values of known fields | A wrongly typed value gets its feature's code where one exists: `PLAN_LIST_OPTION` inside `lists`, `PLAN_GROUP` inside `group`. Anything else is `PLAN_SHAPE`: `target`, `schemaVersion`, `sourceHeaders`, `header`, `confidence`, a `split` that is not 1 to 8 characters, and a `dateOrder` that is not `DMY`, `MDY` or `YMD`. *(2026-10-10; `dateOrder` added 2026-10-12)* |
 | 13 | v1 names on a v2 plan | `entity` and `configVersion` are known aliases on both versions, so rule 2 applies to every plan. On a v1 plan the old name alone is normal; an agreeing pair is `PLAN_ALIAS_USED`. On a v2 plan any old name is `PLAN_ALIAS_USED`, because v2 writers emit v2 names only. *(2026-10-10)* |
 
 **Still open**
@@ -662,3 +673,13 @@ A `custom` kind reaching `coerceValue` throws (§7).
   3. `jsonSchemaAdapter` refused a schema whose root is an array of records;
   4. `suggestMapping` did not map one-item-per-row columns or propose a group;
   5. a grouped record's cell errors were repeated per row and carried every row of the group.
+
+**2026-10-12: dates written in digits are never guessed (owner's decision 1).** On the order fixture, `05/09/2026` imported as 9 May with no error: the generic `date` coercer, lifted from DE's, handed anything not ISO to `Date`, which reads month first.
+- **`MappingEntry.dateOrder`** (`DMY`, `MDY`, `YMD`) is a new v2-only field: `PLAN_VERSION` on a plan without `planVersion`, `PLAN_SHAPE` for any other value. It is added to §3's interface and field table, to rule 4, and to the list of v2-only features a client checks against a server.
+- **§8 states the reading rule** under "Generic coercion", and `coerceValue` gains `dateOrder`.
+- **`suggestMapping` gains `sample`** and infers `dateOrder` per date column from it. With no evidence in the sample it sets nothing, so ambiguous cells are refused at import: the student fixture's `01/06/2026` and `02/06/2026` show no order, and a plan for that sheet has to state `DMY`.
+- **Three readings the decision left open:**
+  - a two-digit year (`5/9/26`) is refused, since choosing a century is a guess of the same kind;
+  - the rule is applied to `month` and to the date part of a `datetime`, which went through `Date` the same way;
+  - `dateOrder` on a target that holds no date is ignored. No code exists for it, and none was added.
+- **Dynamic Entity is unchanged.** The DE adapter reads cells with `coerceCell`, which still reads `05/09/2026` month first, in every release from 1.14.0 to 2.4.1. That is written up, with a proposed fix, in `docs/de-date-order-issue.md`.

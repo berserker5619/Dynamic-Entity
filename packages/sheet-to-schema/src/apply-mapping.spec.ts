@@ -63,6 +63,15 @@ describe('applyMapping — records', () => {
     expect(reconciles(result)).toBe(true);
   });
 
+  it('reads a slash date in the order its entry carries, and refuses one it would have to guess', () => {
+    const entries = (dateOrder?: string) => [{ ref: 'orderId', column: 0 }, { ref: 'placed', column: 1, ...(dateOrder ? { dateOrder } : {}) }];
+    const dated = (dateOrder?: string) => run([['A1', '05/09/2026']], { planVersion: 2, target: 'orders', entries: entries(dateOrder) });
+    expect(dated('DMY').records).toEqual([{ orderId: 'A1', placed: '2026-09-05' }]);
+    expect(dated('MDY').records).toEqual([{ orderId: 'A1', placed: '2026-05-09' }]);
+    expect(dated().records).toEqual([]);
+    expect(dated().errors).toEqual([expect.objectContaining({ row: 2, ref: 'placed', column: 1, code: 'CELL_FORMAT', raw: '05/09/2026' })]);
+  });
+
   it('honours the split an entry carries', () => {
     const plan = { planVersion: 2, target: 'orders', entries: [{ ref: 'orderId', column: 0 }, { ref: 'tags', column: 1, split: '|' }] };
     expect(run([['A-1', 'a|b; c']], plan).records[0]['tags']).toEqual(['a', 'b; c']);

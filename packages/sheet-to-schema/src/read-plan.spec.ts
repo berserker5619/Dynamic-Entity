@@ -75,6 +75,7 @@ describe('readPlan — v1 plans', () => {
     ['group', { group: { key: [0], collect: ['items'] } }, 'group'],
     ['lists', { lists: { items: { compact: false } } }, 'lists'],
     ['split', { entries: [{ ref: 'tags', column: 0, split: ';' }] }, 'entries[0].split'],
+    ['dateOrder', { entries: [{ ref: 'placed', column: 0, dateOrder: 'DMY' }] }, 'entries[0].dateOrder'],
   ])('refuses a v2 field (%s) on a plan without planVersion, rather than ignoring it', (_name, extra, path) => {
     const { plan, problems } = readPlan({ ...V1, ...extra });
     expect(plan).toBeUndefined();
@@ -188,6 +189,19 @@ describe('readPlan — shape', () => {
       { level: 'error', code: 'PLAN_SHAPE', path: 'entries[0].confidence' },
       { level: 'error', code: 'PLAN_SHAPE', path: 'entries[0].split' },
     ]);
+  });
+
+  it('carries a dateOrder that is DMY, MDY or YMD, and refuses anything else', () => {
+    for (const dateOrder of ['DMY', 'MDY', 'YMD']) {
+      const { plan, problems } = readPlan(v2({ entries: [{ ref: 'placed', column: 0, dateOrder }] }));
+      expect(problems).toEqual([]);
+      expect(plan?.entries[0]).toEqual({ ref: 'placed', column: 0, dateOrder });
+    }
+    for (const dateOrder of ['dmy', 'DM', 7, null]) {
+      expect(errorsOf(v2({ entries: [{ ref: 'placed', column: 0, dateOrder }] }))).toEqual([
+        { level: 'error', code: 'PLAN_SHAPE', path: 'entries[0].dateOrder' },
+      ]);
+    }
   });
 
   it('accepts a split of up to eight characters, and refuses an empty one', () => {

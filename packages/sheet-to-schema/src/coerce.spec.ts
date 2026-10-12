@@ -118,6 +118,60 @@ describe('coerceValue — date', () => {
   });
 });
 
+describe('coerceValue — date order', () => {
+  it('refuses a slash date that reads two ways, rather than guessing month first', () => {
+    for (const text of ['05/09/2026', '5-9-2026', '05.09.2026', '12/12/2026']) expect(code(DATE, text)).toBe('CELL_FORMAT');
+    expect(read(DATE, '05/09/2026')).toEqual({ code: 'CELL_FORMAT', error: expect.stringContaining('date order') });
+  });
+
+  it('reads it in the order the entry gives', () => {
+    expect(value(DATE, '05/09/2026', { dateOrder: 'DMY' })).toBe('2026-09-05');
+    expect(value(DATE, '05/09/2026', { dateOrder: 'MDY' })).toBe('2026-05-09');
+    expect(value(DATE, '5.9.2026', { dateOrder: 'DMY' })).toBe('2026-09-05');
+  });
+
+  it('reads a slash date only one order fits, without being told', () => {
+    expect(value(DATE, '31/08/2026')).toBe('2026-08-31');
+    expect(value(DATE, '08/31/2026')).toBe('2026-08-31');
+    expect(value(DATE, '2026/09/05')).toBe('2026-09-05');
+    expect(value(DATE, '2026.9.5')).toBe('2026-09-05');
+  });
+
+  it('reads a year-first date year first, whatever order the entry gives', () => {
+    expect(value(DATE, '2026-09-05', { dateOrder: 'MDY' })).toBe('2026-09-05');
+    expect(value(DATE, '2026/09/05', { dateOrder: 'DMY' })).toBe('2026-09-05');
+    expect(value(DATE, '2026-09-05', { dateOrder: 'YMD' })).toBe('2026-09-05');
+    expect(value(DATE, new Date(Date.UTC(2026, 8, 5)), { dateOrder: 'MDY' })).toBe('2026-09-05');
+  });
+
+  it('refuses a date that does not exist in the order given, or in the only order that fits', () => {
+    expect(code(DATE, '31/09/2026')).toBe('CELL_FORMAT');
+    expect(code(DATE, '31/09/2026', { dateOrder: 'DMY' })).toBe('CELL_FORMAT');
+    expect(code(DATE, '09/31/2026', { dateOrder: 'DMY' })).toBe('CELL_FORMAT');
+    expect(code(DATE, '13/13/2026')).toBe('CELL_FORMAT');
+    expect(code(DATE, '05/09/2026', { dateOrder: 'YMD' })).toBe('CELL_FORMAT');
+  });
+
+  it('never guesses a century, or a year the text does not carry', () => {
+    expect(code(DATE, '5/9/26', { dateOrder: 'DMY' })).toBe('CELL_FORMAT');
+    expect(code(DATE, '05/09')).toBe('CELL_FORMAT');
+    expect(code(DATE, '2026/09/2026')).toBe('CELL_FORMAT');
+  });
+
+  it('applies to a month, a date and time, and each item of a list of dates', () => {
+    expect(code({ kind: 'month' }, '05/09/2026')).toBe('CELL_FORMAT');
+    expect(value({ kind: 'month' }, '05/09/2026', { dateOrder: 'DMY' })).toBe('2026-09');
+    expect(code({ kind: 'datetime' }, '05/09/2026 10:30')).toBe('CELL_FORMAT');
+    // Local time, as any date and time with no zone is read; built the same way so it holds in every zone.
+    expect(value({ kind: 'datetime' }, '05/09/2026 10:30', { dateOrder: 'DMY' })).toBe(new Date(2026, 8, 5, 10, 30).toISOString());
+    expect(value({ kind: 'datetime' }, '31/08/2026')).toBe(new Date(2026, 7, 31).toISOString());
+    expect(code({ kind: 'datetime' }, '31/09/2026 10:30')).toBe('CELL_FORMAT');
+    expect(code({ kind: 'datetime' }, '05/09/2026 25:00', { dateOrder: 'DMY' })).toBe('CELL_FORMAT');
+    expect(value({ kind: 'list', of: DATE }, '05/09/2026; 06/09/2026', { dateOrder: 'DMY' })).toEqual(['2026-09-05', '2026-09-06']);
+    expect(code({ kind: 'list', of: DATE }, '05/09/2026')).toBe('CELL_LIST_ITEM');
+  });
+});
+
 describe('coerceValue — datetime, time and month', () => {
   it('reads a datetime as an instant, in ISO form', () => {
     expect(value({ kind: 'datetime' }, '2024-03-07T15:30:00Z')).toBe('2024-03-07T15:30:00.000Z');

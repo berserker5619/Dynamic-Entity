@@ -5,7 +5,8 @@
  * `suggestMapping` (`core/src/import-engine.ts`), over an adapter. One v2 change: slot counts
  * are per array, so a sheet naming `Phone 6` does not unroll six guardians.
  */
-import type { ImportTarget, SchemaAdapter } from './adapter.types';
+import type { ImportTarget, SchemaAdapter, ValueKind } from './adapter.types';
+import { inferDateOrder } from './date-order';
 import { childCountByArray, normalizeHeader, matchSlot, slotKey, targetSlotPatterns } from './header-grammar';
 import type { MappingEntry, MappingPlan, NormalizedPlan } from './plan.types';
 import { MAX_SLOTS, planSlots } from './plan-slots';
@@ -19,6 +20,16 @@ const PLAUSIBLE_SLOTS = 100;
 export interface SuggestOptions {
   /** Passed to the adapter's `targets`, which resolves labels in it. */
   lang?: string;
+  /**
+   * Data rows of the sheet, for what headers cannot say: here, the order a column's dates
+   * are written in. Any number of rows; a preview's first few are enough.
+   */
+  sample?: readonly (readonly unknown[])[];
+}
+
+/** A kind a date written in digits is read into, on its own or as a list's items. */
+function holdsDate(kind: ValueKind): boolean {
+  return kind.kind === 'date' || kind.kind === 'datetime' || kind.kind === 'month' || (kind.kind === 'list' && holdsDate(kind.of));
 }
 
 /** Every array the adapter has, each at one slot: enough to learn its patterns. */
@@ -129,7 +140,21 @@ export function suggestMapping<TMeta, TCtx>(
       if (index < 0) continue;
       takenColumns.add(index);
       takenRefs.add(target.ref);
-      entries.push({ ref: target.ref, column: index, header: headers[index], confidence: pass === 'exact' ? 'exact' : 'guess' });
+      // The order of a column's dates is read from the sample, or left unset: never assumed (§8).
+      const dateOrder =
+        options.sample && holdsDate(target.value)
+          ? inferDateOrder(
+              options.sample.map(row => row[index]),
+              target.value.kind === 'list' ? target.value.separator : undefined,
+            )
+          : undefined;
+      entries.push({
+        ref: target.ref,
+        column: index,
+        header: headers[index],
+        confidence: pass === 'exact' ? 'exact' : 'guess',
+        ...(dateOrder ? { dateOrder } : {}),
+      });
     }
   }
 

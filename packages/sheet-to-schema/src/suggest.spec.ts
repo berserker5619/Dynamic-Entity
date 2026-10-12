@@ -226,3 +226,58 @@ describe('slotsFor', () => {
     expect(slotsFor(['Name', 'Phone 6', 'Guardian 2 Name'], adapter)).toEqual({ phones: 6, guardians: 3 });
   });
 });
+
+describe('suggestMapping — date order, from sample rows', () => {
+  const dated: SchemaAdapter<null> = {
+    id: 'events',
+    adapterVersion: '0.0.0',
+    targets: (): TargetSet<null> => ({
+      targets: ['name', 'starts', 'ends', 'signed', 'days'].map(ref => ({
+        ref,
+        shapeRef: ref,
+        header: ref,
+        required: false,
+        value: ref === 'name' ? { kind: 'string' } : ref === 'days' ? { kind: 'list', of: { kind: 'date' } } : ref === 'signed' ? { kind: 'datetime' } : { kind: 'date' },
+        meta: null,
+      })),
+      arrays: [],
+      unsupported: [],
+    }),
+  };
+  const HEADERS = ['name', 'starts', 'ends', 'signed', 'days'];
+  const orders = (sample?: unknown[][]) =>
+    Object.fromEntries(suggestMapping(HEADERS, dated, { sample }).entries.map(entry => [entry.ref, entry.dateOrder]));
+
+  it('reads day first from a first part over 12, month first from a second, year first from four digits', () => {
+    expect(orders([['a', '05/09/2026', '09/05/2026', '2026/09/05 10:00', '01/02/2026'], ['b', '31/08/2026', '08/31/2026', '', '']])).toEqual({
+      name: undefined,
+      starts: 'DMY',
+      ends: 'MDY',
+      signed: 'YMD',
+      days: undefined,
+    });
+  });
+
+  it('reads the order from any item of a split list', () => {
+    expect(orders([['a', '', '', '', '01/02/2026; 25/02/2026']])['days']).toBe('DMY');
+  });
+
+  it('sets no order when the sample shows none, or shows two', () => {
+    expect(orders([['a', '05/09/2026', '13/01/2026', '', ''], ['b', '06/09/2026', '01/13/2026', '', '']])).toMatchObject({ starts: undefined, ends: undefined });
+  });
+
+  it('takes no evidence from a typed date cell, text that is not a date, or a name', () => {
+    expect(orders([['31/08/2026', new Date(Date.UTC(2026, 7, 31)), 'soon', 7, null]])).toEqual({
+      name: undefined,
+      starts: undefined,
+      ends: undefined,
+      signed: undefined,
+      days: undefined,
+    });
+  });
+
+  it('sets none without a sample', () => {
+    expect(Object.values(orders())).toEqual([undefined, undefined, undefined, undefined, undefined]);
+    expect(suggestMapping(HEADERS, dated).entries.every(entry => !('dateOrder' in entry))).toBe(true);
+  });
+});

@@ -37,6 +37,8 @@ export { validatePlan } from './validate-plan';
 export { DEFAULT_LIST_SEPARATOR, coerceValue } from './coerce';
 export type { CoerceValueOptions } from './coerce';
 export { cellText } from './cell-text';
+export { DATE_ORDERS, inferDateOrder } from './date-order';
+export type { DateOrder } from './date-order';
 
 // ─── Applying a plan ────────────────────────────────────────────────────────
 export { applyMapping, preparePlan } from './apply-mapping';

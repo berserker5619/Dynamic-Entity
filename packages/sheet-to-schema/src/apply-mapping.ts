@@ -248,7 +248,7 @@ export function applyMapping<TMeta, TCtx>(
       const outcome: CoerceOutcome =
         !fromColumn && typeof raw !== 'string'
           ? { value: raw }
-          : (adapter.coerce?.(target, raw, ctx) ?? coerceValue(target.value, raw, { decimal: options.decimal, split: entry.split }));
+          : (adapter.coerce?.(target, raw, ctx) ?? coerceValue(target.value, raw, { decimal: options.decimal, split: entry.split, dateOrder: entry.dateOrder }));
 
       if ('error' in outcome) {
         row.errors.push({

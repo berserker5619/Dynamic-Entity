@@ -6,6 +6,7 @@
  * The rules that make DE's import trustworthy come across unchanged:
  * - numbers by shape, never by `Number()`;
  * - a calendar date read textually, never through an instant;
+ * - a date written in digits read in a stated order, never guessed (`date-order.ts`);
  * - a typed `Date` by its UTC parts;
  * - a decimal comma only when asked for.
  *
@@ -14,12 +15,15 @@
  */
 import type { CoerceOutcome, ValueKind } from './adapter.types';
 import { cellText } from './cell-text';
+import { readNumericDate, type CalendarDate, type DateOrder } from './date-order';
 
 export interface CoerceValueOptions {
   /** The decimal mark in number text. `','` is the default for a `;`-separated file (§8). */
   decimal?: '.' | ',';
   /** The separator for a `list` cell: the entry's `split`, which overrides the kind's own (§6). */
   split?: string;
+  /** The order of a date written in digits: the entry's `dateOrder`. Without it an ambiguous one is refused (§8). */
+  dateOrder?: DateOrder;
 }
 
 const TRUE_TEXT = new Set(['true', 't', 'yes', 'y', '1']);
@@ -27,8 +31,8 @@ const FALSE_TEXT = new Set(['false', 'f', 'no', 'n', '0']);
 /** The separator a `list` uses when neither the entry nor the kind names one (§6). */
 export const DEFAULT_LIST_SEPARATOR = ';';
 
-/** A bare calendar date: no time, no zone, so no instant is involved. */
-const BARE_DATE = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
+/** A day-first or month-first date, then a clock time: `05/09/2026 10:30`. Year-first text is left to `Date`. */
+const DIGITS_THEN_TIME = /^(\d{1,2}[/.-]\d{1,2}[/.-]\d{1,4})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/;
 /** A full UTC instant, which is how a workbook's time-only cell renders as text. `Z` only. */
 const UTC_INSTANT = /^\d{4}-\d{2}-\d{2}T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?Z$/;
 const CLOCK = /^(\d{1,2}):(\d{2})(?::\d{2})?$/;
@@ -64,25 +68,24 @@ function parseNumberText(text: string, decimal: '.' | ','): number | null {
 }
 
 /**
- * A calendar date, with no instant in sight. The ISO shape is read as text, because
- * `new Date('2024-03-07')` is UTC midnight and reads back a day early west of Greenwich.
- * Other spellings go through `Date`, which parses them as local time, so local parts are right
- * there. An impossible date such as `2024-02-30` is `null`, never rolled forward.
+ * A calendar date, with no instant in sight. A date written in digits is read as text, in a
+ * stated order (`readNumericDate`): `new Date('2024-03-07')` is UTC midnight and reads back a
+ * day early west of Greenwich, and `new Date('05/09/2026')` is 9 May whatever the sheet meant.
+ * A spelling with a month's name goes through `Date`, which parses it as local time, so local
+ * parts are right there. An impossible date such as `2024-02-30` is `null`, never rolled
+ * forward, and so is any other text made only of digits and marks: `Date` would guess at it.
  */
-function parseCalendarDate(text: string): { year: number; month: number; day: number } | null {
-  const bare = BARE_DATE.exec(text);
-  if (bare) {
-    const year = Number(bare[1]);
-    const month = Number(bare[2]);
-    const day = Number(bare[3]);
-    const probe = new Date(Date.UTC(year, month - 1, day));
-    const real = probe.getUTCFullYear() === year && probe.getUTCMonth() === month - 1 && probe.getUTCDate() === day;
-    return real ? { year, month, day } : null;
-  }
+function parseCalendarDate(text: string, order: DateOrder | undefined): CalendarDate | 'ambiguous' | null {
+  const numeric = readNumericDate(text, order);
+  if (numeric !== undefined) return numeric;
+  if (!/[a-z]/i.test(text)) return null;
   const parsed = new Date(text);
   if (Number.isNaN(parsed.getTime())) return null;
   return { year: parsed.getFullYear(), month: parsed.getMonth() + 1, day: parsed.getDate() };
 }
+
+const ambiguous = (text: string): CoerceOutcome =>
+  fail('CELL_FORMAT', `"${text}" could be day first or month first; set the column's date order`);
 
 /** A typed `Date` by its UTC parts: a spreadsheet stores a calendar date at UTC midnight. */
 function typedDate(kind: ValueKind['kind'], raw: Date): CoerceOutcome | null {
@@ -134,7 +137,7 @@ function coerceList(kind: Extract<ValueKind, { kind: 'list' }>, raw: unknown, op
   const values: unknown[] = [];
   for (const [i, part] of parts.entries()) {
     // The separator belongs to this list, not to a list nested in it.
-    const outcome = coerceValue(kind.of, part, { decimal: options.decimal });
+    const outcome = coerceValue(kind.of, part, { decimal: options.decimal, dateOrder: options.dateOrder });
     if ('error' in outcome) return fail('CELL_LIST_ITEM', `item ${i + 1}: ${outcome.error}`);
     if (outcome.value !== undefined) values.push(outcome.value);
   }
@@ -176,11 +179,22 @@ export function coerceValue(kind: ValueKind, raw: unknown, options: CoerceValueO
       return fail('CELL_FORMAT', `"${text}" is not true or false`);
     }
     case 'date': {
-      const parsed = parseCalendarDate(text);
+      const parsed = parseCalendarDate(text, options.dateOrder);
+      if (parsed === 'ambiguous') return ambiguous(text);
       return parsed ? { value: `${parsed.year}-${pad2(parsed.month)}-${pad2(parsed.day)}` } : fail('CELL_FORMAT', `"${text}" is not a date`);
     }
     // The one kind that genuinely is an instant, so it may go through `Date`.
     case 'datetime': {
+      // Unless its date is day first or month first: `Date` would read that month first.
+      const digits = DIGITS_THEN_TIME.exec(text);
+      if (digits) {
+        const day = readNumericDate(digits[1], options.dateOrder);
+        if (day === 'ambiguous') return ambiguous(text);
+        const [hours, minutes, seconds] = [digits[2], digits[3], digits[4]].map(part => Number(part ?? 0));
+        if (!day || hours > 23 || minutes > 59 || seconds > 59) return fail('CELL_FORMAT', `"${text}" is not a date and time`);
+        // Local time, as `Date` reads any date and time that names no zone.
+        return { value: new Date(day.year, day.month - 1, day.day, hours, minutes, seconds).toISOString() };
+      }
       const parsed = new Date(text);
       return Number.isNaN(parsed.getTime()) ? fail('CELL_FORMAT', `"${text}" is not a date and time`) : { value: parsed.toISOString() };
     }
@@ -190,7 +204,8 @@ export function coerceValue(kind: ValueKind, raw: unknown, options: CoerceValueO
         const month = Number(match[2]);
         return month >= 1 && month <= 12 ? { value: `${match[1]}-${pad2(month)}` } : fail('CELL_FORMAT', `"${text}" is not a month`);
       }
-      const parsed = parseCalendarDate(text);
+      const parsed = parseCalendarDate(text, options.dateOrder);
+      if (parsed === 'ambiguous') return ambiguous(text);
       return parsed ? { value: `${parsed.year}-${pad2(parsed.month)}` } : fail('CELL_FORMAT', `"${text}" is not a month and year`);
     }
     case 'time': {

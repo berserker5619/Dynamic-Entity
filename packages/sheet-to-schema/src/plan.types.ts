@@ -5,6 +5,7 @@
  * optional: a 2.x plan is a valid v2 plan once read through `readPlan`, which maps the v1
  * names (`entity`, `configVersion`) onto these.
  */
+import type { DateOrder } from './date-order';
 import type { PlanProblemCode } from './problem-codes';
 
 /** How a suggestion was made: read from the sheet, or inferred. */
@@ -23,6 +24,8 @@ export interface MappingEntry {
   confidence?: MatchConfidence;
   /** v2: the separator a cell is split on. Only valid on a list target (§6). */
   split?: string;
+  /** v2: the order of a date written in digits, e.g. `05/09/2026`. Without it an ambiguous one is refused (§8). */
+  dateOrder?: DateOrder;
 }
 
 /** v2: per-array options, keyed by array ref in `MappingPlan.lists`. */

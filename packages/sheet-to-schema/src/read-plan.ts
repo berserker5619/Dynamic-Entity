@@ -9,6 +9,7 @@
  * The rules are applied in the spec's order, and each check names the rule or decision it
  * implements, so a disagreement between this file and the spec is visible at the line.
  */
+import { DATE_ORDERS, type DateOrder } from './date-order';
 import type {
   GroupSpec,
   ListOptions,
@@ -47,7 +48,7 @@ const TOP_LEVEL_KEYS = new Set([
   'entity',
   'configVersion',
 ]);
-const ENTRY_KEYS = new Set(['ref', 'column', 'header', 'constant', 'confidence', 'split']);
+const ENTRY_KEYS = new Set(['ref', 'column', 'header', 'constant', 'confidence', 'split', 'dateOrder']);
 const LIST_OPTION_KEYS = new Set(['compact']);
 const GROUP_KEYS = new Set(['key', 'collect', 'contiguous']);
 const CONFIDENCE: ReadonlySet<string> = new Set<MatchConfidence>(['exact', 'guess']);
@@ -119,6 +120,7 @@ export function readPlan(input: unknown, options: ReadPlanOptions = {}): ReadPla
   if (input['group'] !== undefined) v2Only.push('group');
   (input['entries'] as unknown[]).forEach((entry, i) => {
     if (isPlainObject(entry) && entry['split'] !== undefined) v2Only.push(`entries[${i}].split`);
+    if (isPlainObject(entry) && entry['dateOrder'] !== undefined) v2Only.push(`entries[${i}].dateOrder`);
   });
   if (!v2) {
     for (const path of v2Only) {
@@ -211,6 +213,10 @@ export function readPlan(input: unknown, options: ReadPlanOptions = {}): ReadPla
       if (split !== undefined && !(isText(split) && split.length <= MAX_SPLIT_LENGTH)) {
         add('error', 'PLAN_SHAPE', `${at}.split`, `split must be a separator of 1 to ${MAX_SPLIT_LENGTH} characters.`);
       }
+      const dateOrder = entry['dateOrder'];
+      if (dateOrder !== undefined && !DATE_ORDERS.includes(dateOrder as DateOrder)) {
+        add('error', 'PLAN_SHAPE', `${at}.dateOrder`, `dateOrder must be one of ${DATE_ORDERS.join(', ')}.`);
+      }
 
       // Only the fields the format defines are carried, so a dropped unknown key stays dropped.
       out.push({
@@ -220,6 +226,7 @@ export function readPlan(input: unknown, options: ReadPlanOptions = {}): ReadPla
         ...(hasConstant ? { constant: entry['constant'] } : {}),
         ...(confidence !== undefined ? { confidence: confidence as MatchConfidence } : {}),
         ...(split !== undefined ? { split: split as string } : {}),
+        ...(dateOrder !== undefined ? { dateOrder: dateOrder as DateOrder } : {}),
       });
     });
     return out;
