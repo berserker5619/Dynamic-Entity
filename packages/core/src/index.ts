@@ -211,8 +211,8 @@ export type {
 } from './import-model.types';
 // The plan reader, re-exported so app code that is handed a plan in either shape, such as a
 // preview's `suggestion`, can normalise it to plan v2 without a second import.
-export { readPlan } from 'sheet-to-schema';
-export type { NormalizedPlan, ReadPlanOptions, ReadPlanResult } from 'sheet-to-schema';
+export { planForServer, readPlan, v2OnlyFields } from 'sheet-to-schema';
+export type { AdapterStamp, NormalizedPlan, PlanForServer, ReadPlanOptions, ReadPlanResult } from 'sheet-to-schema';
 // A 2.x plan that names no entity, given the config's: what every Dynamic Entity entry point
 // does to a plan before sheet-to-schema reads it. Exported for code that calls the generic
 // engine or runner with `entityFormConfigAdapter` directly, as `@dynamic-entity/server` does.

@@ -197,7 +197,8 @@ export class ImportPreviewComponent implements OnChanges {
             lang: this.language,
             lookups: this.lookups,
             decimal: this.decimal,
-            dateOrder: this.dateOrder,
+            // The column's own order when its plan entry states one, as the commit reads it.
+            dateOrder: entry.dateOrder ?? this.dateOrder,
           });
 
           if ('error' in outcome) return { text: outcome.error, failed: true };

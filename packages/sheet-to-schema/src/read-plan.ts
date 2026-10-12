@@ -18,6 +18,7 @@ import type {
   NormalizedPlan,
   PlanProblem,
 } from './plan.types';
+import { v2OnlyFields } from './plan-for-server';
 import type { PlanProblemCode } from './problem-codes';
 import { isUnsafePath } from './safe-path';
 
@@ -115,15 +116,8 @@ export function readPlan(input: unknown, options: ReadPlanOptions = {}): ReadPla
 
   // Rule 4: a v2 field on a plan that does not say it is v2 is a writer that forgot the stamp.
   // Reading it as v1 would ignore it — `group` ignored imports one record per row.
-  const v2Only: string[] = [];
-  if (input['lists'] !== undefined) v2Only.push('lists');
-  if (input['group'] !== undefined) v2Only.push('group');
-  (input['entries'] as unknown[]).forEach((entry, i) => {
-    if (isPlainObject(entry) && entry['split'] !== undefined) v2Only.push(`entries[${i}].split`);
-    if (isPlainObject(entry) && entry['dateOrder'] !== undefined) v2Only.push(`entries[${i}].dateOrder`);
-  });
   if (!v2) {
-    for (const path of v2Only) {
+    for (const path of v2OnlyFields(input)) {
       add('error', 'PLAN_VERSION', path, `${path} is a v2 field; a plan carrying it must set planVersion: 2.`);
     }
   }

@@ -15,7 +15,9 @@ import {
   CORE_VERSION,
   DEFAULT_ARRAY_ROWS,
   deriveImportColumns,
+  planForServer,
   stripIndices,
+  type AdapterStamp,
   type DateOrder,
   type ImportCommitResponse,
   type ImportErrorResponse,
@@ -44,8 +46,9 @@ export interface HttpImportTransportOptions {
   /**
    * Where a warning goes. Defaults to `console.warn`.
    *
-   * There is exactly one warning, and it is the engine-version mismatch below — which is a
-   * developer's problem, not a user's, so it does not belong in the wizard's error banner.
+   * What is warned about is the two deploys having moved apart: the engine version, the
+   * adapter, the date order the server did not confirm. Those are a developer's problem, not
+   * a user's, so they do not belong in the wizard's error banner.
    */
   warn?: (message: string) => void;
 }
@@ -128,6 +131,9 @@ function selectionOf(
  * to resolve — and a consumer who wants two of them, pointed at two backends, gets that for
  * free.
  */
+/** What a Dynamic Entity server calls its adapter in the `adapter` stamp on every answer. */
+const ADAPTER_NAME = 'dynamic-entity';
+
 /** The first release whose server says which date order it reads with, and refuses to guess one. */
 const DATE_ORDER_SINCE = [2, 5];
 
@@ -144,6 +150,12 @@ class HttpImportTransport implements ImportTransport {
    * Keyed on the `File`, so it lives exactly as long as the file does.
    */
   private readonly reported = new WeakMap<File, DateOrder | undefined>();
+  /**
+   * The plan versions each previewed file's server said it reads. A file with no entry was
+   * never previewed here, and one whose server said nothing is from before plan v2: either
+   * way `commit` sends nothing that only a v2 reader would understand.
+   */
+  private readonly planVersions = new WeakMap<File, readonly number[] | undefined>();
 
   constructor(private readonly options: HttpImportTransportOptions) {}
 
@@ -204,6 +216,23 @@ class HttpImportTransport implements ImportTransport {
     );
   }
 
+  /**
+   * Warn when the server runs another adapter, or this one at another major version.
+   *
+   * Since 3.0 a server says which adapter turned its rows into records. A server from before
+   * that says nothing, and `checkEngine` has already compared the one version it does report.
+   */
+  private checkAdapter(adapter: AdapterStamp | undefined): void {
+    if (!adapter) return;
+    const major = (version: string | undefined): string => String(version ?? '').split('.')[0];
+    if (adapter.name === ADAPTER_NAME && major(adapter.version) === major(CORE_VERSION)) return;
+    this.warn(
+      `[ngx-dynamic-entity] The import server reads rows with the adapter ${adapter.name} ${adapter.version}; ` +
+        `this app expects ${ADAPTER_NAME} ${major(CORE_VERSION)}.x. What the server imports may differ from ` +
+        'what the review step showed. Bring the two into step.',
+    );
+  }
+
   async preview(file: File, context: ImportContext): Promise<ImportPreview> {
     const body = new FormData();
     body.append('file', file, file.name || 'upload');
@@ -217,6 +246,8 @@ class HttpImportTransport implements ImportTransport {
 
     const preview = (await response.json()) as ImportPreviewResponse;
     this.checkEngine(preview.engineVersion);
+    this.checkAdapter(preview.adapter);
+    this.planVersions.set(file, Array.isArray(preview.planVersions) ? preview.planVersions : undefined);
     this.reported.set(file, preview.dateOrder);
     this.checkDateOrder(context?.dateOrder, preview.dateOrder, preview.engineVersion);
 
@@ -243,11 +274,24 @@ class HttpImportTransport implements ImportTransport {
       );
     }
 
+    // Also before a byte is sent. A server from before plan v2 ignores what it does not know,
+    // so a plan that groups rows would import one record per row there and report success.
+    const sendable = planForServer(plan, this.planVersions.get(file));
+    if (sendable.refused) {
+      throw new Error(
+        `This mapping uses ${sendable.refused.join(', ')}, which the import server does not read: it is from ` +
+          'before mapping plan v2 and would ignore it. Nothing was imported. Upgrade the server to ' +
+          '@dynamic-entity/server 3.0 or later.',
+      );
+    }
+
     const body = new FormData();
     // **The plan first, and the file second.** The server starts importing while the file is
     // still arriving — that is the whole reason it exists — so the plan has to have arrived
     // already. `FormData` preserves append order, so this ordering is the contract.
-    body.append('plan', JSON.stringify(plan));
+    // As written for a server that reads plan v2, and in 2.x form (`entity`, `configVersion`)
+    // for one that does not: the same mapping, in the words that server knows.
+    body.append('plan', JSON.stringify(sendable.plan));
     body.append('file', file, file.name || 'upload');
 
     const response = await this.send(`${this.base}/${this.entityOf(context)}/import`, {
@@ -259,6 +303,7 @@ class HttpImportTransport implements ImportTransport {
 
     const result = (await response.json()) as ImportCommitResponse;
     this.checkEngine(result.engineVersion);
+    this.checkAdapter(result.adapter);
 
     return {
       // Empty, and not because nothing was imported. The server streamed the file precisely so
@@ -273,6 +318,8 @@ class HttpImportTransport implements ImportTransport {
       errorCount: result.errorCount ?? result.errors?.length ?? 0,
       truncated: result.truncated ?? false,
       planProblems: result.planProblems ?? [],
+      // Only a 3.0 server sends them, and only a run with something to warn about has any.
+      ...(result.warnings?.length ? { warnings: result.warnings } : {}),
     };
   }
 

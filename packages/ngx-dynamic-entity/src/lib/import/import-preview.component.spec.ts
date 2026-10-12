@@ -193,3 +193,61 @@ describe('ImportPreviewComponent — a date written in digits', () => {
     expect(text).not.toEqual(monthFirst);
   });
 });
+
+describe('ImportPreviewComponent — a plan v2 that states the order of one column', () => {
+  const DATED: EntityFormConfig = {
+    entity: 'people',
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        flatData: true,
+        fields: [
+          { id: 'born', type: 'date', label: { en: 'Born' } },
+          { id: 'joined', type: 'date', label: { en: 'Joined' } },
+        ],
+      },
+    ],
+  };
+  const cells = async (born?: 'DMY' | 'MDY', joined?: 'DMY' | 'MDY', run?: 'DMY' | 'MDY'): Promise<string[]> => {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({ imports: [ImportPreviewComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(ImportPreviewComponent);
+    fixture.componentRef.setInput('config', DATED);
+    fixture.componentRef.setInput('plan', {
+      planVersion: 2,
+      target: 'people',
+      entries: [
+        { ref: 'born', column: 0, ...(born ? { dateOrder: born } : {}) },
+        { ref: 'joined', column: 1, ...(joined ? { dateOrder: joined } : {}) },
+      ],
+    });
+    fixture.componentRef.setInput('rows', [['05/09/2026', '05/09/2026']]);
+    if (run) fixture.componentRef.setInput('dateOrder', run);
+    fixture.detectChanges();
+    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('tbody td')).map(cell => (cell.textContent ?? '').trim());
+  };
+
+  it('shows each column as its own entry reads it, and reports no row as rejected', async () => {
+    const [dayFirst, monthFirst] = await cells('DMY', 'MDY');
+    expect(dayFirst).not.toContain('date order');
+    expect(monthFirst).not.toContain('date order');
+    // One sheet value, read two ways: the two cells show different days.
+    expect(dayFirst).not.toEqual(monthFirst);
+    // And they are the days the run-level order shows for a whole sheet read that way.
+    expect((await cells(undefined, undefined, 'DMY'))[0]).toEqual(dayFirst);
+    expect((await cells(undefined, undefined, 'MDY'))[1]).toEqual(monthFirst);
+  });
+
+  it("reads a column that states none in the run's order, and an entry's order over the run's", async () => {
+    const [stated, defaulted] = await cells('DMY', undefined, 'MDY');
+    expect(stated).toEqual((await cells('DMY', 'DMY'))[0]);
+    expect(defaulted).toEqual((await cells('MDY', 'MDY'))[1]);
+  });
+
+  it('still shows a column with no order from either as the commit will refuse it', async () => {
+    const [stated, unstated] = await cells('DMY');
+    expect(stated).not.toContain('date order');
+    expect(unstated).toContain('date order');
+  });
+});
