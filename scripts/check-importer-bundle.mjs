@@ -61,6 +61,16 @@ for (const name of ['node/index.js', 'node/index.mjs']) {
   for (const specifier of specifiers.filter(s => !allowed(s))) {
     problems.push(`the /node entry (${name}) imports "${specifier}", which is neither Node, an optional peer, nor the main entry.`);
   }
+  // An optional peer is loaded when first needed, never when the entry is. A static import of
+  // one would make reading a CSV depend on a package for reading workbooks or uploads. Only
+  // the ES module shows the difference: there a static import is `from`, and a lazy one `import()`.
+  if (name.endsWith('.mjs')) {
+    for (const match of text.matchAll(/\bfrom\s*['"]([^'"]+)['"]/g)) {
+      if (NODE_ONLY.some(lib => match[1] === lib || match[1].startsWith(`${lib}/`))) {
+        problems.push(`the /node entry (${name}) imports the optional peer "${match[1]}" when it loads. Load it with loadOptional, when it is first needed.`);
+      }
+    }
+  }
   // One marker from the main entry's own code. If it is here, the engine was bundled twice.
   if (/class ImportFailure\b/.test(text)) {
     problems.push(`the /node entry (${name}) carries its own copy of the main entry (it defines ImportFailure). Import the main entry as "sheet-to-schema".`);

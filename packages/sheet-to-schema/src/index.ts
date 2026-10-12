@@ -66,3 +66,6 @@ export type { CsvDelimiter, CsvReader, CsvReaderOptions, SheetData, SheetGrid } 
 
 // ─── The wire ───────────────────────────────────────────────────────────────
 export type { AdapterStamp, ImportCommitResponse, ImportErrorResponse, ImportPreviewResponse } from './wire.types';
+
+// ─── Versions ───────────────────────────────────────────────────────────────
+export { IMPORTER_VERSION, PLAN_VERSIONS } from './version';

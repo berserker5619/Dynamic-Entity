@@ -31,3 +31,7 @@ export type { TemplateFormat, TemplateSheet, WriteTemplateOptions } from './writ
 // ─── Running an import ──────────────────────────────────────────────────────
 export { GROUPING_NOT_STREAMED, previewSheet, runImport } from './run-import';
 export type { BatchInfo, ImportRunResult, OnBatch, PreviewSheetOptions, RunImportOptions, SheetPreview } from './run-import';
+
+// ─── Over HTTP ──────────────────────────────────────────────────────────────
+export { createImportRouter, sendFailure, templateFilename, templateOf } from './router';
+export type { BindingSource, ImportBinding, ImportRouterOptions, OnImport } from './router';
