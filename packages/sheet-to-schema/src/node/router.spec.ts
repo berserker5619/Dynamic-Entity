@@ -841,3 +841,26 @@ describe('templateOf', () => {
     expect(templateOf(people, 'en', ['nothing']).headers).toEqual([]);
   });
 });
+
+describe('the router\'s date order', () => {
+  const EVENTS = jsonSchemaAdapter({ $id: 'events', type: 'object', properties: { name: { type: 'string' }, starts: { type: 'string', format: 'date' } } });
+  const SHEET = 'name,starts\r\nLaunch,05/09/2026\r\n';
+  const plan = { planVersion: 2, target: 'events', entries: [{ ref: 'name', column: 0 }, { ref: 'starts', column: 1 }] };
+  const server = (dateOrder: 'DMY' | 'MDY' | undefined, written: Record<string, unknown>[] = []) =>
+    app({ bindings: { events: { adapter: EVENTS, ctx: undefined } }, ...(dateOrder ? { dateOrder } : {}) }, written);
+  const post = (route: string, target: express.Express) => request(target).post(`/import/events/${route}`).field('plan', JSON.stringify(plan)).attach('file', Buffer.from(SHEET), 'e.csv');
+
+  it('is what every import and validation is read with, where a plan entry states none', async () => {
+    const written: Record<string, unknown>[] = [];
+    expect((await post('import', server('DMY', written))).body).toMatchObject({ imported: 1, failed: 0 });
+    expect(written).toEqual([{ name: 'Launch', starts: '2026-09-05' }]);
+    expect((await post('validate', server('MDY'))).body).toMatchObject({ imported: 1, failed: 0 });
+    expect((await post('validate', server(undefined))).body).toMatchObject({ imported: 0, failed: 1 });
+  });
+
+  it('is reported in the preview, so a client reads its sample the same way, and left out when there is none', async () => {
+    const preview = (target: express.Express) => request(target).post('/import/events/preview').attach('file', Buffer.from(SHEET), 'e.csv');
+    expect((await preview(server('DMY'))).body.dateOrder).toBe('DMY');
+    expect((await preview(server(undefined))).body).not.toHaveProperty('dateOrder');
+  });
+});

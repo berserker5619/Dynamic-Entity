@@ -9,6 +9,8 @@
  *
  * - `targets` are `deriveImportColumns`' columns, whose refs come from `collectFieldRefs`.
  * - `coerce` is `coerceCell`. Every target's kind is `custom`: only this adapter reads a cell.
+ *   It reads with what the engine resolved for the cell, the plan entry's option or the run's,
+ *   and falls back to the context, which is where Dynamic Entity 2.5.0 states them.
  * - `upgradeRefs` is `legacyRefAliases`, with 2.3's `PLAN_LEGACY_REF` warning.
  * - `finalize` is `recordShaper` (compaction, array structure, tab placement), then the stamp.
  * - `validate` is `validateImportedRecord`: the validators and the rules, as the form runs them.
@@ -163,8 +165,13 @@ export function entityFormConfigAdapter(
       return { plan: { ...plan, entries: upgraded }, problems };
     },
 
-    coerce(target, raw, ctx): ImporterCoerceOutcome {
-      const outcome = coerceCell(target.meta, raw, { lang: ctx.lang, lookups: options.lookups, decimal: ctx.decimal, dateOrder: ctx.dateOrder });
+    coerce(target, raw, ctx, cell): ImporterCoerceOutcome {
+      const outcome = coerceCell(target.meta, raw, {
+        lang: ctx.lang,
+        lookups: options.lookups,
+        decimal: cell.decimal ?? ctx.decimal,
+        dateOrder: cell.dateOrder ?? ctx.dateOrder,
+      });
       if (!('error' in outcome)) return outcome;
       // An option field fails only by naming no option, unless the cell was a broken date.
       const unknownOption = OPTION_TYPES.has(target.meta.type) && !(raw instanceof Date);

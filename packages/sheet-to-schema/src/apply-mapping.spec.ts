@@ -311,3 +311,63 @@ describe('preparePlan', () => {
   });
 
 });
+
+/**
+ * What a cell is read with (spec §7, §8): the plan's entry first, then the run's options,
+ * then the default. The adapter's `coerce` is handed the result, so an adapter that reads its
+ * own cells reads them the way the generic coercer would have been told to.
+ */
+describe('applyMapping — the options a cell is read with', () => {
+  const seen = () => {
+    const cells: Record<string, unknown> = {};
+    const adapter = ordersAdapter({
+      coerce: (target, _raw, _ctx, cell) => {
+        cells[target.ref] = cell;
+        return null;
+      },
+    });
+    return { cells, adapter };
+  };
+  const dated = (dateOrder?: string) => ({
+    planVersion: 2,
+    target: 'orders',
+    entries: [{ ref: 'orderId', column: 0 }, { ref: 'placed', column: 1, ...(dateOrder ? { dateOrder } : {}) }, { ref: 'tags', column: 2, split: '|' }],
+  });
+  const ROW = [['A1', '05/09/2026', 'x|y']];
+
+  it('hands the adapter the entry\'s own options', () => {
+    const { cells, adapter } = seen();
+    run(ROW, dated('DMY'), adapter);
+    expect(cells['placed']).toEqual({ dateOrder: 'DMY', decimal: undefined, split: undefined });
+    expect(cells['tags']).toEqual({ dateOrder: undefined, decimal: undefined, split: '|' });
+    expect(cells['orderId']).toEqual({ dateOrder: undefined, decimal: undefined, split: undefined });
+  });
+
+  it('falls back to the run\'s options where the entry says nothing', () => {
+    const { cells, adapter } = seen();
+    run(ROW, dated(), adapter, { dateOrder: 'MDY', decimal: ',' });
+    expect(cells['placed']).toEqual({ dateOrder: 'MDY', decimal: ',', split: undefined });
+    expect(cells['tags']).toEqual({ dateOrder: 'MDY', decimal: ',', split: '|' });
+  });
+
+  it('lets the entry win over the run', () => {
+    const { cells, adapter } = seen();
+    run(ROW, dated('DMY'), adapter, { dateOrder: 'MDY' });
+    expect(cells['placed']).toMatchObject({ dateOrder: 'DMY' });
+    // An entry that says nothing still gets the run's.
+    expect(cells['orderId']).toMatchObject({ dateOrder: 'MDY' });
+  });
+
+  it('reads the same way through the generic coercer: entry, then run, then refuse', () => {
+    expect(run(ROW, dated('DMY')).records[0]['placed']).toBe('2026-09-05');
+    expect(run(ROW, dated(), ordersAdapter(), { dateOrder: 'MDY' }).records[0]['placed']).toBe('2026-05-09');
+    expect(run(ROW, dated('DMY'), ordersAdapter(), { dateOrder: 'MDY' }).records[0]['placed']).toBe('2026-09-05');
+    // Neither says: the date reads two ways, and is refused, never guessed.
+    expect(errorsOf(run(ROW, dated()))).toEqual([{ row: 2, ref: 'placed', code: 'CELL_FORMAT' }]);
+  });
+
+  it('still fits an adapter written for three arguments', () => {
+    const adapter = ordersAdapter({ coerce: (target, raw, _ctx) => (target.ref === 'orderId' ? { value: `#${String(raw)}` } : null) });
+    expect(run(ROW, dated('DMY'), adapter).records[0]).toMatchObject({ orderId: '#A1', placed: '2026-09-05' });
+  });
+});

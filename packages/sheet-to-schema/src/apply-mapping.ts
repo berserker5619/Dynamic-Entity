@@ -17,9 +17,10 @@
  *    the same problem on several rows is one problem carrying those rows, and a target whose
  *    cell could not be read is not also called required.
  */
-import type { CoerceOutcome, ImportTarget, SchemaAdapter, TargetSet, ValueKind } from './adapter.types';
+import type { CellOptions, CoerceOutcome, ImportTarget, SchemaAdapter, TargetSet, ValueKind } from './adapter.types';
 import { cellText } from './cell-text';
 import { coerceValue } from './coerce';
+import type { DateOrder } from './date-order';
 import { ImportFailure } from './import-failure';
 import type { GroupSpec, NormalizedPlan, PlanProblem } from './plan.types';
 import { planSlots, slotOf } from './plan-slots';
@@ -34,6 +35,11 @@ export interface ApplyMappingOptions {
   firstRowNumber?: number;
   /** The decimal mark in number text, on both sides of the wire (§8). */
   decimal?: '.' | ',';
+  /**
+   * The order of a date written in digits, for every entry that states none of its own. With
+   * neither, a date that reads two ways is refused (§8).
+   */
+  dateOrder?: DateOrder;
 }
 
 export interface PreparedPlan {
@@ -270,12 +276,14 @@ export function applyMapping<TMeta, TCtx>(
       const fromColumn = entry.column !== undefined;
       const raw = fromColumn ? cells[entry.column as number] : entry.constant;
 
+      // What this cell is read with: the entry's own option, else the run's, else the default.
+      // Resolved once, here, so the adapter and the generic coercer are told the same thing.
+      const cell: CellOptions = { dateOrder: entry.dateOrder ?? options.dateOrder, split: entry.split, decimal: options.decimal };
+
       // A non-text constant is already a value, authored against the schema; coercing it would
       // stringify an object to "[object Object]". Typed text is read like any cell.
       const outcome: CoerceOutcome =
-        !fromColumn && typeof raw !== 'string'
-          ? { value: raw }
-          : (adapter.coerce?.(target, raw, ctx) ?? coerceValue(target.value, raw, { decimal: options.decimal, split: entry.split, dateOrder: entry.dateOrder }));
+        !fromColumn && typeof raw !== 'string' ? { value: raw } : (adapter.coerce?.(target, raw, ctx, cell) ?? coerceValue(target.value, raw, cell));
 
       if ('error' in outcome) {
         row.errors.push({

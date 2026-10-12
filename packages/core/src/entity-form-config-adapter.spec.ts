@@ -448,6 +448,47 @@ describe('entityFormConfigAdapter — parity, case by case', () => {
     expect(neu.errors.map(e => [e.ref, e.code])).toEqual([['born', 'CELL_FORMAT']]);
   });
 
+  /**
+   * A v2 plan states the order per column (spec §3). The adapter reads its own cells, so it is
+   * handed the resolved order as `coerce`'s fourth argument: the entry's, else the run's.
+   */
+  it('reads each date column in the order its plan entry states, and the rest in the run\'s', () => {
+    const config = configWith({ id: 'born', type: 'date', label: { en: 'Born' } }, { id: 'joined', type: 'date', label: { en: 'Joined' } });
+    const adapter = entityFormConfigAdapter(config);
+    const plan = (born?: string, joined?: string) => ({
+      planVersion: 2,
+      target: 'people',
+      entries: [
+        { ref: 'name', column: 0 },
+        { ref: 'born', column: 1, ...(born ? { dateOrder: born } : {}) },
+        { ref: 'joined', column: 2, ...(joined ? { dateOrder: joined } : {}) },
+      ],
+    });
+    const rows = [['Ada', '05/09/2026', '05/09/2026']];
+    const dates = (result: ReturnType<typeof applyGeneric>) => result.records.map(({ born, joined }) => [born, joined]);
+
+    // Two columns of one sheet, written two ways.
+    expect(dates(applyGeneric(rows, plan('DMY', 'MDY'), adapter, { stamp: false }))).toEqual([['2026-09-05', '2026-05-09']]);
+    // The run's order, from the context as 2.5.0 has it, is the default for a column that states none.
+    expect(dates(applyGeneric(rows, plan('DMY'), adapter, { stamp: false, dateOrder: 'MDY' }))).toEqual([['2026-09-05', '2026-05-09']]);
+    // The engine's own run option is the same default.
+    expect(dates(applyGeneric(rows, plan(), adapter, { stamp: false }, { dateOrder: 'DMY' }))).toEqual([['2026-09-05', '2026-09-05']]);
+    // An entry beats both.
+    expect(dates(applyGeneric(rows, plan('DMY', 'DMY'), adapter, { stamp: false, dateOrder: 'MDY' }, { dateOrder: 'MDY' }))).toEqual([['2026-09-05', '2026-09-05']]);
+    // With none anywhere the date is refused, as DE 2.5.0 refuses it.
+    const refused = applyGeneric(rows, plan(), adapter, { stamp: false });
+    expect(refused.records).toEqual([]);
+    expect(refused.errors.map(e => [e.ref, e.code])).toEqual([['born', 'CELL_FORMAT'], ['joined', 'CELL_FORMAT']]);
+  });
+
+  it('reads a number with the decimal mark the run states, from the engine or from the context', () => {
+    const config = configWith({ id: 'price', type: 'currency', label: { en: 'Price' } });
+    const adapter = entityFormConfigAdapter(config);
+    const plan = planFor(['name', 'price']);
+    expect(applyGeneric([['Ada', '1,5']], plan, adapter, { stamp: false }, { decimal: ',' }).records[0]['price']).toBe(1.5);
+    expect(applyGeneric([['Ada', '1,5']], plan, adapter, { stamp: false, decimal: ',' }).records[0]['price']).toBe(1.5);
+  });
+
   it('takes a typed constant as it is, and a text one through the field', () => {
     const config = configWith({ id: 'active', type: 'boolean', label: { en: 'Active' } }, { id: 'tier', type: 'dropdown', label: { en: 'Tier' }, options: [{ en: 'Gold' }] });
     const plan = { entity: 'people', entries: [{ ref: 'name', column: 0 }, { ref: 'active', constant: 'yes' }, { ref: 'tier', constant: { en: 'Gold' } }] };

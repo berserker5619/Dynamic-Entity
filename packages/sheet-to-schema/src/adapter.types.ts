@@ -7,6 +7,7 @@
  * becomes adapter-owned `meta`.
  */
 import type { MappingPlan, PlanProblem } from './plan.types';
+import type { DateOrder } from './date-order';
 import type { CellProblemCode, RecordProblemCode } from './problem-codes';
 
 /** The kind of value a target holds, which decides how a cell is read (§8). */
@@ -83,6 +84,19 @@ export interface TargetOptions {
   lang?: string;
 }
 
+/**
+ * What one cell is read with, resolved by the engine: the plan entry's own option where it
+ * states one, else the run's, else nothing, which leaves the default (§7, §8).
+ */
+export interface CellOptions {
+  /** The order of a date written in digits. Without it one that reads two ways is refused. */
+  dateOrder?: DateOrder;
+  /** The separator a list cell is split on: the entry's `split`. */
+  split?: string;
+  /** The decimal mark in number text. */
+  decimal?: '.' | ',';
+}
+
 export interface SchemaAdapter<TMeta = unknown, TCtx = unknown> {
   /** Compared with `plan.target`. */
   readonly id: string;
@@ -94,8 +108,12 @@ export interface SchemaAdapter<TMeta = unknown, TCtx = unknown> {
   targets(options: TargetOptions): TargetSet<TMeta>;
   /** Rewrites refs an older schema used. MUST only rewrite refs, and report `PLAN_LEGACY_REF` warnings. */
   upgradeRefs?(plan: MappingPlan): { plan: MappingPlan; problems: PlanProblem[] };
-  /** `null` means "use the generic coercer for `target.value`". */
-  coerce?(target: ImportTarget<TMeta>, raw: unknown, ctx: TCtx): CoerceOutcome | null;
+  /**
+   * `null` means "use the generic coercer for `target.value`", which is given the same `cell`.
+   * An adapter that reads its own cells honours `cell` itself, or a plan's per-column options
+   * do nothing on its targets.
+   */
+  coerce?(target: ImportTarget<TMeta>, raw: unknown, ctx: TCtx, cell: CellOptions): CoerceOutcome | null;
   /** Defaults to identity. Runs after grouping and compaction. */
   finalize?(record: Record<string, unknown>, ctx: TCtx): Record<string, unknown>;
   /** Defaults to the generic checks (§8). Runs after grouping and compaction. */

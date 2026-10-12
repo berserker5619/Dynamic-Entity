@@ -27,6 +27,7 @@ import {
   slotsFor,
   suggestMapping,
   type CsvDelimiter,
+  type DateOrder,
   type ImportRowError,
   type MappingPlan,
   type PlanProblem,
@@ -73,6 +74,11 @@ export interface RunImportOptions<TMeta = unknown, TCtx = unknown> {
    * because that is what Excel writes in exactly those locales, and `.` otherwise.
    */
   decimal?: '.' | ',';
+  /**
+   * The order of a date written in digits, for every plan entry that states none of its own.
+   * With neither, a date that reads two ways fails its row: it is never guessed.
+   */
+  dateOrder?: DateOrder;
   /** Omit to validate without writing: the identical pipeline, every error, nothing stored. */
   onBatch?: OnBatch;
   limits?: Partial<ImportLimits>;
@@ -186,7 +192,7 @@ export async function runImport<TMeta, TCtx>(options: RunImportOptions<TMeta, TC
     batch = [];
 
     // The plan as `preparePlan` left it: read, upgraded and checked once, above.
-    const result = applyMapping(rows, prepared.plan, adapter, ctx, { decimal, firstRowNumber: firstRow });
+    const result = applyMapping(rows, prepared.plan, adapter, ctx, { decimal, dateOrder: options.dateOrder, firstRowNumber: firstRow });
 
     skipped += result.skipped;
     errorCount += result.errors.length;

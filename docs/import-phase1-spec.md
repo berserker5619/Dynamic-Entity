@@ -292,13 +292,20 @@ export interface TargetSet<TMeta = unknown> {
   unsupported: { ref: string; reason: string }[];
 }
 
+/** What one cell is read with, resolved by the engine (rules below). */
+export interface CellOptions {
+  dateOrder?: 'DMY' | 'MDY' | 'YMD';
+  split?: string;
+  decimal?: '.' | ',';
+}
+
 export interface SchemaAdapter<TMeta = unknown, TCtx = unknown> {
   readonly id: string;                // compared with plan.target
   readonly version?: number;          // compared with plan.schemaVersion
   readonly adapterVersion: string;    // semver of the adapter implementation
   targets(opts: { slots: Record<string, number>; lang?: string }): TargetSet<TMeta>;
   upgradeRefs?(plan: MappingPlan): { plan: MappingPlan; problems: PlanProblem[] };
-  coerce?(t: ImportTarget<TMeta>, raw: unknown, ctx: TCtx): CoerceOutcome | null;
+  coerce?(t: ImportTarget<TMeta>, raw: unknown, ctx: TCtx, cell: CellOptions): CoerceOutcome | null;
   finalize?(record: Record<string, unknown>, ctx: TCtx): Record<string, unknown>;
   validate?(record: Record<string, unknown>, ctx: TCtx): RecordProblem[];
 }
@@ -309,6 +316,7 @@ export interface SchemaAdapter<TMeta = unknown, TCtx = unknown> {
 - `targets` MUST be pure and deterministic for the same inputs. `slots` maps array ref to slot count; an array absent from `slots` gets 1 slot for suggestion and 0 for apply. `applyMapping` receives no headers, so it sizes `slots` from the plan alone: per array, the highest slot the plan maps plus one (`arrayBoundOf`, per array).
 - `upgradeRefs` runs once per plan, after `readPlan` and before `validatePlan`. It MUST only rewrite refs and report `PLAN_LEGACY_REF` warnings; it MUST NOT add or drop entries.
 - `coerce` returning `null` means "use the generic coercer for `t.value`" (§8). A `custom` kind with no `coerce` is an adapter bug and throws at construction.
+- **`cell` is what the cell is read with, and the engine resolves it once: the plan entry's option, then the run's option, then nothing, which leaves the default.** `dateOrder` is `entry.dateOrder`, else the run's `dateOrder`. `split` is `entry.split`. `decimal` is the run's. The engine MUST pass the same `cell` to `coerce` and, when `coerce` returns `null`, to the generic coercer. An adapter that reads its own cells MUST honour it, or a plan's per-column options silently do nothing on its targets. An adapter written for three arguments still fits. *(Added 2026-10-12, with Phase 2's commit 2.8. Until then `coerce` could not see a per-column option at all.)*
 - `finalize` defaults to identity; `validate` defaults to the generic checks in §8. Both run after grouping and compaction.
 - `RecordProblem` gains a required `code` from the row-code table in §9, and the engine copies it onto the `ImportRowError` it reports. The DE adapter maps its checks to `RECORD_REQUIRED`, `RECORD_FORMAT`, `RECORD_RANGE` and `RECORD_RULE`; a generic validator uses the same four. A `coerce` failure carries `CELL_FORMAT`, `CELL_UNKNOWN_OPTION` or `CELL_LIST_ITEM`.
 - Adapters MUST NOT read files, mutate the plan, or hold per-run state outside `TCtx`.
@@ -317,7 +325,7 @@ export interface SchemaAdapter<TMeta = unknown, TCtx = unknown> {
 
 | Adapter | `meta` | Notes |
 | --- | --- | --- |
-| `entityFormConfigAdapter(config, { rules, lookups, includeReadonly?, includeSystemDefault? })` | `NestedFieldConfig` | `TCtx` is `{ lang?, decimal?, dateOrder?, stamp? }`. Every target's kind is `custom`, since only `coerceCell` reads a DE cell. Both `include` options default to `true`, which applying a stored plan needs; a template or suggestion passes `false`, as 2.x's wizard does. Target refs come from `collectFieldRefs`, never `refOf` or `getTabData`, so moved tab-level containers land at their override. `validate` evaluates rules once against the whole config through `flattenFieldValues`, with 2.3's precedence. `upgradeRefs` = `upgradeLegacyRefs`. `positional: false` on every array. `coerce` = `coerceCell` with `decimal`. MUST be behaviour-identical to 2.3; the hardened parity suite (§10) is the gate. |
+| `entityFormConfigAdapter(config, { rules, lookups, includeReadonly?, includeSystemDefault? })` | `NestedFieldConfig` | `TCtx` is `{ lang?, decimal?, dateOrder?, stamp? }`. `coerce` reads with `cell` first and falls back to the context's `decimal` and `dateOrder`, which is where Dynamic Entity 2.5.0 states them, so a v2 plan's per-column `dateOrder` works on DE fields. Every target's kind is `custom`, since only `coerceCell` reads a DE cell. Both `include` options default to `true`, which applying a stored plan needs; a template or suggestion passes `false`, as 2.x's wizard does. Target refs come from `collectFieldRefs`, never `refOf` or `getTabData`, so moved tab-level containers land at their override. `validate` evaluates rules once against the whole config through `flattenFieldValues`, with 2.3's precedence. `upgradeRefs` = `upgradeLegacyRefs`. `positional: false` on every array. `coerce` = `coerceCell` with `decimal`. MUST be behaviour-identical to 2.3; the hardened parity suite (§10) is the gate. |
 | `jsonSchemaAdapter(schema, { id?, version?, validator? })` | JSON Schema node | The root MUST be an object with `properties`, or `type: array` whose `items` (after `$ref` resolution) is one: a list of records, whose items are the record. The list itself is not a target. Any other root throws at construction. Local `$ref`, `allOf`, first non-null `oneOf`/`anyOf`; a `oneOf` of `const`s is a labelled enum. `enum` stores the raw value. An array of objects is numbered slots (`positional: true`), and an array of primitives is one split `list`. A field is `required` only when every object above it is (per item inside an array). `validator` is a function `(record) => RecordProblem[]` replacing the generic checks, so an Ajv-compiled schema can be wrapped in one and Ajv is never a dependency. A list inside a list, a free-form object, an untyped node and an unresolvable or looping `$ref` are reported in `unsupported`. |
 | `exampleJsonAdapter(sample, { id?, version?, validator? })` | `{ sample }`, the first value seen | `sample` is one record or an array of them, merged. Kinds inferred from values: a number is `number` (never `integer`, since one sample is not a bound), a string shaped like an ISO date, date-time or time is that kind, and any other is `string`. Where samples disagree the field is `string`, and a `null` gives way to any value. An array of objects is numbered slots, with every key any item has; its longest sample length is the fewest slots `targets` returns, whatever `slots` asks. An array of primitives is one split `list`. Nothing is `required`. `positional: true`. A field only ever `null`, an empty object or array, a list inside a list, mixed array items, and an object in one sample but a value in another are reported in `unsupported`. |
 
@@ -335,7 +343,7 @@ export function applyMapping<M, C>(
   plan: MappingPlan,
   adapter: SchemaAdapter<M, C>,
   ctx: C,
-  opts?: { firstRowNumber?: number; decimal?: '.' | ',' },
+  opts?: { firstRowNumber?: number; decimal?: '.' | ','; dateOrder?: 'DMY' | 'MDY' | 'YMD' },
 ): ImportResult;
 export function coerceValue(kind: ValueKind, raw: unknown, opts?: { decimal?: '.' | ','; split?: string; dateOrder?: 'DMY' | 'MDY' | 'YMD' }): CoerceOutcome;
 ```
@@ -759,3 +767,8 @@ A `custom` kind reaching `coerceValue` throws (§7).
 - **§7 will change in Phase 2's commit 2.8:** `coerce` gains an optional fourth argument, `{ dateOrder?, split?, decimal? }`, resolved by the engine as plan entry, then run options, then default.
 - **§5's streaming runner is Phase 3.** Until then `runImport` refuses a plan with `group` before reading a row, and a 3.0 server still advertises `planVersions: [1, 2]`.
 - **DE's `MappingPlan` becomes the v2 type in 3.0,** with the 2.x shape exported as the deprecated `MappingPlanV1`.
+
+**2026-10-12: `coerce` sees what a cell is read with (Phase 2, commit 2.8; plan decision 4).** §7's interface gains `CellOptions` and a fourth `coerce` argument, with the rule that the engine resolves it as plan entry, then run option, then default, and hands the same value to the adapter and to the generic coercer.
+- **`applyMapping` gains a run-level `dateOrder`** (§8's signature), the default for every entry that states none. `runImport` and the generic router take the same option, and a preview reports the router's, as Dynamic Entity 2.5.0's does.
+- **The DE adapter honours it.** It reads with `cell` and falls back to its context. So a v2 plan can state a different order for each date column of a DE config, and 2.5.0's options-level `dateOrder` keeps working as the default. This closes the gap the entry of the same date on step 0 left open.
+- **The decision's three precedence levels, as built:** an entry's `dateOrder` beats the run's, the run's beats nothing, and with nothing a date that reads two ways is refused. `split` exists only on an entry, and `decimal` only on the run, so each has one source.

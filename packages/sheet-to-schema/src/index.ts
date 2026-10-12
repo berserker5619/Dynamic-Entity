@@ -21,6 +21,7 @@ export type { CellProblemCode, RecordProblemCode, RowProblemCode } from './probl
 
 // ─── Schema adapters ────────────────────────────────────────────────────────
 export type {
+  CellOptions,
   CoerceOutcome,
   ImportTarget,
   RecordProblem,

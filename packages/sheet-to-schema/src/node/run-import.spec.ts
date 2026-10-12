@@ -692,3 +692,32 @@ describe('what the run reports', () => {
     expect(result.imported).toBe(2);
   });
 });
+
+describe('the run\'s date order', () => {
+  const EVENTS = jsonSchemaAdapter({ $id: 'events', type: 'object', properties: { name: { type: 'string' }, starts: { type: 'string', format: 'date' }, ends: { type: 'string', format: 'date' } } });
+  const SHEET = 'name,starts,ends\r\nLaunch,05/09/2026,06/09/2026\r\n';
+  const dates = async (plan: unknown, dateOrder?: 'DMY' | 'MDY' | 'YMD') => {
+    const records: Record<string, unknown>[] = [];
+    const result = await runImport({ stream: chunked(SHEET), plan, adapter: EVENTS, ctx: undefined, ...(dateOrder ? { dateOrder } : {}), onBatch: batch => void records.push(...batch) });
+    return { records: records.map(({ starts, ends }) => [starts, ends]), errors: result.errors.map(error => [error.ref, error.code]) };
+  };
+  const plan = (startsOrder?: string) => ({
+    planVersion: 2,
+    target: 'events',
+    entries: [{ ref: 'name', column: 0 }, { ref: 'starts', column: 1, ...(startsOrder ? { dateOrder: startsOrder } : {}) }, { ref: 'ends', column: 2 }],
+  });
+
+  it('is the default for every entry that states none', async () => {
+    expect(await dates(plan(), 'DMY')).toEqual({ records: [['2026-09-05', '2026-09-06']], errors: [] });
+    expect(await dates(plan(), 'MDY')).toEqual({ records: [['2026-05-09', '2026-06-09']], errors: [] });
+  });
+
+  it('gives way to an entry that states its own', async () => {
+    expect(await dates(plan('DMY'), 'MDY')).toEqual({ records: [['2026-09-05', '2026-06-09']], errors: [] });
+  });
+
+  it('is not assumed: with none anywhere, a date that reads two ways is refused', async () => {
+    expect(await dates(plan())).toEqual({ records: [], errors: [['starts', 'CELL_FORMAT'], ['ends', 'CELL_FORMAT']] });
+    expect(await dates(plan('DMY'))).toEqual({ records: [], errors: [['ends', 'CELL_FORMAT']] });
+  });
+});

@@ -19,6 +19,7 @@ import {
   IMPORTER_VERSION,
   PLAN_VERSIONS,
   type AdapterStamp,
+  type DateOrder,
   type ImportCommitResponse,
   type ImportPreviewResponse,
   type SchemaAdapter,
@@ -87,6 +88,12 @@ export interface ImportRouterOptions {
   limits?: Partial<ImportLimits>;
   /** The language adapters resolve labels in, fixed or read from the request. Default `en`. */
   lang?: string | ((request: Request) => string);
+  /**
+   * The order of a date written in digits, for every import and validation this router runs,
+   * where a plan entry states none. Reported in each preview, so a client reads its sample the
+   * same way. Without it, and without the entry's, a date that reads two ways fails its row.
+   */
+  dateOrder?: DateOrder;
 }
 
 /** A property of the map itself, never one it inherited: `constructor` is not a binding. */
@@ -265,6 +272,7 @@ export function createImportRouter(router: Router, options: ImportRouterOptions)
         rowCount: preview.rowCount,
         slots: preview.slots,
         ...(preview.delimiter ? { delimiter: preview.delimiter } : {}),
+        ...(options.dateOrder ? { dateOrder: options.dateOrder } : {}),
         ...binding.previewExtras?.(preview),
         // After the extras, so nothing a binding adds can restate what this server is.
         planVersions: [...PLAN_VERSIONS],
@@ -316,6 +324,7 @@ export function createImportRouter(router: Router, options: ImportRouterOptions)
       plan,
       adapter: binding.adapter,
       ctx: binding.ctx,
+      dateOrder: options.dateOrder,
       limits,
       ...(write ? { onBatch: (records, info) => options.onImport(records, { ...info, name, binding, request }) } : {}),
     });
