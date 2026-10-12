@@ -1,6 +1,6 @@
 # Phase 2 plan: moving the import engine into sheet-to-schema
 
-Status: for review, written 2026-10-12. Nothing in it has been done. Steps 2 to 5 wait for a go.
+Status: approved by the owner on 2026-10-12, with the decisions below. Step 2 is under way.
 
 Source of truth is `docs/import-phase1-spec.md`. This plan is based on the extraction analysis
 (`docs/import-extraction-analysis.md`, §6.4) as corrected by the progress report
@@ -22,101 +22,85 @@ Source of truth is `docs/import-phase1-spec.md`. This plan is based on the extra
 So Phase 2 has less to move than analysis §6.4 lists. The generic engine is written. What
 moves is the file-handling code, and what changes is which engine DE calls.
 
-## Decisions I need from you
+## Decisions
 
-Ranked by how much each one changes the work. My recommendation is first in each.
+Settled by the owner on 2026-10-12. Each was put as a question in the first version of this
+plan; the answer is what is recorded here.
 
-### 1. One package with a `/node` subpath, or five scoped packages
+### 1. One package, `sheet-to-schema`, with a `/node` subpath
 
-Your instructions differ. On 11 October: packages under the `@sheet-to-schema` scope (`core`,
-`angular`, `node`, `adapter-json-schema`, `adapter-dynamic-entity`). In the Phase 2 go: one
-package, `sheet-to-schema`, with a browser-safe main entry and a `/node` subpath, the DE
-adapter in `@dynamic-entity/core`, and one version, `1.0.0-rc.1`.
+Not the five `@sheet-to-schema/*` packages named on 11 October.
 
-**This plan follows the Phase 2 go: one package.** Reasons:
+- The DE adapter cannot live under `@sheet-to-schema`. It imports DE, and DE's core
+  re-exports the importer, so an adapter package outside DE makes a cycle. It lives in
+  `@dynamic-entity/core`.
+- There is no generic Angular code to package yet. Every Angular import component today reads
+  `EntityFormConfig`. **The Phase 4 Angular mapper will be a separate package**, not a third
+  entry of this one.
+- `jsonSchemaAdapter` and `exampleJsonAdapter` stay in the main entry.
 
-- The DE adapter cannot live under `@sheet-to-schema`. It imports DE, and DE's core re-exports
-  the importer, so an adapter package outside DE makes a cycle or forces a third package to
-  break it. The spec already puts it in core ("Package boundaries").
-- There is no generic Angular code to put in an `angular` package. The generic mapper is
-  Phase 4. Every Angular import component today reads `EntityFormConfig`.
-- `jsonSchemaAdapter` is 330 lines with no dependencies. A package of its own buys nothing.
+### 2. `@dynamic-entity/core` depends on `sheet-to-schema`
 
-If you want the five-package layout anyway, say so before step 2: it changes every import
-path, the build graph and the commit list. Decision 1 in the spec gets rewritten to match
-whichever you choose.
+A real dependency, not a bundled copy. Core's first: it published with none until now, and
+`MIGRATING-3.0.md` says so.
 
-### 2. `@dynamic-entity/core` gains its first runtime dependency
+- **The range is exact for the release candidates, and `^1.0.0` at 3.0.0 final.** A caret
+  range is safe there for two reasons. A consumer's tree then holds one engine, so a plan, a
+  result or an `ImportFailure` built by one side is the same type on the other; a bundled
+  copy or a pinned mismatch gives two. And every release of either package is gated by the
+  monorepo's parity suite, which runs DE's own suites against the importer at the same
+  commit, so a `sheet-to-schema` 1.x that breaks DE cannot be released.
+- **Publishing order:** `sheet-to-schema` release candidate first, then any DE release
+  candidate. DE cannot be installed otherwise.
+- Core imports only the main entry, never `/node`. Step 4's bundle test proves it.
 
-Core publishes today with zero dependencies. To re-export moved functions it must depend on
-`sheet-to-schema`. Two ways:
+### 3. `exceljs` and `busboy` are optional peers of `sheet-to-schema`
 
-- **A real dependency, exact range (recommended).** One copy of the engine in a consumer's
-  tree, so a plan or a result built by one side is the same type on the other. It means
-  `sheet-to-schema` has to be on npm before any DE 3.0 release candidate can be installed.
-- Bundle it into core's `dist`. No new dependency, but two copies of the engine whenever a
-  consumer also installs `sheet-to-schema` directly, and `instanceof ImportFailure` then fails
-  across them.
+And normal `dependencies` of `@dynamic-entity/server`, as today, so a DE server user
+installs nothing new. A browser-only user of `sheet-to-schema` installs neither.
 
-Either way the browser guarantee holds: core imports only the main entry, never `/node`.
-Step 4's bundle test proves it.
+`/node` loads each one when it is first needed. A missing `exceljs` fails with a message
+that says which package to install and why, and a test holds that.
 
-### 3. `exceljs` and `busboy`: where they are declared
+### 4. `coerce` gets a fourth argument
 
-They are `dependencies` of `@dynamic-entity/server` today. In one package with a `/node`
-subpath, declaring them as `dependencies` installs them for every browser-only user.
+`coerce(target, raw, ctx, cell?: { dateOrder?, split?, decimal? })`. Optional, so an adapter
+written for three arguments still fits.
 
-- **Optional peer dependencies of `sheet-to-schema` (recommended)**, with a clear error from
-  `/node` when one is missing. `@dynamic-entity/server` keeps them as its own `dependencies`,
-  so DE server users install nothing new.
-- Plain `dependencies`: simpler, heavier for browser users. This is the main cost of
-  decision 1's single package.
+- **Precedence: the plan's entry, then the run's options, then the default.** The engine
+  resolves it and hands the adapter the result.
+- **2.5's options-level `dateOrder` keeps working**, as the run's default: an entry with no
+  `dateOrder` is read with it.
+- The DE adapter passes the resolved values to `coerceCell`. A v2 plan's per-column
+  `dateOrder` therefore works on DE fields in 3.0.
+- Spec §7 is updated in the same commit (2.8).
 
-### 4. The adapter's `coerce` cannot see per-column options
+### 5. Grouping in the streaming runner is Phase 3
 
-`SchemaAdapter.coerce(target, raw, ctx)` gets the run's context, not the entry. So a v2
-entry's `dateOrder` and `split`, and the engine's `decimal`, never reach an adapter that reads
-its own cells, which the DE adapter does. Today DE gets `decimal` and `dateOrder` through its
-context only, one value for the whole run.
+In Phase 2 the generic `runImport` refuses a plan with `group` before reading a row:
+`INVALID_PLAN`, carrying a `PLAN_GROUP` problem whose message says this server version does
+not support grouping yet, and that the browser path does.
 
-- **Add an optional fourth argument (recommended):**
-  `coerce(target, raw, ctx, cell?: { decimal?, split?, dateOrder? })`. Additive. The DE
-  adapter then honours `entry.dateOrder` per column, falling back to the run's. This is what
-  makes plan v2's per-column date order work for DE in 3.0.
-- Leave it. DE 3.0 then has run-level `dateOrder` only, as 2.5.0 does, and a v2 plan's
-  per-column order is silently unused on DE targets. I do not recommend shipping that.
+### 6. A 3.0 server advertises `planVersions: [1, 2]`
 
-This is a change to spec §7, so it needs your word.
+It reads v2 plans: split lists, `dateOrder` and `lists` all work. `group` is refused as
+decision 5 says, before any row is read, so nothing is half-imported.
 
-### 5. Grouping in the streaming runner: Phase 2 or Phase 3
+### 7. DE's `MappingPlan` becomes the importer's v2 type
 
-The spec's scope line gives grouping to Phase 3, and Phase 1 then built it for the in-memory
-`applyMapping`. The streaming `runImport` has none. Spec §5 specifies it: contiguous groups
-across batch boundaries, with `maxGroupRows`, `maxGroups` and `maxGroupKeyBytes`.
+Decided for step 3:
 
-- **Phase 3 (recommended).** In Phase 2 the generic `runImport` refuses a plan with `group`
-  before reading a row, with `INVALID_PLAN` carrying a `PLAN_GROUP` problem that says so.
-  Phase 2 is then a move with a parity gate, and nothing new can hide in it.
-- Phase 2. About one more commit and its tests. It makes the parity gate harder to read,
-  because the runner changes shape in the same step that it moves.
+- `MappingPlan`, exported from `@dynamic-entity/core`, is the importer's v2 type.
+- The 2.x shape is exported as `MappingPlanV1`, deprecated.
+- Every DE function that takes a plan accepts either, and normalises through `readPlan`.
 
-Whichever you choose, a preview must not advertise what the server cannot do. See decision 6.
+Before 3.1 is written, every caller of a plan in core, the server and the wizard is read
+against this. Anything that does not fit is reported, not worked around.
 
-### 6. What a 3.0 server advertises
-
-Spec §9 has previews carry `planVersions`. A server that reads v2 plans but refuses `group`
-is not what `planVersions: [1, 2]` promises a client.
-
-- **Advertise `[1, 2]` and refuse `group` with `PLAN_GROUP` (recommended)**, if decision 5 is
-  Phase 3. Split lists, `dateOrder` and `lists` all work. The refusal is before any row is
-  read, so nothing is half-imported. The client-side check in the spec stays as written.
-- Advertise `[1]` until grouping lands. Then no v2 feature is usable over HTTP in 3.0.
-
-### 7. Smaller points, decided here unless you object
+### 8. Smaller points, decided in this plan
 
 - **`ImportTransport` and `ImportContext` stay DE-shaped.** Generalising them to
-  `{ adapter, ctx }` belongs with the generic mapper in Phase 4. Analysis §6.4 calls it
-  optional.
+  `{ adapter, ctx }` belongs with the Phase 4 mapper. Analysis §6.4 calls it optional.
 - **DE keeps its own `coerceCell`.** The generic coercers and DE's share ancestry and now
   differ on purpose (dates, email). Merging them is not part of a parity-gated move.
 - **`ImportErrorCode` keeps `UNKNOWN_ENTITY`** in the generic router, meaning "no adapter for
@@ -158,7 +142,7 @@ Moving in from `@dynamic-entity/server`:
 | From | What | Coupling to DE today |
 | --- | --- | --- |
 | `bytes.ts` | `toByteStream`, `limitBytes`, `peek`, `destroySource`; `ByteSource` | None |
-| `limits.ts` | `DEFAULT_LIMITS`, `resolveLimits`; `ImportLimits` | None. Gains `maxGroupRows`, `maxGroups`, `maxGroupKeyBytes` when grouping lands (decision 5). |
+| `limits.ts` | `DEFAULT_LIMITS`, `resolveLimits`; `ImportLimits` | None. Gains `maxGroupRows`, `maxGroups`, `maxGroupKeyBytes` in Phase 3, with streaming grouping (decision 5). |
 | `errors.ts` | `ImportError`, `toErrorBody`; `ImportErrorCode`, `ImportErrorBody` | None |
 | `guard-zip.ts` | `guardZip` | None |
 | `xlsx-source.ts` | `xlsxRows`, `cellValue` | None. Needs `exceljs`. |
@@ -180,7 +164,7 @@ Moving in from `@dynamic-entity/server`:
 | core | `entityFormConfigAdapter`, now exported | The one place that knows both sides. |
 | core | `applyMapping`, `suggestMapping`, `validateMappingPlan`, with their 2.x signatures | Public API. Their insides become the generic engine over the adapter (step 3). |
 | server | `createImportRouter`, `listNamesOf`, `templateFilename`, `sendFailure`, `OnImport`, `ConfigSource`, `ImportRouterOptions`, and DE-signature `runImport`, `previewSheet`, `writeTemplate` | The DE wrapper: config per entity, rules per entity, the lookups startup check, template names. |
-| ngx-dynamic-entity | Every import component, both transports, `SHEET_PARSER`, `IMPORT_TRANSPORT`, the contracts | All DE-shaped (decision 7). Their engine calls go through the adapter. |
+| ngx-dynamic-entity | Every import component, both transports, `SHEET_PARSER`, `IMPORT_TRANSPORT`, the contracts | All DE-shaped (decision 8). Their engine calls go through the adapter. |
 
 ## Public DE exports that become deprecated re-exports
 
@@ -211,15 +195,17 @@ From `@dynamic-entity/server`, re-exporting `sheet-to-schema/node`:
 | `TEMPLATE_EXTENSION`, `TEMPLATE_MEDIA_TYPE`, `TemplateFormat` | template constants |
 
 Not deprecated, because they stay DE's with DE's signatures: `setRecordValue` (public, and
-DE's own path guard), `MappingPlan`, `MappingEntry`, `ImportResult`, `ImportRowError` (DE's
-2.x types stay, and gain the optional v2 fields), `applyMapping`, `suggestMapping`,
-`coerceCell`, `validateImportedRecord`, `validateMappingPlan`, and the server's `runImport`,
+DE's own path guard), `applyMapping`, `suggestMapping`, `coerceCell`,
+`validateImportedRecord`, `validateMappingPlan`, and the server's `runImport`,
 `previewSheet`, `writeTemplate` and `createImportRouter`.
 
-One I am unsure about and will settle in step 3 by reading every caller: whether DE's
-`MappingPlan` type can simply become the importer's. The importer's requires `target`, DE's
-requires `entity`. If they cannot be one type, DE's stays and the adapter reads it through
-`readPlan`'s v1 aliases, which is what the parity spec does today.
+The plan and result types change as decision 7 says:
+
+| Export | In 3.0 |
+| --- | --- |
+| `MappingPlan`, `MappingEntry` | The importer's v2 types, re-exported. Not deprecated: this is the type to write. |
+| `MappingPlanV1` | New name for the 2.x shape (`entity`, `configVersion`), deprecated. Still accepted everywhere a plan is taken. |
+| `ImportResult`, `ImportRowError` | The importer's, re-exported. They are the 2.x shapes plus optional fields, so code that reads or builds one still compiles (spec §9). |
 
 ## Order of work and commit list
 
@@ -234,19 +220,19 @@ and DE keeps running its own copy. That keeps every DE suite a fixed reference u
 | # | Commit | Contents |
 | --- | --- | --- |
 | 2.1 | `feat(sheet-to-schema): csv in the main entry` | `csv.ts` and its specs; the wire types, generalised. |
-| 2.2 | `build(sheet-to-schema): the /node entry` | Second tsup entry, `exports["./node"]`, the dependency declaration from decision 3, and `scripts/check-importer-bundle.mjs`: the main entry's bundle holds no `exceljs`, no `busboy`, no Node built-in. |
+| 2.2 | `build(sheet-to-schema): the /node entry` | Second tsup entry, `exports["./node"]`, `exceljs` and `busboy` as optional peers (decision 3), and `scripts/check-importer-bundle.mjs`: the main entry's bundle holds no `exceljs`, no `busboy`, no Node built-in. |
 | 2.3 | `feat(sheet-to-schema/node): bytes, limits, errors, the zip guard` | With their specs. |
-| 2.4 | `feat(sheet-to-schema/node): readSheet and the xlsx source` | With their specs and the workbook fixtures. |
+| 2.4 | `feat(sheet-to-schema/node): readSheet and the xlsx source` | With their specs and the workbook fixtures. A missing `exceljs` fails with an install message, and a test holds that. |
 | 2.5 | `feat(sheet-to-schema/node): multipart and writeTemplate` | `writeTemplate` over `{ sheetName, headers, notes }`. |
-| 2.6 | `feat(sheet-to-schema/node): runImport and previewSheet over an adapter` | The streaming runner, generic. Refuses `group` or implements it, per decision 5. Ported run-import specs, over the fixture adapter. |
-| 2.7 | `feat(sheet-to-schema/node): a generic Express router factory` | Routes as today, an adapter per request, version stamps and `planVersions`. |
-| 2.8 | `feat(sheet-to-schema): coerce sees the cell's options` | Only if decision 4 is yes. Spec §7 updated in the same commit. |
+| 2.6 | `feat(sheet-to-schema/node): runImport and previewSheet over an adapter` | The streaming runner, generic. Refuses a plan with `group` before reading a row (decision 5). Ported run-import specs, over the fixture adapter. |
+| 2.7 | `feat(sheet-to-schema/node): a generic Express router factory` | Routes as today, an adapter per request, version stamps and `planVersions: [1, 2]` (decision 6). |
+| 2.8 | `feat(sheet-to-schema): coerce sees the cell's options` | The fourth argument and its precedence (decision 4). Spec §7 updated in the same commit. |
 
 ### Step 3: DE on top of sheet-to-schema
 
 | # | Commit | Contents |
 | --- | --- | --- |
-| 3.1 | `feat(core)!: the import engine is sheet-to-schema's` | Core depends on `sheet-to-schema` (decision 2). `entityFormConfigAdapter` is exported. `applyMapping`, `suggestMapping` and `validateMappingPlan` keep their signatures and run the generic engine over the adapter. Core's `csv.ts` and `cell-text.ts` become deprecated re-exports. |
+| 3.1 | `feat(core)!: the import engine is sheet-to-schema's` | Core depends on `sheet-to-schema` (decision 2). `entityFormConfigAdapter` is exported. `MappingPlan` becomes the v2 type and `MappingPlanV1` the deprecated 2.x one (decision 7). `applyMapping`, `suggestMapping` and `validateMappingPlan` take either and run the generic engine over the adapter. Core's `csv.ts` and `cell-text.ts` become deprecated re-exports. |
 | 3.2 | `feat(server)!: a thin wrapper over the generic router` | `createImportRouter` builds an adapter per entity and delegates. The lookups startup check, per-entity configs and rules stay. The moved exports become deprecated re-exports. |
 | 3.3 | `feat(ngx)!: the transports and the wizard use the adapter` | `LocalImportTransport`, the preview component and the mapper call the generic engine through the adapter. |
 
@@ -264,7 +250,7 @@ other than the three allowed differences, I stop and report.
 | # | Commit | Contents |
 | --- | --- | --- |
 | 5.1 | `docs: sheet-to-schema README and MIGRATING-3.0` | The README (what it is, the three list layouts, grouping, adapters, browser and `/node`) and `docs/MIGRATING-3.0.md` for DE users. |
-| 5.2 | `release: sheet-to-schema 1.0.0-rc.1, Dynamic Entity 3.0.0-rc.1` | Both CHANGELOGs, the versions, DE's exact rc range on `sheet-to-schema`. Then stop and report. |
+| 5.2 | `release: sheet-to-schema 1.0.0-rc.1, Dynamic Entity 3.0.0-rc.1` | Both CHANGELOGs, the versions, DE's exact rc range on `sheet-to-schema` (decision 2). Then stop and report. Publishing, when the owner says go, is `sheet-to-schema` first. |
 
 ## The gate
 
@@ -290,8 +276,8 @@ A failure in any of these means stop and report.
    old engine or the new one. The parity spec already holds them equal on every shipped
    config, which is why I expect it to pass, but it has only been compared row by row, not
    through the server's batching or the wizard.
-2. **Publishing order.** With decision 2 as recommended, DE 3.0.0-rc.1 cannot be installed
-   until `sheet-to-schema` 1.0.0-rc.1 is on npm. The name and the `@sheet-to-schema` scope are
+2. **Publishing order.** By decision 2, DE 3.0.0-rc.1 cannot be installed until
+   `sheet-to-schema` 1.0.0-rc.1 is on npm. The name and the `@sheet-to-schema` scope are
    still unclaimed. `verify-consumer.mjs` and `verify-server-consumer.mjs` install packed
    tarballs and must learn to pack the importer as well. The release workflow publishes four
    folders and would need a fifth, added only on your go.
@@ -303,14 +289,9 @@ A failure in any of these means stop and report.
    from DE, so the generic ones need their own fixtures and the DE ones stay put.
 5. **The timezone gate.** `scripts/check-timezones.mjs` lists suites by path. Moved specs
    have to be re-listed, or the gate goes quiet without failing.
-6. **2.5.0's `dateOrder` is run-level.** Until decision 4 lands, a DE import through the
-   generic engine has one date order for the whole run. That matches 2.5.0, so it is not a
-   regression, but it is less than plan v2 promises.
+6. **2.5.0's `dateOrder` is run-level.** Until commit 2.8 lands, a DE import through the
+   generic engine has one date order for the whole run. That matches 2.5.0. After 2.8 the
+   run's order is the default and a plan entry's overrides it.
 7. **What Phase 2 does not include**, so it is not mistaken for missing: the generic Angular
    mapper (Phase 4), a chosen header row (deferred), positional arrays for DE (Decision 5),
    storing moved containers once (Decision 9).
-
-## What I need to start step 2
-
-Answers to decisions 1 to 6. With the recommendations as given, step 2 is commits 2.1 to 2.8
-with 2.6 refusing `group`, and step 3 is 3.1 to 3.3.

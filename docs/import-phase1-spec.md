@@ -530,7 +530,7 @@ Settled on 2026-10-10. These are binding; Claude Code MUST NOT reopen them in co
 
 | # | Question | Decision |
 | --- | --- | --- |
-| 1 | Package name and scope | A new standalone name, not under `@dynamic-entity`: **`sheet-to-schema`**. *(Named by the owner on 2026-10-11, and confirmed on 2026-10-12.)* Phase 1 is one private workspace package of that name. Phase 2 splits it into packages under the **`@sheet-to-schema`** scope: `core`, `angular`, `node`, `adapter-json-schema` and `adapter-dynamic-entity`. Every one is `"private": true`, and nothing is published to npm until the owner says so. |
+| 1 | Package name and scope | A new standalone name, not under `@dynamic-entity`: **`sheet-to-schema`**. *(Named by the owner on 2026-10-11, and confirmed on 2026-10-12.)* It is **one package**, with a browser-safe main entry and a `/node` subpath. *(Decided 2026-10-12, replacing the five `@sheet-to-schema/*` packages named on 2026-10-11: the DE adapter has to live in `@dynamic-entity/core`, and there is no generic Angular code yet.)* The Phase 4 Angular mapper will be a separate package. Nothing is published to npm, and no tag is created, until the owner says so. |
 | 2 | Re-exports from `@dynamic-entity/core` | Keep deprecated re-exports of moved functions through 3.x; remove in 4.0. |
 | 3 | Legacy-ref alias | Keep `upgradeLegacyRefs` behind the DE adapter's `upgradeRefs` through 3.x, with its warning; remove in 4.0. Correct the 2.3 changelog note that announced removal in 3.0. *(Correction shipped in DE 2.4.0.)* |
 | 4 | Problem codes in DE | Add an optional `code` to `ConfigProblem`, same `{ level, code, path, message }` shape. DE owns `CONFIG_*`; the importer owns `PLAN_*` and `RECORD_*`. Additive, so it ships in **DE 2.4**, before any extraction. *(Shipped in DE 2.4.0; see `docs/de-2.4-problem-codes.md`.)* |
@@ -555,7 +555,7 @@ Nothing. The one open question, the package name, is closed:
 
 - [x] **The package name:** `sheet-to-schema` (Decision 1). On 2026-10-11 the name returned 404 from the npm registry, as did the spellings npm treats as the same name (`sheettoschema`, `sheet_to_schema`, `sheet.to.schema`).
 
-**Before anything is published** (not a question for this spec, recorded so it is not lost): Phase 2's packages are scoped, so the `@sheet-to-schema` organisation has to exist on npm and belong to the owner. Whether it is free could not be read from here. Neither the name nor the scope is reserved until the owner claims it.
+**Before anything is published** (not a question for this spec, recorded so it is not lost): the name `sheet-to-schema` is not reserved until the owner publishes under it. The package is unscoped (Decision 1), so no npm organisation is needed for it. The Phase 4 mapper's name is not chosen.
 
 **Later** (not v2, recorded so they are not lost)
 
@@ -752,3 +752,10 @@ A `custom` kind reaching `coerceValue` throws (§7).
 - **DE 2.5.0** no longer reads a date such as `05/09/2026` month first. It is an error unless the import states `dateOrder`, on `ApplyMappingOptions`, `RunImportOptions`, the router's options, or `ImportContext`. `MappingPlan` is unchanged in 2.x. The detail is in `docs/de-date-order-issue.md` and the changelog.
 - **Decision 14's last sentence is out of date.** It said DE's month-first reading was unchanged and tracked in that note. It is now fixed in 2.5.0.
 - **The DE adapter's context gains `dateOrder`,** `{ lang?, decimal?, dateOrder?, stamp? }`, and passes it to `coerceCell`, so the adapter stays at parity with `applyMapping`. A v2 entry's own `dateOrder` still has no effect on a DE target, whose kind is `custom`: connecting the two is part of the moves.
+
+**2026-10-12: the Phase 2 plan is approved.** `docs/phase2-plan.md` holds the plan and the owner's decisions on it. Those that change this spec:
+- **Decision 1** is one package with a `/node` subpath, not five scoped packages.
+- **Package boundaries.** `@dynamic-entity/core` takes a real dependency on `sheet-to-schema`, exact for release candidates and `^1.0.0` at 3.0.0 final. `exceljs` and `busboy` are optional peers of `sheet-to-schema` and normal dependencies of `@dynamic-entity/server`.
+- **§7 will change in Phase 2's commit 2.8:** `coerce` gains an optional fourth argument, `{ dateOrder?, split?, decimal? }`, resolved by the engine as plan entry, then run options, then default.
+- **§5's streaming runner is Phase 3.** Until then `runImport` refuses a plan with `group` before reading a row, and a 3.0 server still advertises `planVersions: [1, 2]`.
+- **DE's `MappingPlan` becomes the v2 type in 3.0,** with the 2.x shape exported as the deprecated `MappingPlanV1`.
