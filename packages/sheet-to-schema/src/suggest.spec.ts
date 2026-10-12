@@ -8,6 +8,7 @@
 import type { ImportTarget, SchemaAdapter, TargetSet } from './adapter.types';
 import { matchSlot, slotKey, slotPatterns } from './header-grammar';
 import { DEFAULT_SLOTS, slotsFor, suggestMapping } from './suggest';
+import { validatePlan } from './validate-plan';
 
 interface ArraySpec {
   id: string;
@@ -279,5 +280,113 @@ describe('suggestMapping — date order, from sample rows', () => {
   it('sets none without a sample', () => {
     expect(Object.values(orders())).toEqual([undefined, undefined, undefined, undefined, undefined]);
     expect(suggestMapping(HEADERS, dated).entries.every(entry => !('dateOrder' in entry))).toBe(true);
+  });
+});
+
+describe('suggestMapping — one item per row, from sample rows', () => {
+  const ORDERS = people(
+    [['orderId', 'Order ID'], ['email', 'Email'], ['shipTo', 'shipTo']],
+    [
+      { id: 'items', label: 'Items', children: [['sku', 'SKU'], ['qty', 'Qty'], ['productName', 'productName']] },
+      { id: 'phones', label: 'Phones', children: [['number', 'Number']] },
+    ],
+  );
+  const HEADERS = ['Order ID', 'Email', 'Phone 1', 'Phone 2', 'SKU', 'Qty', 'Product'];
+  const SAMPLE = [
+    ['A1', 'a@example.com', '111', '222', 'S1', '1', 'Kurti'],
+    ['A1', 'a@example.com', '111', '222', 'S2', '2', 'Dupatta'],
+    ['A2', 'b@example.com', '333', '', 'S3', '1', 'Shirt'],
+  ];
+  const byHeader = (plan: { entries: { header?: string; ref: string }[] }) => Object.fromEntries(plan.entries.map(entry => [entry.header, entry.ref]));
+
+  it('maps an array no header numbers to item refs, and collects it under an id column that repeats', () => {
+    const plan = suggestMapping(HEADERS, ORDERS, { sample: SAMPLE });
+    expect(byHeader(plan)).toEqual({
+      'Order ID': 'orderId',
+      Email: 'email',
+      'Phone 1': 'phones.0.number',
+      'Phone 2': 'phones.1.number',
+      SKU: 'items.sku',
+      Qty: 'items.qty',
+      Product: 'items.productName',
+    });
+    expect(plan.group).toEqual({ key: [0], collect: ['items'], contiguous: true });
+    // Read from the sheet's shape, not from a header that says so: every one is a guess.
+    expect(plan.entries.filter(entry => entry.ref.startsWith('items.')).map(entry => entry.confidence)).toEqual(['guess', 'guess', 'guess']);
+    expect(validatePlan(plan, ORDERS)).toEqual([]);
+  });
+
+  it('suggests exactly what it did before when given no sample: no item refs, no group', () => {
+    const plan = suggestMapping(HEADERS, ORDERS);
+    expect(byHeader(plan)).toEqual({ 'Order ID': 'orderId', Email: 'email', 'Phone 1': 'phones.0.number', 'Phone 2': 'phones.1.number' });
+    expect(plan).not.toHaveProperty('group');
+  });
+
+  it('proposes no group when no id-like column repeats, and gives each row one item in slot 0', () => {
+    const plan = suggestMapping(HEADERS, ORDERS, { sample: [SAMPLE[0], SAMPLE[2]] });
+    expect(plan).not.toHaveProperty('group');
+    expect(byHeader(plan)).toMatchObject({ SKU: 'items.0.sku', Qty: 'items.0.qty', Product: 'items.0.productName' });
+    expect(validatePlan(plan, ORDERS)).toEqual([]);
+  });
+
+  it('takes the key only from a column outside any array, with an id-like name, whose values repeat', () => {
+    // Email repeats but is not id-like; "Phone Number" is id-like and repeats but is inside an array.
+    const headers = ['Email', 'Phone Number 1', 'Order ID', 'SKU'];
+    const sample = [['a@example.com', '111', 'A1', 'S1'], ['a@example.com', '111', 'A1', 'S2']];
+    expect(suggestMapping(headers, ORDERS, { sample }).group).toEqual({ key: [2], collect: ['items'], contiguous: true });
+    expect(suggestMapping(['Email', 'Phone Number 1', 'SKU'], ORDERS, { sample: sample.map(row => [row[0], row[1], row[3]]) })).not.toHaveProperty('group');
+  });
+
+  it.each(['id', 'no', 'number', 'code', 'key', 'ref'])('reads "Order %s" as id-like', word => {
+    const adapter = people([['orderId', `Order ${word}`]], [{ id: 'items', label: 'Items', children: [['sku', 'SKU']] }]);
+    expect(suggestMapping([`Order ${word}`, 'SKU'], adapter, { sample: [['A1', 'S1'], ['A1', 'S2']] }).group?.key).toEqual([0]);
+  });
+
+  it('does not count blank key cells as a repeat', () => {
+    const sample = [['', 'a@example.com', '', '', 'S1', '1', 'Kurti'], ['', 'b@example.com', '', '', 'S2', '2', 'Shirt'], ['A3', '', '', '', 'S3', '1', 'Tee']];
+    expect(suggestMapping(HEADERS, ORDERS, { sample })).not.toHaveProperty('group');
+  });
+
+  it('leaves an array out of the group when the sheet has no column for it', () => {
+    const plan = suggestMapping(['Order ID', 'Email'], ORDERS, { sample: [['A1', 'a@example.com'], ['A1', 'a@example.com']] });
+    expect(plan).not.toHaveProperty('group');
+    expect(byHeader(plan)).toEqual({ 'Order ID': 'orderId', Email: 'email' });
+  });
+
+  it('reads the generated heading, the item ref, and the array name before a child', () => {
+    const headers = ['Order ID', 'Items / SKU', 'items.qty', 'Item Product Name'];
+    const plan = suggestMapping(headers, ORDERS, { sample: [['A1', 'S1', '1', 'Kurti'], ['A1', 'S2', '2', 'Shirt']] });
+    expect(byHeader(plan)).toEqual({ 'Order ID': 'orderId', 'Items / SKU': 'items.sku', 'items.qty': 'items.qty', 'Item Product Name': 'items.productName' });
+    expect(plan.group?.collect).toEqual(['items']);
+  });
+
+  it('matches a leftover header by its words, only when one target and one header fit each other', () => {
+    // "To Ship" has the words of shipTo, in another order. "Product" has one of productName's two.
+    const one = suggestMapping(['Order ID', 'To Ship', 'Product'], ORDERS, { sample: [['A1', 'Home', 'Kurti'], ['A1', 'Home', 'Shirt']] });
+    expect(byHeader(one)).toEqual({ 'Order ID': 'orderId', 'To Ship': 'shipTo', Product: 'items.productName' });
+    expect(one.entries.find(entry => entry.header === 'To Ship')?.confidence).toBe('guess');
+    // Two headers that both fit productName: neither is taken.
+    const two = suggestMapping(['Order ID', 'Product', 'Name'], ORDERS, { sample: [['A1', 'Kurti', 'x'], ['A1', 'Shirt', 'y']] });
+    expect(byHeader(two)).toEqual({ 'Order ID': 'orderId' });
+  });
+
+  it('never matches a numbered slot by words: a slot needs its number', () => {
+    const adapter = people([['orderId', 'Order ID']], [{ id: 'phones', label: 'Phones', children: [['mobileNumber', 'mobileNumber']] }]);
+    // "Phones 1 …" numbers the array, so it stays numbered columns; "Mobile" names no slot.
+    const plan = suggestMapping(['Order ID', 'Phones 1 Mobile Number', 'Mobile'], adapter, { sample: [['A1', '111', '222'], ['A1', '111', '222']] });
+    expect(byHeader(plan)).toEqual({ 'Order ID': 'orderId', 'Phones 1 Mobile Number': 'phones.0.mobileNumber' });
+    expect(plan).not.toHaveProperty('group');
+  });
+
+  it('infers the date order of an item column too', () => {
+    const adapter: SchemaAdapter<null> = {
+      ...ORDERS,
+      targets: options => {
+        const set = ORDERS.targets(options);
+        return { ...set, targets: set.targets.map(t => (t.shapeRef === 'items.qty' ? { ...t, value: { kind: 'date' } } : t)) };
+      },
+    };
+    const plan = suggestMapping(['Order ID', 'Qty'], adapter, { sample: [['A1', '31/08/2026'], ['A1', '01/09/2026']] });
+    expect(plan.entries.find(entry => entry.ref === 'items.qty')).toMatchObject({ dateOrder: 'DMY', confidence: 'guess' });
   });
 });

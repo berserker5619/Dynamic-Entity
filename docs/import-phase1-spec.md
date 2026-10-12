@@ -336,7 +336,14 @@ export function applyMapping<M, C>(
 export function coerceValue(kind: ValueKind, raw: unknown, opts?: { decimal?: '.' | ','; split?: string; dateOrder?: 'DMY' | 'MDY' | 'YMD' }): CoerceOutcome;
 ```
 
-`suggestMapping` derives `slots` from the headers (§6), then returns a v2 plan. `applyMapping` calls `readPlan` and `validatePlan` itself; callers MAY call them earlier to fail fast. `firstRowNumber` defaults to 2, because the header is sheet row 1.
+`suggestMapping` derives `slots` from the headers (§6), then returns a v2 plan. **Without `sample` it MUST suggest exactly what 2.3 does.** With `sample` (data rows of the sheet; a preview's first few are enough) it also reads what only the data shows, and every such suggestion is `confidence: 'guess'`:
+
+- **One item per row.** An array of objects that no header numbers is offered one item per row. Its children are matched by their own names, by the array's name before them (`Item SKU`), by the generated heading without its number, and by shape ref, and are mapped by shape ref (`items.sku`). An array with at least one child mapped this way is proposed in `group.collect`. An array any header numbers stays numbered columns.
+- **The group key.** `group.key` is one column: the first, in sheet order, that is mapped to a target outside any array, has an id-like name (one of the words `id`, `no`, `number`, `code`, `key`, `ref`), and whose non-blank sample values repeat. With no such column no group is proposed, and each one-per-row child is mapped to slot 0 instead (`items.0.sku`): one record per row, with one item.
+- **Words.** A header still unmapped is matched by its words (`Product` for `productName`, `First Name` for `name.first`): all of the header's words among the words of a target's `matchKeys` or of its shape ref, or the reverse. Only when exactly one free target fits the header and exactly one free header fits that target. A numbered slot is never matched this way.
+- **Date order,** as given under "Generic coercion" below.
+
+No sample means no group, no item refs and no `dateOrder`. `applyMapping` calls `readPlan` and `validatePlan` itself; callers MAY call them earlier to fail fast. `firstRowNumber` defaults to 2, because the header is sheet row 1.
 
 **Generic coercion** (`coerceValue`), lifted from today's `coerceCell` and `coerceTypedCell`. `null`, `undefined` and blank text are always "no value".
 
@@ -701,3 +708,11 @@ A `custom` kind reaching `coerceValue` throws (§7).
   - the Phase 2 gate's acceptance item now allows that one removal, besides the additive fields;
   - core's adapter parity spec states it, and takes exactly those second reports out of 2.x's errors before comparing.
 - **Not changed, and left for the owner:** a group warning (`RECORD_GROUP_CONFLICT`) still carries every row of the record. The prototype's own warning names only the row that disagreed.
+
+**2026-10-12: `suggestMapping` reads a sample (owner's decision 4, a Phase 1 requirement).** On the order fixture the suggestion left `SKU`, `Product`, `Qty` and `Unit Price` unmapped and proposed no group: every slot of `items` answered to `SKU`, so the ambiguity guard matched none, and nothing in the headers says rows repeat. §8 now states what a sample adds.
+- **As decided:** an object array with no numbered headers gets item-level refs and goes in `group.collect`; `group.key` comes from an id-like column outside any array whose values repeat; all of it is `guess`; no sample, no group.
+- **Three things the decision did not settle,** chosen here and open to the owner:
+  - **Matching by words.** `Product` does not normalise to `productName`, so the prototype's own binding could not be reproduced by the 2.3 grammar. A third pass matches a leftover header by its words, when one target and one header fit each other. It runs only with a sample, so the rule "without a sample, exactly 2.3" holds. The prototype goes further, with a similarity score; that was not copied.
+  - **No key found.** Item refs are only valid inside a group, so with nothing to group under they are written to slot 0.
+  - **Several candidates for the key:** the first in sheet order.
+- **Both fixtures now reproduce the prototype's bindings and group key** from headers and sample rows alone. The order sheet's date column gets `dateOrder: 'DMY'` from its `31/09/2026`. The student sheet's dates show no order, so its suggested plan refuses them until `DMY` is set by hand.

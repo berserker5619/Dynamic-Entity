@@ -105,3 +105,21 @@ export function targetSlotPatterns(target: ImportTarget, childCount: ReadonlyMap
   patterns.push(`${normalizeHeader(heading)}${SLOT}`, `${normalizeHeader(target.arrayRef)}${SLOT}${normalizeHeader(tail)}`);
   return patterns;
 }
+
+/**
+ * How one child of a repeating field is headed when its rows are not numbered: one item per
+ * sheet row. The slot patterns with the number taken out, so `Item SKU` and `SKU` both name
+ * `items.sku`.
+ */
+export function itemPatterns(target: ImportTarget, childCount: ReadonlyMap<string, number>): string[] {
+  return [...new Set(targetSlotPatterns(target, childCount).map(pattern => pattern.replace(SLOT, '')))];
+}
+
+/** The words of a header or a name: `productName`, `Product Name` and `product_name` are `product`, `name`. */
+export function wordsOf(text: string): string[] {
+  return String(text ?? '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
