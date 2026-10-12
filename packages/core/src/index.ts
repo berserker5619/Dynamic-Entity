@@ -233,6 +233,7 @@ export type {
   ApplyMappingOptions,
   CoerceOptions,
   CoerceOutcome,
+  DateOrder,
   ImportLookups,
   RecordProblem,
   ValidateRecordOptions,

@@ -287,3 +287,30 @@ describe('LocalImportTransport with a typed parser', () => {
     expect(preview.sample).toEqual([['2024-03-07', '1234.5', 'true']]);
   });
 });
+
+/** The order of a date written in digits (2.5.0): stated on the context, never guessed. */
+describe('LocalImportTransport — a date written in digits', () => {
+  const DATED: EntityFormConfig = {
+    entity: 'people',
+    tabs: [{ id: 'main', label: { en: 'Main' }, flatData: true, fields: [{ id: 'born', type: 'date', label: { en: 'Born' } }] }],
+  };
+  const plan: MappingPlan = { entity: 'people', entries: [{ ref: 'born', column: 0 }] };
+  const commit = (dateOrder?: 'DMY' | 'MDY' | 'YMD') => {
+    return TestBed.inject(LocalImportTransport).commit(csvFile('p.csv', 'Born\n05/09/2026\n2026-09-06\n'), plan, {
+      config: DATED,
+      lang: 'en',
+      ...(dateOrder ? { dateOrder } : {}),
+    });
+  };
+
+  it('fails a row whose date reads two ways when the context states no order', async () => {
+    const result = await commit();
+    expect(result.records.map(record => record['born'])).toEqual(['2026-09-06']);
+    expect(result.errors).toEqual([expect.objectContaining({ row: 2, ref: 'born', message: expect.stringContaining('date order') })]);
+  });
+
+  it('reads it in the order the context states', async () => {
+    expect((await commit('DMY')).records.map(record => record['born'])).toEqual(['2026-09-05', '2026-09-06']);
+    expect((await commit('MDY')).records.map(record => record['born'])).toEqual(['2026-05-09', '2026-09-06']);
+  });
+});

@@ -56,10 +56,10 @@ function both(
   options: ApplyMappingOptions = {},
   adapterOptions: EntityFormConfigAdapterOptions = {},
 ) {
-  const { lang, decimal, stamp, rules, lookups } = options;
+  const { lang, decimal, dateOrder, stamp, rules, lookups } = options;
   const old = applyMapping(rows, plan as MappingPlan, config, options);
   const adapter = entityFormConfigAdapter(config, { rules, lookups, ...adapterOptions });
-  const neu = applyGeneric(rows, plan, adapter, { lang, decimal, stamp });
+  const neu = applyGeneric(rows, plan, adapter, { lang, decimal, dateOrder, stamp });
   return { old, neu };
 }
 
@@ -436,6 +436,16 @@ describe('entityFormConfigAdapter — parity, case by case', () => {
       // Nothing was typed for the city, which is what required means.
       ['city', 'RECORD_REQUIRED'],
     ]);
+  });
+
+  it('reads a slash date in the order the run states, and refuses one it would have to guess', () => {
+    const config = configWith({ id: 'born', type: 'date', label: { en: 'Born' } });
+    const plan = planFor(['name', 'born']);
+    expect(expectParity([['Ada', '05/09/2026']], plan, config, { dateOrder: 'DMY', stamp: false }).neu.records).toEqual([{ name: 'Ada', born: '2026-09-05' }]);
+    expect(expectParity([['Ada', '05/09/2026']], plan, config, { dateOrder: 'MDY', stamp: false }).neu.records).toEqual([{ name: 'Ada', born: '2026-05-09' }]);
+    const { neu } = expectParity([['Ada', '05/09/2026']], plan, config, { stamp: false });
+    expect(neu.records).toEqual([]);
+    expect(neu.errors.map(e => [e.ref, e.code])).toEqual([['born', 'CELL_FORMAT']]);
   });
 
   it('takes a typed constant as it is, and a text one through the field', () => {

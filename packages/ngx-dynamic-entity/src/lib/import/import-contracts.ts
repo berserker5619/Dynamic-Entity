@@ -17,6 +17,7 @@ import type {
   CsvDelimiter,
   EntityFormConfig,
   FormRule,
+  DateOrder,
   ImportLookups,
   ImportResult,
   MappingPlan,
@@ -74,6 +75,15 @@ export interface ImportContext {
   /** Values for any `listName` field, already resolved — core cannot reach `LOOKUP_REGISTRY`. */
   lookups?: ImportLookups;
   lang?: string;
+  /**
+   * The order of a date written in digits, such as `05/09/2026`: `DMY` for day first, `MDY`
+   * for month first. Without it, a date that reads two ways fails its row; it is never guessed.
+   *
+   * The local transport reads cells with it. A server transport reads with whatever its own
+   * router was given, so state the same order on both, or the review step shows one reading
+   * and the server stores another.
+   */
+  dateOrder?: DateOrder;
 }
 
 /** What a first look at an uploaded file yields. */

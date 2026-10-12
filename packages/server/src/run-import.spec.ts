@@ -742,3 +742,38 @@ describe('delimited text that is not comma-separated', () => {
     ).rejects.toMatchObject({ code: 'SHEET_TOO_LARGE' });
   });
 });
+
+/**
+ * The order of a date written in digits (2.5.0, docs/de-date-order-issue.md). Until then
+ * 05/09/2026 was read month first, with no error.
+ */
+describe('runImport — a date written in digits', () => {
+  const DATED = 'First Name,Age,Start Date,Active,Status\nAda,30,05/09/2026,yes,Active\nBo,31,2026-09-06,yes,Active\n';
+  const importDated = async (dateOrder?: 'DMY' | 'MDY' | 'YMD') => {
+    const records: Record<string, unknown>[] = [];
+    const result = await runImport({
+      stream: chunked(DATED, 16),
+      plan: PLAN,
+      config: CONFIG,
+      lookups: LOOKUPS,
+      ...(dateOrder ? { dateOrder } : {}),
+      onBatch: batch => {
+        records.push(...batch);
+      },
+    });
+    return { result, dates: records.map(record => (record['personal'] as Record<string, unknown>)['startDate']) };
+  };
+
+  it('fails a row whose date reads two ways, and imports the rest', async () => {
+    const { result, dates } = await importDated();
+    expect(dates).toEqual(['2026-09-06']);
+    expect(result).toMatchObject({ imported: 1, failed: 1 });
+    expect(result.errors).toEqual([expect.objectContaining({ row: 2, ref: 'personal.startDate', message: expect.stringContaining('date order') })]);
+  });
+
+  it('reads it day first or month first when told which', async () => {
+    expect((await importDated('DMY')).dates).toEqual(['2026-09-05', '2026-09-06']);
+    expect((await importDated('MDY')).dates).toEqual(['2026-05-09', '2026-09-06']);
+    expect((await importDated('DMY')).result.errors).toEqual([]);
+  });
+});

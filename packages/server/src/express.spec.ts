@@ -744,3 +744,32 @@ describe('createImportRouter — entity names that are Object.prototype keys', (
     });
   }
 });
+
+describe('createImportRouter — dateOrder', () => {
+  const DATED = 'First Name,Age,Start Date,Active,Status\nAda,30,05/09/2026,yes,Active\n';
+  const post = (overrides: Parameters<typeof app>[0], written: Record<string, unknown>[], route = 'import') =>
+    request(app(overrides, written)).post(`/import/employee/${route}`).field('plan', JSON.stringify(PLAN)).attach('file', Buffer.from(DATED), 'people.csv');
+
+  it('fails a date that reads two ways when the router states no order', async () => {
+    const written: Record<string, unknown>[] = [];
+    const response = await post({}, written);
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ imported: 0, failed: 1 });
+    expect(response.body.errors[0].message).toContain('date order');
+    expect(written).toEqual([]);
+  });
+
+  it('reads every import in the order the router states, and validates the same way', async () => {
+    const written: Record<string, unknown>[] = [];
+    const response = await post({ dateOrder: 'DMY' }, written);
+    expect(response.body).toMatchObject({ imported: 1, failed: 0, errors: [] });
+    expect(written[0]).toMatchObject({ personal: { startDate: '2026-09-05' } });
+
+    const monthFirst: Record<string, unknown>[] = [];
+    await post({ dateOrder: 'MDY' }, monthFirst);
+    expect(monthFirst[0]).toMatchObject({ personal: { startDate: '2026-05-09' } });
+
+    const validated = await post({ dateOrder: 'DMY' }, [], 'validate');
+    expect(validated.body).toMatchObject({ failed: 0, errors: [] });
+  });
+});

@@ -22,6 +22,7 @@ import {
   type EntityFormConfig,
   type FormRule,
   type ImportCommitResponse,
+  type DateOrder,
   type ImportLookups,
   type ImportPreviewResponse,
 } from '@dynamic-entity/core';
@@ -66,6 +67,12 @@ export interface ImportRouterOptions {
   rules?: Record<string, readonly FormRule[]>;
   /** Values for every `listName` any config mentions. A server has no `LOOKUP_REGISTRY`. */
   lookups?: ImportLookups;
+  /**
+   * The order of a date written in digits, for every import and validation this router runs:
+   * `DMY` for day first, `MDY` for month first. Without it, a date that reads two ways
+   * (`05/09/2026`) fails its row. See `RunImportOptions.dateOrder`.
+   */
+  dateOrder?: DateOrder;
   /**
    * Where records go.
    *
@@ -404,6 +411,7 @@ export function createImportRouter(options: ImportRouterOptions): Router {
       config,
       rules: routerOptions.rules && ownValue(routerOptions.rules, entity),
       lookups: routerOptions.lookups,
+      dateOrder: routerOptions.dateOrder,
       lang: language(request),
       limits: resolved,
       onBatch: write && ((records, info) => write(records, info, entity, config)),

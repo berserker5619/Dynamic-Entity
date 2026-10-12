@@ -89,7 +89,22 @@ export interface CoerceOptions {
    * error at all, so a transport that detected `;` passes `,` here.
    */
   decimal?: '.' | ',';
+  /**
+   * The order of a date written in digits, such as `05/09/2026`: `DMY` for day first, `MDY` for
+   * month first.
+   *
+   * Without it, a date that reads two ways (both of its first two parts are 12 or less) is an
+   * error, never a guess. Until 2.5.0 such a date went to `Date`, which reads month first, so
+   * a sheet of day-first dates imported as the wrong days with no error. State `MDY` to keep
+   * reading them as before. `YMD` says the sheet is year first, so a date that is not is an
+   * error. An ISO date (`2026-09-05`), a typed date cell, and a date only one order fits are
+   * read exactly as they always were, whatever is stated here.
+   */
+  dateOrder?: DateOrder;
 }
+
+/** The order of the parts in a date written in digits. */
+export type DateOrder = 'DMY' | 'MDY' | 'YMD';
 
 /** A coerced cell, or the reason it could not be coerced. */
 export type CoerceOutcome = { value: unknown } | { error: string };
@@ -248,6 +263,53 @@ const BARE_DATE = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
  */
 const UTC_INSTANT = /^\d{4}-\d{2}-\d{2}T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?Z$/;
 
+/**
+ * A date written in digits that is not year first: `05/09/2026`, `5-9-26`, `05.09.2026`,
+ * alone or leading a date and time. The year-first forms never read two ways, and are not this.
+ */
+const SLASH_DATE = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{1,4})(?![\d/.-])/;
+
+/** What a cell's own text says to do about a date written in digits. */
+type SlashDate =
+  /** It is not one: read the text the way it always was. */
+  | { read: 'as-before' }
+  /** Both orders fit, and none was stated. */
+  | { read: 'ambiguous' }
+  /** An order was stated: these are its parts, or `null` when it names no date in that order. */
+  | { read: 'stated'; date: { year: number; month: number; day: number } | null; rest: string };
+
+/**
+ * Decide how a date written in digits is read (2.5.0).
+ *
+ * `Date` reads `05/09/2026` as 9 May, whatever the sheet meant, and says nothing. So:
+ * - with `order` stated, the parts are read in that order, and never through `Date`. The year
+ *   must have four digits, because choosing a century is a guess of the same kind;
+ * - with none stated, a date both orders fit is ambiguous, and is refused;
+ * - anything else is left to the reading it always had.
+ */
+function readSlashDate(text: string, order: DateOrder | undefined): SlashDate {
+  const match = SLASH_DATE.exec(text);
+  if (!match) return { read: 'as-before' };
+  const first = Number(match[1]);
+  const second = Number(match[2]);
+  const rest = text.slice(match[0].length);
+
+  if (!order) return first <= 12 && second <= 12 ? { read: 'ambiguous' } : { read: 'as-before' };
+  if (order === 'YMD' || match[3].length !== 4) return { read: 'stated', date: null, rest };
+
+  const year = Number(match[3]);
+  const [day, month] = order === 'DMY' ? [first, second] : [second, first];
+  // Built in UTC purely to check the day exists; no local time is ever consulted.
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  const real = probe.getUTCFullYear() === year && probe.getUTCMonth() === month - 1 && probe.getUTCDate() === day;
+  return { read: 'stated', date: real ? { year, month, day } : null, rest };
+}
+
+/** The error for a date that reads two ways. Shared, so every field type words it alike. */
+const ambiguousDate = (text: string): CoerceOutcome => ({
+  error: `"${text}" could be day first or month first; state the import's date order (dateOrder: 'DMY' or 'MDY')`,
+});
+
 /** A number as a spreadsheet writes one, including 3-digit grouping and exponents. */
 const NUMERIC = /^[+-]?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
 
@@ -292,8 +354,15 @@ function parseNumberText(text: string, decimal: '.' | ',' = '.'): number | null 
  *
  * Returns `null` when the text is not a date at all, including a well-formed impossible one
  * like `2024-02-30`, which `Date` would silently roll forward to March.
+ *
+ * Returns `'ambiguous'` for a date written in digits that reads two ways when no `order` is
+ * stated (`readSlashDate`). That is the one spelling `Date` must not be handed: it reads
+ * `05/09/2026` month first and reports nothing.
  */
-function parseCalendarDate(text: string): { year: number; month: number; day: number } | null {
+function parseCalendarDate(
+  text: string,
+  order?: DateOrder,
+): { year: number; month: number; day: number } | 'ambiguous' | null {
   const bare = BARE_DATE.exec(text);
   if (bare) {
     const year = Number(bare[1]);
@@ -307,6 +376,11 @@ function parseCalendarDate(text: string): { year: number; month: number; day: nu
       probe.getUTCDate() === day;
     return real ? { year, month, day } : null;
   }
+
+  const slash = readSlashDate(text, order);
+  if (slash.read === 'ambiguous') return 'ambiguous';
+  // A date field holds a date: anything after it in a stated order is not one.
+  if (slash.read === 'stated') return slash.rest === '' ? slash.date : null;
 
   const parsed = new Date(text);
   if (Number.isNaN(parsed.getTime())) return null;
@@ -439,7 +513,8 @@ export function coerceCell(
     }
 
     case 'date': {
-      const parsed = parseCalendarDate(text);
+      const parsed = parseCalendarDate(text, options.dateOrder);
+      if (parsed === 'ambiguous') return ambiguousDate(text);
       if (!parsed) return { error: `"${text}" is not a date` };
       return { value: `${parsed.year}-${pad2(parsed.month)}-${pad2(parsed.day)}` };
     }
@@ -447,7 +522,15 @@ export function coerceCell(
     // The one field here that genuinely *is* an instant, so it is the one that may go through
     // `Date` and come back as UTC.
     case 'datetime': {
-      const parsed = new Date(text);
+      // Unless its date is written in digits: `Date` would read that month first.
+      const slash = readSlashDate(text, options.dateOrder);
+      if (slash.read === 'ambiguous') return ambiguousDate(text);
+      if (slash.read === 'stated' && !slash.date) return { error: `"${text}" is not a date and time` };
+      // `Date` reads digits month first, so it is handed the stated date that way round and
+      // reads the rest of the cell, the time and all its spellings, exactly as it always did.
+      const parsed = new Date(
+        slash.read === 'stated' && slash.date ? `${slash.date.month}/${slash.date.day}/${slash.date.year}${slash.rest}` : text,
+      );
       if (Number.isNaN(parsed.getTime())) return { error: `"${text}" is not a date and time` };
       return { value: parsed.toISOString() };
     }
@@ -461,7 +544,8 @@ export function coerceCell(
       }
       // A full date given to a month field goes through the same calendar reader, so it does
       // not shift a month at the turn of one.
-      const parsed = parseCalendarDate(text);
+      const parsed = parseCalendarDate(text, options.dateOrder);
+      if (parsed === 'ambiguous') return ambiguousDate(text);
       if (!parsed) return { error: `"${text}" is not a month and year` };
       return { value: `${parsed.year}-${pad2(parsed.month)}` };
     }

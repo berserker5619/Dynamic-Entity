@@ -278,6 +278,11 @@ will name their zip `.csv`.
   comma-separated, so Excel in those locales opens them as one column — offer `xlsx` there.
 - **`.xlsx`** — through `exceljs`. Cells keep their types: a date cell arrives as a `Date` at
   UTC midnight and is read as the calendar date it is, in every timezone.
+- **Dates written as text.** `2026-09-05` is always read as written. A date in digits such as
+  `05/09/2026` reads two ways, so it is an error unless you say which: pass
+  `dateOrder: 'DMY'` (day first) or `'MDY'` (month first) to `createImportRouter` or
+  `runImport`. It is never guessed. Releases before 2.5.0 read it month first without
+  saying so; see the changelog if your sheets are day first.
 - A pre-2007 `.xls` and a UTF-16 file are **named** rather than parsed into nonsense.
 
 ---

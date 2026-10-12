@@ -40,7 +40,7 @@ import {
   deriveImportColumns,
   legacyRefAliases,
 } from './import-columns';
-import { coerceCell, recordShaper, validateImportedRecordCoded, type ImportLookups } from './import-engine';
+import { coerceCell, recordShaper, validateImportedRecordCoded, type DateOrder, type ImportLookups } from './import-engine';
 import { stampRecord } from './migration';
 
 export interface EntityFormConfigAdapterOptions {
@@ -63,6 +63,8 @@ export interface EntityImportContext {
   lang?: string;
   /** The decimal mark text numbers use. Default `.`. */
   decimal?: '.' | ',';
+  /** The order of a date written in digits. Without it one that reads two ways is an error (`CoerceOptions`). */
+  dateOrder?: DateOrder;
   /** Stamp each record with the config's version. Default `true`. */
   stamp?: boolean;
 }
@@ -162,7 +164,7 @@ export function entityFormConfigAdapter(
     },
 
     coerce(target, raw, ctx): ImporterCoerceOutcome {
-      const outcome = coerceCell(target.meta, raw, { lang: ctx.lang, lookups: options.lookups, decimal: ctx.decimal });
+      const outcome = coerceCell(target.meta, raw, { lang: ctx.lang, lookups: options.lookups, decimal: ctx.decimal, dateOrder: ctx.dateOrder });
       if (!('error' in outcome)) return outcome;
       // An option field fails only by naming no option, unless the cell was a broken date.
       const unknownOption = OPTION_TYPES.has(target.meta.type) && !(raw instanceof Date);

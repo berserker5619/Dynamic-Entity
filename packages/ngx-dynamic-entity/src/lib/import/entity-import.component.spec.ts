@@ -278,6 +278,33 @@ describe('EntityImportComponent', () => {
     ).toContain('700');
   });
 
+  it('tells the transport the date order the host states, at preview and at commit', async () => {
+    const seen: (string | undefined)[] = [];
+    const fake: ImportTransport = {
+      preview: async (_file, context) => {
+        seen.push(context.dateOrder);
+        return { headers: ['First Name'], sample: [['Alice']], rowCount: 1, suggestion: { entity: 'employees', entries: [{ ref: 'personal.firstName', column: 0 }] } };
+      },
+      commit: async (_file, _plan, context) => {
+        seen.push(context.dateOrder);
+        return { records: [{}], errors: [], skipped: 0, planProblems: [] };
+      },
+      template: async () => new Blob(),
+    };
+
+    await mount([{ provide: IMPORT_TRANSPORT, useValue: fake }]);
+    fixture.componentRef.setInput('dateOrder', 'DMY');
+    fixture.detectChanges();
+    await chooseFile(csvFile('p.csv', 'ignored'));
+    fixture.nativeElement.querySelector('[data-testid="import-to-review"]').click();
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="import-commit"]').click();
+    await fixture.whenStable();
+    await settle();
+
+    expect(seen).toEqual(['DMY', 'DMY']);
+  });
+
   it('drives a registered transport instead of the local one', async () => {
     const calls: string[] = [];
     const fake: ImportTransport = {

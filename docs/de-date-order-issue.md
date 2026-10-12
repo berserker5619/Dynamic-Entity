@@ -1,7 +1,9 @@
 # Dynamic Entity reads slash dates month first, without saying so
 
-Status: open, found 2026-10-12. Not fixed. This note describes the behaviour, which releases
-have it, and a proposed fix. The generic importer (`sheet-to-schema`) no longer has it; see
+Status: fixed in Dynamic Entity 2.5.0 (step 1 of the proposal below, made stricter by the
+owner: an ambiguous date is an error at once, not in 3.0). Found 2026-10-12. This note
+describes the behaviour, which releases have it, and the fix as first proposed; "What 2.5.0
+does" at the end says what shipped. The generic importer (`sheet-to-schema`) no longer has it; see
 `docs/import-phase1-spec.md`, "Generic coercion".
 
 ## What happens
@@ -72,9 +74,25 @@ Anyone who has imported a CSV whose dates are written day first should check the
 records: dates on or before the 12th of a month will have day and month swapped. Rows whose
 day was over 12 failed with an error at the time and were not imported.
 
+## What 2.5.0 does
+
+- A date written in digits that reads two ways (both of its first two parts are 12 or less)
+  is an error unless the import states its order. It is no longer read month first.
+- `dateOrder?: 'DMY' | 'MDY' | 'YMD'` is on `CoerceOptions` and `ApplyMappingOptions`,
+  `RunImportOptions`, `ImportRouterOptions`, and `ImportContext` (which is how it reaches
+  `LocalImportTransport`), with a `dateOrder` input on the wizard. It is an option of the
+  import; `MappingPlan` is unchanged in 2.x.
+- Stating `'MDY'` gives exactly the reading every earlier release applied.
+- A date only one order fits, a year-first date, an ISO date and a typed date cell read
+  exactly as before. `import-engine.timezone.spec.ts` holds that against the old algorithm in
+  six timezones.
+- Differences from the proposal: there is no inference from sample rows in DE 2.5.0, and the
+  refusal of an ambiguous date did not wait for 3.0. Per-column order in the plan
+  (`MappingEntry.dateOrder`) is still what 3.0 brings, with the generic engine.
+
 ## Not changed by the generic importer's fix
 
 `entityFormConfigAdapter` reads cells with `coerceCell`, so a DE config imported through the
-generic engine behaves exactly as DE 2.x does, including this. That is deliberate: the
-adapter's contract is parity with 2.x, and changing a date's reading inside it would be a
-silent behaviour change of its own.
+generic engine behaves exactly as DE does. Since 2.5.0 that means the same refusal and the
+same `dateOrder`, which the adapter takes from its run context and passes on. The adapter's
+contract is parity with DE, so it follows DE's reading and never applies the generic one.

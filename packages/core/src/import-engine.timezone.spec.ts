@@ -191,3 +191,119 @@ describe(`a typed date cell carries no timezone either (TZ=${ZONE}, offset ${OFF
     expect(result.records[0]).toEqual({ tab: { startDate: '2024-03-07' } });
   });
 });
+
+/**
+ * A date written in digits, such as 05/09/2026.
+ *
+ * Until 2.5.0 anything that was not YYYY-MM-DD went to `Date`, which reads month first. A
+ * sheet of day-first dates imported as the wrong days, with no error (docs/de-date-order-issue.md).
+ * A date that reads two ways is now refused unless the import states its order.
+ *
+ * "Exactly as before" is held against `before2_5`, which is what the engine did: `Date`, then
+ * local parts. It is computed in the zone the test runs in, so it is proven in each.
+ */
+describe(`a date written in digits is read in a stated order, or not at all (TZ=${ZONE})`, () => {
+  const DATETIME_FIELD: NestedFieldConfig = { id: 'at', type: 'datetime', label: { en: 'At' } };
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  /** What 2.4.1 and every release before it made of a date cell that was not YYYY-MM-DD. */
+  const before2_5 = (text: string): { value: string } | { error: string } => {
+    const parsed = new Date(text);
+    if (Number.isNaN(parsed.getTime())) return { error: `"${text}" is not a date` };
+    return { value: `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}` };
+  };
+  const refused = { error: expect.stringContaining('date order') };
+
+  it('no longer reads a date that could be either month first', () => {
+    for (const text of ['05/09/2026', '5/9/2026', '5-9-2026', '05.09.2026', '12/12/2026', '01/01/2026', '5/9/26']) {
+      expect(coerceCell(DATE_FIELD, text)).toEqual(refused);
+    }
+    expect(coerceCell(MONTH_FIELD, '05/09/2026')).toEqual(refused);
+    expect(coerceCell(DATETIME_FIELD, '05/09/2026')).toEqual(refused);
+    expect(coerceCell(DATETIME_FIELD, '05/09/2026 10:30')).toEqual(refused);
+    expect(coerceCell(DATETIME_FIELD, '05/09/2026, 10:30 PM')).toEqual(refused);
+  });
+
+  it('reads it in the order the import states', () => {
+    expect(coerceCell(DATE_FIELD, '05/09/2026', { dateOrder: 'DMY' })).toEqual({ value: '2026-09-05' });
+    expect(coerceCell(DATE_FIELD, '05/09/2026', { dateOrder: 'MDY' })).toEqual({ value: '2026-05-09' });
+    expect(coerceCell(DATE_FIELD, '5.9.2026', { dateOrder: 'DMY' })).toEqual({ value: '2026-09-05' });
+    expect(coerceCell(DATE_FIELD, '13/09/2026', { dateOrder: 'DMY' })).toEqual({ value: '2026-09-13' });
+    expect(coerceCell(MONTH_FIELD, '05/09/2026', { dateOrder: 'DMY' })).toEqual({ value: '2026-09' });
+    expect(coerceCell(MONTH_FIELD, '05/09/2026', { dateOrder: 'MDY' })).toEqual({ value: '2026-05' });
+  });
+
+  it('reads a date and time in the stated order, as local time, as a date and time always was', () => {
+    // Built from local parts, so the expectation is the same instant in whichever zone this runs.
+    expect(coerceCell(DATETIME_FIELD, '05/09/2026 10:30', { dateOrder: 'DMY' })).toEqual({ value: new Date(2026, 8, 5, 10, 30).toISOString() });
+    expect(coerceCell(DATETIME_FIELD, '05/09/2026 10:30', { dateOrder: 'MDY' })).toEqual({ value: new Date(2026, 4, 9, 10, 30).toISOString() });
+    expect(coerceCell(DATETIME_FIELD, '05/09/2026', { dateOrder: 'DMY' })).toEqual({ value: new Date(2026, 8, 5).toISOString() });
+    expect(coerceCell(DATETIME_FIELD, '05/09/2026, 10:30 PM', { dateOrder: 'DMY' })).toEqual({ value: new Date(2026, 8, 5, 22, 30).toISOString() });
+    // Stating month first gives exactly what was read before.
+    expect(coerceCell(DATETIME_FIELD, '05/09/2026 10:30', { dateOrder: 'MDY' })).toEqual({ value: new Date('05/09/2026 10:30').toISOString() });
+  });
+
+  it('refuses, in a stated order, a date that does not exist or that the order does not fit', () => {
+    expect(coerceCell(DATE_FIELD, '31/09/2026', { dateOrder: 'DMY' })).toEqual({ error: '"31/09/2026" is not a date' });
+    expect(coerceCell(DATE_FIELD, '09/31/2026', { dateOrder: 'DMY' })).toEqual({ error: '"09/31/2026" is not a date' });
+    expect(coerceCell(DATE_FIELD, '13/09/2026', { dateOrder: 'MDY' })).toEqual({ error: '"13/09/2026" is not a date' });
+    expect(coerceCell(DATE_FIELD, '05/09/2026', { dateOrder: 'YMD' })).toEqual({ error: '"05/09/2026" is not a date' });
+    // No century is chosen for the sheet either.
+    expect(coerceCell(DATE_FIELD, '5/9/26', { dateOrder: 'DMY' })).toEqual({ error: '"5/9/26" is not a date' });
+    expect(coerceCell(DATETIME_FIELD, '31/09/2026 10:30', { dateOrder: 'DMY' })).toEqual({ error: '"31/09/2026 10:30" is not a date and time' });
+    expect(coerceCell(MONTH_FIELD, '31/09/2026', { dateOrder: 'DMY' })).toEqual({ error: '"31/09/2026" is not a month and year' });
+  });
+
+  it.each([
+    '09/13/2026',
+    '9-13-2026',
+    '13/09/2026',
+    '31/09/2026',
+    '2026/09/05',
+    '2026.09.05',
+    'March 7, 2024',
+    '7 Mar 2024',
+    'Sep 5 2026',
+    '13/13/2026',
+    'not a date',
+  ])('reads %s, which is not ambiguous, exactly as before', text => {
+    expect(coerceCell(DATE_FIELD, text)).toEqual(before2_5(text));
+  });
+
+  it('reads an ISO date exactly as before, whatever order is stated', () => {
+    for (const dateOrder of [undefined, 'DMY', 'MDY', 'YMD'] as const) {
+      expect(coerceCell(DATE_FIELD, '2026-09-05', { dateOrder })).toEqual({ value: '2026-09-05' });
+      expect(coerceCell(DATE_FIELD, '2026-9-5', { dateOrder })).toEqual({ value: '2026-09-05' });
+      expect(coerceCell(DATE_FIELD, '2026-02-30', { dateOrder })).toEqual({ error: '"2026-02-30" is not a date' });
+      expect(coerceCell(MONTH_FIELD, '2026-09', { dateOrder })).toEqual({ value: '2026-09' });
+      expect(coerceCell(DATETIME_FIELD, '2026-09-05T10:30:00Z', { dateOrder })).toEqual({ value: '2026-09-05T10:30:00.000Z' });
+      // Year first with slashes was never ambiguous, and still goes the way it went.
+      expect(coerceCell(DATE_FIELD, '2026/09/05', { dateOrder })).toEqual(before2_5('2026/09/05'));
+    }
+  });
+
+  it('reads a typed date cell exactly as before, whatever order is stated', () => {
+    const cell = new Date(Date.UTC(2026, 8, 5));
+    for (const dateOrder of [undefined, 'DMY', 'MDY', 'YMD'] as const) {
+      expect(coerceCell(DATE_FIELD, cell, { dateOrder })).toEqual({ value: '2026-09-05' });
+      expect(coerceCell(MONTH_FIELD, cell, { dateOrder })).toEqual({ value: '2026-09' });
+    }
+  });
+
+  it('carries the order from applyMapping to every row, and fails a row it would have had to guess', () => {
+    const plan = { entity: 'dated', entries: [{ ref: 'tab.startDate', column: 0 }] };
+    const rows = [['05/09/2026'], ['2026-09-06'], ['13/09/2026']];
+    const stated = applyMapping(rows, plan, CONFIG, { dateOrder: 'DMY', stamp: false });
+    expect(stated.errors).toEqual([]);
+    expect(stated.records).toEqual([{ tab: { startDate: '2026-09-05' } }, { tab: { startDate: '2026-09-06' } }, { tab: { startDate: '2026-09-13' } }]);
+
+    const unstated = applyMapping(rows, plan, CONFIG, { stamp: false });
+    expect(unstated.records).toEqual([{ tab: { startDate: '2026-09-06' } }]);
+    expect(unstated.errors.map(error => [error.row, error.ref])).toEqual([
+      [2, 'tab.startDate'],
+      [4, 'tab.startDate'],
+    ]);
+    expect(unstated.errors[0].message).toContain('date order');
+    // Row 4 was never readable month first, and fails with the message it always had.
+    expect(unstated.errors[1].message).toBe('"13/09/2026" is not a date');
+  });
+});

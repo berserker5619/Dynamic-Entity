@@ -8,6 +8,94 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [2.5.0]
+
+### Changed — check your imports of dates
+- **A date like `05/09/2026` is no longer read month first.** It is now an import error
+  unless the import states which order its dates are in. If your sheets write dates day
+  first, records you have already imported may hold the wrong dates: read on.
+
+  **What was wrong.** A date cell that was not written `YYYY-MM-DD` was handed to JavaScript's
+  `Date`, which reads digits month first. So in a sheet of day-first dates, which is how most
+  of the world writes them:
+
+  | Cell | Meant | Was imported as |
+  | --- | --- | --- |
+  | `05/09/2026` | 5 September | `2026-05-09`, 9 May, **with no error** |
+  | `12/01/2026` | 12 January | `2026-12-01`, 1 December, **with no error** |
+  | `13/09/2026` | 13 September | nothing: `"13/09/2026" is not a date` |
+
+  The same reading applied to `monthYear` fields (`05/09/2026` stored as `2026-05`) and to the
+  date in a `datetime` (`05/09/2026 10:30` stored as 9 May, 10:30).
+
+  **Which versions.** Every release that can import: **1.14.0 through 2.4.1**, in the browser
+  wizard and on the server alike.
+
+  **Which cells.** Text only: a CSV file, or a workbook cell formatted as text. A real date
+  cell in an `.xlsx` was always read correctly, and so was `YYYY-MM-DD`.
+
+  **How to find affected records.** Go back to the sheets you imported, not the records: a
+  stored `2026-05-09` does not say what it was read from.
+  1. Open the file and look down each date column. If any cell has a first part over 12
+     (`13/09/2026`, `31/08/2026`), that column is day first.
+  2. In a day-first column, every row whose date has a day of 12 or less was imported with
+     day and month swapped. The one exception is a date whose day equals its month
+     (`05/05/2026`), which reads the same both ways.
+  3. Rows whose day was over 12 are not in your data at all. They failed at the time, with
+     `is not a date`, and were reported in the import's errors.
+  4. If no cell in the column has a first part over 12, the file itself cannot tell you.
+     Ask whoever produced it which way they write dates.
+
+  **How to repair them.** Import the same file again with `dateOrder: 'DMY'` (below). It
+  reads every row correctly, including the ones that failed before. Your `onImport` must
+  overwrite by key for this to correct records in place, which it must already do to be safe
+  to retry. Otherwise, swap the day and month of the affected dates in your store.
+
+  **What you have to do now.** State the order wherever you run an import:
+
+  | Where | How |
+  | --- | --- |
+  | `applyMapping` (`@dynamic-entity/core`) | `applyMapping(rows, plan, config, { dateOrder: 'DMY' })` |
+  | `runImport` (`@dynamic-entity/server`) | `runImport({ …, dateOrder: 'DMY' })` |
+  | `createImportRouter` | `createImportRouter({ …, dateOrder: 'DMY' })`, for every import and validation it runs |
+  | The wizard (`ngx-dynamic-entity`) | `<ngx-entity-import [dateOrder]="'DMY'" … />`, which reaches `LocalImportTransport` through `ImportContext.dateOrder` |
+
+  - `'DMY'` is day first and `'MDY'` is month first. `'YMD'` says the sheet is year first, so
+    a date that is not is an error.
+  - **To keep exactly the reading you had, state `'MDY'`.** That is the fixed order every
+    earlier release applied without saying so. Nothing then changes for a month-first sheet.
+  - With no order stated, a date that reads two ways (both of its first two parts are 12 or
+    less) fails its row: `"05/09/2026" could be day first or month first; state the import's
+    date order`. The other rows of the file still import.
+  - With a server transport, state the same order on the router and on the wizard. The
+    wizard's review step reads the sample in the browser, and the server reads the file.
+  - The order is an option of the import, not part of a `MappingPlan`. A stored plan is
+    unchanged and needs no migration.
+
+  **What did not change.** Proven by tests that run in six timezones:
+  - `YYYY-MM-DD`, and a typed date cell from a workbook, read exactly as before, whatever
+    order is stated.
+  - A date only one order fits reads exactly as before when no order is stated:
+    `09/13/2026` is still 13 September, and `13/09/2026` is still an error. State `'DMY'` and
+    `13/09/2026` imports.
+  - A year-first date with slashes (`2026/09/05`) and a date with a month's name
+    (`March 7, 2024`) read exactly as before.
+
+  One thing is stricter when an order is stated: the year must have four digits. `5/9/26`
+  is an error, because choosing a century for the sheet is a guess of the same kind.
+
+### Added
+- `dateOrder?: 'DMY' | 'MDY' | 'YMD'` on `CoerceOptions` (and so `ApplyMappingOptions`),
+  `RunImportOptions`, `ImportRouterOptions` and `ImportContext`; a `dateOrder` input on
+  `ngx-entity-import` and on the import preview component; and the `DateOrder` type, exported
+  from `@dynamic-entity/core`.
+
+### Upgrading
+- This is a minor release that can fail an import that used to pass. That is deliberate: the
+  imports it fails are the ones that could have been storing the wrong dates. State
+  `dateOrder` and they pass again.
+- The four packages' internal ranges are now `^2.5.0`.
+
 ## [2.4.1]
 
 ### Fixed

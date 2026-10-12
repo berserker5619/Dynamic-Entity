@@ -22,6 +22,7 @@ import {
   type CsvDelimiter,
   type EntityFormConfig,
   type FormRule,
+  type DateOrder,
   type ImportLookups,
   type ImportRowError,
   type MappingPlan,
@@ -73,6 +74,12 @@ export interface RunImportOptions {
    * because that is what Excel writes in exactly those locales, and `.` otherwise.
    */
   decimal?: '.' | ',';
+  /**
+   * The order of a date written in digits, such as `05/09/2026`. Without it, one that reads
+   * two ways fails its row: it is never guessed. `MDY` reads it month first, as every release
+   * before 2.5.0 did without saying so.
+   */
+  dateOrder?: DateOrder;
   /** Omit to validate without writing: the identical pipeline, every error, nothing stored. */
   onBatch?: OnBatch;
   limits?: Partial<ImportLimits>;
@@ -185,6 +192,7 @@ export async function runImport(options: RunImportOptions): Promise<ImportRunRes
     const result = applyMapping(rows, plan, config, {
       lang: options.lang,
       decimal,
+      dateOrder: options.dateOrder,
       rules: options.rules,
       lookups: options.lookups,
       firstRowNumber: firstRow,

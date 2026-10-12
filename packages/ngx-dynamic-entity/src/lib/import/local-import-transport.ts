@@ -96,6 +96,8 @@ export class LocalImportTransport implements ImportTransport {
       lookups: context.lookups,
       // A `;` file means `1,5` is one and a half — the same call the server makes.
       decimal: decimalMarkFor(sheet.delimiter),
+      // Stated by the host, never inferred: a date that reads two ways fails without it.
+      dateOrder: context.dateOrder,
     });
   }
 

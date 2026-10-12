@@ -258,6 +258,7 @@ rendering decision, not an access-control boundary.
 | `rules` | Pass the same rules the form uses, or a rule-hidden required field rejects rows the form would save. |
 | `lookups` | Option lists already resolved, merged over what `LOOKUP_REGISTRY` provides. |
 | `language` | Default `'en'`. |
+| `dateOrder` | `'DMY'` or `'MDY'`: the order of a date written in digits, such as `05/09/2026`. Without it, a date that reads two ways is an error, never a guess. With a server transport, give the router the same order. |
 | `templateFormat` | `'csv'` (default) or `'xlsx'`. `xlsx` needs a server transport. |
 
 | Output | Payload |

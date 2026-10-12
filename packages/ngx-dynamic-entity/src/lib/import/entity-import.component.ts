@@ -15,6 +15,7 @@ import {
   type CsvDelimiter,
   type EntityFormConfig,
   type FormRule,
+  type DateOrder,
   type ImportLookups,
   type ImportResult,
   type MappingPlan,
@@ -121,6 +122,7 @@ type Step = 'upload' | 'map' | 'review' | 'done';
               [rules]="rules"
               [language]="language"
               [decimal]="decimal()"
+              [dateOrder]="dateOrder"
             />
           }
           <button
@@ -261,6 +263,12 @@ export class EntityImportComponent {
    */
   @Input() lookups?: ImportLookups;
   @Input() language = 'en';
+  /**
+   * The order of a date written in digits in the sheets this wizard imports: `DMY` for day
+   * first, `MDY` for month first. Without it, a date that reads two ways (`05/09/2026`) is
+   * shown, and imported, as an error rather than guessed.
+   */
+  @Input() dateOrder?: DateOrder;
   /** Format asked of the transport when a template is downloaded. */
   @Input() templateFormat: TemplateFormat = 'csv';
 
@@ -302,6 +310,7 @@ export class EntityImportComponent {
       rules: this.rules,
       lookups: this.resolvedLookups(),
       lang: this.language,
+      dateOrder: this.dateOrder,
     };
   }
 

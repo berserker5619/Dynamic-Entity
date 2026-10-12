@@ -161,3 +161,35 @@ describe('ImportPreviewComponent', () => {
     expect(fixture.nativeElement.querySelectorAll('th').length).toBe(0);
   });
 });
+
+describe('ImportPreviewComponent — a date written in digits', () => {
+  const DATED: EntityFormConfig = {
+    entity: 'people',
+    tabs: [{ id: 'main', label: { en: 'Main' }, flatData: true, fields: [{ id: 'born', type: 'date', label: { en: 'Born' } }] }],
+  };
+  const render = async (dateOrder?: 'DMY' | 'MDY' | 'YMD'): Promise<string> => {
+    await TestBed.configureTestingModule({ imports: [ImportPreviewComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(ImportPreviewComponent);
+    fixture.componentRef.setInput('config', DATED);
+    fixture.componentRef.setInput('plan', { entity: 'people', entries: [{ ref: 'born', column: 0 }] } as MappingPlan);
+    fixture.componentRef.setInput('rows', [['05/09/2026']]);
+    if (dateOrder) fixture.componentRef.setInput('dateOrder', dateOrder);
+    fixture.detectChanges();
+    return fixture.nativeElement.textContent as string;
+  };
+
+  it('shows the cell as the commit will refuse it when no order is stated', async () => {
+    expect(await render()).toContain('date order');
+  });
+
+  it('shows the day the commit will store when the order is stated', async () => {
+    const text = await render('DMY');
+    expect(text).not.toContain('date order');
+    // 5 September, not 9 May: whatever the display format, the month it shows is September.
+    const monthFirst = await (async () => {
+      TestBed.resetTestingModule();
+      return render('MDY');
+    })();
+    expect(text).not.toEqual(monthFirst);
+  });
+});
