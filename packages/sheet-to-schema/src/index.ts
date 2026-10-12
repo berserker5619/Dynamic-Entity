@@ -59,3 +59,10 @@ export { jsonSchemaAdapter } from './json-schema-adapter';
 export type { JsonSchemaAdapterOptions, JsonSchemaMeta, JsonSchemaNode } from './json-schema-adapter';
 export { exampleJsonAdapter } from './example-json-adapter';
 export type { ExampleJsonAdapterOptions, ExampleJsonMeta } from './example-json-adapter';
+
+// ─── CSV ────────────────────────────────────────────────────────────────────
+export { completeFirstLine, createCsvReader, decimalMarkFor, detectDelimiter, escapeFormula, padRow, parseCsv, toCsv } from './csv';
+export type { CsvDelimiter, CsvReader, CsvReaderOptions, SheetData, SheetGrid } from './csv';
+
+// ─── The wire ───────────────────────────────────────────────────────────────
+export type { AdapterStamp, ImportCommitResponse, ImportErrorResponse, ImportPreviewResponse } from './wire.types';

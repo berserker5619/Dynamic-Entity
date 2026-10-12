@@ -295,3 +295,11 @@ A failure in any of these means stop and report.
 7. **What Phase 2 does not include**, so it is not mistaken for missing: the generic Angular
    mapper (Phase 4), a chosen header row (deferred), positional arrays for DE (Decision 5),
    storing moved containers once (Decision 9).
+
+## Progress
+
+One line per commit, added as each lands with its gate green.
+
+| Commit | Done | Note |
+| --- | --- | --- |
+| 2.1 | 2026-10-12 | `csv.ts` copied unchanged, with its two specs; the one spec that used DE's coercer for the decimal comma now uses `coerceValue`. Wire types in `wire.types.ts`, with `planVersions`, `adapter`, `slots`, `warnings`, `warningCount` and `rowsInImported` added as optional fields. |
