@@ -1,8 +1,11 @@
+import { applyMapping, parseCsv } from 'sheet-to-schema';
 import { cellValue } from './xlsx-source';
+import { previewSheet, runImport } from './run-import';
 import { readSheet } from './read-sheet';
-import { chunked, HEADERS, trackedStream } from './sheet.fixtures';
+import { chunked, collectedHeap, CSV_TEXT, EMPLOYEES, HEADERS, PLAN, trackedStream } from './sheet.fixtures';
 import {
   BILLION_LAUGHS_SHEET,
+  generatedRows,
   manyEntries,
   plainSheet,
   streamedWorkbook,
@@ -231,5 +234,72 @@ describe('a workbook with one cell', () => {
   it('reads a sheet whose only content is an inline string', async () => {
     const sheet = await readSheet({ stream: await workbookWithSheet(plainSheet('ok')) });
     expect(sheet.headers).toEqual(['ok']);
+  });
+});
+
+/** The three tests that need the runner, held back from commit 2.4 until it existed. */
+describe('a workbook through the runner', () => {
+  it('produces the same records as the same data read as CSV', async () => {
+    // The parity that makes "one engine, both sides" true across formats as well as across
+    // machines: a date typed into a spreadsheet and the same date typed into a CSV must
+    // import to the same record.
+    const browser = applyMapping(parseCsv(CSV_TEXT).rows, PLAN, EMPLOYEES, undefined);
+
+    const records: Record<string, unknown>[] = [];
+    await runImport({
+      stream: await workbook(),
+      plan: PLAN,
+      adapter: EMPLOYEES,
+      ctx: undefined,
+      onBatch: batch => {
+        records.push(...batch);
+      },
+    });
+
+    expect(records).toEqual(browser.records);
+  });
+
+  it('previews typed cells as the text a browser would coerce to the same value', async () => {
+    const preview = await previewSheet({ stream: await workbook(), adapter: EMPLOYEES });
+
+    expect(preview.format).toBe('xlsx');
+    expect(preview.headers).toEqual(HEADERS);
+    expect(preview.sample[0]).toEqual(['Alice', '34', '2024-03-07', 'true', 'Active']);
+    // Identical to what the CSV of the same data previews as, which is the parity claim.
+    expect(preview.rowCount).toBe(4);
+  });
+
+  /**
+   * The leak this caught, recorded because it is invisible to the obvious measurement.
+   *
+   * Every row was raced against one long-lived rejection promise, which accumulated a reaction
+   * per row and freed none of them until the generator finished — 1.9 KB a row, seventy-five
+   * megabytes over this file, and a heap that looked perfectly clean before and after.
+   */
+  it('streams fifty thousand rows without holding them', async () => {
+    const bytes = await streamedWorkbook(generatedRows(50_000));
+
+    let peak = 0;
+    let batches = 0;
+    const before = collectedHeap();
+    const result = await runImport({
+      stream: bytes,
+      plan: PLAN,
+      adapter: EMPLOYEES,
+      ctx: undefined,
+      limits: { batchSize: 500, maxBytes: 64 * 1024 * 1024 },
+      onBatch: () => {
+        // Every twentieth batch: collecting on all hundred of them measures the collector.
+        if (batches++ % 20 === 0) peak = Math.max(peak, collectedHeap() - before);
+      },
+    });
+
+    expect(result.imported).toBe(50_000);
+    expect(result.errors).toEqual([]);
+    // Measured on a collected heap, so this is what the run *holds* rather than what it has
+    // not got round to dropping. The archive is ~1.3 MB and is held compressed on purpose;
+    // the sheet XML inside it is ~11.5 MB inflated and is the thing that must not be. A
+    // streaming run sits under 3 MB, so eight is headroom rather than a number chosen to pass.
+    expect(peak).toBeLessThan(8 * 1024 * 1024);
   });
 });

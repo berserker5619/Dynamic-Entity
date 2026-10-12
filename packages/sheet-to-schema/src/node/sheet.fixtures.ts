@@ -7,6 +7,7 @@
 
 import v8 from 'node:v8';
 import vm from 'node:vm';
+import { jsonSchemaAdapter, type JsonSchemaNode } from 'sheet-to-schema';
 
 /**
  * Heap in use after a collection, which is the only number worth asserting on.
@@ -26,8 +27,50 @@ export function collectedHeap(): number {
   return process.memoryUsage().heapUsed;
 }
 
+/**
+ * What the sheet below is imported into. Deliberately mixed kinds, because the whole risk of a
+ * streaming reader is the cells that are not text: a number, a boolean, a date and an option.
+ * The same fields as the config Dynamic Entity's server specs use, as a JSON Schema.
+ */
+export const EMPLOYEE_SCHEMA: JsonSchemaNode = {
+  $id: 'employee',
+  type: 'object',
+  required: ['personal'],
+  properties: {
+    personal: {
+      type: 'object',
+      title: 'Personal',
+      required: ['firstName'],
+      properties: {
+        firstName: { type: 'string', title: 'First Name' },
+        age: { type: 'number', title: 'Age', minimum: 0, maximum: 150 },
+        startDate: { type: 'string', format: 'date', title: 'Start Date' },
+        active: { type: 'boolean', title: 'Active' },
+        status: { title: 'Status', enum: ['Active', 'Inactive'] },
+      },
+    },
+  },
+};
+
+/** The adapter every /node spec imports through. It wants no context, so `ctx` is `undefined`. */
+export const EMPLOYEES = jsonSchemaAdapter(EMPLOYEE_SCHEMA, { version: 3 });
+
 /** The sheet's header row. */
 export const HEADERS = ['First Name', 'Age', 'Start Date', 'Active', 'Status'];
+
+/** A stored 2.x plan for the sheet: v1 names, which the runner reads through the aliases. */
+export const PLAN = {
+  entity: 'employee',
+  configVersion: 3,
+  sourceHeaders: [...HEADERS],
+  entries: [
+    { ref: 'personal.firstName', column: 0 },
+    { ref: 'personal.age', column: 1 },
+    { ref: 'personal.startDate', column: 2 },
+    { ref: 'personal.active', column: 3 },
+    { ref: 'personal.status', column: 4 },
+  ],
+};
 
 /** A small file with a quoted field, a blank line and a row that ends early. */
 export const CSV_TEXT =

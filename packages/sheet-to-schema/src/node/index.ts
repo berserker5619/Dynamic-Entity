@@ -27,3 +27,7 @@ export type { ReadSheetOptions, SheetFormat, SheetSource } from './read-sheet';
 // ─── Writing a template ─────────────────────────────────────────────────────
 export { TEMPLATE_EXTENSION, TEMPLATE_MEDIA_TYPE, writeTemplate } from './write-template';
 export type { TemplateFormat, TemplateSheet, WriteTemplateOptions } from './write-template';
+
+// ─── Running an import ──────────────────────────────────────────────────────
+export { GROUPING_NOT_STREAMED, previewSheet, runImport } from './run-import';
+export type { BatchInfo, ImportRunResult, OnBatch, PreviewSheetOptions, RunImportOptions, SheetPreview } from './run-import';
