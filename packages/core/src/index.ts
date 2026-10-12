@@ -199,14 +199,23 @@ export { cellText } from './cell-text';
 
 // ─── Spreadsheet import ─────────────────────────────────────────────────────
 export type {
+  AnyMappingPlan,
   DerivedColumns,
   ImportColumn,
   ImportResult,
   ImportRowError,
   MappingEntry,
   MappingPlan,
+  MappingPlanV1,
   UnsupportedColumn,
 } from './import-model.types';
+// The plan reader, re-exported so app code that is handed a plan in either shape, such as a
+// preview's `suggestion`, can normalise it to plan v2 without a second import.
+export { readPlan } from 'sheet-to-schema';
+export type { NormalizedPlan, ReadPlanOptions, ReadPlanResult } from 'sheet-to-schema';
+// The config as sheet-to-schema's schema adapter: what the three functions below run on.
+export { entityFormConfigAdapter } from './entity-form-config-adapter';
+export type { EntityFormConfigAdapterOptions, EntityImportContext } from './entity-form-config-adapter';
 export type {
   ImportCommitResponse,
   ImportErrorResponse,

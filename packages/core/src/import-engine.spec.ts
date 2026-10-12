@@ -8,7 +8,7 @@ import {
   validateImportedRecord,
 } from './import-engine';
 import type { EntityFormConfig, FormRule, NestedFieldConfig } from './form-model.types';
-import type { MappingPlan } from './import-model.types';
+import type { MappingPlanV1 } from './import-model.types';
 import { valuesMatch } from './form-logic';
 
 const STATUS_OPTIONS = [
@@ -527,7 +527,7 @@ describe('validateImportedRecord — parity with what the form enforces', () => 
 });
 
 describe('applyMapping', () => {
-  const plan = (entries: MappingPlan['entries']): MappingPlan => ({
+  const plan = (entries: MappingPlanV1['entries']): MappingPlanV1 => ({
     entity: 'employees',
     configVersion: 3,
     entries,

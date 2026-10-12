@@ -21,7 +21,7 @@ import {
   type ImportErrorResponse,
   type ImportPreviewResponse,
   type ImportResult,
-  type MappingPlan,
+  type AnyMappingPlan,
   type TemplateSpec,
 } from '@dynamic-entity/core';
 import type { Provider } from '@angular/core';
@@ -232,7 +232,7 @@ class HttpImportTransport implements ImportTransport {
     };
   }
 
-  async commit(file: File, plan: MappingPlan, context: ImportContext): Promise<ImportResult> {
+  async commit(file: File, plan: AnyMappingPlan, context: ImportContext): Promise<ImportResult> {
     // Before a byte is sent. The review this user approved read dates one way and the server
     // would store them another, and a streaming import cannot be taken back.
     const reported = this.reported.get(file);

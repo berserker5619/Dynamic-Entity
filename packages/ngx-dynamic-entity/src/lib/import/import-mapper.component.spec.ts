@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import type { EntityFormConfig, MappingPlan } from '@dynamic-entity/core';
+import type { EntityFormConfig, MappingPlan, MappingPlanV1 } from '@dynamic-entity/core';
 import { ImportMapperComponent } from './import-mapper.component';
 
 const STATUS = [
@@ -34,7 +34,7 @@ describe('ImportMapperComponent', () => {
     fixture.componentRef.setInput('plan', {
       entity: 'employees',
       entries: [{ ref: 'personal.firstName', column: 1, confidence: 'guess' }],
-    } as MappingPlan);
+    } as MappingPlanV1);
     fixture.detectChanges();
   });
 
@@ -62,7 +62,7 @@ describe('ImportMapperComponent', () => {
   it('warns while a required field has no column', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="import-required-unmapped"]')).toBeNull();
 
-    fixture.componentRef.setInput('plan', { entity: 'employees', entries: [] } as MappingPlan);
+    fixture.componentRef.setInput('plan', { entity: 'employees', entries: [] } as MappingPlanV1);
     fixture.detectChanges();
     expect(
       fixture.nativeElement.querySelector('[data-testid="import-required-unmapped"]'),
@@ -113,7 +113,7 @@ describe('ImportMapperComponent with repeating fields and a stored plan', () => 
   let fixture: ComponentFixture<ImportMapperComponent>;
   let emitted: MappingPlan | null;
 
-  const mount = (headers: string[], plan: MappingPlan | null): void => {
+  const mount = (headers: string[], plan: MappingPlanV1 | null): void => {
     fixture = TestBed.createComponent(ImportMapperComponent);
     fixture.componentRef.setInput('config', PHONES);
     fixture.componentRef.setInput('headers', headers);
@@ -143,7 +143,7 @@ describe('ImportMapperComponent with repeating fields and a stored plan', () => 
 
   it('round-trips a stored plan with a far slot and a fixed value, entry for entry', () => {
     const headers = ['Name', 'Phone 5'];
-    const plan: MappingPlan = {
+    const plan: MappingPlanV1 = {
       entity: 'people',
       configVersion: 1,
       sourceHeaders: headers,
@@ -205,5 +205,37 @@ describe('ImportMapperComponent with repeating fields and a stored plan', () => 
       expect.objectContaining({ ref: 'phones.0.number', column: 1 }),
       expect.objectContaining({ ref: 'phones.4.number', column: 2 }),
     ]);
+  });
+
+  it('emits plan v2 from a stored 2.x plan, under the new names only', () => {
+    mount(['Name', 'Source'], { entity: 'people', configVersion: 1, entries: [{ ref: 'name', column: 0 }] });
+    select('source', 2);
+
+    expect(emitted).toEqual({
+      planVersion: 2,
+      target: 'people',
+      schemaVersion: 1,
+      sourceHeaders: ['Name', 'Source'],
+      entries: [{ ref: 'name', column: 0 }, expect.objectContaining({ ref: 'source', column: 1 })],
+    });
+    // A plan carrying both names for one thing is one the plan reader has to warn about.
+    expect(emitted).not.toHaveProperty('entity');
+    expect(emitted).not.toHaveProperty('configVersion');
+  });
+
+  it('keeps what a v2 plan carries beside its entries, and restates what the config decides', () => {
+    mount(['Name', 'Source'], null);
+    fixture.componentRef.setInput('plan', {
+      planVersion: 2,
+      target: 'people',
+      schemaVersion: 0,
+      entries: [{ ref: 'name', column: 0 }],
+      lists: { phones: { compact: true } },
+    } satisfies MappingPlan);
+    fixture.detectChanges();
+    select('source', 2);
+
+    expect(emitted).toMatchObject({ planVersion: 2, target: 'people', schemaVersion: 1, lists: { phones: { compact: true } } });
+    expect(emitted!.entries.map(entry => entry.ref)).toEqual(['name', 'source']);
   });
 });

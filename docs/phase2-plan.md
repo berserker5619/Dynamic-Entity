@@ -179,7 +179,8 @@ From `@dynamic-entity/core`, re-exporting `sheet-to-schema`:
 | `createCsvReader`, `parseCsv`, `toCsv`, `escapeFormula`, `padRow`, `detectDelimiter`, `completeFirstLine`, `decimalMarkFor` | functions |
 | `CsvDelimiter`, `CsvReader`, `CsvReaderOptions`, `SheetData`, `SheetGrid` | types |
 | `cellText` | function |
-| `ImportPreviewResponse`, `ImportCommitResponse`, `ImportErrorResponse` | types |
+| `ImportPreviewResponse`, `ImportErrorResponse` | types |
+| `ImportCommitResponse` | type; not deprecated. The importer's, with `planProblems` as DE's `ConfigProblem[]`, since DE keeps its result types |
 
 From `@dynamic-entity/server`, re-exporting `sheet-to-schema/node`:
 
@@ -205,7 +206,7 @@ The plan and result types change as decision 7 says:
 | --- | --- |
 | `MappingPlan`, `MappingEntry` | The importer's v2 types, re-exported. Not deprecated: this is the type to write. |
 | `MappingPlanV1` | New name for the 2.x shape (`entity`, `configVersion`), deprecated. Still accepted everywhere a plan is taken. |
-| `ImportResult`, `ImportRowError` | The importer's, re-exported. They are the 2.x shapes plus optional fields, so code that reads or builds one still compiles (spec §9). |
+| `ImportResult`, `ImportRowError` | Still Dynamic Entity's own types (owner, 2026-10-12), with the optional fields the engine adds: `code` and `rows` on an error, `warnings` on a result. `planProblems` stays `ConfigProblem[]`. A type-level test holds that the importer's result and error are assignable to them. |
 
 ## Order of work and commit list
 
@@ -291,15 +292,64 @@ Rules that go with them:
 - One test is added: a v2 suggestion committed through the DE adapter gives the same records
   as the equivalent v1 plan.
 
+### The exceptions recorded while writing 3.1
+
+Each was put to the owner and decided on 2026-10-12. None changes a record, a count or what
+a stored 2.x plan imports. Every changed test line is listed in the commit message of 3.1.
+
+1. **A reserved-key ref is `PLAN_UNSAFE_PATH`.** 2.x reported a ref into `__proto__` as
+   `PLAN_UNKNOWN_REF`. Two expectations change: the `a ref into __proto__` problem fixture,
+   and `server/src/express.spec.ts` "a plan naming `__proto__` cannot pollute anything".
+2. **`PLAN_PROBLEM_CODES` is a deprecated re-export of the importer's thirteen.** The six 2.x
+   emitted are among them with the same meaning. The coverage test requires a fixture per
+   code, so seven fixtures are added, one per newly reachable code: `PLAN_VERSION`,
+   `PLAN_UNKNOWN_KEY`, `PLAN_ALIAS_CONFLICT`, `PLAN_ALIAS_USED`, `PLAN_SPLIT_TARGET`,
+   `PLAN_LIST_OPTION`, `PLAN_GROUP`.
+3. **Three snapshot lines change**, all message text in `problem-codes.coverage.spec.ts.snap`:
+   the entity mismatch, the version mismatch and the reserved-key ref. The seven new fixtures
+   add their own lines. "Adapter-supplied noun for problem messages" is on the spec's Later
+   list, since the generic text says "schema" where DE said "config".
+4. **`code: 'CELL_FORMAT'` on two shared parity fixtures** (`preview-parity.ts`,
+   `xlsx-parity.ts`). They compare whole error objects, and every error has a code now.
+5. **The wizard's contracts take a plan in either shape.** `ImportPreview.suggestion`, the
+   `[plan]` inputs of the mapper and the preview, and `ImportTransport.commit` are typed
+   `AnyMappingPlan`, because a 2.x server still sends the 2.x shape. `LocalImportTransport`
+   narrows its own preview to v2, which it always makes. v1 literals in tests are cast or
+   annotated `MappingPlanV1` (allowed change (a)). `readPlan` is re-exported from core.
+6. **The mapper emits plan v2**: `target`, `schemaVersion`, `planVersion: 2`, and never the
+   2.x names beside them. No existing assertion read the emitted plan's entity or version, so
+   none changed; two tests are added for the emitted shape.
+7. **The Phase 1 adapter spec compares against a record of 2.5.0, not against the old engine.**
+   The old engine is gone, so the comparison it made would be the new code against itself.
+   `scripts/generate-import-golden.mjs` ran the published `@dynamic-entity/core@2.5.0` over the
+   spec's inputs (two cases per shipped config, seventeen written by hand, seven suggestions)
+   and wrote inputs and results to `core/test-fixtures/import-golden-2.5.0.json`. The script
+   refuses any other version. The file is a record: it is not regenerated to make a test pass.
+8. **DE keeps its own result types** (see the table under "Public DE exports").
+9. **"No entity named means this config" applies to 2.x plans only.** A v2 plan with no
+   `target` is refused. One narrow allowance, flagged for the owner to veto: a v2 plan whose
+   `target` is the empty string, which is what DE's two-argument `suggestMapping` writes, is
+   read against the config in hand. Without it `array-headers.spec.ts` "suggest, then import"
+   would fail, and so would any app calling `suggestMapping(headers, columns)`.
+10. **A change to the importer, found by DE's suites:** a plan problem is reported at the
+    name the plan used (`entity`, `configVersion` for a 2.x plan). `preparePlan` maps the
+    reader's `target` and `schemaVersion` paths back; four tests in the importer hold it.
+
 ### What MIGRATING-3.0.md must say because of it
 
-Three entries, for commit 5.1:
+Six entries, for commit 5.1 (the first three from the plan-type exception, the rest from 3.1):
 
 1. A suggested plan carries `target`, not `entity`.
 2. Plan-problem messages changed. Match on `code`.
 3. A plan saved by a 3.0 wizard is v2, so an app rolled back to 2.5 cannot read it. Talking
    to an older server over HTTP is different, and handled: the wizard sends such a server the
    plan in v1 form (commit 3.3).
+4. A ref into a reserved key (`__proto__`, `constructor`, `prototype`) is reported as
+   `PLAN_UNSAFE_PATH`, not `PLAN_UNKNOWN_REF`. `PLAN_PROBLEM_CODES` has thirteen codes.
+5. App code that reads `preview.suggestion`, or takes a plan from storage, should normalise
+   it with `readPlan` (exported from `@dynamic-entity/core`): it may be either shape.
+6. `@dynamic-entity/core` has one dependency, `sheet-to-schema`. The CSV functions,
+   `cellText` and two of the wire types are deprecated re-exports of it, removed in 4.0.
 
 ## Risks
 
@@ -340,4 +390,5 @@ One line per commit, added as each lands with its gate green.
 | 2.5 | 2026-10-12 | `writeTemplate` takes a `TemplateSheet` (`sheetName`, `headers`, `notes?`) where DE's took a `TemplateSpec`. `exceljs` is loaded only for a workbook. Its spec is ported, with a test that each note lands on its header cell. **A change to the commit list:** `multipart` has no test of its own, only the router's, so it moves to 2.7 and does not land untested here. |
 | 2.6 | 2026-10-12 | `runImport` and `previewSheet` take `{ adapter, ctx }`. The plan is read, upgraded and checked once, before any row; each batch runs the main entry's `applyMapping`. A plan with `group` is refused before a row is read: `INVALID_PLAN` (HTTP 400, as that code already is), with a `PLAN_GROUP` problem saying the browser import does group. The result gains `warnings`, `warningCount` and `rowsInImported`; the preview reports per-array `slots`. The preview suggests from headers alone, so it never proposes a group this runner would refuse. The server spec is ported over a JSON Schema adapter with the same fields as DE's test config; the parts built from DE configs stay in DE. |
 | 2.7 | 2026-10-12 | `createImportRouter(router, { bindings, onImport, limits, lang })`: the four routes, on a router the caller makes, so `/node` never imports `express` itself. A binding is `{ adapter, ctx, kind?, template?, previewExtras? }`, from a map or a function that sees the request. Every answer is stamped with `engineVersion` (the importer's), `adapter` and, on a preview, `planVersions: [1, 2]`. `multipart` lands here with the router's tests. **Found while doing it:** `busboy` was imported when `/node` loaded, which would have made reading a CSV need it. It is now loaded on the first upload, and the bundle check fails on a static import of any optional peer. One ported expectation changed: a reserved-key ref is `PLAN_UNSAFE_PATH`, the reader's own code, where DE 2.x reports an unknown ref. |
+| 3.1 | 2026-10-12 | Core depends on `sheet-to-schema` and its `applyMapping`, `suggestMapping` and `validateMappingPlan` are the generic engine, suggester and plan checks over `entityFormConfigAdapter`, which is exported. The DE-specific code is in `import-internals.ts` and `import-derive.ts`; `import-engine.ts` and `import-columns.ts` keep their names and exports. `MappingPlan` is plan v2, `MappingPlanV1` the deprecated 2.x shape, and every function that takes a plan takes either. `csv.ts`, `cell-text.ts` and the preview and error wire types are deprecated re-exports; the commit response is the importer's with DE's `ConfigProblem[]`. The wizard's contracts take either shape and the mapper emits v2. The consumer-install scripts pack the importer too, and take `--no-build`. Ten exceptions, each decided by the owner, are listed under "The exceptions recorded while writing 3.1". |
 | 2.8 | 2026-10-12 | `coerce(target, raw, ctx, cell)`, with `cell: { dateOrder?, split?, decimal? }` resolved by the engine as plan entry, then run option, then default, and handed to the generic coercer too. `applyMapping`, `runImport` and the router gain a run-level `dateOrder`; a preview reports the router's. The DE adapter reads with `cell` and falls back to its context, so a v2 plan's per-column `dateOrder` works on DE fields and 2.5.0's options-level one stays the default. Spec §7 and §8 updated in the same commit. **Step 2 is complete.** |

@@ -18,7 +18,7 @@
 import { createHash } from 'node:crypto';
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
-import type { EntityFormConfig, ImportRowError, MappingPlan } from '../src/index';
+import type { EntityFormConfig, ImportRowError, MappingPlanV1 } from '../src/index';
 
 export const PARITY_XLSX_CONFIG: EntityFormConfig = {
   entity: 'people',
@@ -46,7 +46,7 @@ export const PARITY_XLSX_CONFIG: EntityFormConfig = {
 
 export const PARITY_XLSX_HEADERS = ['Name', 'Born', 'Score', 'Active', 'Joined', 'Phone 1', 'Phone 2'];
 
-export const PARITY_XLSX_PLAN: MappingPlan = {
+export const PARITY_XLSX_PLAN: MappingPlanV1 = {
   entity: 'people',
   entries: ['name', 'born', 'score', 'active', 'joined', 'phones.0.number', 'phones.1.number'].map(
     (ref, column) => ({ ref, column }),
@@ -92,7 +92,7 @@ export const PARITY_XLSX_EXPECTED: {
       _configVersion: 1,
     },
   ],
-  errors: [{ row: 5, ref: 'score', column: 2, message: '"n/a" is not a number', raw: 'n/a' }],
+  errors: [{ row: 5, ref: 'score', column: 2, code: 'CELL_FORMAT', message: '"n/a" is not a number', raw: 'n/a' }],
   skipped: 1,
 };
 

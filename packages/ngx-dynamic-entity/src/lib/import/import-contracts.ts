@@ -20,7 +20,7 @@ import type {
   DateOrder,
   ImportLookups,
   ImportResult,
-  MappingPlan,
+  AnyMappingPlan,
   SheetGrid,
   TemplateSpec,
 } from '@dynamic-entity/core';
@@ -92,7 +92,7 @@ export interface ImportPreview {
   /** The first few rows, for the mapping screen to show under each column. */
   sample: string[][];
   /** Where the suggester got to. Every inferred match is tagged `guess`. */
-  suggestion: MappingPlan;
+  suggestion: AnyMappingPlan;
   /** Total data rows in the file, which may be far more than `sample` holds. */
   rowCount: number;
   /**
@@ -145,7 +145,7 @@ export interface ImportTransport {
   /** Headers, a sample, and a suggested mapping for a freshly chosen file. */
   preview(file: File, context: ImportContext): Promise<ImportPreview>;
   /** Apply a plan to the whole file. */
-  commit(file: File, plan: MappingPlan, context: ImportContext): Promise<ImportResult>;
+  commit(file: File, plan: AnyMappingPlan, context: ImportContext): Promise<ImportResult>;
   /**
    * Render a template for download.
    *

@@ -16,6 +16,8 @@
  */
 
 /** Every code `validateConfig` emits. */
+import { PLAN_PROBLEM_CODES as IMPORTER_PLAN_PROBLEM_CODES, type PlanProblemCode as ImporterPlanProblemCode } from 'sheet-to-schema';
+
 export const CONFIG_PROBLEM_CODES = [
   // The config itself
   'CONFIG_NOT_AN_OBJECT',
@@ -83,20 +85,16 @@ export const CONFIG_PROBLEM_CODES = [
 ] as const;
 export type ConfigProblemCode = (typeof CONFIG_PROBLEM_CODES)[number];
 
-/** Every code `validateMappingPlan` emits. */
-export const PLAN_PROBLEM_CODES = [
-  /** Not an object, no `entries` array, or an entry that is not an object or has no ref. */
-  'PLAN_SHAPE',
-  /** The plan's `entity` or `configVersion` differs from the config's. A warning. */
-  'PLAN_TARGET_MISMATCH',
-  /** A 2.2 ref of a moved container, read at its current address. A warning. */
-  'PLAN_LEGACY_REF',
-  'PLAN_UNKNOWN_REF',
-  'PLAN_DUPLICATE_REF',
-  /** Not exactly one of `column` and `constant`, or a column that is not a zero-based index. */
-  'PLAN_SOURCE',
-] as const;
-export type PlanProblemCode = (typeof PLAN_PROBLEM_CODES)[number];
+/**
+ * Every code `validateMappingPlan` emits.
+ *
+ * @deprecated Since 3.0 a plan is read and checked by sheet-to-schema, and these are its
+ * codes, re-exported. Import `PLAN_PROBLEM_CODES` from `sheet-to-schema`. The six codes
+ * Dynamic Entity 2.x emitted are all still here, with the same meaning; removed in 4.0.
+ */
+export const PLAN_PROBLEM_CODES = IMPORTER_PLAN_PROBLEM_CODES;
+/** @deprecated Import `PlanProblemCode` from `sheet-to-schema`. Removed in 4.0. */
+export type PlanProblemCode = ImporterPlanProblemCode;
 
 /** Any code a `ConfigProblem` may carry. */
 export type ProblemCode = ConfigProblemCode | PlanProblemCode;

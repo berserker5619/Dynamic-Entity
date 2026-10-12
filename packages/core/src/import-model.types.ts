@@ -14,6 +14,7 @@
  * silently degrades everywhere else.
  */
 
+import type { MappingEntry as ImporterEntry, MappingPlan as ImporterPlan, RowProblemCode } from 'sheet-to-schema';
 import type { NestedFieldConfig } from './form-model.types';
 import type { ConfigProblem } from './validate-config';
 
@@ -64,44 +65,50 @@ export interface DerivedColumns {
 }
 
 /**
- * One target column, and where its value comes from.
+ * One target, and where its value comes from: a column, or a constant for every row.
+ *
+ * Since 3.0 this is sheet-to-schema's type. It is the 2.x entry with two optional v2 fields
+ * added, `split` and `dateOrder`, so a 2.x entry is one.
  *
  * `column` is a **zero-based index**, not header text. A real sheet may have two columns both
  * headed "Notes", or a header that is blank; text cannot address the second of those and
  * silently resolves to the first. `header` rides along for display and for noticing that a
  * re-run's sheet has changed shape — it is never what the value is read by.
  *
- * `column` and `constant` are mutually exclusive, and an entry must have one of them. A target
- * with no entry at all is simply unmapped, which is why `column` is optional rather than
- * nullable: `null` would have had to mean both "unmapped" and "has a constant instead".
+ * `column` and `constant` are mutually exclusive, and an entry must have one of them.
  */
-export interface MappingEntry {
-  /** Target field address. At most one entry per `ref` in a plan. */
-  ref: string;
-  /** Zero-based column index in the source sheet. */
-  column?: number;
-  /** Header text at `column` when the plan was authored. Display and drift detection only. */
-  header?: string;
-  /** A literal applied to every row, for a field the sheet does not carry. */
-  constant?: unknown;
-  /** `guess` marks a match the suggester inferred rather than read. */
-  confidence?: 'exact' | 'guess';
-}
+export type MappingEntry = ImporterEntry;
 
 /**
- * A complete mapping from one sheet's columns onto one entity's fields.
+ * A complete mapping from one sheet's columns onto one entity's fields: **plan v2**.
  *
- * `configVersion` and `sourceHeaders` are both snapshots taken when the plan was authored, so
- * re-running a stored plan can say "the config has moved on" or "this file's columns are not
- * the ones you mapped" rather than quietly importing into the wrong fields.
+ * Since 3.0 this is sheet-to-schema's type, and the one to write. It names its entity as
+ * `target` and the config version as `schemaVersion`, says `planVersion: 2`, and may carry
+ * `lists` and `group`. Everything that takes a plan also takes the 2.x shape, `MappingPlanV1`,
+ * so a stored 2.x plan keeps importing as it is.
+ *
+ * Plain JSON with no functions and no class instances, deliberately: it is posted to a server,
+ * stored, and re-run against next month's file.
  */
-export interface MappingPlan {
+export type MappingPlan = ImporterPlan;
+
+/**
+ * The 2.x plan: `entity` and `configVersion` where plan v2 has `target` and `schemaVersion`.
+ *
+ * @deprecated Write `MappingPlan`. A stored plan of this shape is still read everywhere a plan
+ * is taken, with no warning, and is saved as v2 the next time the mapper saves it. Reading it
+ * is not what goes away; the name for writing it is.
+ */
+export interface MappingPlanV1 {
   entity: string;
   configVersion?: number;
   /** The headers this plan was authored against. */
   sourceHeaders?: string[];
   entries: MappingEntry[];
 }
+
+/** A plan in either shape, which is what every Dynamic Entity function that takes one accepts. */
+export type AnyMappingPlan = MappingPlan | MappingPlanV1;
 
 /**
  * One thing wrong with one cell of one row.
@@ -112,8 +119,15 @@ export interface MappingPlan {
  */
 export interface ImportRowError {
   row: number;
+  /** 3.0, on a record built from several rows: the sheet rows the problem came from, ascending. */
+  rows?: number[];
   ref: string;
   column?: number;
+  /**
+   * 3.0: which check this is. Compare this, never `message`. Set on everything the engine
+   * reports; optional so that code building its own row errors still compiles.
+   */
+  code?: RowProblemCode;
   message: string;
   raw?: unknown;
 }
@@ -139,6 +153,11 @@ export interface ImportResult {
    * an older config version, or naming another entity — do not stop the import.
    */
   planProblems: ConfigProblem[];
+  /**
+   * 3.0: what is worth saying about a record that was nevertheless imported, such as rows of
+   * one group that disagree. Never counted as failures. Absent when there are none.
+   */
+  warnings?: ImportRowError[];
   /**
    * How many records were written when the transport did the writing and cannot hand them back.
    *

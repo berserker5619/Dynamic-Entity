@@ -7,7 +7,7 @@
 
 import v8 from 'node:v8';
 import vm from 'node:vm';
-import type { EntityFormConfig, ImportLookups, MappingPlan } from '@dynamic-entity/core';
+import type { EntityFormConfig, ImportLookups, MappingPlanV1 } from '@dynamic-entity/core';
 
 /**
  * Heap in use after a collection, which is the only number worth asserting on.
@@ -56,7 +56,7 @@ export const LOOKUPS: ImportLookups = {
 
 export const HEADERS = ['First Name', 'Age', 'Start Date', 'Active', 'Status'];
 
-export const PLAN: MappingPlan = {
+export const PLAN: MappingPlanV1 = {
   entity: 'employee',
   configVersion: 3,
   sourceHeaders: [...HEADERS],

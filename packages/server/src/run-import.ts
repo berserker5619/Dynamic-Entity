@@ -25,6 +25,7 @@ import {
   type DateOrder,
   type ImportLookups,
   type ImportRowError,
+  type AnyMappingPlan,
   type MappingPlan,
 } from '@dynamic-entity/core';
 import { destroySource, type ByteSource } from './bytes';
@@ -63,7 +64,8 @@ export interface RunImportOptions {
   stream: ByteSource;
   /** Display only. The format is decided by the file's first bytes, never by its name. */
   filename?: string;
-  plan: MappingPlan;
+  /** In either shape: plan v2, or a stored 2.x plan. */
+  plan: AnyMappingPlan;
   config: EntityFormConfig;
   rules?: readonly FormRule[];
   /** Values for every `listName` the config mentions. A server has no `LOOKUP_REGISTRY`. */
@@ -134,7 +136,7 @@ export interface ImportRunResult {
  * moment. `applyMapping` checks it too — per batch, on its own account — and this is not that
  * check moved but that check brought forward.
  */
-function checkPlan(plan: MappingPlan, config: EntityFormConfig, lang?: string): ConfigProblem[] {
+function checkPlan(plan: AnyMappingPlan, config: EntityFormConfig, lang?: string): ConfigProblem[] {
   return validateMappingPlan(plan, config, {
     lang,
     // The same derivation `applyMapping` uses, or the two would disagree about which refs

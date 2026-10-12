@@ -17,8 +17,8 @@
  *
  * Arrays are not positional: a `null` slot does not survive the form (spec, Decision 5).
  *
- * Not exported from the package yet. The importer (`sheet-to-schema`) is still a private
- * workspace, so nothing published may reach it; this file is wired in by Phase 2.
+ * Since 3.0 this is how Dynamic Entity imports: `applyMapping`, `suggestMapping` and
+ * `validateMappingPlan` are sheet-to-schema's engine run over this adapter.
  */
 import type {
   CoerceOutcome as ImporterCoerceOutcome,
@@ -41,8 +41,8 @@ import {
   collectLeafTargets,
   deriveImportColumns,
   legacyRefAliases,
-} from './import-columns';
-import { coerceCell, recordShaper, validateImportedRecordCoded, type DateOrder, type ImportLookups } from './import-engine';
+} from './import-derive';
+import { coerceCell, recordShaper, validateImportedRecordCoded, type DateOrder, type ImportLookups } from './import-internals';
 import { stampRecord } from './migration';
 
 export interface EntityFormConfigAdapterOptions {

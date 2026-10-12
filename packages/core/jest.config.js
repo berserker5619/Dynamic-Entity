@@ -21,12 +21,6 @@ module.exports = {
     './src/**/*.ts': { statements: 90, branches: 80, functions: 100, lines: 91 },
   },
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
-  // The importer is read from its source, as tsconfig's `paths` reads it: it is a private
-  // workspace only `entity-form-config-adapter.ts` and its specs import, and resolving its
-  // `dist` would make core's tests depend on another package having been built.
-  moduleNameMapper: {
-    '^sheet-to-schema$': '<rootDir>/../sheet-to-schema/src/index.ts',
-  },
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: { strict: true, esModuleInterop: true, skipLibCheck: true } }],
   },

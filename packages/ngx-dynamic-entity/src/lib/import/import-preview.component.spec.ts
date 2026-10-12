@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import type { EntityFormConfig, MappingPlan, FormRule } from '@dynamic-entity/core';
+import type { EntityFormConfig, MappingPlanV1, FormRule } from '@dynamic-entity/core';
 import { ImportPreviewComponent } from './import-preview.component';
 
 const STATUS = [
@@ -35,7 +35,7 @@ describe('ImportPreviewComponent', () => {
         { ref: 'personal.firstName', column: 0 },
         { ref: 'personal.status', column: 1 },
       ],
-    } as MappingPlan);
+    } as MappingPlanV1);
     fixture.componentRef.setInput('rows', [
       ['Alice', 'Aktiv'],
       ['Bob', 'Retired'],
@@ -59,7 +59,7 @@ describe('ImportPreviewComponent', () => {
         { ref: 'personal.firstName', column: 0 },
         { ref: 'personal.status', constant: STATUS[1] },
       ],
-    } as MappingPlan);
+    } as MappingPlanV1);
     fixture.componentRef.setInput('rows', [['Alice']]);
     fixture.detectChanges();
 
@@ -80,7 +80,7 @@ describe('ImportPreviewComponent', () => {
         { ref: 'personal.firstName', column: 0 },
         { ref: 'personal.status', column: 1 },
       ],
-    } as MappingPlan);
+    } as MappingPlanV1);
     // Row 0 is fine. Row 1 leaves out a required field: every cell parses, and the row is
     // still refused.
     fixture.componentRef.setInput('rows', [
@@ -134,7 +134,7 @@ describe('ImportPreviewComponent', () => {
     fixture.componentRef.setInput('plan', {
       entity: 'employees',
       entries: [{ ref: 'personal.status', column: 0 }],
-    } as MappingPlan);
+    } as MappingPlanV1);
     fixture.componentRef.setInput('rows', [['Active']]);
 
     fixture.componentRef.setInput('rules', []);
@@ -154,7 +154,7 @@ describe('ImportPreviewComponent', () => {
     fixture.componentRef.setInput('plan', {
       entity: 'employees',
       entries: [{ ref: 'personal.goneAway', column: 0 }],
-    } as MappingPlan);
+    } as MappingPlanV1);
     fixture.componentRef.setInput('rows', [['Alice']]);
     fixture.detectChanges();
 
@@ -171,7 +171,7 @@ describe('ImportPreviewComponent — a date written in digits', () => {
     await TestBed.configureTestingModule({ imports: [ImportPreviewComponent] }).compileComponents();
     const fixture = TestBed.createComponent(ImportPreviewComponent);
     fixture.componentRef.setInput('config', DATED);
-    fixture.componentRef.setInput('plan', { entity: 'people', entries: [{ ref: 'born', column: 0 }] } as MappingPlan);
+    fixture.componentRef.setInput('plan', { entity: 'people', entries: [{ ref: 'born', column: 0 }] } as MappingPlanV1);
     fixture.componentRef.setInput('rows', [['05/09/2026']]);
     if (dateOrder) fixture.componentRef.setInput('dateOrder', dateOrder);
     fixture.detectChanges();

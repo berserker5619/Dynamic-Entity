@@ -24,6 +24,7 @@
  * Usage:
  *   node scripts/verify-server-consumer.mjs
  *   node scripts/verify-server-consumer.mjs --keep     leave the project on disk
+ *   node scripts/verify-server-consumer.mjs --no-build pack what is already built
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -33,6 +34,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const keep = process.argv.includes('--keep');
+const noBuild = process.argv.includes('--no-build');
 
 // npm is a .cmd shim on Windows, so it needs a shell — which in turn means any argument
 // containing a space (this repo lives under "Dynamic Entity") must be quoted by hand.
@@ -50,8 +52,12 @@ const step = msg => console.log(`\n→ ${msg}`);
 
 // ─── Build and pack ─────────────────────────────────────────────────────────
 
-step('Building workspace packages');
-run('npm', ['run', 'build'], { cwd: ROOT, stdio: 'inherit' });
+if (noBuild) {
+  step('Packing what is already built (--no-build)');
+} else {
+  step('Building workspace packages');
+  run('npm', ['run', 'build'], { cwd: ROOT, stdio: 'inherit' });
+}
 
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'de-server-consumer-'));
 const tarballs = path.join(work, 'tarballs');
@@ -60,7 +66,11 @@ fs.mkdirSync(tarballs);
 step(`Packing tarballs into ${tarballs}`);
 // Both publish their build output: each `dist/package.json` is written by that package's
 // build-manifest.mjs, so scripts and devDependencies never ship.
-for (const dir of ['packages/core/dist', 'packages/server/dist']) {
+//
+// Since 3.0 core depends on sheet-to-schema, which is not on npm. It is packed from its own
+// folder (its manifest lists `dist` under `files`) and installed beside the others, where it
+// satisfies core's range: without it this install would go to the registry and fail.
+for (const dir of ['packages/sheet-to-schema', 'packages/core/dist', 'packages/server/dist']) {
   run('npm', ['pack', path.join(ROOT, dir)], { cwd: tarballs });
   console.log(`  packed ${dir}`);
 }
@@ -86,6 +96,7 @@ fs.writeFileSync(
       // `require` reaches, and it is the half that a wrong `main` breaks silently.
       version: '1.0.0',
       dependencies: {
+        'sheet-to-schema': tgz('sheet-to-schema'),
         '@dynamic-entity/core': tgz('dynamic-entity-core'),
         '@dynamic-entity/server': tgz('dynamic-entity-server'),
         express: '^5.0.0',

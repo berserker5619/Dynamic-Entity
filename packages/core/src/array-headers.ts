@@ -11,10 +11,10 @@
  * spaces, underscores and brackets irrelevant: `Number (2)` and `number_2` are both `number2`.
  */
 
-import { MAX_ARRAY_BOUND, arrayBoundOf, deriveImportColumns, stripIndices } from './import-columns';
+import { MAX_ARRAY_BOUND, arrayBoundOf, deriveImportColumns, stripIndices } from './import-derive';
 import { resolveLabel } from './form-logic';
 import type { EntityFormConfig } from './form-model.types';
-import type { ImportColumn, MappingPlan } from './import-model.types';
+import type { AnyMappingPlan, ImportColumn } from './import-model.types';
 
 /** Lowercase alphanumerics only, so "First Name", `first_name` and `firstName` collapse. */
 export function normalizeHeader(text: string): string {
@@ -200,7 +200,7 @@ export const DEFAULT_ARRAY_ROWS = 3;
 export function arrayBoundFor(
   headers: readonly string[],
   config: EntityFormConfig | null | undefined,
-  plan?: MappingPlan | null,
+  plan?: AnyMappingPlan | null,
   lang?: string,
 ): number {
   return Math.min(

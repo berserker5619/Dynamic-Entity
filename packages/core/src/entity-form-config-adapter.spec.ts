@@ -1,234 +1,175 @@
 /**
- * entityFormConfigAdapter: a config through the generic import engine.
+ * entityFormConfigAdapter: a config through sheet-to-schema's import engine.
  *
- * The claim under test is parity. The same rows and the same stored plan go through 2.x's
- * `applyMapping` (this package) and through the importer's `applyMapping` over the adapter, and
- * must give the same records, the same errors and the same skips. Two differences are allowed:
- * - the importer adds a `code` to each error;
- * - 2.x reports a required field whose cell could not be read twice, once as unreadable and
- *   once as required. The generic engine reports it as unreadable only (spec §5, reversed on
- *   2026-10-12). `withoutDoubleRequired` takes exactly those second reports out of 2.x's list.
+ * **Against 2.5.0, not against itself.** Since 3.0 `applyMapping` *is* the generic engine over
+ * this adapter, so comparing the two would compare the new code with the new code. The record
+ * of what 2.x did is `test-fixtures/import-golden-2.5.0.json`: the inputs, and what the
+ * published `@dynamic-entity/core@2.5.0` made of them (`scripts/generate-import-golden.mjs`).
+ * Every plan in it is a stored 2.x plan, written by 2.5.0's suggester or in its shape.
+ *
+ * Three differences from 2.5.0 are allowed, and each is stated where it is applied:
+ * - every error carries a `code`;
+ * - a required field whose cell could not be read is reported once, as unreadable, where 2.5.0
+ *   also reported it as required (spec §5, reversed on 2026-10-12);
+ * - a plan problem's message is sheet-to-schema's. Its level, code and path are 2.5.0's.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   applyMapping as applyGeneric,
-  readPlan,
   slotsFor,
   suggestMapping as suggestGeneric,
-  validatePlan,
-  type ImportRowError as GenericRowError,
+  type ImportResult as ImporterResult,
+  type ImportRowError as ImporterRowError,
 } from 'sheet-to-schema';
 
-import { arrayBoundFor } from './array-headers';
 import { CORE_VERSION } from './constants';
 import { entityFormConfigAdapter, type EntityFormConfigAdapterOptions } from './entity-form-config-adapter';
-import { ratingScale, sliderBounds } from './field-values';
 import type { EntityFormConfig, FormRule, NestedFieldConfig } from './form-model.types';
-import { buildTemplateSpec, deriveImportColumns } from './import-columns';
-import { applyMapping, suggestMapping, type ApplyMappingOptions, type ImportLookups } from './import-engine';
-import type { ImportColumn, ImportRowError, MappingPlan } from './import-model.types';
-import { lookupValuesToOptions, normalizeLookupValues } from './lookup-list';
+import { buildTemplateSpec, deriveImportColumns, upgradeLegacyRefs } from './import-columns';
+import { applyMapping, suggestMapping, type ApplyMappingOptions } from './import-engine';
+import type { ImportResult, ImportRowError, MappingPlanV1 } from './import-model.types';
 
 const ROOT = join(__dirname, '..', '..', '..');
 const SHIPPED = JSON.parse(readFileSync(join(ROOT, 'test_data.json'), 'utf8')) as EntityFormConfig[];
 
-/** The real `clientTier` list, as `server/src/all-configs.spec.ts` resolves it. */
-const LOOKUPS: ImportLookups = {
-  clientTier: lookupValuesToOptions(
-    normalizeLookupValues(
-      JSON.parse(readFileSync(join(ROOT, 'packages', 'demo-angular', 'src', 'app', 'mock', 'client-tier-list.json'), 'utf8')),
-    ),
-  ),
-};
+// ─── What 2.5.0 did ───────────────────────────────────────────────────────────
 
-/** `rules` rides on the JSON beside the config; `EntityFormConfig` does not declare it. */
-const rulesOf = (config: EntityFormConfig): FormRule[] => {
-  const raw = (config as unknown as Record<string, unknown>)['rules'];
-  return Array.isArray(raw) ? (raw as FormRule[]) : [];
-};
-
-/** The 2.x result and the generic engine's, for the same rows, plan and options. */
-function both(
-  rows: unknown[][],
-  plan: unknown,
-  config: EntityFormConfig,
-  options: ApplyMappingOptions = {},
-  adapterOptions: EntityFormConfigAdapterOptions = {},
-) {
-  const { lang, decimal, dateOrder, stamp, rules, lookups } = options;
-  const old = applyMapping(rows, plan as MappingPlan, config, options);
-  const adapter = entityFormConfigAdapter(config, { rules, lookups, ...adapterOptions });
-  const neu = applyGeneric(rows, plan, adapter, { lang, decimal, dateOrder, stamp });
-  return { old, neu };
+interface GoldenCase {
+  name: string;
+  shipped?: string;
+  config?: EntityFormConfig;
+  rows: unknown[][];
+  plan: MappingPlanV1;
+  options: ApplyMappingOptions;
+  expected: { records: Record<string, unknown>[]; errors: ImportRowError[]; skipped: number; planProblems: { level: string; code?: string; path: string }[] };
 }
+interface GoldenSuggestion {
+  shipped: string;
+  headers: string[];
+  arrayBound: number;
+  entries: { ref: string; column: number; confidence: string }[];
+}
+const GOLDEN = JSON.parse(readFileSync(join(__dirname, '..', 'test-fixtures', 'import-golden-2.5.0.json'), 'utf8')) as {
+  from: string;
+  cases: GoldenCase[];
+  suggestions: GoldenSuggestion[];
+};
 
-const withoutCode = (errors: readonly GenericRowError[]) =>
-  errors.map(error => {
-    const copy: Partial<GenericRowError> = { ...error };
-    delete copy.code;
-    return copy;
-  });
+/** A typed cell, back from how the golden file had to write it. */
+const decode = (cell: unknown): unknown =>
+  cell !== null && typeof cell === 'object' && '$date' in cell ? new Date((cell as { $date: string | null }).$date ?? Number.NaN) : cell;
+const configOf = (golden: { shipped?: string; config?: EntityFormConfig }): EntityFormConfig =>
+  golden.config ?? (SHIPPED.find(config => config.entity === golden.shipped) as EntityFormConfig);
+const caseNamed = (name: string): GoldenCase => {
+  const found = GOLDEN.cases.find(golden => golden.name === name);
+  if (!found) throw new Error(`The golden file has no case named "${name}".`);
+  return found;
+};
 
 const shapeOfRef = (ref: string): string => ref.split('.').filter(segment => !/^\d+$/.test(segment)).join('.');
 
 /**
- * 2.x's errors without the "required" it adds for a field whose cell, on the same row, it
- * has already reported as unreadable. 2.x errors carry no code, so the second report is known
- * by its shape: no column, and the message validators give a missing value.
+ * 2.5.0's errors without the second report it makes of a field whose cell, on the same row,
+ * it has already reported as unreadable. 2.5.0's errors carry no code, so the second report
+ * is known by its shape: the same row and field as a cell error, and no column of its own.
  */
 function withoutDoubleRequired(errors: readonly ImportRowError[]): ImportRowError[] {
   const unread = new Set(errors.filter(error => error.column !== undefined).map(error => `${error.row} ${shapeOfRef(error.ref)}`));
-  return errors.filter(
-    error => !(error.column === undefined && / is required$/.test(error.message) && unread.has(`${error.row} ${shapeOfRef(error.ref)}`)),
-  );
+  return errors.filter(error => !(error.column === undefined && unread.has(`${error.row} ${shapeOfRef(error.ref)}`)));
 }
 
-/** Assert the two engines agree, and hand both results back for anything more specific. */
-function expectParity(...args: Parameters<typeof both>) {
-  const { old, neu } = both(...args);
-  expect(neu.records).toEqual(old.records);
-  expect(withoutCode(neu.errors)).toEqual(withoutDoubleRequired(old.errors));
-  expect(neu.skipped).toBe(old.skipped);
-  expect(neu.planProblems.map(p => `${p.level} ${p.code}`).sort()).toEqual(old.planProblems.map(p => `${p.level} ${p.code}`).sort());
-  // Every error the generic engine reports says why, in a code.
-  expect(neu.errors.filter(error => !error.code)).toEqual([]);
-  return { old, neu };
-}
-
-// ─── A row for any config ─────────────────────────────────────────────────────
-
-const PATTERN_CANDIDATES = ['ada@example.com', 'AB123456C', 'ABC-123', 'REF-0001', '123-45-6789', 'AST-00042', '12345', 'A1', 'Sample'];
-
-/** A cell the field accepts, as text. A compact form of the server's `config-rows.fixtures.ts`. */
-function cellFor(column: ImportColumn): string {
-  const field = column.field;
-  const validators = field.validators ?? {};
-  switch (field.type) {
-    case 'dropdown':
-    case 'radio':
-    case 'multiSelect': {
-      const fromList = field.listName ? LOOKUPS[field.listName]?.[0] : undefined;
-      return column.enumValues?.[0] ?? (fromList ? String((fromList as Record<string, unknown>)['en'] ?? '') : '') ?? '';
-    }
-    case 'boolean':
-    case 'checkbox':
-      return 'true';
-    case 'number':
-    case 'currency':
-      return String(Math.min(Math.max(42, validators.min ?? 42), validators.max ?? 42));
-    case 'date':
-      return '2024-03-07';
-    case 'datetime':
-      return '2024-03-07T09:30:00.000Z';
-    case 'monthYear':
-      return '2024-03';
-    case 'time':
-      return '09:30';
-    case 'url':
-      return 'https://example.com/profile';
-    case 'phone':
-      return '+1 555 555 0123';
-    case 'color':
-      return '#336699';
-    case 'tags':
-      return 'alpha;beta';
-    case 'slider':
-      return String(sliderBounds(field).min);
-    case 'rating':
-      return String(ratingScale(field));
-    default: {
-      if (validators.pattern) {
-        const regex = new RegExp(validators.pattern);
-        return PATTERN_CANDIDATES.find(candidate => regex.test(candidate)) ?? '';
-      }
-      if (validators.email) return 'ada@example.com';
-      let text = `Sample ${field.id}`;
-      if (typeof validators.minLength === 'number') text = text.padEnd(validators.minLength, 'x');
-      if (typeof validators.maxLength === 'number') text = text.slice(0, validators.maxLength);
-      return text;
-    }
-  }
-}
-
-/** The typed cell an xlsx would carry for the field, where it has one. */
-function typedCellFor(column: ImportColumn): unknown {
-  switch (column.field.type) {
-    case 'boolean':
-    case 'checkbox':
-      return true;
-    case 'number':
-    case 'currency':
-    case 'slider':
-    case 'rating':
-      return Number(cellFor(column));
-    case 'date':
-    case 'monthYear':
-      return new Date(Date.UTC(2024, 2, 7));
-    case 'datetime':
-      return new Date(Date.UTC(2024, 2, 7, 9, 30));
-    case 'time':
-      return new Date(Date.UTC(1899, 11, 30, 9, 30));
-    default:
-      return cellFor(column);
-  }
-}
-
-// ─── Every shipped config ─────────────────────────────────────────────────────
-
-describe.each(SHIPPED.map(config => [config.entity, config] as const))('parity on the shipped config %s', (_entity, config) => {
-  const spec = buildTemplateSpec(config, { lang: 'en' });
-  const headers = spec.columns.map(column => column.header);
-  const plan = suggestMapping(headers, deriveImportColumns(config, { lang: 'en' }).columns, config.entity);
-  const options = { lang: 'en', lookups: LOOKUPS, rules: rulesOf(config) };
-  const adapter = entityFormConfigAdapter(config, options);
-
-  it('reads its stored v1 plan without errors, as planVersion 2', () => {
-    const { plan: read, problems } = readPlan(JSON.parse(JSON.stringify({ ...plan, configVersion: config.version })));
-    expect(problems.filter(problem => problem.level === 'error')).toEqual([]);
-    expect(read).toMatchObject({ planVersion: 2, target: config.entity, schemaVersion: config.version });
-    expect(validatePlan(read!, adapter)).toEqual([]);
+/** An error as 2.5.0 wrote it: no code. A typed `raw` is compared as the golden file holds it. */
+const as2x = (errors: readonly ImportRowError[]): unknown[] =>
+  errors.map(error => {
+    const rest = Object.fromEntries(Object.entries(error).filter(([key]) => key !== 'code'));
+    const raw: unknown = rest['raw'];
+    const plain = raw instanceof Date ? { ...rest, raw: { $date: Number.isNaN(raw.getTime()) ? null : raw.toISOString() } } : rest;
+    return JSON.parse(JSON.stringify(plain)) as unknown;
   });
 
-  it('imports a valid row, as text and as typed cells, into the same record', () => {
-    const text = spec.columns.map(cellFor);
-    const typed = spec.columns.map(typedCellFor);
-    const { neu } = expectParity([text, typed], plan, config, options);
-    expect(neu.errors).toEqual([]);
-    expect(neu.records).toHaveLength(2);
+describe('what 2.5.0 imported, the 3.x engine imports', () => {
+  it('has a record of every shipped config and of the cases written by hand', () => {
+    expect(GOLDEN.from).toBe('@dynamic-entity/core@2.5.0, the published package');
+    expect(GOLDEN.cases).toHaveLength(31);
+    expect(new Set(GOLDEN.cases.flatMap(golden => (golden.shipped ? [golden.shipped] : [])))).toEqual(new Set(SHIPPED.map(config => config.entity)));
   });
 
-  it('reports the same errors for a row of cells nothing can read, and skips the same blanks', () => {
-    const garbage = spec.columns.map(() => '???');
-    const blank = spec.columns.map(() => '');
-    const { neu } = expectParity([garbage, blank, [], garbage], plan, config, options);
-    expect(neu.skipped).toBe(2);
-    // A config of plain text fields reads anything, so only the count is fixed here.
-    expect(neu.records.length + new Set(neu.errors.map(error => error.row)).size).toBe(2);
-  });
+  describe.each(GOLDEN.cases.map(golden => [golden.name, golden] as const))('%s', (_name, golden) => {
+    const config = configOf(golden);
+    const rows = golden.rows.map(row => row.map(decode));
+    const result = applyMapping(rows, golden.plan, config, golden.options);
 
-  it('offers the targets deriveImportColumns derives, for the slots asked', () => {
-    const set = adapter.targets({ slots: Object.fromEntries(adapter.targets({ slots: {} }).arrays.map(a => [a.ref, 3])), lang: 'en' });
-    const derived = deriveImportColumns(config, { lang: 'en', maxArrayRows: 3, includeReadonly: true, includeSystemDefault: true });
-    expect(set.targets.map(t => [t.ref, t.header, t.required, t.arrayRef, t.arrayIndex])).toEqual(
-      derived.columns.map(c => [c.ref, c.header, c.required, c.arrayRef, c.arrayIndex]),
-    );
-    expect(set.unsupported).toEqual(derived.unsupported.map(({ ref, reason }) => ({ ref, reason })));
-    expect(set.targets.every(t => t.value.kind === 'custom')).toBe(true);
-  });
+    it('builds the same records, and skips the same rows', () => {
+      expect(JSON.parse(JSON.stringify(result.records))).toEqual(golden.expected.records);
+      expect(result.skipped).toBe(golden.expected.skipped);
+    });
 
-  it('suggests the mapping 2.x suggests for its own template', () => {
-    const suggested = suggestGeneric(headers, entityFormConfigAdapter(config, { includeReadonly: false, includeSystemDefault: false }), { lang: 'en' });
-    const bound = arrayBoundFor(headers, config, undefined, 'en');
-    const old = suggestMapping(headers, deriveImportColumns(config, { lang: 'en', maxArrayRows: bound }).columns, config.entity);
-    const pairs = (entries: readonly { ref: string; column?: number; confidence?: string }[]) =>
-      entries.map(e => `${e.column} ${e.ref} ${e.confidence}`).sort();
-    expect(pairs(suggested.entries)).toEqual(pairs(old.entries));
-    expect(suggested.target).toBe(config.entity);
+    it('reports the same errors, each now with a code, and an unreadable required field once', () => {
+      expect(as2x(result.errors)).toEqual(withoutDoubleRequired(golden.expected.errors));
+      expect(result.errors.filter(error => !error.code)).toEqual([]);
+    });
+
+    it('finds the same problems with the plan, at the same level, code and path', () => {
+      const problem = (p: { level: string; code?: string; path: string }) => ({ level: p.level, code: p.code, path: p.path });
+      expect(result.planProblems.map(problem)).toEqual(golden.expected.planProblems.map(problem));
+    });
   });
 });
 
-// ─── Hand-written cases ───────────────────────────────────────────────────────
+describe.each(GOLDEN.suggestions.map(golden => [golden.shipped, golden] as const))('the suggestion 2.5.0 made for the %s template', (_entity, golden) => {
+  const config = configOf(golden);
+  const pairs = (entries: readonly { ref: string; column?: number; confidence?: string }[]) => entries.map(e => `${e.column} ${e.ref} ${e.confidence}`).sort();
+
+  it('is the suggestion suggestMapping makes, as plan v2', () => {
+    const columns = deriveImportColumns(config, { lang: 'en', maxArrayRows: golden.arrayBound }).columns;
+    const plan = suggestMapping(golden.headers, columns, config.entity);
+    expect(pairs(plan.entries)).toEqual(pairs(golden.entries));
+    expect(plan).toMatchObject({ planVersion: 2, target: config.entity, sourceHeaders: golden.headers });
+    expect(plan).not.toHaveProperty('entity');
+  });
+
+  it('is the suggestion the generic suggester makes over the adapter', () => {
+    const adapter = entityFormConfigAdapter(config, { includeReadonly: false, includeSystemDefault: false });
+    expect(pairs(suggestGeneric(golden.headers, adapter, { lang: 'en' }).entries)).toEqual(pairs(golden.entries));
+  });
+});
+
+/**
+ * A plan saved by a 3.0 wizard is v2, and a plan stored by 2.x is v1. For the same sheet and
+ * the same mapping they have to import the same records, or upgrading the wizard would
+ * change what a file imports.
+ */
+describe.each(SHIPPED.map(config => [config.entity, config] as const))('a v2 suggestion and the equivalent stored v1 plan, for %s', (_entity, config) => {
+  const golden = caseNamed(`${config.entity}: a valid row, as text and as typed cells`);
+  const rows = golden.rows.map(row => row.map(decode));
+  const headers = buildTemplateSpec(config, { lang: 'en' }).columns.map(column => column.header);
+  const suggested = suggestMapping(headers, deriveImportColumns(config, { lang: 'en' }).columns, config.entity);
+
+  it('map the same columns to the same fields', () => {
+    const byColumn = (entries: readonly { ref: string; column?: number }[]) => entries.map(entry => `${entry.column} ${entry.ref}`).sort();
+    expect(suggested).toMatchObject({ planVersion: 2, target: config.entity });
+    expect(golden.plan).toMatchObject({ entity: config.entity });
+    expect(golden.plan).not.toHaveProperty('planVersion');
+    expect(byColumn(suggested.entries)).toEqual(byColumn(golden.plan.entries));
+  });
+
+  it('import the same records through the adapter, with nothing to report about either plan', () => {
+    const adapter = entityFormConfigAdapter(config, { rules: golden.options.rules, lookups: golden.options.lookups });
+    const fromV2 = applyGeneric(rows, suggested, adapter, { lang: 'en' });
+    const fromV1 = applyGeneric(rows, golden.plan, adapter, { lang: 'en' });
+    expect(fromV2.planProblems).toEqual([]);
+    expect(fromV1.planProblems).toEqual([]);
+    expect(fromV2.records.length).toBeGreaterThan(0);
+    expect(fromV2.records).toEqual(fromV1.records);
+    expect(fromV2.errors).toEqual(fromV1.errors);
+    expect(fromV2.skipped).toBe(fromV1.skipped);
+    // And both are what 2.5.0 built from the stored plan.
+    expect(JSON.parse(JSON.stringify(fromV2.records))).toEqual(golden.expected.records);
+  });
+});
+
+// ─── The adapter itself ───────────────────────────────────────────────────────
 
 const text = (id: string, label: string, extra: Partial<NestedFieldConfig> = {}): NestedFieldConfig => ({ id, type: 'text', label: { en: label }, ...extra });
 const phones = (extra: Partial<NestedFieldConfig> = {}): NestedFieldConfig => ({
@@ -272,6 +213,19 @@ describe('entityFormConfigAdapter', () => {
     expect(set.unsupported.map(u => u.ref)).toEqual(['kids.toys.toy']);
   });
 
+  it('offers the targets deriveImportColumns derives, for the slots asked, on every shipped config', () => {
+    for (const config of SHIPPED) {
+      const adapter = entityFormConfigAdapter(config);
+      const set = adapter.targets({ slots: Object.fromEntries(adapter.targets({ slots: {} }).arrays.map(a => [a.ref, 3])), lang: 'en' });
+      const derived = deriveImportColumns(config, { lang: 'en', maxArrayRows: 3, includeReadonly: true, includeSystemDefault: true });
+      expect(set.targets.map(t => [t.ref, t.header, t.required, t.arrayRef, t.arrayIndex])).toEqual(
+        derived.columns.map(c => [c.ref, c.header, c.required, c.arrayRef, c.arrayIndex]),
+      );
+      expect(set.unsupported).toEqual(derived.unsupported.map(({ ref, reason }) => ({ ref, reason })));
+      expect(set.targets.every(t => t.value.kind === 'custom')).toBe(true);
+    }
+  });
+
   it('matches a field with no label by its id alone', () => {
     const set = entityFormConfigAdapter(configWith(text('code', ''))).targets({ slots: {} });
     expect(set.targets.find(t => t.ref === 'code')?.matchKeys).toEqual(['code']);
@@ -291,46 +245,7 @@ describe('entityFormConfigAdapter', () => {
   });
 });
 
-describe('entityFormConfigAdapter — parity, case by case', () => {
-  it('reads a 2.2 ref of a moved array as slot 0, with the 2.3 warning', () => {
-    const config = configWith(phones({ refererField: 'contact.phones' }));
-    const { old, neu } = expectParity([['Ada', '111']], planFor(['name', 'phones.number']), config, { stamp: false });
-    expect(neu.records[0]['contact']).toEqual({ phones: [{ number: '111' }] });
-    const warning = (problems: readonly { code?: string }[]) => problems.filter(p => p.code === 'PLAN_LEGACY_REF');
-    expect(warning(neu.planProblems)).toEqual(warning(old.planProblems));
-    expect(warning(neu.planProblems)).toHaveLength(1);
-  });
-
-  it('writes a moved group at its override and at its position, as the form saves it', () => {
-    const config = configWith({ id: 'addr', type: 'group', label: { en: 'Address' }, refererField: 'customer.address', children: [text('city', 'City')] });
-    const { neu } = expectParity([['Ada', 'Paris']], planFor(['name', 'addr.city']), config, { stamp: false });
-    expect(neu.records[0]).toEqual({ name: 'Ada', customer: { address: { city: 'Paris' } }, addr: { city: 'Paris' } });
-  });
-
-  it('refuses an old ref mapped alongside its new one', () => {
-    const config = configWith(phones({ refererField: 'contact.phones' }));
-    const { neu } = expectParity([['111', '222']], planFor(['phones.number', 'contact.phones.0.number']), config);
-    expect(neu.planProblems).toContainEqual(expect.objectContaining({ level: 'error', code: 'PLAN_DUPLICATE_REF' }));
-    expect(neu.records).toEqual([]);
-  });
-
-  it('refuses a ref the config does not have', () => {
-    const { neu } = expectParity([['x']], planFor(['nope']), configWith());
-    expect(neu.planProblems).toContainEqual(expect.objectContaining({ level: 'error', code: 'PLAN_UNKNOWN_REF' }));
-  });
-
-  it('warns about a plan for another entity or another config version', () => {
-    const plan = { ...planFor(['name']), entity: 'pets', configVersion: 3 };
-    const { neu } = expectParity([['Ada']], plan, configWith());
-    expect(neu.planProblems.map(p => p.code)).toEqual(['PLAN_TARGET_MISMATCH', 'PLAN_TARGET_MISMATCH']);
-    expect(neu.records).toHaveLength(1);
-  });
-
-  it('compacts a sparse array and stamps the record', () => {
-    const { neu } = expectParity([['Ada', '', '', '222', 'cell']], planFor(['name', 'phones.0.number', 'phones.0.kind', 'phones.1.number', 'phones.1.kind']), configWith(phones()));
-    expect(neu.records[0]).toEqual({ name: 'Ada', phones: [{ number: '222', kind: 'cell' }], _configVersion: 4 });
-  });
-
+describe('entityFormConfigAdapter — what plan v2 adds for a Dynamic Entity config', () => {
   it('cannot keep empty slots in place: compact false is a plan error', () => {
     const adapter = entityFormConfigAdapter(configWith(phones()));
     const plan = { planVersion: 2, target: 'people', entries: [{ ref: 'phones.1.number', column: 0 }], lists: { phones: { compact: false } } };
@@ -339,120 +254,41 @@ describe('entityFormConfigAdapter — parity, case by case', () => {
     expect(result.records).toEqual([]);
   });
 
-  it('collects one array item per row of a group, which 2.x could not', () => {
-    const adapter = entityFormConfigAdapter(configWith(phones()));
+  it('collects one array item per row of a group, through applyMapping, which 2.x could not', () => {
     const plan = {
-      planVersion: 2,
+      planVersion: 2 as const,
       target: 'people',
-      entries: [{ ref: 'name', column: 0 }, { ref: 'phones.number', column: 1 }],
+      entries: [{ ref: 'name', column: 0 }, { ref: 'phones.number', column: 1 }, { ref: 'phones.kind', column: 2 }],
       group: { key: [0], collect: ['phones'] },
     };
-    const result = applyGeneric([['Ada', '111'], ['Ada', '222'], ['Bo', '333']], plan, adapter, { stamp: false });
+    const result = applyMapping([['Ada', '111', 'home'], ['Ada', '222', 'work'], ['Bo', '333', 'cell']], plan, configWith(phones()), { stamp: false });
     expect(result.errors).toEqual([]);
     expect(result.records).toEqual([
-      { name: 'Ada', phones: [{ number: '111' }, { number: '222' }] },
-      { name: 'Bo', phones: [{ number: '333' }] },
+      { name: 'Ada', phones: [{ number: '111', kind: 'home' }, { number: '222', kind: 'work' }] },
+      { name: 'Bo', phones: [{ number: '333', kind: 'cell' }] },
     ]);
+    // A 2.x result had no `warnings`, and has none still when there is nothing to warn about.
+    expect(result).not.toHaveProperty('warnings');
   });
 
-  it('hides what a rule hides, shows what it shows, and raises what it raises', () => {
-    const rule = (value: string, action: FormRule['action'], target: string): FormRule => ({
-      formConfigId: 'people',
-      fieldId: 'name',
-      conditions: [{ operator: 'EQUAL', value, compareType: 'value' }],
-      action,
-      targets: [{ id: target, type: 'field' }],
-      enabled: true,
-      priority: 0,
-    });
-    const config = configWith(text('reason', 'Reason', { validators: { required: true } }), text('note', 'Note'));
-    const rules = [
-      rule('skip', { type: 'visibility', value: false }, 'reason'),
-      rule('bad', { type: 'validation', value: 'Not allowed' } as FormRule['action'], 'note'),
-    ];
-    const { neu } = expectParity([['skip', '', ''], ['Ada', '', ''], ['bad', 'r', 'n']], planFor(['name', 'reason', 'note']), config, { rules, stamp: false });
-    expect(neu.records).toEqual([{ name: 'skip' }]);
-    expect(neu.errors.map(e => [e.row, e.ref, e.code])).toEqual([
-      [3, 'reason', 'RECORD_REQUIRED'],
-      [4, 'note', 'RECORD_RULE'],
-    ]);
-  });
-
-  it('says why each cell and each record failed, in a code', () => {
-    const config = configWith(
-      { id: 'age', type: 'number', label: { en: 'Age' }, validators: { min: 18 } },
-      { id: 'tier', type: 'dropdown', label: { en: 'Tier' }, options: [{ en: 'Gold' }, { en: 'Silver' }] },
-      text('email', 'Email', { validators: { email: true } }),
-      { id: 'born', type: 'date', label: { en: 'Born' } },
-      { id: 'kinds', type: 'multiSelect', label: { en: 'Kinds' }, listName: 'kinds' },
-    );
-    const plan = planFor(['name', 'age', 'tier', 'email', 'born', 'kinds']);
-    const options = { stamp: false, lookups: { kinds: [{ en: 'A' }, { en: 'B' }] } };
-    const { neu } = expectParity(
-      [
-        ['Ada', '30', 'Gold', 'ada@example.com', '2024-03-07', 'A; B'],
-        ['Bo', 'x', 'Bronze', 'nope', 'never', 'C'],
-        ['Cy', '7', new Date(Number.NaN), '', '', ''],
-      ],
-      plan,
-      config,
-      options,
-    );
-    expect(neu.records).toEqual([{ name: 'Ada', age: 30, tier: { en: 'Gold' }, email: 'ada@example.com', born: '2024-03-07', kinds: [{ en: 'A' }, { en: 'B' }] }]);
-    expect(neu.errors.map(e => [e.row, e.ref, e.code])).toEqual([
-      [3, 'age', 'CELL_FORMAT'],
-      [3, 'tier', 'CELL_UNKNOWN_OPTION'],
-      [3, 'born', 'CELL_FORMAT'],
-      [3, 'kinds', 'CELL_UNKNOWN_OPTION'],
-      [3, 'email', 'RECORD_FORMAT'],
-      // A broken date cell in an option field is unreadable, not an unknown option.
-      [4, 'tier', 'CELL_FORMAT'],
-      [4, 'age', 'RECORD_RANGE'],
-    ]);
-  });
-
-  it('reads a decimal comma when the run says so, and error text in the run\'s language', () => {
-    const config = configWith({ id: 'price', type: 'currency', label: { en: 'Price', de: 'Preis' }, validators: { required: true } });
-    const plan = planFor(['name', 'price']);
-    expect(expectParity([['Ada', '1,5']], plan, config, { decimal: ',', stamp: false }).neu.records[0]['price']).toBe(1.5);
-    expect(expectParity([['Ada', '']], plan, config, { lang: 'de' }).neu.errors[0].message).toBe('Preis is required');
-  });
-
-  it('keeps the form\'s email rule, which takes an address the generic rule refuses', () => {
-    // Angular's Validators.email, which the form applies, needs no dot in the domain. The
-    // generic engine holds `format: 'email'` to ajv-formats' rule and refuses this address.
-    const config = configWith(text('email', 'Email', { validators: { email: true } }));
-    const { neu } = expectParity([['Rahul', 'rahul.k@example'], ['Ada', 'ada@']], planFor(['name', 'email']), config, { stamp: false });
-    expect(neu.records).toEqual([{ name: 'Rahul', email: 'rahul.k@example' }]);
-    expect(neu.errors.map(e => [e.row, e.ref, e.code])).toEqual([[3, 'email', 'RECORD_FORMAT']]);
-  });
-
-  it('reports a required field whose cell could not be read once, where 2.x reports it twice', () => {
-    const config = configWith({ id: 'age', type: 'number', label: { en: 'Age' }, validators: { required: true } }, text('city', 'City', { validators: { required: true } }));
-    const { old, neu } = expectParity([['Ada', 'old', '']], planFor(['name', 'age', 'city']), config, { stamp: false });
-    expect(old.errors.map(e => e.ref)).toEqual(['age', 'age', 'city']);
-    expect(neu.errors.map(e => [e.ref, e.code])).toEqual([
-      ['age', 'CELL_FORMAT'],
-      // Nothing was typed for the city, which is what required means.
-      ['city', 'RECORD_REQUIRED'],
-    ]);
-  });
-
-  it('reads a slash date in the order the run states, and refuses one it would have to guess', () => {
-    const config = configWith({ id: 'born', type: 'date', label: { en: 'Born' } });
-    const plan = planFor(['name', 'born']);
-    expect(expectParity([['Ada', '05/09/2026']], plan, config, { dateOrder: 'DMY', stamp: false }).neu.records).toEqual([{ name: 'Ada', born: '2026-09-05' }]);
-    expect(expectParity([['Ada', '05/09/2026']], plan, config, { dateOrder: 'MDY', stamp: false }).neu.records).toEqual([{ name: 'Ada', born: '2026-05-09' }]);
-    const { neu } = expectParity([['Ada', '05/09/2026']], plan, config, { stamp: false });
-    expect(neu.records).toEqual([]);
-    expect(neu.errors.map(e => [e.ref, e.code])).toEqual([['born', 'CELL_FORMAT']]);
+  it('warns, and still imports, when rows of a group disagree', () => {
+    const config = configWith(text('city', 'City'), phones());
+    const plan = {
+      planVersion: 2 as const,
+      target: 'people',
+      entries: [{ ref: 'name', column: 0 }, { ref: 'city', column: 1 }, { ref: 'phones.number', column: 2 }],
+      group: { key: [0], collect: ['phones'] },
+    };
+    const result = applyMapping([['Ada', 'Paris', '111'], ['Ada', 'Rome', '222']], plan, config, { stamp: false });
+    expect(result.records).toEqual([{ name: 'Ada', city: 'Paris', phones: [{ number: '111' }, { number: '222' }] }]);
+    expect(result.warnings).toEqual([expect.objectContaining({ row: 2, rows: [2, 3], ref: 'city', code: 'RECORD_GROUP_CONFLICT' })]);
   });
 
   /**
    * A v2 plan states the order per column (spec §3). The adapter reads its own cells, so it is
    * handed the resolved order as `coerce`'s fourth argument: the entry's, else the run's.
    */
-  it('reads each date column in the order its plan entry states, and the rest in the run\'s', () => {
+  it("reads each date column in the order its plan entry states, and the rest in the run's", () => {
     const config = configWith({ id: 'born', type: 'date', label: { en: 'Born' } }, { id: 'joined', type: 'date', label: { en: 'Joined' } });
     const adapter = entityFormConfigAdapter(config);
     const plan = (born?: string, joined?: string) => ({
@@ -465,7 +301,7 @@ describe('entityFormConfigAdapter — parity, case by case', () => {
       ],
     });
     const rows = [['Ada', '05/09/2026', '05/09/2026']];
-    const dates = (result: ReturnType<typeof applyGeneric>) => result.records.map(({ born, joined }) => [born, joined]);
+    const dates = (result: ImporterResult) => result.records.map(({ born, joined }) => [born, joined]);
 
     // Two columns of one sheet, written two ways.
     expect(dates(applyGeneric(rows, plan('DMY', 'MDY'), adapter, { stamp: false }))).toEqual([['2026-09-05', '2026-05-09']]);
@@ -482,18 +318,105 @@ describe('entityFormConfigAdapter — parity, case by case', () => {
   });
 
   it('reads a number with the decimal mark the run states, from the engine or from the context', () => {
-    const config = configWith({ id: 'price', type: 'currency', label: { en: 'Price' } });
-    const adapter = entityFormConfigAdapter(config);
+    const adapter = entityFormConfigAdapter(configWith({ id: 'price', type: 'currency', label: { en: 'Price' } }));
     const plan = planFor(['name', 'price']);
     expect(applyGeneric([['Ada', '1,5']], plan, adapter, { stamp: false }, { decimal: ',' }).records[0]['price']).toBe(1.5);
     expect(applyGeneric([['Ada', '1,5']], plan, adapter, { stamp: false, decimal: ',' }).records[0]['price']).toBe(1.5);
   });
 
-  it('takes a typed constant as it is, and a text one through the field', () => {
-    const config = configWith({ id: 'active', type: 'boolean', label: { en: 'Active' } }, { id: 'tier', type: 'dropdown', label: { en: 'Tier' }, options: [{ en: 'Gold' }] });
-    const plan = { entity: 'people', entries: [{ ref: 'name', column: 0 }, { ref: 'active', constant: 'yes' }, { ref: 'tier', constant: { en: 'Gold' } }] };
-    const { neu } = expectParity([['Ada'], ['']], plan, config, { stamp: false });
-    expect(neu.records).toEqual([{ name: 'Ada', active: true, tier: { en: 'Gold' } }]);
-    expect(neu.skipped).toBe(1);
+  it('says why each cell and each record failed, in a code', () => {
+    const golden = caseNamed('each kind of cell and record failure');
+    const result = applyMapping(golden.rows.map(row => row.map(decode)), golden.plan, configOf(golden), golden.options);
+    expect(result.errors.map(e => [e.row, e.ref, e.code])).toEqual([
+      [3, 'age', 'CELL_FORMAT'],
+      [3, 'tier', 'CELL_UNKNOWN_OPTION'],
+      [3, 'born', 'CELL_FORMAT'],
+      [3, 'kinds', 'CELL_UNKNOWN_OPTION'],
+      [3, 'email', 'RECORD_FORMAT'],
+      // A broken date cell in an option field is unreadable, not an unknown option.
+      [4, 'tier', 'CELL_FORMAT'],
+      [4, 'age', 'RECORD_RANGE'],
+    ]);
+  });
+
+  it('says a rule raised an error, and that a field was required', () => {
+    const golden = caseNamed('a rule hides a required field, and a rule raises an error');
+    const result = applyMapping(golden.rows, golden.plan, configOf(golden), { ...golden.options, rules: golden.options.rules as FormRule[] });
+    expect(result.errors.map(e => [e.row, e.ref, e.code])).toEqual([
+      [3, 'reason', 'RECORD_REQUIRED'],
+      [4, 'note', 'RECORD_RULE'],
+    ]);
+  });
+});
+
+describe('a plan that names no target', () => {
+  const config = configWith();
+  const entries = [{ ref: 'name', column: 0 }];
+
+  it('is read against the config in hand when it is a 2.x plan, as 2.x read it', () => {
+    const result = applyMapping([['Ada']], { entries } as unknown as MappingPlanV1, config, { stamp: false });
+    expect(result.planProblems).toEqual([]);
+    expect(result.records).toEqual([{ name: 'Ada' }]);
+    expect(applyMapping([['Ada']], { entity: '', entries }, config, { stamp: false }).records).toEqual([{ name: 'Ada' }]);
+  });
+
+  it('is refused when it is plan v2, which must name one', () => {
+    const result = applyMapping([['Ada']], { planVersion: 2, entries } as never, config, { stamp: false });
+    expect(result.records).toEqual([]);
+    expect(result.planProblems.filter(problem => problem.level === 'error').map(problem => problem.path)).toEqual(['target']);
+  });
+
+  it('is let through as plan v2 only with the empty target suggestMapping writes when given no entity', () => {
+    const suggested = suggestMapping(['Name'], deriveImportColumns(config).columns);
+    expect(suggested).toMatchObject({ planVersion: 2, target: '' });
+    const result = applyMapping([['Ada']], suggested, config, { stamp: false });
+    expect(result.planProblems).toEqual([]);
+    expect(result.records).toEqual([{ name: 'Ada' }]);
+  });
+});
+
+/**
+ * Dynamic Entity keeps its own result types: its plan problems are `ConfigProblem`s, whose
+ * `code` is optional, where the importer's require one. What the engine returns has to fit
+ * them, so `applyMapping` can hand it back. Checked by the compiler: this file does not
+ * compile if the importer's types stop being assignable to Dynamic Entity's.
+ */
+describe('the result types', () => {
+  it("take whatever sheet-to-schema's engine returns", () => {
+    const fromEngine: ImporterResult = { records: [], errors: [], skipped: 0, planProblems: [] };
+    const rowFromEngine: ImporterRowError = { row: 2, rows: [2, 3], ref: 'name', code: 'CELL_FORMAT', message: 'x' };
+    const asDynamicEntity: ImportResult = fromEngine;
+    const rowAsDynamicEntity: ImportRowError = rowFromEngine;
+    expect(asDynamicEntity).toBe(fromEngine);
+    expect(rowAsDynamicEntity).toBe(rowFromEngine);
+  });
+});
+
+/**
+ * `upgradeLegacyRefs` is public, and the mapper and the preview screen call it to show what a
+ * 2.2 ref means now. The engine no longer calls it, since the plan reader resolves the alias
+ * itself, so it is held here directly.
+ */
+describe('upgradeLegacyRefs', () => {
+  const moved = configWith(phones({ refererField: 'contact.phones' }));
+
+  it('rewrites a 2.2 ref of a moved array to the slot it means now, and keeps the rest of the plan', () => {
+    const plan = { entity: 'people', configVersion: 4, entries: [{ ref: 'name', column: 0 }, { ref: 'phones.number', column: 1, header: 'Phone' }] };
+    expect(upgradeLegacyRefs(plan, moved)).toEqual({
+      entity: 'people',
+      configVersion: 4,
+      entries: [{ ref: 'name', column: 0 }, { ref: 'contact.phones.0.number', column: 1, header: 'Phone' }],
+    });
+  });
+
+  it('leaves an entry that is not an entry where it is, for the plan reader to report', () => {
+    const entries = [null, { ref: 'phones.number', column: 1 }] as unknown as MappingPlanV1['entries'];
+    expect(upgradeLegacyRefs({ entity: 'people', entries }, moved).entries).toEqual([null, { ref: 'contact.phones.0.number', column: 1 }]);
+  });
+
+  it('returns the same plan when nothing in the config moved, and what is not a plan as it is', () => {
+    const plan = planFor(['name', 'phones.0.number']);
+    expect(upgradeLegacyRefs(plan, configWith(phones()))).toBe(plan);
+    expect(upgradeLegacyRefs(null as never, moved)).toBeNull();
   });
 });

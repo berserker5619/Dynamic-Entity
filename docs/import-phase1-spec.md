@@ -572,6 +572,7 @@ Nothing. The one open question, the package name, is closed:
 - Renderer null-slot contract, so DE can be positional.
 - Store moved containers once, with a record migration.
 - A chosen header row, with the header-row hint in the mapper (Phase 4). Specified in the appendix **Deferred: header row**.
+- An adapter-supplied noun for problem messages ("config" against "schema"). The plan checks say "schema" for every adapter, so a Dynamic Entity user now reads "this schema is \"e\"" where 2.x said "the config is \"e\"". Codes and paths are unaffected.
 
 **Order of work that follows from these:** DE 2.4 (problem codes on `ConfigProblem`, plus the changelog correction for decision 3) is **done** (2.4.0, 2026-10-10). Next is Phase 1 (types, `readPlan`, adapter contracts, generic engine), then Phase 2 (extraction under the chosen name).
 
@@ -772,3 +773,10 @@ A `custom` kind reaching `coerceValue` throws (§7).
 - **`applyMapping` gains a run-level `dateOrder`** (§8's signature), the default for every entry that states none. `runImport` and the generic router take the same option, and a preview reports the router's, as Dynamic Entity 2.5.0's does.
 - **The DE adapter honours it.** It reads with `cell` and falls back to its context. So a v2 plan can state a different order for each date column of a DE config, and 2.5.0's options-level `dateOrder` keeps working as the default. This closes the gap the entry of the same date on step 0 left open.
 - **The decision's three precedence levels, as built:** an entry's `dateOrder` beats the run's, the run's beats nothing, and with nothing a date that reads two ways is refused. `split` exists only on an entry, and `decimal` only on the run, so each has one source.
+
+**2026-10-12: Dynamic Entity's engine is this one (Phase 2, commit 3.1).** `@dynamic-entity/core`'s `applyMapping`, `suggestMapping` and `validateMappingPlan` now run the engine, the suggester and the plan checks specified here, over `entityFormConfigAdapter`. What that settled, none of it changing a rule above:
+
+- **A plan problem is reported at the name the plan used.** A 2.x plan whose `entity` does not match is reported at `entity`, and one whose `configVersion` is behind at `configVersion`, not at `target` and `schemaVersion`. The reader upgrades the plan before it is checked, so `preparePlan` maps the two paths back. A v2 plan is reported at the v2 names.
+- **A reserved-key ref is `PLAN_UNSAFE_PATH`** for a Dynamic Entity plan too, where 2.x called it an unknown ref. The importer's thirteen plan codes are Dynamic Entity's list now; the six 2.x emitted keep their meaning.
+- **"No target named" stays an error for plan v2.** A 2.x plan that names no entity is read against the config in hand, as 2.x read it, by the DE wrapper and not by the reader. The one v2 plan let through is `target: ''`, which DE's own two-argument `suggestMapping` writes.
+- **Later list:** an adapter-supplied noun for problem messages.

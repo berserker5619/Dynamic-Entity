@@ -18,7 +18,7 @@ import {
   type DateOrder,
   type ImportLookups,
   type ImportResult,
-  type MappingPlan,
+  type AnyMappingPlan,
 } from '@dynamic-entity/core';
 import { IMPORT_TRANSPORT } from '../tokens/injection-tokens';
 import { UiTextService } from '../services/ui-text.service';
@@ -307,7 +307,7 @@ export class EntityImportComponent {
   /** The date order the transport said it will read with at commit, from its preview. */
   protected readonly reportedDateOrder = signal<DateOrder | undefined>(undefined);
   protected readonly fileName = signal('');
-  protected readonly plan = signal<MappingPlan | null>(null);
+  protected readonly plan = signal<AnyMappingPlan | null>(null);
   protected readonly result = signal<ImportResult | null>(null);
 
   private readonly registered = inject(IMPORT_TRANSPORT, { optional: true });

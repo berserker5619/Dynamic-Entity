@@ -9,10 +9,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["jest", "node"],
-    "paths": {
-      "sheet-to-schema": ["../sheet-to-schema/src/index.ts"]
-    }
+    "types": ["jest", "node"]
   },
   "include": ["src/**/*.ts"]
 }

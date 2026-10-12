@@ -10,7 +10,7 @@ import { deriveImportColumns, validateMappingPlan } from './import-columns';
 import { applyMapping } from './import-engine';
 import { validateConfig } from './validate-config';
 import type { EntityFormConfig, NestedFieldConfig } from './form-model.types';
-import type { MappingPlan } from './import-model.types';
+import type { MappingPlanV1 } from './import-model.types';
 
 const phones = (extra: Partial<NestedFieldConfig> = {}): NestedFieldConfig => ({
   id: 'phones',
@@ -39,7 +39,7 @@ const configWith = (...fields: NestedFieldConfig[]): EntityFormConfig => ({
 const refsOf = (config: EntityFormConfig, maxArrayRows = 3): string[] =>
   deriveImportColumns(config, { maxArrayRows }).columns.map(column => column.ref);
 
-const planFor = (refs: string[]): MappingPlan => ({
+const planFor = (refs: string[]): MappingPlanV1 => ({
   entity: 'people',
   entries: refs.map((ref, column) => ({ ref, column })),
 });

@@ -1,0 +1,5433 @@
+{
+ "generatedBy": "scripts/generate-import-golden.mjs",
+ "from": "@dynamic-entity/core@2.5.0, the published package",
+ "note": "A record of what 2.5.0 imports. Do not edit, and do not regenerate against any other version.",
+ "suggestions": [
+  {
+   "shipped": "complexFullTest",
+   "headers": [
+    "Primary & Basics / Full Name",
+    "Primary & Basics / Corporate Email",
+    "Primary & Basics / Executive Summary",
+    "Primary & Basics / Release Notes",
+    "Primary & Basics / Annual Budget ($USD)",
+    "Primary & Basics / Team Count",
+    "Primary & Basics / Department",
+    "Primary & Basics / Assigned System Roles",
+    "Primary & Basics / Account Active & Verified",
+    "Primary & Basics / Preferred Contact Method",
+    "Primary & Basics / Opt-in to Security Announcements",
+    "Dates, Files & References / Effective Join Date",
+    "Dates, Files & References / Billing Cycle Month/Year",
+    "Dates, Files & References / Daily Shift Start Time",
+    "Dates, Files & References / Linked Parent Organization",
+    "Dates, Files & References / Synced Source Client Name (Referenced)",
+    "Nested Groups & Dynamic Arrays / HQ Physical Address / Street Address",
+    "Nested Groups & Dynamic Arrays / HQ Physical Address / City",
+    "Nested Groups & Dynamic Arrays / HQ Physical Address / Postal Code",
+    "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 1",
+    "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 2",
+    "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 3",
+    "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 1",
+    "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 2",
+    "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 3",
+    "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 1",
+    "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 2",
+    "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 3",
+    "RBAC Masking & Critical Fields / Executive Salary (RBAC Masked)",
+    "RBAC Masking & Critical Fields / Tax Identifier (Critical Field)"
+   ],
+   "arrayBound": 3,
+   "entries": [
+    {
+     "ref": "generalTab.fullName",
+     "column": 0,
+     "confidence": "exact"
+    },
+    {
+     "ref": "generalTab.emailAddress",
+     "column": 1,
+     "confidence": "exact"
+    },
+    {
+     "ref": "generalTab.bioNotes",
+     "column": 2,
+     "confidence": "exact"
+    },
+    {
+     "ref": "generalTab.releaseNotes",
+     "column": 3,
+     "confidence": "exact"
+    },
+    {
+     "ref": "generalTab.annualBudget",
+     "column": 4,
+     "confidence": "exact"
+    },
+    {
+     "ref": "generalTab.teamCount",
+     "column": 5,
+     "confidence": "exact"
+    },
+    {
+     "ref": "generalTab.department",
+     "column": 6,
+     "confidence": "exact"
+    },
+    {
+     "ref": "generalTab.roles",
+     "column": 7,
+     "confidence": "exact"
+    },
+    {
+     "ref": "generalTab.accountActive",
+     "column": 8,
+     "confidence": "exact"
+    },
+    {
+     "ref": "generalTab.contactMethod",
+     "column": 9,
+     "confidence": "exact"
+    },
+    {
+     "ref": "generalTab.optInNewsletter",
+     "column": 10,
+     "confidence": "exact"
+    },
+    {
+     "ref": "datesAndFilesTab.joinDate",
+     "column": 11,
+     "confidence": "exact"
+    },
+    {
+     "ref": "datesAndFilesTab.billingCycle",
+     "column": 12,
+     "confidence": "exact"
+    },
+    {
+     "ref": "datesAndFilesTab.dailyShiftStart",
+     "column": 13,
+     "confidence": "exact"
+    },
+    {
+     "ref": "datesAndFilesTab.orgRef",
+     "column": 14,
+     "confidence": "exact"
+    },
+    {
+     "ref": "datesAndFilesTab.syncedClientName",
+     "column": 15,
+     "confidence": "exact"
+    },
+    {
+     "ref": "nestedStructuresTab.addressGroup.street",
+     "column": 16,
+     "confidence": "exact"
+    },
+    {
+     "ref": "nestedStructuresTab.addressGroup.city",
+     "column": 17,
+     "confidence": "exact"
+    },
+    {
+     "ref": "nestedStructuresTab.addressGroup.postalCode",
+     "column": 18,
+     "confidence": "exact"
+    },
+    {
+     "ref": "nestedStructuresTab.emergencyContacts.0.contactName",
+     "column": 19,
+     "confidence": "exact"
+    },
+    {
+     "ref": "nestedStructuresTab.emergencyContacts.1.contactName",
+     "column": 20,
+     "confidence": "exact"
+    },
+    {
+     "ref": "nestedStructuresTab.emergencyContacts.2.contactName",
+     "column": 21,
+     "confidence": "exact"
+    },
+    {
+     "ref": "nestedStructuresTab.emergencyContacts.0.relationship",
+     "column": 22,
+     "confidence": "exact"
+    },
+    {
+     "ref": "nestedStructuresTab.emergencyContacts.1.relationship",
+     "column": 23,
+     "confidence": "exact"
+    },
+    {
+     "ref": "nestedStructuresTab.emergencyContacts.2.relationship",
+     "column": 24,
+     "confidence": "exact"
+    },
+    {
+     "ref": "nestedStructuresTab.emergencyContacts.0.phoneNumber",
+     "column": 25,
+     "confidence": "exact"
+    },
+    {
+     "ref": "nestedStructuresTab.emergencyContacts.1.phoneNumber",
+     "column": 26,
+     "confidence": "exact"
+    },
+    {
+     "ref": "nestedStructuresTab.emergencyContacts.2.phoneNumber",
+     "column": 27,
+     "confidence": "exact"
+    },
+    {
+     "ref": "securityAndRulesTab.executiveSalary",
+     "column": 28,
+     "confidence": "exact"
+    },
+    {
+     "ref": "securityAndRulesTab.taxIdNumber",
+     "column": 29,
+     "confidence": "exact"
+    }
+   ]
+  },
+  {
+   "shipped": "clients",
+   "headers": [
+    "General Info / Client Name",
+    "General Info / Email Address",
+    "General Info / Company Name",
+    "General Info / Status",
+    "General Info / Annual Revenue / Salary"
+   ],
+   "arrayBound": 3,
+   "entries": [
+    {
+     "ref": "primaryDetails.name",
+     "column": 0,
+     "confidence": "exact"
+    },
+    {
+     "ref": "primaryDetails.email",
+     "column": 1,
+     "confidence": "exact"
+    },
+    {
+     "ref": "primaryDetails.company",
+     "column": 2,
+     "confidence": "exact"
+    },
+    {
+     "ref": "primaryDetails.status",
+     "column": 3,
+     "confidence": "exact"
+    },
+    {
+     "ref": "primaryDetails.salary",
+     "column": 4,
+     "confidence": "exact"
+    }
+   ]
+  },
+  {
+   "shipped": "employees",
+   "headers": [
+    "Personal Info / First Name",
+    "Personal Info / Last Name",
+    "Personal Info / Department"
+   ],
+   "arrayBound": 3,
+   "entries": [
+    {
+     "ref": "personalInfo.firstName",
+     "column": 0,
+     "confidence": "exact"
+    },
+    {
+     "ref": "personalInfo.lastName",
+     "column": 1,
+     "confidence": "exact"
+    },
+    {
+     "ref": "personalInfo.department",
+     "column": 2,
+     "confidence": "exact"
+    }
+   ]
+  },
+  {
+   "shipped": "organizations",
+   "headers": [
+    "Organization Details / Organization Name",
+    "Organization Details / Website"
+   ],
+   "arrayBound": 3,
+   "entries": [
+    {
+     "ref": "orgInfo.orgName",
+     "column": 0,
+     "confidence": "exact"
+    },
+    {
+     "ref": "orgInfo.website",
+     "column": 1,
+     "confidence": "exact"
+    }
+   ]
+  },
+  {
+   "shipped": "visitNotes",
+   "headers": [
+    "Visit Summary / Patient Name",
+    "Visit Summary / Visit Date",
+    "Visit Summary / Clinical Diagnosis & Notes"
+   ],
+   "arrayBound": 3,
+   "entries": [
+    {
+     "ref": "visitSummaryTab.patientName",
+     "column": 0,
+     "confidence": "exact"
+    },
+    {
+     "ref": "visitSummaryTab.visitDate",
+     "column": 1,
+     "confidence": "exact"
+    },
+    {
+     "ref": "visitSummaryTab.diagnosisNotes",
+     "column": 2,
+     "confidence": "exact"
+    }
+   ]
+  },
+  {
+   "shipped": "insuranceClaims",
+   "headers": [
+    "Claim Reference",
+    "Claimant Email",
+    "National Insurance No.",
+    "Client Tier",
+    "Staff Member?",
+    "Staff Id",
+    "Reuse reference as policy note",
+    "Policy / Insurer",
+    "Policy / Country",
+    "Policy / City",
+    "Policy / Sum Insured",
+    "Policy / Excess",
+    "Policy / Cover Start",
+    "Policy / Policy Note",
+    "Policy / Synced Client Tier (Referenced)",
+    "Incident / Details / Incident Date",
+    "Incident / Details / Time of Incident",
+    "Incident / Details / Reported At",
+    "Incident / Details / Severity",
+    "Incident / Details / Damage Types",
+    "Incident / Details / What happened",
+    "Incident / Details / Location / Street",
+    "Incident / Details / Location / Postcode",
+    "Incident / Details / Location / Town",
+    "Settlement / Settlement Line Items / Description 1",
+    "Settlement / Settlement Line Items / Description 2",
+    "Settlement / Settlement Line Items / Description 3",
+    "Settlement / Settlement Line Items / Amount 1",
+    "Settlement / Settlement Line Items / Amount 2",
+    "Settlement / Settlement Line Items / Amount 3",
+    "Settlement / Settlement Line Items / Approved 1",
+    "Settlement / Settlement Line Items / Approved 2",
+    "Settlement / Settlement Line Items / Approved 3",
+    "Settlement / Settlement Total",
+    "Settlement / Auditor PIN"
+   ],
+   "arrayBound": 3,
+   "entries": [
+    {
+     "ref": "claimRef",
+     "column": 0,
+     "confidence": "exact"
+    },
+    {
+     "ref": "claimantEmail",
+     "column": 1,
+     "confidence": "exact"
+    },
+    {
+     "ref": "nationalId",
+     "column": 2,
+     "confidence": "exact"
+    },
+    {
+     "ref": "tier",
+     "column": 3,
+     "confidence": "exact"
+    },
+    {
+     "ref": "isEmployee",
+     "column": 4,
+     "confidence": "exact"
+    },
+    {
+     "ref": "staffId",
+     "column": 5,
+     "confidence": "exact"
+    },
+    {
+     "ref": "copyRefToPolicy",
+     "column": 6,
+     "confidence": "exact"
+    },
+    {
+     "ref": "policy.insurer",
+     "column": 7,
+     "confidence": "exact"
+    },
+    {
+     "ref": "policy.country",
+     "column": 8,
+     "confidence": "exact"
+    },
+    {
+     "ref": "policy.city",
+     "column": 9,
+     "confidence": "exact"
+    },
+    {
+     "ref": "policy.sumInsured",
+     "column": 10,
+     "confidence": "exact"
+    },
+    {
+     "ref": "policy.excess",
+     "column": 11,
+     "confidence": "exact"
+    },
+    {
+     "ref": "policy.coverStart",
+     "column": 12,
+     "confidence": "exact"
+    },
+    {
+     "ref": "policy.policyNote",
+     "column": 13,
+     "confidence": "exact"
+    },
+    {
+     "ref": "policy.syncedClientTier",
+     "column": 14,
+     "confidence": "exact"
+    },
+    {
+     "ref": "incident.incidentDetails.incidentDate",
+     "column": 15,
+     "confidence": "exact"
+    },
+    {
+     "ref": "incident.incidentDetails.incidentTime",
+     "column": 16,
+     "confidence": "exact"
+    },
+    {
+     "ref": "incident.incidentDetails.reportedAt",
+     "column": 17,
+     "confidence": "exact"
+    },
+    {
+     "ref": "incident.incidentDetails.severity",
+     "column": 18,
+     "confidence": "exact"
+    },
+    {
+     "ref": "incident.incidentDetails.damageTypes",
+     "column": 19,
+     "confidence": "exact"
+    },
+    {
+     "ref": "incident.incidentDetails.narrative",
+     "column": 20,
+     "confidence": "exact"
+    },
+    {
+     "ref": "incident.incidentDetails.location.street",
+     "column": 21,
+     "confidence": "exact"
+    },
+    {
+     "ref": "incident.incidentDetails.location.postcode",
+     "column": 22,
+     "confidence": "exact"
+    },
+    {
+     "ref": "incident.incidentDetails.location.locality",
+     "column": 23,
+     "confidence": "exact"
+    },
+    {
+     "ref": "settlement.lineItems.0.itemDescription",
+     "column": 24,
+     "confidence": "exact"
+    },
+    {
+     "ref": "settlement.lineItems.1.itemDescription",
+     "column": 25,
+     "confidence": "exact"
+    },
+    {
+     "ref": "settlement.lineItems.2.itemDescription",
+     "column": 26,
+     "confidence": "exact"
+    },
+    {
+     "ref": "settlement.lineItems.0.itemAmount",
+     "column": 27,
+     "confidence": "exact"
+    },
+    {
+     "ref": "settlement.lineItems.1.itemAmount",
+     "column": 28,
+     "confidence": "exact"
+    },
+    {
+     "ref": "settlement.lineItems.2.itemAmount",
+     "column": 29,
+     "confidence": "exact"
+    },
+    {
+     "ref": "settlement.lineItems.0.itemApproved",
+     "column": 30,
+     "confidence": "exact"
+    },
+    {
+     "ref": "settlement.lineItems.1.itemApproved",
+     "column": 31,
+     "confidence": "exact"
+    },
+    {
+     "ref": "settlement.lineItems.2.itemApproved",
+     "column": 32,
+     "confidence": "exact"
+    },
+    {
+     "ref": "settlement.settlementTotal",
+     "column": 33,
+     "confidence": "exact"
+    },
+    {
+     "ref": "settlement.auditorPin",
+     "column": 34,
+     "confidence": "exact"
+    }
+   ]
+  },
+  {
+   "shipped": "people",
+   "headers": [
+    "Personal Details / Full Name",
+    "Personal Details / Address",
+    "Work Details / Address",
+    "Work Details / Desk Number"
+   ],
+   "arrayBound": 3,
+   "entries": [
+    {
+     "ref": "personal.fullName",
+     "column": 0,
+     "confidence": "exact"
+    },
+    {
+     "ref": "personal.address",
+     "column": 1,
+     "confidence": "exact"
+    },
+    {
+     "ref": "work.address",
+     "column": 2,
+     "confidence": "exact"
+    },
+    {
+     "ref": "work.deskNumber",
+     "column": 3,
+     "confidence": "exact"
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "name": "complexFullTest: a valid row, as text and as typed cells",
+   "shipped": "complexFullTest",
+   "rows": [
+    [
+     "Sample fullName",
+     "ada@example.com",
+     "Sample bioNotes",
+     "Sample releaseNotes",
+     "1000",
+     "42",
+     "Engineering",
+     "Team Lead",
+     "true",
+     "Email Only",
+     "true",
+     "2024-03-07",
+     "2024-03",
+     "Sample dailyShiftStart",
+     "Sample orgRef",
+     "Sample syncedClientName",
+     "Sample street",
+     "Sample city",
+     "Sample postalCode",
+     "Sample contactName",
+     "Sample contactName",
+     "Sample contactName",
+     "Sample relationship",
+     "Sample relationship",
+     "Sample relationship",
+     "Sample phoneNumber",
+     "Sample phoneNumber",
+     "Sample phoneNumber",
+     "42",
+     "Sample taxIdNumber"
+    ],
+    [
+     "Sample fullName",
+     "ada@example.com",
+     "Sample bioNotes",
+     "Sample releaseNotes",
+     1000,
+     42,
+     "Engineering",
+     "Team Lead",
+     true,
+     "Email Only",
+     true,
+     {
+      "$date": "2024-03-07T00:00:00.000Z"
+     },
+     {
+      "$date": "2024-03-07T00:00:00.000Z"
+     },
+     "Sample dailyShiftStart",
+     "Sample orgRef",
+     "Sample syncedClientName",
+     "Sample street",
+     "Sample city",
+     "Sample postalCode",
+     "Sample contactName",
+     "Sample contactName",
+     "Sample contactName",
+     "Sample relationship",
+     "Sample relationship",
+     "Sample relationship",
+     "Sample phoneNumber",
+     "Sample phoneNumber",
+     "Sample phoneNumber",
+     42,
+     "Sample taxIdNumber"
+    ]
+   ],
+   "plan": {
+    "entity": "complexFullTest",
+    "sourceHeaders": [
+     "Primary & Basics / Full Name",
+     "Primary & Basics / Corporate Email",
+     "Primary & Basics / Executive Summary",
+     "Primary & Basics / Release Notes",
+     "Primary & Basics / Annual Budget ($USD)",
+     "Primary & Basics / Team Count",
+     "Primary & Basics / Department",
+     "Primary & Basics / Assigned System Roles",
+     "Primary & Basics / Account Active & Verified",
+     "Primary & Basics / Preferred Contact Method",
+     "Primary & Basics / Opt-in to Security Announcements",
+     "Dates, Files & References / Effective Join Date",
+     "Dates, Files & References / Billing Cycle Month/Year",
+     "Dates, Files & References / Daily Shift Start Time",
+     "Dates, Files & References / Linked Parent Organization",
+     "Dates, Files & References / Synced Source Client Name (Referenced)",
+     "Nested Groups & Dynamic Arrays / HQ Physical Address / Street Address",
+     "Nested Groups & Dynamic Arrays / HQ Physical Address / City",
+     "Nested Groups & Dynamic Arrays / HQ Physical Address / Postal Code",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 1",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 2",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 3",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 1",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 2",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 3",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 1",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 2",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 3",
+     "RBAC Masking & Critical Fields / Executive Salary (RBAC Masked)",
+     "RBAC Masking & Critical Fields / Tax Identifier (Critical Field)"
+    ],
+    "entries": [
+     {
+      "ref": "generalTab.fullName",
+      "column": 0,
+      "header": "Primary & Basics / Full Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.emailAddress",
+      "column": 1,
+      "header": "Primary & Basics / Corporate Email",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.bioNotes",
+      "column": 2,
+      "header": "Primary & Basics / Executive Summary",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.releaseNotes",
+      "column": 3,
+      "header": "Primary & Basics / Release Notes",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.annualBudget",
+      "column": 4,
+      "header": "Primary & Basics / Annual Budget ($USD)",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.teamCount",
+      "column": 5,
+      "header": "Primary & Basics / Team Count",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.department",
+      "column": 6,
+      "header": "Primary & Basics / Department",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.roles",
+      "column": 7,
+      "header": "Primary & Basics / Assigned System Roles",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.accountActive",
+      "column": 8,
+      "header": "Primary & Basics / Account Active & Verified",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.contactMethod",
+      "column": 9,
+      "header": "Primary & Basics / Preferred Contact Method",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.optInNewsletter",
+      "column": 10,
+      "header": "Primary & Basics / Opt-in to Security Announcements",
+      "confidence": "exact"
+     },
+     {
+      "ref": "datesAndFilesTab.joinDate",
+      "column": 11,
+      "header": "Dates, Files & References / Effective Join Date",
+      "confidence": "exact"
+     },
+     {
+      "ref": "datesAndFilesTab.billingCycle",
+      "column": 12,
+      "header": "Dates, Files & References / Billing Cycle Month/Year",
+      "confidence": "exact"
+     },
+     {
+      "ref": "datesAndFilesTab.dailyShiftStart",
+      "column": 13,
+      "header": "Dates, Files & References / Daily Shift Start Time",
+      "confidence": "exact"
+     },
+     {
+      "ref": "datesAndFilesTab.orgRef",
+      "column": 14,
+      "header": "Dates, Files & References / Linked Parent Organization",
+      "confidence": "exact"
+     },
+     {
+      "ref": "datesAndFilesTab.syncedClientName",
+      "column": 15,
+      "header": "Dates, Files & References / Synced Source Client Name (Referenced)",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.addressGroup.street",
+      "column": 16,
+      "header": "Nested Groups & Dynamic Arrays / HQ Physical Address / Street Address",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.addressGroup.city",
+      "column": 17,
+      "header": "Nested Groups & Dynamic Arrays / HQ Physical Address / City",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.addressGroup.postalCode",
+      "column": 18,
+      "header": "Nested Groups & Dynamic Arrays / HQ Physical Address / Postal Code",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.0.contactName",
+      "column": 19,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 1",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.1.contactName",
+      "column": 20,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 2",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.2.contactName",
+      "column": 21,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 3",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.0.relationship",
+      "column": 22,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 1",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.1.relationship",
+      "column": 23,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 2",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.2.relationship",
+      "column": 24,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 3",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.0.phoneNumber",
+      "column": 25,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 1",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.1.phoneNumber",
+      "column": 26,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 2",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.2.phoneNumber",
+      "column": 27,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 3",
+      "confidence": "exact"
+     },
+     {
+      "ref": "securityAndRulesTab.executiveSalary",
+      "column": 28,
+      "header": "RBAC Masking & Critical Fields / Executive Salary (RBAC Masked)",
+      "confidence": "exact"
+     },
+     {
+      "ref": "securityAndRulesTab.taxIdNumber",
+      "column": 29,
+      "header": "RBAC Masking & Critical Fields / Tax Identifier (Critical Field)",
+      "confidence": "exact"
+     }
+    ],
+    "configVersion": 1
+   },
+   "options": {
+    "lang": "en",
+    "lookups": {
+     "clientTier": [
+      {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      {
+       "$key": "SLV",
+       "en": "Silver",
+       "de": "Silber"
+      },
+      {
+       "$key": "BRZ",
+       "en": "Bronze",
+       "de": "Bronze"
+      }
+     ]
+    },
+    "rules": [
+     {
+      "id": "rule_hide_notes_if_inactive",
+      "formConfigId": "complexFullTest",
+      "fieldId": "accountActive",
+      "enabled": true,
+      "priority": 1,
+      "conditions": [
+       {
+        "operator": "EQUAL",
+        "value": false,
+        "compareType": "value"
+       }
+      ],
+      "action": {
+       "type": "visibility",
+       "value": false
+      },
+      "targets": [
+       {
+        "id": "bioNotes",
+        "type": "field"
+       }
+      ]
+     },
+     {
+      "id": "rule_warn_high_budget",
+      "formConfigId": "complexFullTest",
+      "fieldId": "annualBudget",
+      "enabled": true,
+      "priority": 2,
+      "conditions": [
+       {
+        "operator": "MORE_THAN",
+        "value": 5000000,
+        "compareType": "value"
+       }
+      ],
+      "action": {
+       "type": "info",
+       "severity": "warning",
+       "value": "Budget exceeds $5,000,000 threshold. Board approval required."
+      },
+      "targets": [
+       {
+        "id": "annualBudget",
+        "type": "field"
+       }
+      ]
+     }
+    ]
+   },
+   "expected": {
+    "records": [
+     {
+      "generalTab": {
+       "fullName": "Sample fullName",
+       "emailAddress": "ada@example.com",
+       "bioNotes": "Sample bioNotes",
+       "releaseNotes": "Sample releaseNotes",
+       "annualBudget": 1000,
+       "teamCount": 42,
+       "department": {
+        "value": "ENG",
+        "label": {
+         "en": "Engineering",
+         "de": "Ingenieurwesen"
+        }
+       },
+       "roles": [
+        {
+         "value": "ROLE_LEAD",
+         "label": {
+          "en": "Team Lead"
+         }
+        }
+       ],
+       "accountActive": true,
+       "contactMethod": {
+        "value": "EMAIL",
+        "label": {
+         "en": "Email Only"
+        }
+       },
+       "optInNewsletter": true
+      },
+      "datesAndFilesTab": {
+       "joinDate": "2024-03-07",
+       "billingCycle": "2024-03",
+       "dailyShiftStart": "Sample dailyShiftStart",
+       "orgRef": "Sample orgRef",
+       "syncedClientName": "Sample syncedClientName"
+      },
+      "nestedStructuresTab": {
+       "addressGroup": {
+        "street": "Sample street",
+        "city": "Sample city",
+        "postalCode": "Sample postalCode"
+       },
+       "emergencyContacts": [
+        {
+         "contactName": "Sample contactName",
+         "relationship": "Sample relationship",
+         "phoneNumber": "Sample phoneNumber"
+        },
+        {
+         "contactName": "Sample contactName",
+         "relationship": "Sample relationship",
+         "phoneNumber": "Sample phoneNumber"
+        },
+        {
+         "contactName": "Sample contactName",
+         "relationship": "Sample relationship",
+         "phoneNumber": "Sample phoneNumber"
+        }
+       ]
+      },
+      "securityAndRulesTab": {
+       "executiveSalary": 42,
+       "taxIdNumber": "Sample taxIdNumber"
+      },
+      "_configVersion": 1
+     },
+     {
+      "generalTab": {
+       "fullName": "Sample fullName",
+       "emailAddress": "ada@example.com",
+       "bioNotes": "Sample bioNotes",
+       "releaseNotes": "Sample releaseNotes",
+       "annualBudget": 1000,
+       "teamCount": 42,
+       "department": {
+        "value": "ENG",
+        "label": {
+         "en": "Engineering",
+         "de": "Ingenieurwesen"
+        }
+       },
+       "roles": [
+        {
+         "value": "ROLE_LEAD",
+         "label": {
+          "en": "Team Lead"
+         }
+        }
+       ],
+       "accountActive": true,
+       "contactMethod": {
+        "value": "EMAIL",
+        "label": {
+         "en": "Email Only"
+        }
+       },
+       "optInNewsletter": true
+      },
+      "datesAndFilesTab": {
+       "joinDate": "2024-03-07",
+       "billingCycle": "2024-03",
+       "dailyShiftStart": "Sample dailyShiftStart",
+       "orgRef": "Sample orgRef",
+       "syncedClientName": "Sample syncedClientName"
+      },
+      "nestedStructuresTab": {
+       "addressGroup": {
+        "street": "Sample street",
+        "city": "Sample city",
+        "postalCode": "Sample postalCode"
+       },
+       "emergencyContacts": [
+        {
+         "contactName": "Sample contactName",
+         "relationship": "Sample relationship",
+         "phoneNumber": "Sample phoneNumber"
+        },
+        {
+         "contactName": "Sample contactName",
+         "relationship": "Sample relationship",
+         "phoneNumber": "Sample phoneNumber"
+        },
+        {
+         "contactName": "Sample contactName",
+         "relationship": "Sample relationship",
+         "phoneNumber": "Sample phoneNumber"
+        }
+       ]
+      },
+      "securityAndRulesTab": {
+       "executiveSalary": 42,
+       "taxIdNumber": "Sample taxIdNumber"
+      },
+      "_configVersion": 1
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "complexFullTest: rows nothing can read, and blank rows",
+   "shipped": "complexFullTest",
+   "rows": [
+    [
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???"
+    ],
+    [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [],
+    [
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???"
+    ]
+   ],
+   "plan": {
+    "entity": "complexFullTest",
+    "sourceHeaders": [
+     "Primary & Basics / Full Name",
+     "Primary & Basics / Corporate Email",
+     "Primary & Basics / Executive Summary",
+     "Primary & Basics / Release Notes",
+     "Primary & Basics / Annual Budget ($USD)",
+     "Primary & Basics / Team Count",
+     "Primary & Basics / Department",
+     "Primary & Basics / Assigned System Roles",
+     "Primary & Basics / Account Active & Verified",
+     "Primary & Basics / Preferred Contact Method",
+     "Primary & Basics / Opt-in to Security Announcements",
+     "Dates, Files & References / Effective Join Date",
+     "Dates, Files & References / Billing Cycle Month/Year",
+     "Dates, Files & References / Daily Shift Start Time",
+     "Dates, Files & References / Linked Parent Organization",
+     "Dates, Files & References / Synced Source Client Name (Referenced)",
+     "Nested Groups & Dynamic Arrays / HQ Physical Address / Street Address",
+     "Nested Groups & Dynamic Arrays / HQ Physical Address / City",
+     "Nested Groups & Dynamic Arrays / HQ Physical Address / Postal Code",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 1",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 2",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 3",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 1",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 2",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 3",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 1",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 2",
+     "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 3",
+     "RBAC Masking & Critical Fields / Executive Salary (RBAC Masked)",
+     "RBAC Masking & Critical Fields / Tax Identifier (Critical Field)"
+    ],
+    "entries": [
+     {
+      "ref": "generalTab.fullName",
+      "column": 0,
+      "header": "Primary & Basics / Full Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.emailAddress",
+      "column": 1,
+      "header": "Primary & Basics / Corporate Email",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.bioNotes",
+      "column": 2,
+      "header": "Primary & Basics / Executive Summary",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.releaseNotes",
+      "column": 3,
+      "header": "Primary & Basics / Release Notes",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.annualBudget",
+      "column": 4,
+      "header": "Primary & Basics / Annual Budget ($USD)",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.teamCount",
+      "column": 5,
+      "header": "Primary & Basics / Team Count",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.department",
+      "column": 6,
+      "header": "Primary & Basics / Department",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.roles",
+      "column": 7,
+      "header": "Primary & Basics / Assigned System Roles",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.accountActive",
+      "column": 8,
+      "header": "Primary & Basics / Account Active & Verified",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.contactMethod",
+      "column": 9,
+      "header": "Primary & Basics / Preferred Contact Method",
+      "confidence": "exact"
+     },
+     {
+      "ref": "generalTab.optInNewsletter",
+      "column": 10,
+      "header": "Primary & Basics / Opt-in to Security Announcements",
+      "confidence": "exact"
+     },
+     {
+      "ref": "datesAndFilesTab.joinDate",
+      "column": 11,
+      "header": "Dates, Files & References / Effective Join Date",
+      "confidence": "exact"
+     },
+     {
+      "ref": "datesAndFilesTab.billingCycle",
+      "column": 12,
+      "header": "Dates, Files & References / Billing Cycle Month/Year",
+      "confidence": "exact"
+     },
+     {
+      "ref": "datesAndFilesTab.dailyShiftStart",
+      "column": 13,
+      "header": "Dates, Files & References / Daily Shift Start Time",
+      "confidence": "exact"
+     },
+     {
+      "ref": "datesAndFilesTab.orgRef",
+      "column": 14,
+      "header": "Dates, Files & References / Linked Parent Organization",
+      "confidence": "exact"
+     },
+     {
+      "ref": "datesAndFilesTab.syncedClientName",
+      "column": 15,
+      "header": "Dates, Files & References / Synced Source Client Name (Referenced)",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.addressGroup.street",
+      "column": 16,
+      "header": "Nested Groups & Dynamic Arrays / HQ Physical Address / Street Address",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.addressGroup.city",
+      "column": 17,
+      "header": "Nested Groups & Dynamic Arrays / HQ Physical Address / City",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.addressGroup.postalCode",
+      "column": 18,
+      "header": "Nested Groups & Dynamic Arrays / HQ Physical Address / Postal Code",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.0.contactName",
+      "column": 19,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 1",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.1.contactName",
+      "column": 20,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 2",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.2.contactName",
+      "column": 21,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Contact Name 3",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.0.relationship",
+      "column": 22,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 1",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.1.relationship",
+      "column": 23,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 2",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.2.relationship",
+      "column": 24,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Relationship 3",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.0.phoneNumber",
+      "column": 25,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 1",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.1.phoneNumber",
+      "column": 26,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 2",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nestedStructuresTab.emergencyContacts.2.phoneNumber",
+      "column": 27,
+      "header": "Nested Groups & Dynamic Arrays / Emergency Contacts List / Phone Number 3",
+      "confidence": "exact"
+     },
+     {
+      "ref": "securityAndRulesTab.executiveSalary",
+      "column": 28,
+      "header": "RBAC Masking & Critical Fields / Executive Salary (RBAC Masked)",
+      "confidence": "exact"
+     },
+     {
+      "ref": "securityAndRulesTab.taxIdNumber",
+      "column": 29,
+      "header": "RBAC Masking & Critical Fields / Tax Identifier (Critical Field)",
+      "confidence": "exact"
+     }
+    ],
+    "configVersion": 1
+   },
+   "options": {
+    "lang": "en",
+    "lookups": {
+     "clientTier": [
+      {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      {
+       "$key": "SLV",
+       "en": "Silver",
+       "de": "Silber"
+      },
+      {
+       "$key": "BRZ",
+       "en": "Bronze",
+       "de": "Bronze"
+      }
+     ]
+    },
+    "rules": [
+     {
+      "id": "rule_hide_notes_if_inactive",
+      "formConfigId": "complexFullTest",
+      "fieldId": "accountActive",
+      "enabled": true,
+      "priority": 1,
+      "conditions": [
+       {
+        "operator": "EQUAL",
+        "value": false,
+        "compareType": "value"
+       }
+      ],
+      "action": {
+       "type": "visibility",
+       "value": false
+      },
+      "targets": [
+       {
+        "id": "bioNotes",
+        "type": "field"
+       }
+      ]
+     },
+     {
+      "id": "rule_warn_high_budget",
+      "formConfigId": "complexFullTest",
+      "fieldId": "annualBudget",
+      "enabled": true,
+      "priority": 2,
+      "conditions": [
+       {
+        "operator": "MORE_THAN",
+        "value": 5000000,
+        "compareType": "value"
+       }
+      ],
+      "action": {
+       "type": "info",
+       "severity": "warning",
+       "value": "Budget exceeds $5,000,000 threshold. Board approval required."
+      },
+      "targets": [
+       {
+        "id": "annualBudget",
+        "type": "field"
+       }
+      ]
+     }
+    ]
+   },
+   "expected": {
+    "records": [],
+    "errors": [
+     {
+      "row": 2,
+      "ref": "generalTab.annualBudget",
+      "column": 4,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "generalTab.teamCount",
+      "column": 5,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "generalTab.department",
+      "column": 6,
+      "message": "\"???\" is not one of: Engineering, Sales & Revenue, Finance & Ops",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "generalTab.roles",
+      "column": 7,
+      "message": "\"???\" is not one of: Team Lead, Security Auditor, DevOps Architect",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "generalTab.accountActive",
+      "column": 8,
+      "message": "\"???\" is not true or false",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "generalTab.contactMethod",
+      "column": 9,
+      "message": "\"???\" is not one of: Email Only, Phone Call, SMS Text",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "generalTab.optInNewsletter",
+      "column": 10,
+      "message": "\"???\" is not true or false",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "datesAndFilesTab.joinDate",
+      "column": 11,
+      "message": "\"???\" is not a date",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "datesAndFilesTab.billingCycle",
+      "column": 12,
+      "message": "\"???\" is not a month and year",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "securityAndRulesTab.executiveSalary",
+      "column": 28,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "generalTab.emailAddress",
+      "message": "Corporate Email does not match the required format",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "datesAndFilesTab.joinDate",
+      "message": "Effective Join Date is required"
+     },
+     {
+      "row": 5,
+      "ref": "generalTab.annualBudget",
+      "column": 4,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "generalTab.teamCount",
+      "column": 5,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "generalTab.department",
+      "column": 6,
+      "message": "\"???\" is not one of: Engineering, Sales & Revenue, Finance & Ops",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "generalTab.roles",
+      "column": 7,
+      "message": "\"???\" is not one of: Team Lead, Security Auditor, DevOps Architect",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "generalTab.accountActive",
+      "column": 8,
+      "message": "\"???\" is not true or false",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "generalTab.contactMethod",
+      "column": 9,
+      "message": "\"???\" is not one of: Email Only, Phone Call, SMS Text",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "generalTab.optInNewsletter",
+      "column": 10,
+      "message": "\"???\" is not true or false",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "datesAndFilesTab.joinDate",
+      "column": 11,
+      "message": "\"???\" is not a date",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "datesAndFilesTab.billingCycle",
+      "column": 12,
+      "message": "\"???\" is not a month and year",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "securityAndRulesTab.executiveSalary",
+      "column": 28,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "generalTab.emailAddress",
+      "message": "Corporate Email does not match the required format",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "datesAndFilesTab.joinDate",
+      "message": "Effective Join Date is required"
+     }
+    ],
+    "skipped": 2,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "clients: a valid row, as text and as typed cells",
+   "shipped": "clients",
+   "rows": [
+    [
+     "Sample name",
+     "ada@example.com",
+     "Sample company",
+     "Active",
+     "42"
+    ],
+    [
+     "Sample name",
+     "ada@example.com",
+     "Sample company",
+     "Active",
+     42
+    ]
+   ],
+   "plan": {
+    "entity": "clients",
+    "sourceHeaders": [
+     "General Info / Client Name",
+     "General Info / Email Address",
+     "General Info / Company Name",
+     "General Info / Status",
+     "General Info / Annual Revenue / Salary"
+    ],
+    "entries": [
+     {
+      "ref": "primaryDetails.name",
+      "column": 0,
+      "header": "General Info / Client Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "primaryDetails.email",
+      "column": 1,
+      "header": "General Info / Email Address",
+      "confidence": "exact"
+     },
+     {
+      "ref": "primaryDetails.company",
+      "column": 2,
+      "header": "General Info / Company Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "primaryDetails.status",
+      "column": 3,
+      "header": "General Info / Status",
+      "confidence": "exact"
+     },
+     {
+      "ref": "primaryDetails.salary",
+      "column": 4,
+      "header": "General Info / Annual Revenue / Salary",
+      "confidence": "exact"
+     }
+    ],
+    "configVersion": 1
+   },
+   "options": {
+    "lang": "en",
+    "lookups": {
+     "clientTier": [
+      {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      {
+       "$key": "SLV",
+       "en": "Silver",
+       "de": "Silber"
+      },
+      {
+       "$key": "BRZ",
+       "en": "Bronze",
+       "de": "Bronze"
+      }
+     ]
+    },
+    "rules": []
+   },
+   "expected": {
+    "records": [
+     {
+      "primaryDetails": {
+       "name": "Sample name",
+       "email": "ada@example.com",
+       "company": "Sample company",
+       "status": {
+        "value": "Active",
+        "label": {
+         "en": "Active",
+         "de": "Aktiv"
+        }
+       },
+       "salary": 42
+      },
+      "_configVersion": 1
+     },
+     {
+      "primaryDetails": {
+       "name": "Sample name",
+       "email": "ada@example.com",
+       "company": "Sample company",
+       "status": {
+        "value": "Active",
+        "label": {
+         "en": "Active",
+         "de": "Aktiv"
+        }
+       },
+       "salary": 42
+      },
+      "_configVersion": 1
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "clients: rows nothing can read, and blank rows",
+   "shipped": "clients",
+   "rows": [
+    [
+     "???",
+     "???",
+     "???",
+     "???",
+     "???"
+    ],
+    [
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [],
+    [
+     "???",
+     "???",
+     "???",
+     "???",
+     "???"
+    ]
+   ],
+   "plan": {
+    "entity": "clients",
+    "sourceHeaders": [
+     "General Info / Client Name",
+     "General Info / Email Address",
+     "General Info / Company Name",
+     "General Info / Status",
+     "General Info / Annual Revenue / Salary"
+    ],
+    "entries": [
+     {
+      "ref": "primaryDetails.name",
+      "column": 0,
+      "header": "General Info / Client Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "primaryDetails.email",
+      "column": 1,
+      "header": "General Info / Email Address",
+      "confidence": "exact"
+     },
+     {
+      "ref": "primaryDetails.company",
+      "column": 2,
+      "header": "General Info / Company Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "primaryDetails.status",
+      "column": 3,
+      "header": "General Info / Status",
+      "confidence": "exact"
+     },
+     {
+      "ref": "primaryDetails.salary",
+      "column": 4,
+      "header": "General Info / Annual Revenue / Salary",
+      "confidence": "exact"
+     }
+    ],
+    "configVersion": 1
+   },
+   "options": {
+    "lang": "en",
+    "lookups": {
+     "clientTier": [
+      {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      {
+       "$key": "SLV",
+       "en": "Silver",
+       "de": "Silber"
+      },
+      {
+       "$key": "BRZ",
+       "en": "Bronze",
+       "de": "Bronze"
+      }
+     ]
+    },
+    "rules": []
+   },
+   "expected": {
+    "records": [],
+    "errors": [
+     {
+      "row": 2,
+      "ref": "primaryDetails.status",
+      "column": 3,
+      "message": "\"???\" is not one of: Active, Inactive, Pending",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "primaryDetails.salary",
+      "column": 4,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "primaryDetails.email",
+      "message": "Email Address does not match the required format",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "primaryDetails.status",
+      "column": 3,
+      "message": "\"???\" is not one of: Active, Inactive, Pending",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "primaryDetails.salary",
+      "column": 4,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "primaryDetails.email",
+      "message": "Email Address does not match the required format",
+      "raw": "???"
+     }
+    ],
+    "skipped": 2,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "employees: a valid row, as text and as typed cells",
+   "shipped": "employees",
+   "rows": [
+    [
+     "Sample firstName",
+     "Sample lastName",
+     "Engineering"
+    ],
+    [
+     "Sample firstName",
+     "Sample lastName",
+     "Engineering"
+    ]
+   ],
+   "plan": {
+    "entity": "employees",
+    "sourceHeaders": [
+     "Personal Info / First Name",
+     "Personal Info / Last Name",
+     "Personal Info / Department"
+    ],
+    "entries": [
+     {
+      "ref": "personalInfo.firstName",
+      "column": 0,
+      "header": "Personal Info / First Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "personalInfo.lastName",
+      "column": 1,
+      "header": "Personal Info / Last Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "personalInfo.department",
+      "column": 2,
+      "header": "Personal Info / Department",
+      "confidence": "exact"
+     }
+    ],
+    "configVersion": 1
+   },
+   "options": {
+    "lang": "en",
+    "lookups": {
+     "clientTier": [
+      {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      {
+       "$key": "SLV",
+       "en": "Silver",
+       "de": "Silber"
+      },
+      {
+       "$key": "BRZ",
+       "en": "Bronze",
+       "de": "Bronze"
+      }
+     ]
+    },
+    "rules": []
+   },
+   "expected": {
+    "records": [
+     {
+      "personalInfo": {
+       "firstName": "Sample firstName",
+       "lastName": "Sample lastName",
+       "department": {
+        "value": "Engineering",
+        "label": {
+         "en": "Engineering"
+        }
+       }
+      },
+      "_configVersion": 1
+     },
+     {
+      "personalInfo": {
+       "firstName": "Sample firstName",
+       "lastName": "Sample lastName",
+       "department": {
+        "value": "Engineering",
+        "label": {
+         "en": "Engineering"
+        }
+       }
+      },
+      "_configVersion": 1
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "employees: rows nothing can read, and blank rows",
+   "shipped": "employees",
+   "rows": [
+    [
+     "???",
+     "???",
+     "???"
+    ],
+    [
+     "",
+     "",
+     ""
+    ],
+    [],
+    [
+     "???",
+     "???",
+     "???"
+    ]
+   ],
+   "plan": {
+    "entity": "employees",
+    "sourceHeaders": [
+     "Personal Info / First Name",
+     "Personal Info / Last Name",
+     "Personal Info / Department"
+    ],
+    "entries": [
+     {
+      "ref": "personalInfo.firstName",
+      "column": 0,
+      "header": "Personal Info / First Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "personalInfo.lastName",
+      "column": 1,
+      "header": "Personal Info / Last Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "personalInfo.department",
+      "column": 2,
+      "header": "Personal Info / Department",
+      "confidence": "exact"
+     }
+    ],
+    "configVersion": 1
+   },
+   "options": {
+    "lang": "en",
+    "lookups": {
+     "clientTier": [
+      {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      {
+       "$key": "SLV",
+       "en": "Silver",
+       "de": "Silber"
+      },
+      {
+       "$key": "BRZ",
+       "en": "Bronze",
+       "de": "Bronze"
+      }
+     ]
+    },
+    "rules": []
+   },
+   "expected": {
+    "records": [],
+    "errors": [
+     {
+      "row": 2,
+      "ref": "personalInfo.department",
+      "column": 2,
+      "message": "\"???\" is not one of: Engineering, Sales, HR",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "personalInfo.department",
+      "column": 2,
+      "message": "\"???\" is not one of: Engineering, Sales, HR",
+      "raw": "???"
+     }
+    ],
+    "skipped": 2,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "organizations: a valid row, as text and as typed cells",
+   "shipped": "organizations",
+   "rows": [
+    [
+     "Sample orgName",
+     "Sample website"
+    ],
+    [
+     "Sample orgName",
+     "Sample website"
+    ]
+   ],
+   "plan": {
+    "entity": "organizations",
+    "sourceHeaders": [
+     "Organization Details / Organization Name",
+     "Organization Details / Website"
+    ],
+    "entries": [
+     {
+      "ref": "orgInfo.orgName",
+      "column": 0,
+      "header": "Organization Details / Organization Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "orgInfo.website",
+      "column": 1,
+      "header": "Organization Details / Website",
+      "confidence": "exact"
+     }
+    ],
+    "configVersion": 1
+   },
+   "options": {
+    "lang": "en",
+    "lookups": {
+     "clientTier": [
+      {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      {
+       "$key": "SLV",
+       "en": "Silver",
+       "de": "Silber"
+      },
+      {
+       "$key": "BRZ",
+       "en": "Bronze",
+       "de": "Bronze"
+      }
+     ]
+    },
+    "rules": []
+   },
+   "expected": {
+    "records": [
+     {
+      "orgInfo": {
+       "orgName": "Sample orgName",
+       "website": "Sample website"
+      },
+      "_configVersion": 1
+     },
+     {
+      "orgInfo": {
+       "orgName": "Sample orgName",
+       "website": "Sample website"
+      },
+      "_configVersion": 1
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "organizations: rows nothing can read, and blank rows",
+   "shipped": "organizations",
+   "rows": [
+    [
+     "???",
+     "???"
+    ],
+    [
+     "",
+     ""
+    ],
+    [],
+    [
+     "???",
+     "???"
+    ]
+   ],
+   "plan": {
+    "entity": "organizations",
+    "sourceHeaders": [
+     "Organization Details / Organization Name",
+     "Organization Details / Website"
+    ],
+    "entries": [
+     {
+      "ref": "orgInfo.orgName",
+      "column": 0,
+      "header": "Organization Details / Organization Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "orgInfo.website",
+      "column": 1,
+      "header": "Organization Details / Website",
+      "confidence": "exact"
+     }
+    ],
+    "configVersion": 1
+   },
+   "options": {
+    "lang": "en",
+    "lookups": {
+     "clientTier": [
+      {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      {
+       "$key": "SLV",
+       "en": "Silver",
+       "de": "Silber"
+      },
+      {
+       "$key": "BRZ",
+       "en": "Bronze",
+       "de": "Bronze"
+      }
+     ]
+    },
+    "rules": []
+   },
+   "expected": {
+    "records": [
+     {
+      "orgInfo": {
+       "orgName": "???",
+       "website": "???"
+      },
+      "_configVersion": 1
+     },
+     {
+      "orgInfo": {
+       "orgName": "???",
+       "website": "???"
+      },
+      "_configVersion": 1
+     }
+    ],
+    "errors": [],
+    "skipped": 2,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "visitNotes: a valid row, as text and as typed cells",
+   "shipped": "visitNotes",
+   "rows": [
+    [
+     "Sample patientName",
+     "2024-03-07",
+     "Sample diagnosisNotes"
+    ],
+    [
+     "Sample patientName",
+     {
+      "$date": "2024-03-07T00:00:00.000Z"
+     },
+     "Sample diagnosisNotes"
+    ]
+   ],
+   "plan": {
+    "entity": "visitNotes",
+    "sourceHeaders": [
+     "Visit Summary / Patient Name",
+     "Visit Summary / Visit Date",
+     "Visit Summary / Clinical Diagnosis & Notes"
+    ],
+    "entries": [
+     {
+      "ref": "visitSummaryTab.patientName",
+      "column": 0,
+      "header": "Visit Summary / Patient Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "visitSummaryTab.visitDate",
+      "column": 1,
+      "header": "Visit Summary / Visit Date",
+      "confidence": "exact"
+     },
+     {
+      "ref": "visitSummaryTab.diagnosisNotes",
+      "column": 2,
+      "header": "Visit Summary / Clinical Diagnosis & Notes",
+      "confidence": "exact"
+     }
+    ],
+    "configVersion": 1
+   },
+   "options": {
+    "lang": "en",
+    "lookups": {
+     "clientTier": [
+      {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      {
+       "$key": "SLV",
+       "en": "Silver",
+       "de": "Silber"
+      },
+      {
+       "$key": "BRZ",
+       "en": "Bronze",
+       "de": "Bronze"
+      }
+     ]
+    },
+    "rules": []
+   },
+   "expected": {
+    "records": [
+     {
+      "visitSummaryTab": {
+       "patientName": "Sample patientName",
+       "visitDate": "2024-03-07",
+       "diagnosisNotes": "Sample diagnosisNotes"
+      },
+      "_configVersion": 1
+     },
+     {
+      "visitSummaryTab": {
+       "patientName": "Sample patientName",
+       "visitDate": "2024-03-07",
+       "diagnosisNotes": "Sample diagnosisNotes"
+      },
+      "_configVersion": 1
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "visitNotes: rows nothing can read, and blank rows",
+   "shipped": "visitNotes",
+   "rows": [
+    [
+     "???",
+     "???",
+     "???"
+    ],
+    [
+     "",
+     "",
+     ""
+    ],
+    [],
+    [
+     "???",
+     "???",
+     "???"
+    ]
+   ],
+   "plan": {
+    "entity": "visitNotes",
+    "sourceHeaders": [
+     "Visit Summary / Patient Name",
+     "Visit Summary / Visit Date",
+     "Visit Summary / Clinical Diagnosis & Notes"
+    ],
+    "entries": [
+     {
+      "ref": "visitSummaryTab.patientName",
+      "column": 0,
+      "header": "Visit Summary / Patient Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "visitSummaryTab.visitDate",
+      "column": 1,
+      "header": "Visit Summary / Visit Date",
+      "confidence": "exact"
+     },
+     {
+      "ref": "visitSummaryTab.diagnosisNotes",
+      "column": 2,
+      "header": "Visit Summary / Clinical Diagnosis & Notes",
+      "confidence": "exact"
+     }
+    ],
+    "configVersion": 1
+   },
+   "options": {
+    "lang": "en",
+    "lookups": {
+     "clientTier": [
+      {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      {
+       "$key": "SLV",
+       "en": "Silver",
+       "de": "Silber"
+      },
+      {
+       "$key": "BRZ",
+       "en": "Bronze",
+       "de": "Bronze"
+      }
+     ]
+    },
+    "rules": []
+   },
+   "expected": {
+    "records": [],
+    "errors": [
+     {
+      "row": 2,
+      "ref": "visitSummaryTab.visitDate",
+      "column": 1,
+      "message": "\"???\" is not a date",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "visitSummaryTab.visitDate",
+      "message": "Visit Date is required"
+     },
+     {
+      "row": 5,
+      "ref": "visitSummaryTab.visitDate",
+      "column": 1,
+      "message": "\"???\" is not a date",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "visitSummaryTab.visitDate",
+      "message": "Visit Date is required"
+     }
+    ],
+    "skipped": 2,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "insuranceClaims: a valid row, as text and as typed cells",
+   "shipped": "insuranceClaims",
+   "rows": [
+    [
+     "Sample claimRef",
+     "ada@example.com",
+     "AB123456C",
+     "Gold",
+     "true",
+     "Sample staffId",
+     "true",
+     "Sample insurer",
+     "Sample country",
+     "Sample city",
+     "42",
+     "42",
+     "2024-03",
+     "Sample policyNote",
+     "Sample syncedClientTier",
+     "2024-03-07",
+     "09:30",
+     "2024-03-07T09:30:00.000Z",
+     "Low",
+     "Fire",
+     "Sample narrative",
+     "Sample street",
+     "Sample postcode",
+     "Sample locality",
+     "Sample itemDescription",
+     "Sample itemDescription",
+     "Sample itemDescription",
+     "42",
+     "42",
+     "42",
+     "true",
+     "true",
+     "true",
+     "42",
+     "Sample auditorPin"
+    ],
+    [
+     "Sample claimRef",
+     "ada@example.com",
+     "AB123456C",
+     "Gold",
+     true,
+     "Sample staffId",
+     true,
+     "Sample insurer",
+     "Sample country",
+     "Sample city",
+     42,
+     42,
+     {
+      "$date": "2024-03-07T00:00:00.000Z"
+     },
+     "Sample policyNote",
+     "Sample syncedClientTier",
+     {
+      "$date": "2024-03-07T00:00:00.000Z"
+     },
+     {
+      "$date": "1899-12-30T09:30:00.000Z"
+     },
+     {
+      "$date": "2024-03-07T09:30:00.000Z"
+     },
+     "Low",
+     "Fire",
+     "Sample narrative",
+     "Sample street",
+     "Sample postcode",
+     "Sample locality",
+     "Sample itemDescription",
+     "Sample itemDescription",
+     "Sample itemDescription",
+     42,
+     42,
+     42,
+     true,
+     true,
+     true,
+     42,
+     "Sample auditorPin"
+    ]
+   ],
+   "plan": {
+    "entity": "insuranceClaims",
+    "sourceHeaders": [
+     "Claim Reference",
+     "Claimant Email",
+     "National Insurance No.",
+     "Client Tier",
+     "Staff Member?",
+     "Staff Id",
+     "Reuse reference as policy note",
+     "Policy / Insurer",
+     "Policy / Country",
+     "Policy / City",
+     "Policy / Sum Insured",
+     "Policy / Excess",
+     "Policy / Cover Start",
+     "Policy / Policy Note",
+     "Policy / Synced Client Tier (Referenced)",
+     "Incident / Details / Incident Date",
+     "Incident / Details / Time of Incident",
+     "Incident / Details / Reported At",
+     "Incident / Details / Severity",
+     "Incident / Details / Damage Types",
+     "Incident / Details / What happened",
+     "Incident / Details / Location / Street",
+     "Incident / Details / Location / Postcode",
+     "Incident / Details / Location / Town",
+     "Settlement / Settlement Line Items / Description 1",
+     "Settlement / Settlement Line Items / Description 2",
+     "Settlement / Settlement Line Items / Description 3",
+     "Settlement / Settlement Line Items / Amount 1",
+     "Settlement / Settlement Line Items / Amount 2",
+     "Settlement / Settlement Line Items / Amount 3",
+     "Settlement / Settlement Line Items / Approved 1",
+     "Settlement / Settlement Line Items / Approved 2",
+     "Settlement / Settlement Line Items / Approved 3",
+     "Settlement / Settlement Total",
+     "Settlement / Auditor PIN"
+    ],
+    "entries": [
+     {
+      "ref": "claimRef",
+      "column": 0,
+      "header": "Claim Reference",
+      "confidence": "exact"
+     },
+     {
+      "ref": "claimantEmail",
+      "column": 1,
+      "header": "Claimant Email",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nationalId",
+      "column": 2,
+      "header": "National Insurance No.",
+      "confidence": "exact"
+     },
+     {
+      "ref": "tier",
+      "column": 3,
+      "header": "Client Tier",
+      "confidence": "exact"
+     },
+     {
+      "ref": "isEmployee",
+      "column": 4,
+      "header": "Staff Member?",
+      "confidence": "exact"
+     },
+     {
+      "ref": "staffId",
+      "column": 5,
+      "header": "Staff Id",
+      "confidence": "exact"
+     },
+     {
+      "ref": "copyRefToPolicy",
+      "column": 6,
+      "header": "Reuse reference as policy note",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.insurer",
+      "column": 7,
+      "header": "Policy / Insurer",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.country",
+      "column": 8,
+      "header": "Policy / Country",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.city",
+      "column": 9,
+      "header": "Policy / City",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.sumInsured",
+      "column": 10,
+      "header": "Policy / Sum Insured",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.excess",
+      "column": 11,
+      "header": "Policy / Excess",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.coverStart",
+      "column": 12,
+      "header": "Policy / Cover Start",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.policyNote",
+      "column": 13,
+      "header": "Policy / Policy Note",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.syncedClientTier",
+      "column": 14,
+      "header": "Policy / Synced Client Tier (Referenced)",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.incidentDate",
+      "column": 15,
+      "header": "Incident / Details / Incident Date",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.incidentTime",
+      "column": 16,
+      "header": "Incident / Details / Time of Incident",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.reportedAt",
+      "column": 17,
+      "header": "Incident / Details / Reported At",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.severity",
+      "column": 18,
+      "header": "Incident / Details / Severity",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.damageTypes",
+      "column": 19,
+      "header": "Incident / Details / Damage Types",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.narrative",
+      "column": 20,
+      "header": "Incident / Details / What happened",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.location.street",
+      "column": 21,
+      "header": "Incident / Details / Location / Street",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.location.postcode",
+      "column": 22,
+      "header": "Incident / Details / Location / Postcode",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.location.locality",
+      "column": 23,
+      "header": "Incident / Details / Location / Town",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.0.itemDescription",
+      "column": 24,
+      "header": "Settlement / Settlement Line Items / Description 1",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.1.itemDescription",
+      "column": 25,
+      "header": "Settlement / Settlement Line Items / Description 2",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.2.itemDescription",
+      "column": 26,
+      "header": "Settlement / Settlement Line Items / Description 3",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.0.itemAmount",
+      "column": 27,
+      "header": "Settlement / Settlement Line Items / Amount 1",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.1.itemAmount",
+      "column": 28,
+      "header": "Settlement / Settlement Line Items / Amount 2",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.2.itemAmount",
+      "column": 29,
+      "header": "Settlement / Settlement Line Items / Amount 3",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.0.itemApproved",
+      "column": 30,
+      "header": "Settlement / Settlement Line Items / Approved 1",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.1.itemApproved",
+      "column": 31,
+      "header": "Settlement / Settlement Line Items / Approved 2",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.2.itemApproved",
+      "column": 32,
+      "header": "Settlement / Settlement Line Items / Approved 3",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.settlementTotal",
+      "column": 33,
+      "header": "Settlement / Settlement Total",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.auditorPin",
+      "column": 34,
+      "header": "Settlement / Auditor PIN",
+      "confidence": "exact"
+     }
+    ],
+    "configVersion": 2
+   },
+   "options": {
+    "lang": "en",
+    "lookups": {
+     "clientTier": [
+      {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      {
+       "$key": "SLV",
+       "en": "Silver",
+       "de": "Silber"
+      },
+      {
+       "$key": "BRZ",
+       "en": "Bronze",
+       "de": "Bronze"
+      }
+     ]
+    },
+    "rules": []
+   },
+   "expected": {
+    "records": [
+     {
+      "claimRef": "Sample claimRef",
+      "claimantEmail": "ada@example.com",
+      "nationalId": "AB123456C",
+      "tier": {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      "isEmployee": true,
+      "staffId": "Sample staffId",
+      "copyRefToPolicy": true,
+      "policy": {
+       "insurer": "Sample insurer",
+       "country": "Sample country",
+       "city": "Sample city",
+       "sumInsured": 42,
+       "excess": 42,
+       "coverStart": "2024-03",
+       "policyNote": "Sample policyNote",
+       "syncedClientTier": "Sample syncedClientTier"
+      },
+      "incident": {
+       "incidentDetails": {
+        "incidentDate": "2024-03-07",
+        "incidentTime": "09:30",
+        "reportedAt": "2024-03-07T09:30:00.000Z",
+        "severity": {
+         "en": "Low"
+        },
+        "damageTypes": [
+         {
+          "en": "Fire"
+         }
+        ],
+        "narrative": "Sample narrative",
+        "location": {
+         "street": "Sample street",
+         "postcode": "Sample postcode",
+         "locality": "Sample locality"
+        }
+       }
+      },
+      "settlement": {
+       "lineItems": [
+        {
+         "itemDescription": "Sample itemDescription",
+         "itemAmount": 42,
+         "itemApproved": true
+        },
+        {
+         "itemDescription": "Sample itemDescription",
+         "itemAmount": 42,
+         "itemApproved": true
+        },
+        {
+         "itemDescription": "Sample itemDescription",
+         "itemAmount": 42,
+         "itemApproved": true
+        }
+       ],
+       "settlementTotal": 42,
+       "auditorPin": "Sample auditorPin"
+      },
+      "_configVersion": 2
+     },
+     {
+      "claimRef": "Sample claimRef",
+      "claimantEmail": "ada@example.com",
+      "nationalId": "AB123456C",
+      "tier": {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      "isEmployee": true,
+      "staffId": "Sample staffId",
+      "copyRefToPolicy": true,
+      "policy": {
+       "insurer": "Sample insurer",
+       "country": "Sample country",
+       "city": "Sample city",
+       "sumInsured": 42,
+       "excess": 42,
+       "coverStart": "2024-03",
+       "policyNote": "Sample policyNote",
+       "syncedClientTier": "Sample syncedClientTier"
+      },
+      "incident": {
+       "incidentDetails": {
+        "incidentDate": "2024-03-07",
+        "incidentTime": "09:30",
+        "reportedAt": "2024-03-07T09:30:00.000Z",
+        "severity": {
+         "en": "Low"
+        },
+        "damageTypes": [
+         {
+          "en": "Fire"
+         }
+        ],
+        "narrative": "Sample narrative",
+        "location": {
+         "street": "Sample street",
+         "postcode": "Sample postcode",
+         "locality": "Sample locality"
+        }
+       }
+      },
+      "settlement": {
+       "lineItems": [
+        {
+         "itemDescription": "Sample itemDescription",
+         "itemAmount": 42,
+         "itemApproved": true
+        },
+        {
+         "itemDescription": "Sample itemDescription",
+         "itemAmount": 42,
+         "itemApproved": true
+        },
+        {
+         "itemDescription": "Sample itemDescription",
+         "itemAmount": 42,
+         "itemApproved": true
+        }
+       ],
+       "settlementTotal": 42,
+       "auditorPin": "Sample auditorPin"
+      },
+      "_configVersion": 2
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "insuranceClaims: rows nothing can read, and blank rows",
+   "shipped": "insuranceClaims",
+   "rows": [
+    [
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???"
+    ],
+    [
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [],
+    [
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???",
+     "???"
+    ]
+   ],
+   "plan": {
+    "entity": "insuranceClaims",
+    "sourceHeaders": [
+     "Claim Reference",
+     "Claimant Email",
+     "National Insurance No.",
+     "Client Tier",
+     "Staff Member?",
+     "Staff Id",
+     "Reuse reference as policy note",
+     "Policy / Insurer",
+     "Policy / Country",
+     "Policy / City",
+     "Policy / Sum Insured",
+     "Policy / Excess",
+     "Policy / Cover Start",
+     "Policy / Policy Note",
+     "Policy / Synced Client Tier (Referenced)",
+     "Incident / Details / Incident Date",
+     "Incident / Details / Time of Incident",
+     "Incident / Details / Reported At",
+     "Incident / Details / Severity",
+     "Incident / Details / Damage Types",
+     "Incident / Details / What happened",
+     "Incident / Details / Location / Street",
+     "Incident / Details / Location / Postcode",
+     "Incident / Details / Location / Town",
+     "Settlement / Settlement Line Items / Description 1",
+     "Settlement / Settlement Line Items / Description 2",
+     "Settlement / Settlement Line Items / Description 3",
+     "Settlement / Settlement Line Items / Amount 1",
+     "Settlement / Settlement Line Items / Amount 2",
+     "Settlement / Settlement Line Items / Amount 3",
+     "Settlement / Settlement Line Items / Approved 1",
+     "Settlement / Settlement Line Items / Approved 2",
+     "Settlement / Settlement Line Items / Approved 3",
+     "Settlement / Settlement Total",
+     "Settlement / Auditor PIN"
+    ],
+    "entries": [
+     {
+      "ref": "claimRef",
+      "column": 0,
+      "header": "Claim Reference",
+      "confidence": "exact"
+     },
+     {
+      "ref": "claimantEmail",
+      "column": 1,
+      "header": "Claimant Email",
+      "confidence": "exact"
+     },
+     {
+      "ref": "nationalId",
+      "column": 2,
+      "header": "National Insurance No.",
+      "confidence": "exact"
+     },
+     {
+      "ref": "tier",
+      "column": 3,
+      "header": "Client Tier",
+      "confidence": "exact"
+     },
+     {
+      "ref": "isEmployee",
+      "column": 4,
+      "header": "Staff Member?",
+      "confidence": "exact"
+     },
+     {
+      "ref": "staffId",
+      "column": 5,
+      "header": "Staff Id",
+      "confidence": "exact"
+     },
+     {
+      "ref": "copyRefToPolicy",
+      "column": 6,
+      "header": "Reuse reference as policy note",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.insurer",
+      "column": 7,
+      "header": "Policy / Insurer",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.country",
+      "column": 8,
+      "header": "Policy / Country",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.city",
+      "column": 9,
+      "header": "Policy / City",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.sumInsured",
+      "column": 10,
+      "header": "Policy / Sum Insured",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.excess",
+      "column": 11,
+      "header": "Policy / Excess",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.coverStart",
+      "column": 12,
+      "header": "Policy / Cover Start",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.policyNote",
+      "column": 13,
+      "header": "Policy / Policy Note",
+      "confidence": "exact"
+     },
+     {
+      "ref": "policy.syncedClientTier",
+      "column": 14,
+      "header": "Policy / Synced Client Tier (Referenced)",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.incidentDate",
+      "column": 15,
+      "header": "Incident / Details / Incident Date",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.incidentTime",
+      "column": 16,
+      "header": "Incident / Details / Time of Incident",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.reportedAt",
+      "column": 17,
+      "header": "Incident / Details / Reported At",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.severity",
+      "column": 18,
+      "header": "Incident / Details / Severity",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.damageTypes",
+      "column": 19,
+      "header": "Incident / Details / Damage Types",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.narrative",
+      "column": 20,
+      "header": "Incident / Details / What happened",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.location.street",
+      "column": 21,
+      "header": "Incident / Details / Location / Street",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.location.postcode",
+      "column": 22,
+      "header": "Incident / Details / Location / Postcode",
+      "confidence": "exact"
+     },
+     {
+      "ref": "incident.incidentDetails.location.locality",
+      "column": 23,
+      "header": "Incident / Details / Location / Town",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.0.itemDescription",
+      "column": 24,
+      "header": "Settlement / Settlement Line Items / Description 1",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.1.itemDescription",
+      "column": 25,
+      "header": "Settlement / Settlement Line Items / Description 2",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.2.itemDescription",
+      "column": 26,
+      "header": "Settlement / Settlement Line Items / Description 3",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.0.itemAmount",
+      "column": 27,
+      "header": "Settlement / Settlement Line Items / Amount 1",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.1.itemAmount",
+      "column": 28,
+      "header": "Settlement / Settlement Line Items / Amount 2",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.2.itemAmount",
+      "column": 29,
+      "header": "Settlement / Settlement Line Items / Amount 3",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.0.itemApproved",
+      "column": 30,
+      "header": "Settlement / Settlement Line Items / Approved 1",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.1.itemApproved",
+      "column": 31,
+      "header": "Settlement / Settlement Line Items / Approved 2",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.lineItems.2.itemApproved",
+      "column": 32,
+      "header": "Settlement / Settlement Line Items / Approved 3",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.settlementTotal",
+      "column": 33,
+      "header": "Settlement / Settlement Total",
+      "confidence": "exact"
+     },
+     {
+      "ref": "settlement.auditorPin",
+      "column": 34,
+      "header": "Settlement / Auditor PIN",
+      "confidence": "exact"
+     }
+    ],
+    "configVersion": 2
+   },
+   "options": {
+    "lang": "en",
+    "lookups": {
+     "clientTier": [
+      {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      {
+       "$key": "SLV",
+       "en": "Silver",
+       "de": "Silber"
+      },
+      {
+       "$key": "BRZ",
+       "en": "Bronze",
+       "de": "Bronze"
+      }
+     ]
+    },
+    "rules": []
+   },
+   "expected": {
+    "records": [],
+    "errors": [
+     {
+      "row": 2,
+      "ref": "tier",
+      "column": 3,
+      "message": "\"???\" is not one of: Gold, Silver, Bronze",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "isEmployee",
+      "column": 4,
+      "message": "\"???\" is not true or false",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "copyRefToPolicy",
+      "column": 6,
+      "message": "\"???\" is not true or false",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "policy.sumInsured",
+      "column": 10,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "policy.excess",
+      "column": 11,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "policy.coverStart",
+      "column": 12,
+      "message": "\"???\" is not a month and year",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "incident.incidentDetails.incidentDate",
+      "column": 15,
+      "message": "\"???\" is not a date",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "incident.incidentDetails.incidentTime",
+      "column": 16,
+      "message": "\"???\" is not a time (HH:mm)",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "incident.incidentDetails.reportedAt",
+      "column": 17,
+      "message": "\"???\" is not a date and time",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "incident.incidentDetails.severity",
+      "column": 18,
+      "message": "\"???\" is not one of: Low, Medium, High",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "incident.incidentDetails.damageTypes",
+      "column": 19,
+      "message": "\"???\" is not one of: Fire, Flood, Theft, Impact",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "settlement.lineItems.0.itemAmount",
+      "column": 27,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "settlement.lineItems.1.itemAmount",
+      "column": 28,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "settlement.lineItems.2.itemAmount",
+      "column": 29,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "settlement.lineItems.0.itemApproved",
+      "column": 30,
+      "message": "\"???\" is not true or false",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "settlement.lineItems.1.itemApproved",
+      "column": 31,
+      "message": "\"???\" is not true or false",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "settlement.lineItems.2.itemApproved",
+      "column": 32,
+      "message": "\"???\" is not true or false",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "settlement.settlementTotal",
+      "column": 33,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "claimRef",
+      "message": "Claim Reference must be at least 4 characters",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "claimantEmail",
+      "message": "Claimant Email is not a valid email address",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "nationalId",
+      "message": "National Insurance No. does not match the required format",
+      "raw": "???"
+     },
+     {
+      "row": 2,
+      "ref": "policy.sumInsured",
+      "message": "Sum Insured is required"
+     },
+     {
+      "row": 2,
+      "ref": "incident.incidentDetails.incidentDate",
+      "message": "Incident Date is required"
+     },
+     {
+      "row": 2,
+      "ref": "settlement.lineItems.0.itemAmount",
+      "message": "Amount is required"
+     },
+     {
+      "row": 2,
+      "ref": "settlement.lineItems.1.itemAmount",
+      "message": "Amount is required"
+     },
+     {
+      "row": 2,
+      "ref": "settlement.lineItems.2.itemAmount",
+      "message": "Amount is required"
+     },
+     {
+      "row": 5,
+      "ref": "tier",
+      "column": 3,
+      "message": "\"???\" is not one of: Gold, Silver, Bronze",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "isEmployee",
+      "column": 4,
+      "message": "\"???\" is not true or false",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "copyRefToPolicy",
+      "column": 6,
+      "message": "\"???\" is not true or false",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "policy.sumInsured",
+      "column": 10,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "policy.excess",
+      "column": 11,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "policy.coverStart",
+      "column": 12,
+      "message": "\"???\" is not a month and year",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "incident.incidentDetails.incidentDate",
+      "column": 15,
+      "message": "\"???\" is not a date",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "incident.incidentDetails.incidentTime",
+      "column": 16,
+      "message": "\"???\" is not a time (HH:mm)",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "incident.incidentDetails.reportedAt",
+      "column": 17,
+      "message": "\"???\" is not a date and time",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "incident.incidentDetails.severity",
+      "column": 18,
+      "message": "\"???\" is not one of: Low, Medium, High",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "incident.incidentDetails.damageTypes",
+      "column": 19,
+      "message": "\"???\" is not one of: Fire, Flood, Theft, Impact",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "settlement.lineItems.0.itemAmount",
+      "column": 27,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "settlement.lineItems.1.itemAmount",
+      "column": 28,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "settlement.lineItems.2.itemAmount",
+      "column": 29,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "settlement.lineItems.0.itemApproved",
+      "column": 30,
+      "message": "\"???\" is not true or false",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "settlement.lineItems.1.itemApproved",
+      "column": 31,
+      "message": "\"???\" is not true or false",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "settlement.lineItems.2.itemApproved",
+      "column": 32,
+      "message": "\"???\" is not true or false",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "settlement.settlementTotal",
+      "column": 33,
+      "message": "\"???\" is not a number",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "claimRef",
+      "message": "Claim Reference must be at least 4 characters",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "claimantEmail",
+      "message": "Claimant Email is not a valid email address",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "nationalId",
+      "message": "National Insurance No. does not match the required format",
+      "raw": "???"
+     },
+     {
+      "row": 5,
+      "ref": "policy.sumInsured",
+      "message": "Sum Insured is required"
+     },
+     {
+      "row": 5,
+      "ref": "incident.incidentDetails.incidentDate",
+      "message": "Incident Date is required"
+     },
+     {
+      "row": 5,
+      "ref": "settlement.lineItems.0.itemAmount",
+      "message": "Amount is required"
+     },
+     {
+      "row": 5,
+      "ref": "settlement.lineItems.1.itemAmount",
+      "message": "Amount is required"
+     },
+     {
+      "row": 5,
+      "ref": "settlement.lineItems.2.itemAmount",
+      "message": "Amount is required"
+     }
+    ],
+    "skipped": 2,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "people: a valid row, as text and as typed cells",
+   "shipped": "people",
+   "rows": [
+    [
+     "Sample fullName",
+     "Sample address",
+     "Sample address",
+     "Sample deskNumber"
+    ],
+    [
+     "Sample fullName",
+     "Sample address",
+     "Sample address",
+     "Sample deskNumber"
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "sourceHeaders": [
+     "Personal Details / Full Name",
+     "Personal Details / Address",
+     "Work Details / Address",
+     "Work Details / Desk Number"
+    ],
+    "entries": [
+     {
+      "ref": "personal.fullName",
+      "column": 0,
+      "header": "Personal Details / Full Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "personal.address",
+      "column": 1,
+      "header": "Personal Details / Address",
+      "confidence": "exact"
+     },
+     {
+      "ref": "work.address",
+      "column": 2,
+      "header": "Work Details / Address",
+      "confidence": "exact"
+     },
+     {
+      "ref": "work.deskNumber",
+      "column": 3,
+      "header": "Work Details / Desk Number",
+      "confidence": "exact"
+     }
+    ],
+    "configVersion": 1
+   },
+   "options": {
+    "lang": "en",
+    "lookups": {
+     "clientTier": [
+      {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      {
+       "$key": "SLV",
+       "en": "Silver",
+       "de": "Silber"
+      },
+      {
+       "$key": "BRZ",
+       "en": "Bronze",
+       "de": "Bronze"
+      }
+     ]
+    },
+    "rules": []
+   },
+   "expected": {
+    "records": [
+     {
+      "personal": {
+       "fullName": "Sample fullName",
+       "address": "Sample address"
+      },
+      "work": {
+       "address": "Sample address",
+       "deskNumber": "Sample deskNumber"
+      },
+      "_configVersion": 1
+     },
+     {
+      "personal": {
+       "fullName": "Sample fullName",
+       "address": "Sample address"
+      },
+      "work": {
+       "address": "Sample address",
+       "deskNumber": "Sample deskNumber"
+      },
+      "_configVersion": 1
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "people: rows nothing can read, and blank rows",
+   "shipped": "people",
+   "rows": [
+    [
+     "???",
+     "???",
+     "???",
+     "???"
+    ],
+    [
+     "",
+     "",
+     "",
+     ""
+    ],
+    [],
+    [
+     "???",
+     "???",
+     "???",
+     "???"
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "sourceHeaders": [
+     "Personal Details / Full Name",
+     "Personal Details / Address",
+     "Work Details / Address",
+     "Work Details / Desk Number"
+    ],
+    "entries": [
+     {
+      "ref": "personal.fullName",
+      "column": 0,
+      "header": "Personal Details / Full Name",
+      "confidence": "exact"
+     },
+     {
+      "ref": "personal.address",
+      "column": 1,
+      "header": "Personal Details / Address",
+      "confidence": "exact"
+     },
+     {
+      "ref": "work.address",
+      "column": 2,
+      "header": "Work Details / Address",
+      "confidence": "exact"
+     },
+     {
+      "ref": "work.deskNumber",
+      "column": 3,
+      "header": "Work Details / Desk Number",
+      "confidence": "exact"
+     }
+    ],
+    "configVersion": 1
+   },
+   "options": {
+    "lang": "en",
+    "lookups": {
+     "clientTier": [
+      {
+       "$key": "GLD",
+       "en": "Gold",
+       "de": "Gold"
+      },
+      {
+       "$key": "SLV",
+       "en": "Silver",
+       "de": "Silber"
+      },
+      {
+       "$key": "BRZ",
+       "en": "Bronze",
+       "de": "Bronze"
+      }
+     ]
+    },
+    "rules": []
+   },
+   "expected": {
+    "records": [
+     {
+      "personal": {
+       "fullName": "???",
+       "address": "???"
+      },
+      "work": {
+       "address": "???",
+       "deskNumber": "???"
+      },
+      "_configVersion": 1
+     },
+     {
+      "personal": {
+       "fullName": "???",
+       "address": "???"
+      },
+      "work": {
+       "address": "???",
+       "deskNumber": "???"
+      },
+      "_configVersion": 1
+     }
+    ],
+    "errors": [],
+    "skipped": 2,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "a 2.2 ref of a moved array is read as slot 0, with a warning",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       },
+       {
+        "id": "phones",
+        "type": "array",
+        "label": {
+         "en": "Phone"
+        },
+        "children": [
+         {
+          "id": "number",
+          "type": "text",
+          "label": {
+           "en": "Number"
+          }
+         },
+         {
+          "id": "kind",
+          "type": "text",
+          "label": {
+           "en": "Kind"
+          }
+         }
+        ],
+        "refererField": "contact.phones"
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "Ada",
+     "111"
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     },
+     {
+      "ref": "phones.number",
+      "column": 1
+     }
+    ]
+   },
+   "options": {
+    "stamp": false
+   },
+   "expected": {
+    "records": [
+     {
+      "name": "Ada",
+      "contact": {
+       "phones": [
+        {
+         "number": "111"
+        }
+       ]
+      },
+      "phones": [
+       {
+        "number": "111"
+       }
+      ]
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": [
+     {
+      "level": "warning",
+      "code": "PLAN_LEGACY_REF",
+      "path": "entries[1].ref",
+      "message": "\"phones.number\" is the 2.2 address of \"contact.phones.0.number\"; it is read as \"contact.phones.0.number\" until 4.0. Save the plan again to update it."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a moved group is written at its override and at its position",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       },
+       {
+        "id": "addr",
+        "type": "group",
+        "label": {
+         "en": "Address"
+        },
+        "refererField": "customer.address",
+        "children": [
+         {
+          "id": "city",
+          "type": "text",
+          "label": {
+           "en": "City"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "Ada",
+     "Paris"
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     },
+     {
+      "ref": "addr.city",
+      "column": 1
+     }
+    ]
+   },
+   "options": {
+    "stamp": false
+   },
+   "expected": {
+    "records": [
+     {
+      "name": "Ada",
+      "customer": {
+       "address": {
+        "city": "Paris"
+       }
+      },
+      "addr": {
+       "city": "Paris"
+      }
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": [
+     {
+      "level": "warning",
+      "code": "PLAN_LEGACY_REF",
+      "path": "entries[1].ref",
+      "message": "\"addr.city\" is the 2.2 address of \"customer.address.city\"; it is read as \"customer.address.city\" until 4.0. Save the plan again to update it."
+     }
+    ]
+   }
+  },
+  {
+   "name": "an old ref mapped alongside its new one is refused",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       },
+       {
+        "id": "phones",
+        "type": "array",
+        "label": {
+         "en": "Phone"
+        },
+        "children": [
+         {
+          "id": "number",
+          "type": "text",
+          "label": {
+           "en": "Number"
+          }
+         },
+         {
+          "id": "kind",
+          "type": "text",
+          "label": {
+           "en": "Kind"
+          }
+         }
+        ],
+        "refererField": "contact.phones"
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "111",
+     "222"
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "phones.number",
+      "column": 0
+     },
+     {
+      "ref": "contact.phones.0.number",
+      "column": 1
+     }
+    ]
+   },
+   "options": {},
+   "expected": {
+    "records": [],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": [
+     {
+      "level": "warning",
+      "code": "PLAN_LEGACY_REF",
+      "path": "entries[0].ref",
+      "message": "\"phones.number\" is the 2.2 address of \"contact.phones.0.number\"; it is read as \"contact.phones.0.number\" until 4.0. Save the plan again to update it."
+     },
+     {
+      "level": "error",
+      "code": "PLAN_DUPLICATE_REF",
+      "path": "entries[1].ref",
+      "message": "\"contact.phones.0.number\" is mapped more than once."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a ref the config does not have is refused",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "x"
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "nope",
+      "column": 0
+     }
+    ]
+   },
+   "options": {},
+   "expected": {
+    "records": [],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": [
+     {
+      "level": "error",
+      "code": "PLAN_UNKNOWN_REF",
+      "path": "entries[0].ref",
+      "message": "References unknown field \"nope\"."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a plan for another entity and another config version imports, with warnings",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "Ada"
+    ]
+   ],
+   "plan": {
+    "entity": "pets",
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     }
+    ],
+    "configVersion": 3
+   },
+   "options": {},
+   "expected": {
+    "records": [
+     {
+      "name": "Ada",
+      "_configVersion": 4
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": [
+     {
+      "level": "warning",
+      "code": "PLAN_TARGET_MISMATCH",
+      "path": "entity",
+      "message": "Plan targets \"pets\" but the config is \"people\"."
+     },
+     {
+      "level": "warning",
+      "code": "PLAN_TARGET_MISMATCH",
+      "path": "configVersion",
+      "message": "Plan was authored against config version 3; the config is now 4."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a sparse array is compacted, and the record is stamped",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       },
+       {
+        "id": "phones",
+        "type": "array",
+        "label": {
+         "en": "Phone"
+        },
+        "children": [
+         {
+          "id": "number",
+          "type": "text",
+          "label": {
+           "en": "Number"
+          }
+         },
+         {
+          "id": "kind",
+          "type": "text",
+          "label": {
+           "en": "Kind"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "Ada",
+     "",
+     "",
+     "222",
+     "cell"
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     },
+     {
+      "ref": "phones.0.number",
+      "column": 1
+     },
+     {
+      "ref": "phones.0.kind",
+      "column": 2
+     },
+     {
+      "ref": "phones.1.number",
+      "column": 3
+     },
+     {
+      "ref": "phones.1.kind",
+      "column": 4
+     }
+    ]
+   },
+   "options": {},
+   "expected": {
+    "records": [
+     {
+      "name": "Ada",
+      "phones": [
+       {
+        "number": "222",
+        "kind": "cell"
+       }
+      ],
+      "_configVersion": 4
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "a rule hides a required field, and a rule raises an error",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       },
+       {
+        "id": "reason",
+        "type": "text",
+        "label": {
+         "en": "Reason"
+        },
+        "validators": {
+         "required": true
+        }
+       },
+       {
+        "id": "note",
+        "type": "text",
+        "label": {
+         "en": "Note"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "skip",
+     "",
+     ""
+    ],
+    [
+     "Ada",
+     "",
+     ""
+    ],
+    [
+     "bad",
+     "r",
+     "n"
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     },
+     {
+      "ref": "reason",
+      "column": 1
+     },
+     {
+      "ref": "note",
+      "column": 2
+     }
+    ]
+   },
+   "options": {
+    "stamp": false,
+    "rules": [
+     {
+      "formConfigId": "people",
+      "fieldId": "name",
+      "conditions": [
+       {
+        "operator": "EQUAL",
+        "value": "skip",
+        "compareType": "value"
+       }
+      ],
+      "action": {
+       "type": "visibility",
+       "value": false
+      },
+      "targets": [
+       {
+        "id": "reason",
+        "type": "field"
+       }
+      ],
+      "enabled": true,
+      "priority": 0
+     },
+     {
+      "formConfigId": "people",
+      "fieldId": "name",
+      "conditions": [
+       {
+        "operator": "EQUAL",
+        "value": "bad",
+        "compareType": "value"
+       }
+      ],
+      "action": {
+       "type": "validation",
+       "value": "Not allowed"
+      },
+      "targets": [
+       {
+        "id": "note",
+        "type": "field"
+       }
+      ],
+      "enabled": true,
+      "priority": 0
+     }
+    ]
+   },
+   "expected": {
+    "records": [
+     {
+      "name": "skip"
+     }
+    ],
+    "errors": [
+     {
+      "row": 3,
+      "ref": "reason",
+      "message": "Reason is required"
+     },
+     {
+      "row": 4,
+      "ref": "note",
+      "message": "Not allowed",
+      "raw": "n"
+     }
+    ],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "each kind of cell and record failure",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       },
+       {
+        "id": "age",
+        "type": "number",
+        "label": {
+         "en": "Age"
+        },
+        "validators": {
+         "min": 18
+        }
+       },
+       {
+        "id": "tier",
+        "type": "dropdown",
+        "label": {
+         "en": "Tier"
+        },
+        "options": [
+         {
+          "en": "Gold"
+         },
+         {
+          "en": "Silver"
+         }
+        ]
+       },
+       {
+        "id": "email",
+        "type": "text",
+        "label": {
+         "en": "Email"
+        },
+        "validators": {
+         "email": true
+        }
+       },
+       {
+        "id": "born",
+        "type": "date",
+        "label": {
+         "en": "Born"
+        }
+       },
+       {
+        "id": "kinds",
+        "type": "multiSelect",
+        "label": {
+         "en": "Kinds"
+        },
+        "listName": "kinds"
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "Ada",
+     "30",
+     "Gold",
+     "ada@example.com",
+     "2024-03-07",
+     "A; B"
+    ],
+    [
+     "Bo",
+     "x",
+     "Bronze",
+     "nope",
+     "never",
+     "C"
+    ],
+    [
+     "Cy",
+     "7",
+     {
+      "$date": null
+     },
+     "",
+     "",
+     ""
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     },
+     {
+      "ref": "age",
+      "column": 1
+     },
+     {
+      "ref": "tier",
+      "column": 2
+     },
+     {
+      "ref": "email",
+      "column": 3
+     },
+     {
+      "ref": "born",
+      "column": 4
+     },
+     {
+      "ref": "kinds",
+      "column": 5
+     }
+    ]
+   },
+   "options": {
+    "stamp": false,
+    "lookups": {
+     "kinds": [
+      {
+       "en": "A"
+      },
+      {
+       "en": "B"
+      }
+     ]
+    }
+   },
+   "expected": {
+    "records": [
+     {
+      "name": "Ada",
+      "age": 30,
+      "tier": {
+       "en": "Gold"
+      },
+      "email": "ada@example.com",
+      "born": "2024-03-07",
+      "kinds": [
+       {
+        "en": "A"
+       },
+       {
+        "en": "B"
+       }
+      ]
+     }
+    ],
+    "errors": [
+     {
+      "row": 3,
+      "ref": "age",
+      "column": 1,
+      "message": "\"x\" is not a number",
+      "raw": "x"
+     },
+     {
+      "row": 3,
+      "ref": "tier",
+      "column": 2,
+      "message": "\"Bronze\" is not one of: Gold, Silver",
+      "raw": "Bronze"
+     },
+     {
+      "row": 3,
+      "ref": "born",
+      "column": 4,
+      "message": "\"never\" is not a date",
+      "raw": "never"
+     },
+     {
+      "row": 3,
+      "ref": "kinds",
+      "column": 5,
+      "message": "\"C\" is not one of: A, B",
+      "raw": "C"
+     },
+     {
+      "row": 3,
+      "ref": "email",
+      "message": "Email is not a valid email address",
+      "raw": "nope"
+     },
+     {
+      "row": 4,
+      "ref": "tier",
+      "column": 2,
+      "message": "Cell is not a valid date",
+      "raw": {
+       "$date": null
+      }
+     },
+     {
+      "row": 4,
+      "ref": "age",
+      "message": "Age must be at least 18",
+      "raw": 7
+     }
+    ],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "a decimal comma, when the run says so",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       },
+       {
+        "id": "price",
+        "type": "currency",
+        "label": {
+         "en": "Price",
+         "de": "Preis"
+        },
+        "validators": {
+         "required": true
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "Ada",
+     "1,5"
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     },
+     {
+      "ref": "price",
+      "column": 1
+     }
+    ]
+   },
+   "options": {
+    "decimal": ",",
+    "stamp": false
+   },
+   "expected": {
+    "records": [
+     {
+      "name": "Ada",
+      "price": 1.5
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "error text in the run's language",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       },
+       {
+        "id": "price",
+        "type": "currency",
+        "label": {
+         "en": "Price",
+         "de": "Preis"
+        },
+        "validators": {
+         "required": true
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "Ada",
+     ""
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     },
+     {
+      "ref": "price",
+      "column": 1
+     }
+    ]
+   },
+   "options": {
+    "lang": "de"
+   },
+   "expected": {
+    "records": [],
+    "errors": [
+     {
+      "row": 2,
+      "ref": "price",
+      "message": "Preis is required"
+     }
+    ],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "a typed constant as it is, and a text one through the field",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       },
+       {
+        "id": "active",
+        "type": "boolean",
+        "label": {
+         "en": "Active"
+        }
+       },
+       {
+        "id": "tier",
+        "type": "dropdown",
+        "label": {
+         "en": "Tier"
+        },
+        "options": [
+         {
+          "en": "Gold"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "Ada"
+    ],
+    [
+     ""
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     },
+     {
+      "ref": "active",
+      "constant": "yes"
+     },
+     {
+      "ref": "tier",
+      "constant": {
+       "en": "Gold"
+      }
+     }
+    ]
+   },
+   "options": {
+    "stamp": false
+   },
+   "expected": {
+    "records": [
+     {
+      "name": "Ada",
+      "active": true,
+      "tier": {
+       "en": "Gold"
+      }
+     }
+    ],
+    "errors": [],
+    "skipped": 1,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "the form's email rule takes an address with no dot in its domain",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       },
+       {
+        "id": "email",
+        "type": "text",
+        "label": {
+         "en": "Email"
+        },
+        "validators": {
+         "email": true
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "Rahul",
+     "rahul.k@example"
+    ],
+    [
+     "Ada",
+     "ada@"
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     },
+     {
+      "ref": "email",
+      "column": 1
+     }
+    ]
+   },
+   "options": {
+    "stamp": false
+   },
+   "expected": {
+    "records": [
+     {
+      "name": "Rahul",
+      "email": "rahul.k@example"
+     }
+    ],
+    "errors": [
+     {
+      "row": 3,
+      "ref": "email",
+      "message": "Email is not a valid email address",
+      "raw": "ada@"
+     }
+    ],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "a slash date with the run's order DMY",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       },
+       {
+        "id": "born",
+        "type": "date",
+        "label": {
+         "en": "Born"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "Ada",
+     "05/09/2026"
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     },
+     {
+      "ref": "born",
+      "column": 1
+     }
+    ]
+   },
+   "options": {
+    "stamp": false,
+    "dateOrder": "DMY"
+   },
+   "expected": {
+    "records": [
+     {
+      "name": "Ada",
+      "born": "2026-09-05"
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "a slash date with the run's order MDY",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       },
+       {
+        "id": "born",
+        "type": "date",
+        "label": {
+         "en": "Born"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "Ada",
+     "05/09/2026"
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     },
+     {
+      "ref": "born",
+      "column": 1
+     }
+    ]
+   },
+   "options": {
+    "stamp": false,
+    "dateOrder": "MDY"
+   },
+   "expected": {
+    "records": [
+     {
+      "name": "Ada",
+      "born": "2026-05-09"
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "a slash date with no order stated",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       },
+       {
+        "id": "born",
+        "type": "date",
+        "label": {
+         "en": "Born"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "Ada",
+     "05/09/2026"
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     },
+     {
+      "ref": "born",
+      "column": 1
+     }
+    ]
+   },
+   "options": {
+    "stamp": false
+   },
+   "expected": {
+    "records": [],
+    "errors": [
+     {
+      "row": 2,
+      "ref": "born",
+      "column": 1,
+      "message": "\"05/09/2026\" could be day first or month first; state the import's date order (dateOrder: 'DMY' or 'MDY')",
+      "raw": "05/09/2026"
+     }
+    ],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "a required field whose cell cannot be read, and one nobody filled in",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       },
+       {
+        "id": "age",
+        "type": "number",
+        "label": {
+         "en": "Age"
+        },
+        "validators": {
+         "required": true
+        }
+       },
+       {
+        "id": "city",
+        "type": "text",
+        "label": {
+         "en": "City"
+        },
+        "validators": {
+         "required": true
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "Ada",
+     "old",
+     ""
+    ]
+   ],
+   "plan": {
+    "entity": "people",
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     },
+     {
+      "ref": "age",
+      "column": 1
+     },
+     {
+      "ref": "city",
+      "column": 2
+     }
+    ]
+   },
+   "options": {
+    "stamp": false
+   },
+   "expected": {
+    "records": [],
+    "errors": [
+     {
+      "row": 2,
+      "ref": "age",
+      "column": 1,
+      "message": "\"old\" is not a number",
+      "raw": "old"
+     },
+     {
+      "row": 2,
+      "ref": "age",
+      "message": "Age is required"
+     },
+     {
+      "row": 2,
+      "ref": "city",
+      "message": "City is required"
+     }
+    ],
+    "skipped": 0,
+    "planProblems": []
+   }
+  },
+  {
+   "name": "a plan that names no entity is read against the config it is given",
+   "config": {
+    "entity": "people",
+    "version": 4,
+    "tabs": [
+     {
+      "id": "main",
+      "label": {
+       "en": "Main"
+      },
+      "flatData": true,
+      "fields": [
+       {
+        "id": "name",
+        "type": "text",
+        "label": {
+         "en": "Name"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "rows": [
+    [
+     "Ada"
+    ]
+   ],
+   "plan": {
+    "entries": [
+     {
+      "ref": "name",
+      "column": 0
+     }
+    ]
+   },
+   "options": {
+    "stamp": false
+   },
+   "expected": {
+    "records": [
+     {
+      "name": "Ada"
+     }
+    ],
+    "errors": [],
+    "skipped": 0,
+    "planProblems": []
+   }
+  }
+ ]
+}

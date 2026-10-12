@@ -570,7 +570,7 @@ describe('previewSheet', () => {
     expect(preview.headers).toEqual(HEADERS);
     expect(preview.rowCount).toBe(4);
     expect(preview.sample[0]).toEqual(['Alice', '34', '2024-03-07', 'true', 'Active']);
-    expect(preview.suggestion.entity).toBe('employee');
+    expect(preview.suggestion.target).toBe('employee');
     expect(preview.suggestion.entries.map(e => e.ref)).toEqual(
       PLAN.entries.map(e => e.ref),
     );
@@ -643,7 +643,7 @@ describe('previewSheet, against the shared parity cases', () => {
         arrayBound: preview.arrayBound,
         suggestion: suggestedEntries(preview.suggestion),
       }).toEqual(parity.expected);
-      expect(preview.suggestion.entity).toBe(parity.config.entity);
+      expect(preview.suggestion.target).toBe(parity.config.entity);
     });
   }
 });

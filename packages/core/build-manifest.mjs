@@ -61,6 +61,9 @@ const published = {
     './schema': './entity-form-config.schema.json',
     './package.json': './package.json',
   },
+  // One, since 3.0: the import engine. Published so a consumer's tree holds a single copy of
+  // it, which is what makes a plan or a result the same type on both sides.
+  ...(source.dependencies ? { dependencies: source.dependencies } : {}),
 };
 
 fs.writeFileSync(path.join(DIST, 'package.json'), JSON.stringify(published, null, 2) + '\n');

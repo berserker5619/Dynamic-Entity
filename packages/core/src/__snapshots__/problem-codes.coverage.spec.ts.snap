@@ -147,15 +147,15 @@ exports[`formatConfigProblems prints every case as it always has 1`] = `
 # an entry with no ref
   [error] entries[0].ref: An entry needs a target field ref.
 # a plan for another entity
-  [warning] entity: Plan targets "other" but the config is "e".
+  [warning] entity: The plan was written for "other"; this schema is "e".
 # a plan for an older config version
-  [warning] configVersion: Plan was authored against config version 1; the config is now 2.
+  [warning] configVersion: The plan was written against schema version 1; it is now 2.
 # a 2.2 ref of a moved array
   [warning] entries[0].ref: "phones.number" is the 2.2 address of "contact.phones.0.number"; it is read as "contact.phones.0.number" until 4.0. Save the plan again to update it.
 # a ref no field has
   [error] entries[0].ref: References unknown field "main.nope".
 # a ref into __proto__
-  [error] entries[0].ref: References unknown field "__proto__.polluted".
+  [error] entries[0].ref: "__proto__.polluted" names a reserved object key.
 # one ref mapped twice
   [error] entries[1].ref: "main.name" is mapped more than once.
 # an entry with a column and a constant
@@ -163,5 +163,19 @@ exports[`formatConfigProblems prints every case as it always has 1`] = `
 # an entry with neither
   [error] entries[0]: An entry needs either a column or a constant.
 # a negative column
-  [error] entries[0].column: column must be a zero-based integer index."
+  [error] entries[0].column: column must be a zero-based integer index.
+# a plan version the reader does not know
+  [error] planVersion: planVersion 3 is not one this reader knows; it reads v1 (no planVersion) and 2.
+# a key plan v2 does not have
+  [error] colour: "colour" is not a mapping-plan field.
+# an entity and a target that disagree
+  [error] entity: entity ("e") and target ("other") disagree; keep target only.
+# a v2 plan still using the 2.x name for its entity
+  [warning] entity: entity is the v1 name of target; a v2 plan should use target.
+# a split on a field that is not a list
+  [error] entries[0].split: "main.name" is not a list, so its cells cannot be split.
+# an array asked to keep its empty rows
+  [error] lists["contact.phones"].compact: "contact.phones" cannot keep empty slots in place; this schema compacts it.
+# a group collecting something that is not an array
+  [error] group.collect[0]: "main.name" is not one of this schema's arrays."
 `;

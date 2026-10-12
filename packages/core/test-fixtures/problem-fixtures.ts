@@ -257,6 +257,8 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
 /** `main.name`, at config version 2. */
 const PLANNED = { ...(one([text('name')]) as EntityFormConfig), version: 2 };
 const planned = (entries: unknown, extra: Record<string, unknown> = {}): unknown => ({ entity: 'e', entries, ...extra });
+/** The same plan as plan v2 writes it. */
+const v2 = (entries: unknown, extra: Record<string, unknown> = {}): unknown => ({ planVersion: 2, target: 'e', entries, ...extra });
 
 /** A tab-level array moved by its override, so a 2.2 plan names it by its old address. */
 const MOVED: EntityFormConfig = {
@@ -278,7 +280,7 @@ export const PLAN_CASES: readonly PlanCase[] = [
   },
   { name: 'a 2.2 ref of a moved array', code: 'PLAN_LEGACY_REF', plan: planned([{ ref: 'phones.number', column: 0 }]), config: MOVED },
   { name: 'a ref no field has', code: 'PLAN_UNKNOWN_REF', plan: planned([{ ref: 'main.nope', column: 0 }]), config: PLANNED },
-  { name: 'a ref into __proto__', code: 'PLAN_UNKNOWN_REF', plan: planned([{ ref: '__proto__.polluted', column: 0 }]), config: PLANNED },
+  { name: 'a ref into __proto__', code: 'PLAN_UNSAFE_PATH', plan: planned([{ ref: '__proto__.polluted', column: 0 }]), config: PLANNED },
   {
     name: 'one ref mapped twice',
     code: 'PLAN_DUPLICATE_REF',
@@ -296,6 +298,35 @@ export const PLAN_CASES: readonly PlanCase[] = [
   },
   { name: 'an entry with neither', code: 'PLAN_SOURCE', plan: planned([{ ref: 'main.name' }]), config: PLANNED },
   { name: 'a negative column', code: 'PLAN_SOURCE', plan: planned([{ ref: 'main.name', column: -1 }]), config: PLANNED },
+
+  // Reachable since 3.0, when the plan reader became sheet-to-schema's and learned plan v2.
+  { name: 'a plan version the reader does not know', code: 'PLAN_VERSION', plan: v2([{ ref: 'main.name', column: 0 }], { planVersion: 3 }), config: PLANNED },
+  { name: 'a key plan v2 does not have', code: 'PLAN_UNKNOWN_KEY', plan: v2([{ ref: 'main.name', column: 0 }], { colour: 'red' }), config: PLANNED },
+  {
+    name: 'an entity and a target that disagree',
+    code: 'PLAN_ALIAS_CONFLICT',
+    plan: planned([{ ref: 'main.name', column: 0 }], { target: 'other' }),
+    config: PLANNED,
+  },
+  {
+    name: 'a v2 plan still using the 2.x name for its entity',
+    code: 'PLAN_ALIAS_USED',
+    plan: { planVersion: 2, entity: 'e', entries: [{ ref: 'main.name', column: 0 }] },
+    config: PLANNED,
+  },
+  { name: 'a split on a field that is not a list', code: 'PLAN_SPLIT_TARGET', plan: v2([{ ref: 'main.name', column: 0, split: ';' }]), config: PLANNED },
+  {
+    name: 'an array asked to keep its empty rows',
+    code: 'PLAN_LIST_OPTION',
+    plan: v2([{ ref: 'contact.phones.0.number', column: 0 }], { lists: { 'contact.phones': { compact: false } } }),
+    config: MOVED,
+  },
+  {
+    name: 'a group collecting something that is not an array',
+    code: 'PLAN_GROUP',
+    plan: v2([{ ref: 'main.name', column: 0 }], { group: { key: [0], collect: ['main.name'] } }),
+    config: PLANNED,
+  },
 ];
 
 /** The moved-container configs `import-moved-containers.spec.ts` builds, as data. */

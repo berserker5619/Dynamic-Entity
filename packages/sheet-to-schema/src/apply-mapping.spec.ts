@@ -371,3 +371,39 @@ describe('applyMapping — the options a cell is read with', () => {
     expect(run(ROW, dated('DMY'), adapter).records[0]).toMatchObject({ orderId: '#A1', placed: '2026-09-05' });
   });
 });
+
+/**
+ * A problem's `path` says where to look in the plan the caller has. A stored 2.x plan names
+ * its target `entity` and its schema version `configVersion`, so that is where a mismatch on
+ * either is reported. Dynamic Entity 2.x reported it there, and its callers match on it.
+ */
+describe('preparePlan — a problem is reported against the plan as it was written', () => {
+  const adapter = ordersAdapter();
+  const paths = (plan: unknown) => preparePlan(plan, adapter).problems.map(problem => [problem.code, problem.path]);
+
+  it('names a v1 plan\'s own fields when its target or its version do not match', () => {
+    expect(paths({ entity: 'invoices', configVersion: 9, entries: [{ ref: 'orderId', column: 0 }] })).toEqual([
+      ['PLAN_TARGET_MISMATCH', 'entity'],
+      ['PLAN_TARGET_MISMATCH', 'configVersion'],
+    ]);
+  });
+
+  it('names a v2 plan\'s fields for a v2 plan', () => {
+    expect(paths({ planVersion: 2, target: 'invoices', schemaVersion: 9, entries: [{ ref: 'orderId', column: 0 }] })).toEqual([
+      ['PLAN_TARGET_MISMATCH', 'target'],
+      ['PLAN_TARGET_MISMATCH', 'schemaVersion'],
+    ]);
+  });
+
+  it('follows whichever name the plan used, field by field', () => {
+    // A v1 plan may already carry one new name beside an old one.
+    expect(paths({ target: 'invoices', configVersion: 9, entries: [{ ref: 'orderId', column: 0 }] })).toEqual([
+      ['PLAN_TARGET_MISMATCH', 'target'],
+      ['PLAN_TARGET_MISMATCH', 'configVersion'],
+    ]);
+  });
+
+  it('leaves every other path alone', () => {
+    expect(paths({ entity: 'orders', entries: [{ ref: 'nope', column: 0 }] })).toEqual([['PLAN_UNKNOWN_REF', 'entries[0].ref']]);
+  });
+});

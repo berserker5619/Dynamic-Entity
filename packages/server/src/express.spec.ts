@@ -355,7 +355,7 @@ describe('POST /:entity/import', () => {
     // And the refs it did not recognise are reported rather than quietly dropped.
     expect(response.body.planProblems.some((p: { level: string }) => p.level === 'error')).toBe(true);
     expect(
-      response.body.planProblems.filter((p: { code?: string }) => p.code === 'PLAN_UNKNOWN_REF').map((p: { path: string }) => p.path),
+      response.body.planProblems.filter((p: { code?: string }) => p.code === 'PLAN_UNSAFE_PATH').map((p: { path: string }) => p.path),
     ).toEqual(['entries[0].ref', 'entries[1].ref']);
     expect(written).toEqual([]);
   });

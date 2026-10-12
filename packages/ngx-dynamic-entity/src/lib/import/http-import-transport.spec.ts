@@ -2,7 +2,7 @@ import {
   buildTemplateSpec,
   CORE_VERSION,
   type EntityFormConfig,
-  type MappingPlan,
+  type MappingPlanV1,
   type TemplateSpec,
 } from '@dynamic-entity/core';
 import { IMPORT_TRANSPORT } from '../tokens/injection-tokens';
@@ -23,7 +23,7 @@ const CONFIG: EntityFormConfig = {
 
 const CONTEXT: ImportContext = { config: CONFIG };
 
-const PLAN: MappingPlan = {
+const PLAN: MappingPlanV1 = {
   entity: 'employee',
   entries: [{ ref: 'personal.firstName', column: 0 }],
 };

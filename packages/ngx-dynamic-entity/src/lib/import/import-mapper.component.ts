@@ -16,6 +16,7 @@ import {
   type EntityFormConfig,
   type ImportColumn,
   type MappingEntry,
+  type AnyMappingPlan,
   type MappingPlan,
 } from '@dynamic-entity/core';
 import { UiTextService } from '../services/ui-text.service';
@@ -256,11 +257,11 @@ interface ArraySlots {
 export class ImportMapperComponent implements OnChanges {
   @Input({ required: true }) config!: EntityFormConfig;
   @Input() headers: readonly string[] = [];
-  /** The starting point, normally `suggestMapping`'s output. */
-  @Input() plan: MappingPlan | null = null;
+  /** The starting point, normally `suggestMapping`'s output. A stored 2.x plan is taken too. */
+  @Input() plan: AnyMappingPlan | null = null;
   @Input() language = 'en';
 
-  /** Emitted whenever the user changes a selection. */
+  /** Emitted whenever the user changes a selection. Always plan v2, whichever shape came in. */
   @Output() readonly planChange = new EventEmitter<MappingPlan>();
 
   protected readonly ui = inject(UiTextService);
@@ -283,7 +284,7 @@ export class ImportMapperComponent implements OnChanges {
   /** Rows added by hand per repeating field, on top of what the sheet and plan imply. */
   private readonly extraSlots = new Map<string, number>();
   /** The incoming plan, read through the 2.2 alias. Every entry in it survives `toPlan`. */
-  private incoming: MappingPlan | null = null;
+  private incoming: AnyMappingPlan | null = null;
 
   ngOnChanges(): void {
     this.incoming = this.plan ? upgradeLegacyRefs(this.plan, this.config) : null;
@@ -397,6 +398,10 @@ export class ImportMapperComponent implements OnChanges {
    * Every entry of the incoming plan survives in its own position — a fixed value, a ref the
    * config no longer has — unless the user changed or removed it, and an untouched entry is
    * emitted exactly as it arrived. New selections follow, in field order.
+   *
+   * What is emitted is plan v2, whichever shape came in: `target` and `schemaVersion`, where a
+   * 2.x plan said `entity` and `configVersion`. Anything else the incoming plan carried, such
+   * as its lists and its grouping, is kept.
    */
   private toPlan(): MappingPlan {
     const rowByRef = new Map(this.rows().map(row => [row.column.ref, row]));
@@ -431,10 +436,13 @@ export class ImportMapperComponent implements OnChanges {
       if (entry) entries.push(entry);
     }
 
+    // The 2.x names go: a plan carrying both is one the reader has to warn about.
+    const kept = Object.fromEntries(Object.entries(this.incoming ?? {}).filter(([key]) => key !== 'entity' && key !== 'configVersion'));
     return {
-      ...this.incoming,
-      entity: this.config?.entity ?? '',
-      configVersion: this.config?.version,
+      ...kept,
+      planVersion: 2,
+      target: this.config?.entity ?? '',
+      schemaVersion: this.config?.version,
       sourceHeaders: [...this.headers],
       entries,
     };

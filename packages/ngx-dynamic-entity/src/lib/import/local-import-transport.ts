@@ -21,6 +21,7 @@ import {
   suggestMapping,
   toCsv,
   type ImportResult,
+  type AnyMappingPlan,
   type MappingPlan,
   type SheetGrid,
   type TemplateSpec,
@@ -70,7 +71,11 @@ export class LocalImportTransport implements ImportTransport {
     return pending;
   }
 
-  async preview(file: File, context: ImportContext): Promise<ImportPreview> {
+  /**
+   * The suggestion made here is always plan v2, and the return type says so. The contract's is
+   * a plan in either shape, because a 2.x server sends the older one.
+   */
+  async preview(file: File, context: ImportContext): Promise<ImportPreview & { suggestion: MappingPlan }> {
     const sheet = await this.read(file);
     // Sized from the headers exactly as the server sizes them, so both offer the same slots.
     const arrayBound = arrayBoundFor(sheet.headers, context.config, null, context.lang);
@@ -90,7 +95,7 @@ export class LocalImportTransport implements ImportTransport {
     };
   }
 
-  async commit(file: File, plan: MappingPlan, context: ImportContext): Promise<ImportResult> {
+  async commit(file: File, plan: AnyMappingPlan, context: ImportContext): Promise<ImportResult> {
     const sheet = await this.read(file);
     return applyMapping(sheet.rows, plan, context.config, {
       lang: context.lang,

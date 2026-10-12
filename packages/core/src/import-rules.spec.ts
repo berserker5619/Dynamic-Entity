@@ -8,7 +8,7 @@
  */
 import { applyMapping } from './import-engine';
 import type { EntityFormConfig, FormRule, NestedFieldConfig } from './form-model.types';
-import type { MappingPlan } from './import-model.types';
+import type { MappingPlanV1 } from './import-model.types';
 
 const rule = (fieldId: string, value: string, action: FormRule['action'], ...targets: string[]): FormRule => ({
   formConfigId: 'claims',
@@ -47,7 +47,7 @@ const CONFIG: EntityFormConfig = {
 };
 
 /** Every column of `CONFIG`, in order: status, reason, home.city, work.city. */
-const PLAN: MappingPlan = {
+const PLAN: MappingPlanV1 = {
   entity: 'claims',
   entries: ['main.status', 'main.reason', 'main.home.city', 'main.work.city'].map((ref, column) => ({
     ref,
@@ -105,7 +105,7 @@ describe('showWhen and show rules', () => {
     ...CONFIG,
     tabs: [{ ...CONFIG.tabs[0], fields: [CONFIG.tabs[0].fields![0], required('reason', { showWhen })] }],
   });
-  const plan: MappingPlan = { entity: 'claims', entries: PLAN.entries.slice(0, 2) };
+  const plan: MappingPlanV1 = { entity: 'claims', entries: PLAN.entries.slice(0, 2) };
 
   it('resolve a [ref] showWhen key', () => {
     const config = withShowWhen({ '[main.status]': 'closed' });
@@ -136,7 +136,7 @@ describe('a hidden tab', () => {
         },
       ],
     };
-    const plan: MappingPlan = {
+    const plan: MappingPlanV1 = {
       entity: 'claims',
       entries: ['main.status', 'extra.box.inner', 'extra.deep.leaf'].map((ref, column) => ({ ref, column })),
     };

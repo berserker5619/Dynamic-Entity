@@ -11,7 +11,7 @@ import {
   type ImportColumn,
   type DateOrder,
   type ImportLookups,
-  type MappingPlan,
+  type AnyMappingPlan,
 } from '@dynamic-entity/core';
 import { UiTextService } from '../services/ui-text.service';
 
@@ -138,7 +138,7 @@ interface PreviewRow {
 })
 export class ImportPreviewComponent implements OnChanges {
   @Input({ required: true }) config!: EntityFormConfig;
-  @Input({ required: true }) plan!: MappingPlan;
+  @Input({ required: true }) plan!: AnyMappingPlan;
   @Input() rows: readonly (readonly string[])[] = [];
   @Input() lookups?: ImportLookups;
   /** The same rules the commit will apply; without them a rule-driven rejection is invisible. */

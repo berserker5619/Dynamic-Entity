@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import type { EntityFormConfig, MappingPlan } from '@dynamic-entity/core';
+import type { EntityFormConfig, MappingPlanV1 } from '@dynamic-entity/core';
 import { SHEET_PARSER } from '../tokens/injection-tokens';
 import { LocalImportTransport } from './local-import-transport';
 import type { ImportContext } from './import-contracts';
@@ -67,7 +67,7 @@ describe('LocalImportTransport', () => {
   });
 
   it('commits a file into records through the same engine a server would use', async () => {
-    const plan: MappingPlan = {
+    const plan: MappingPlanV1 = {
       entity: 'employees',
       entries: [
         { ref: 'personal.firstName', column: 0 },
@@ -198,7 +198,7 @@ describe('LocalImportTransport.preview, against the shared parity cases', () => 
         arrayBound: preview.arrayBound,
         suggestion: suggestedEntries(preview.suggestion),
       }).toEqual(parity.expected);
-      expect(preview.suggestion.entity).toBe(parity.config.entity);
+      expect(preview.suggestion.target).toBe(parity.config.entity);
     });
   }
 });
@@ -249,7 +249,7 @@ describe('LocalImportTransport with a typed parser', () => {
       },
     ],
   };
-  const PLAN_TYPED: MappingPlan = {
+  const PLAN_TYPED: MappingPlanV1 = {
     entity: 'people',
     entries: [
       { ref: 'born', column: 0 },
@@ -294,7 +294,7 @@ describe('LocalImportTransport — a date written in digits', () => {
     entity: 'people',
     tabs: [{ id: 'main', label: { en: 'Main' }, flatData: true, fields: [{ id: 'born', type: 'date', label: { en: 'Born' } }] }],
   };
-  const plan: MappingPlan = { entity: 'people', entries: [{ ref: 'born', column: 0 }] };
+  const plan: MappingPlanV1 = { entity: 'people', entries: [{ ref: 'born', column: 0 }] };
   const commit = (dateOrder?: 'DMY' | 'MDY' | 'YMD') => {
     return TestBed.inject(LocalImportTransport).commit(csvFile('p.csv', 'Born\n05/09/2026\n2026-09-06\n'), plan, {
       config: DATED,

@@ -84,7 +84,15 @@ export function preparePlan<TMeta, TCtx>(input: unknown, adapter: SchemaAdapter<
     });
   }
 
-  problems.push(...validatePlan(plan, adapter));
+  // validatePlan sees the plan as read, in v2 names. A stored 2.x plan calls those fields
+  // `entity` and `configVersion`, and a problem's path says where to look in the plan the
+  // caller has, so it is reported against the name that plan used.
+  const written = input as Record<string, unknown>;
+  const named: Record<string, string> = {
+    target: written['target'] === undefined ? 'entity' : 'target',
+    schemaVersion: written['schemaVersion'] === undefined ? 'configVersion' : 'schemaVersion',
+  };
+  problems.push(...validatePlan(plan, adapter).map(problem => ({ ...problem, path: named[problem.path] ?? problem.path })));
   return problems.some(problem => problem.level === 'error') ? { problems } : { plan, problems };
 }
 

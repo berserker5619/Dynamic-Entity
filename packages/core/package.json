@@ -32,12 +32,14 @@
     "dev": "tsup --format cjs,esm --dts --watch",
     "test:coverage": "jest --coverage"
   },
+  "dependencies": {
+    "sheet-to-schema": "0.0.0"
+  },
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "exceljs": "4.4.0",
     "jest": "^30.0.0",
     "jszip": "^3.10.2",
-    "sheet-to-schema": "*",
     "ts-jest": "^29.4.14",
     "tsup": "^8.0.0",
     "typescript": "~5.9.3"

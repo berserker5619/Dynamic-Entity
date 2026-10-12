@@ -14,7 +14,7 @@ import {
 import { applyMapping, suggestMapping } from './import-engine';
 import { formatConfigProblems } from './validate-config';
 import type { EntityFormConfig } from './form-model.types';
-import type { MappingPlan } from './import-model.types';
+import type { MappingPlanV1 } from './import-model.types';
 
 const CONFIG: EntityFormConfig = {
   entity: 'employees',
@@ -299,7 +299,7 @@ describe('buildTemplateSpec', () => {
 });
 
 describe('validateMappingPlan', () => {
-  const plan = (entries: MappingPlan['entries'], extra: Partial<MappingPlan> = {}): MappingPlan => ({
+  const plan = (entries: MappingPlanV1['entries'], extra: Partial<MappingPlanV1> = {}): MappingPlanV1 => ({
     entity: 'employees',
     entries,
     ...extra,

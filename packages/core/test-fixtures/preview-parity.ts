@@ -12,7 +12,7 @@
  * by core's per-file coverage gate. Imported by relative path, the way `test_data.json` is.
  */
 
-import type { CsvDelimiter, EntityFormConfig, ImportRowError, MappingPlan, NestedFieldConfig } from '../src/index';
+import type { CsvDelimiter, EntityFormConfig, ImportRowError, MappingPlan, MappingPlanV1, NestedFieldConfig } from '../src/index';
 
 /** What a preview must report for a case, on both sides. */
 export interface ExpectedPreview {
@@ -45,7 +45,7 @@ export interface PreviewParityCase {
   text: string;
   config: EntityFormConfig;
   /** A stored plan, for the cases that are also committed. */
-  plan?: MappingPlan;
+  plan?: MappingPlanV1;
   expected: ExpectedPreview;
   /** What committing `plan` must produce on both sides: the browser's `commit`, the server's `runImport`. */
   expectedCommit?: ExpectedCommit;
@@ -148,7 +148,7 @@ export const PREVIEW_PARITY_CASES: readonly PreviewParityCase[] = [
         { name: 'Ada', amount: 1234.5, _configVersion: 1 },
         { name: 'Bo', amount: 1.5, _configVersion: 1 },
       ],
-      errors: [{ row: 5, ref: 'amount', column: 1, message: '"1.5" is not a number', raw: '1.5' }],
+      errors: [{ row: 5, ref: 'amount', column: 1, code: 'CELL_FORMAT', message: '"1.5" is not a number', raw: '1.5' }],
     },
   },
   {
