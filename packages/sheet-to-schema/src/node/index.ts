@@ -23,3 +23,7 @@ export { guardZip } from './guard-zip';
 export { cellValue, xlsxRows } from './xlsx-source';
 export { detectFormat, guardRows, readSheet } from './read-sheet';
 export type { ReadSheetOptions, SheetFormat, SheetSource } from './read-sheet';
+
+// ─── Writing a template ─────────────────────────────────────────────────────
+export { TEMPLATE_EXTENSION, TEMPLATE_MEDIA_TYPE, writeTemplate } from './write-template';
+export type { TemplateFormat, TemplateSheet, WriteTemplateOptions } from './write-template';
