@@ -18,3 +18,8 @@ export type { ImportErrorBody, ImportErrorCode } from './errors';
 export { destroySource, limitBytes, peek, toByteStream } from './bytes';
 export type { ByteSource } from './bytes';
 export { guardZip } from './guard-zip';
+
+// ─── Reading a sheet ────────────────────────────────────────────────────────
+export { cellValue, xlsxRows } from './xlsx-source';
+export { detectFormat, guardRows, readSheet } from './read-sheet';
+export type { ReadSheetOptions, SheetFormat, SheetSource } from './read-sheet';
