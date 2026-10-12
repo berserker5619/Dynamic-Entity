@@ -530,7 +530,7 @@ Settled on 2026-10-10. These are binding; Claude Code MUST NOT reopen them in co
 
 | # | Question | Decision |
 | --- | --- | --- |
-| 1 | Package name and scope | A new standalone name, not under `@dynamic-entity`: **`sheet-to-schema`**, unscoped. *(Named by the owner on 2026-10-11.)* |
+| 1 | Package name and scope | A new standalone name, not under `@dynamic-entity`: **`sheet-to-schema`**. *(Named by the owner on 2026-10-11, and confirmed on 2026-10-12.)* Phase 1 is one private workspace package of that name. Phase 2 splits it into packages under the **`@sheet-to-schema`** scope: `core`, `angular`, `node`, `adapter-json-schema` and `adapter-dynamic-entity`. Every one is `"private": true`, and nothing is published to npm until the owner says so. |
 | 2 | Re-exports from `@dynamic-entity/core` | Keep deprecated re-exports of moved functions through 3.x; remove in 4.0. |
 | 3 | Legacy-ref alias | Keep `upgradeLegacyRefs` behind the DE adapter's `upgradeRefs` through 3.x, with its warning; remove in 4.0. Correct the 2.3 changelog note that announced removal in 3.0. *(Correction shipped in DE 2.4.0.)* |
 | 4 | Problem codes in DE | Add an optional `code` to `ConfigProblem`, same `{ level, code, path, message }` shape. DE owns `CONFIG_*`; the importer owns `PLAN_*` and `RECORD_*`. Additive, so it ships in **DE 2.4**, before any extraction. *(Shipped in DE 2.4.0; see `docs/de-2.4-problem-codes.md`.)* |
@@ -543,10 +543,19 @@ Settled on 2026-10-10. These are binding; Claude Code MUST NOT reopen them in co
 | 11 | A plan with no target | Neither `target` nor `entity` present is a `PLAN_SHAPE` error: such a plan cannot be checked against any adapter. *(2026-10-10)* |
 | 12 | Malformed values of known fields | A wrongly typed value gets its feature's code where one exists: `PLAN_LIST_OPTION` inside `lists`, `PLAN_GROUP` inside `group`. Anything else is `PLAN_SHAPE`: `target`, `schemaVersion`, `sourceHeaders`, `header`, `confidence`, a `split` that is not 1 to 8 characters, and a `dateOrder` that is not `DMY`, `MDY` or `YMD`. *(2026-10-10; `dateOrder` added 2026-10-12)* |
 | 13 | v1 names on a v2 plan | `entity` and `configVersion` are known aliases on both versions, so rule 2 applies to every plan. On a v1 plan the old name alone is normal; an agreeing pair is `PLAN_ALIAS_USED`. On a v2 plan any old name is `PLAN_ALIAS_USED`, because v2 writers emit v2 names only. *(2026-10-10)* |
+| 14 | Dates written in digits | Never guessed. `MappingEntry.dateOrder` (`DMY`, `MDY`, `YMD`) states the order; without it a date that reads two ways is `CELL_FORMAT`. `suggestMapping` infers it from sample rows, and sets nothing when they do not show it. Dynamic Entity's own month-first reading is unchanged and tracked in `docs/de-date-order-issue.md`. *(2026-10-12)* |
+| 15 | Generic email rule | `format: 'email'` is judged by ajv-formats' rule. The DE adapter keeps DE's, which follows Angular's. *(2026-10-12)* |
+| 16 | A record's problems | Reported once each: a `CELL_*` error carries the row of its cell, identical problems are merged with their rows, and a target with a `CELL_*` error is not also `RECORD_REQUIRED`. This reverses the 2.3 double report, and is the one removal the Phase 2 gate allows. *(2026-10-12)* |
+| 17 | Rows on a group conflict warning | `[keptRow, disagreeingRow]`, ascending, one warning per distinct conflicting value. *(2026-10-12)* |
+| 18 | What a sample adds to suggestion | With sample rows: item-level refs and `group.collect` for an array no header numbers, a `group.key` from an id-like column whose values repeat, and `dateOrder`. All `guess`. Without a sample the suggestion is 2.3's. *(2026-10-12)* |
 
 **Still open**
 
-- [x] **The package name:** `sheet-to-schema`. On 2026-10-11 the name returned 404 from the npm registry, as did the spellings npm treats as the same name (`sheettoschema`, `sheet_to_schema`, `sheet.to.schema`). Whether an npm org of that name exists could not be read; the package is unscoped, so none is needed. The name is not reserved until something is published under it.
+Nothing. The one open question, the package name, is closed:
+
+- [x] **The package name:** `sheet-to-schema` (Decision 1). On 2026-10-11 the name returned 404 from the npm registry, as did the spellings npm treats as the same name (`sheettoschema`, `sheet_to_schema`, `sheet.to.schema`).
+
+**Before anything is published** (not a question for this spec, recorded so it is not lost): Phase 2's packages are scoped, so the `@sheet-to-schema` organisation has to exist on npm and belong to the owner. Whether it is free could not be read from here. Neither the name nor the scope is reserved until the owner claims it.
 
 **Later** (not v2, recorded so they are not lost)
 
@@ -733,3 +742,8 @@ A `custom` kind reaching `coerceValue` throws (§7).
 **2026-10-12: a group conflict warning names two rows (owner's decision).** A `RECORD_GROUP_CONFLICT` warning carried every row of its record, which on a long group does not say where to look. It now carries the row the value was kept from and the row that disagrees, in that order, and its message names the kept row. Each distinct conflicting value gets its own warning. §5 states this under rule 2 and under "Errors and counts".
 - **One reading the decision left open:** several rows carrying the *same* conflicting value share one warning, with all of those rows after the kept one, on the same principle as the merging of identical problems.
 - **The acceptance test now compares warnings by rows too.** The two notes above that called this comparison looser, and left it to the owner, are settled by this entry. The prototype's warning names only the row that disagreed; the kept row before it is the record's first row in both fixtures.
+
+**2026-10-12: the package name is closed, and the day's decisions are in the table.**
+- **Decision 1.** Confirmed as `sheet-to-schema`. The decision now also records what the owner set on 2026-10-11 for Phase 2: packages under the `@sheet-to-schema` scope, all private, nothing published. "Still open" holds nothing. One thing is noted there for before any publish: the `@sheet-to-schema` organisation on npm, which could not be checked from here.
+- **Decisions 14 to 18** record the owner's decisions of 2026-10-12, where they are binding. Their detail is in the sections and entries above.
+- **The owner's `order-fixture/` folder** at the repository root, the source of `test/fixtures/order`, was deleted after `diff -r` showed its five data files identical to the committed copies. Only the README differed, by the two renamed file names and the section added on commit.
