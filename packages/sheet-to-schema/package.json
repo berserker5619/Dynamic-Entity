@@ -2,7 +2,7 @@
   "name": "sheet-to-schema",
   "version": "0.0.0",
   "private": true,
-  "description": "Schema-agnostic spreadsheet import engine (Phase 1, docs/import-phase1-spec.md). Private until Phase 2 publishes it.",
+  "description": "Schema-agnostic spreadsheet import engine (docs/import-phase1-spec.md). The main entry is browser-safe with no runtime dependencies; sheet-to-schema/node reads files and serves HTTP. Private until the owner publishes it.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -14,7 +14,16 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
-    }
+    },
+    "./node": {
+      "types": "./dist/node/index.d.ts",
+      "import": "./dist/node/index.mjs",
+      "require": "./dist/node/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "scripts": {
     "build": "tsup",
@@ -22,9 +31,34 @@
     "lint": "tsc --noEmit",
     "test:coverage": "jest --coverage"
   },
+  "peerDependencies": {
+    "busboy": "^1.6.0",
+    "exceljs": "^4.4.0",
+    "express": "^4.18.0 || ^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "busboy": {
+      "optional": true
+    },
+    "exceljs": {
+      "optional": true
+    },
+    "express": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@types/busboy": "^1.5.4",
+    "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
+    "@types/node": "^20.14.0",
+    "@types/supertest": "^6.0.3",
+    "busboy": "1.6.0",
+    "exceljs": "4.4.0",
+    "express": "^5.2.1",
     "jest": "^30.0.0",
+    "jszip": "^3.10.2",
+    "supertest": "^7.2.2",
     "ts-jest": "^29.4.14",
     "tsup": "^8.0.0",
     "typescript": "~5.9.3"

@@ -303,3 +303,4 @@ One line per commit, added as each lands with its gate green.
 | Commit | Done | Note |
 | --- | --- | --- |
 | 2.1 | 2026-10-12 | `csv.ts` copied unchanged, with its two specs; the one spec that used DE's coercer for the decimal comma now uses `coerceValue`. Wire types in `wire.types.ts`, with `planVersions`, `adapter`, `slots`, `warnings`, `warningCount` and `rowsInImported` added as optional fields. |
+| 2.2 | 2026-10-12 | `sheet-to-schema/node` builds as a second entry and imports the main entry by the package's own name, so it carries no second copy of the engine. `exceljs`, `busboy` and `express` are optional peers; `loadOptional` turns a missing one into an install message. `scripts/check-importer-bundle.mjs` holds both entries to what they may import, and two lint rules hold the sources to it. |

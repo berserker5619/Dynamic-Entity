@@ -152,6 +152,44 @@ export default tseslint.config(
   },
 
   {
+    // The main entry runs in a browser (docs/phase2-plan.md). Nothing in it may reach `/node`,
+    // a Node built-in, or a package that only Node has.
+    files: ['packages/sheet-to-schema/src/*.ts'],
+    // Tests read fixtures from disk; only what ships has to run in a browser.
+    ignores: ['**/*.spec.ts', '**/*.fixtures.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: ['@dynamic-entity/*', 'ngx-dynamic-entity', 'ngx-dynamic-entity-builder'], message: 'The importer must not depend on Dynamic Entity.' },
+            { group: ['../../*'], message: 'The importer must not reach into another package.' },
+            { group: ['./node', './node/*'], message: 'The main entry is browser-safe: it must not import /node.' },
+            { group: ['node:*', 'exceljs', 'busboy', 'express'], message: 'The main entry is browser-safe: no Node built-ins and no Node-only packages.' },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
+    // `/node` imports the main entry as "sheet-to-schema", never by a relative path, so its
+    // bundle holds no second copy of the engine.
+    files: ['packages/sheet-to-schema/src/node/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: ['@dynamic-entity/*', 'ngx-dynamic-entity', 'ngx-dynamic-entity-builder'], message: 'The importer must not depend on Dynamic Entity.' },
+            { group: ['../*'], message: 'Import the main entry as "sheet-to-schema", so /node carries no second copy of it.' },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
     // Command-line scripts: printing to the console is their job.
     files: ['scripts/**', 'packages/core/bin.mjs'],
     rules: { 'no-console': 'off' },
