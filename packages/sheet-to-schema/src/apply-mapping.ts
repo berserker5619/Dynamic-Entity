@@ -337,7 +337,8 @@ export function applyMapping<TMeta, TCtx>(
 
   /**
    * Finalize and judge one record. In a grouped record a problem with the whole record carries
-   * every row it came from, and a cell that could not be read carries its own.
+   * every row it came from, and a cell that could not be read carries its own. A warning
+   * arrives with its rows already on it.
    *
    * `unread` holds the refs whose cell could not be read. Such a target is absent from the
    * record, but it is not one nobody filled in, so it is not reported as required as well
@@ -360,7 +361,7 @@ export function applyMapping<TMeta, TCtx>(
       ...cellErrors.map(ofCell),
       ...problems.map(problem => ofRecord({ row: rowNumbers[0], ref: problem.ref, code: problem.code, message: problem.message, raw: problem.raw })),
     ]);
-    warnings.push(...mergeProblems(recordWarnings.map(ofRecord)));
+    warnings.push(...recordWarnings);
     if (recordErrors.length) {
       errors.push(...recordErrors);
       // §5: if any row of a group fails, the whole record fails and every row of it counts.
@@ -375,11 +376,12 @@ export function applyMapping<TMeta, TCtx>(
   const buildGroup = ({ keyless, members }: Group): void => {
     const record: Record<string, unknown> = {};
     const origin = new Map<string, number>();
-    const conflicted = new Set<string>();
     const rowNumbers = members.map(member => member.rowNumber);
     const recordWarnings: ImportRowError[] = keyless
-      ? [{ row: rowNumbers[0], ref: '', code: 'RECORD_GROUP_NO_KEY', message: 'No group key; imported as its own record.' }]
+      ? [{ row: rowNumbers[0], rows: rowNumbers, ref: '', code: 'RECORD_GROUP_NO_KEY', message: 'No group key; imported as its own record.' }]
       : [];
+    /** One warning per value that disagrees with the kept one, by parent unit and that value. */
+    const conflicts = new Map<string, ImportRowError & { rows: number[] }>();
     for (const unit of parentUnits) {
       for (const member of members) {
         const value = getRecordValue(member.parent, unit);
@@ -388,15 +390,25 @@ export function applyMapping<TMeta, TCtx>(
         if (kept === undefined) {
           origin.set(unit, member.rowNumber);
           setRecordValue(record, unit, value);
-        } else if (!conflicted.has(unit) && JSON.stringify(value) !== JSON.stringify(getRecordValue(record, unit))) {
-          conflicted.add(unit);
-          recordWarnings.push({
-            row: rowNumbers[0],
+        } else if (JSON.stringify(value) !== JSON.stringify(getRecordValue(record, unit))) {
+          // The warning names the two rows to look at: the one the value was kept from, and the
+          // one that disagrees. Rows that agree are not on it, and each other value gets its own.
+          const conflict = `${unit} ${JSON.stringify(value)}`;
+          const known = conflicts.get(conflict);
+          if (known) {
+            known.rows.push(member.rowNumber);
+            continue;
+          }
+          const warning = {
+            row: kept,
+            rows: [kept, member.rowNumber],
             ref: unit,
-            code: 'RECORD_GROUP_CONFLICT',
+            code: 'RECORD_GROUP_CONFLICT' as const,
             message: `Rows disagree on ${unit}; kept row ${kept}.`,
             raw: value,
-          });
+          };
+          conflicts.set(conflict, warning);
+          recordWarnings.push(warning);
         }
       }
     }

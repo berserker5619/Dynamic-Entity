@@ -190,7 +190,7 @@ With `group` set, consecutive sheet rows sharing a key produce one record, and e
 **Building a grouped record**
 
 1. Each row is mapped as in v1 into a row record. Entries whose ref sits under a `collect` array produce that row's item for the array; every other entry is a *parent field*.
-2. The first row's parent fields seed the record. Later rows' parent fields are compared with it: a blank cell is ignored, an equal value is fine, a different value is a `RECORD_GROUP_CONFLICT` warning ("rows disagree on customer.email; kept row 4"), once per field. First row wins. A field the first row left blank is filled from the first later row that has it: nothing disagrees.
+2. The first row's parent fields seed the record. Later rows' parent fields are compared with it: a blank cell is ignored, an equal value is fine, a different value is a `RECORD_GROUP_CONFLICT` warning ("rows disagree on customer.email; kept row 4"), once per different value. First row wins. A field the first row left blank is filled from the first later row that has it: nothing disagrees.
 3. Each row's collected item is appended to its array, unless every leaf of the item is blank. Items are not de-duplicated: two identical line items are two items.
 4. Non-collected arrays (numbered-column slots) follow the parent-field rule as a whole.
 5. `finalize` and `validate` run once, on the finished record, after the last row of the group.
@@ -217,6 +217,10 @@ With `group` set, consecutive sheet rows sharing a key produce one record, and e
   - A cell that could not be read (every `CELL_*` code) carries the row of its cell: `rows: [thatRow]`, and `row` is that row.
   - Identical problems in one record, meaning the same `code`, `ref` and `message`, MUST be merged into one, with `rows` the union. A parent cell that fails on each of a record's three rows is one error carrying three rows, not three errors.
 - Group warnings go in `warnings`, never in `errors` (§9). A record with warnings is imported.
+  - A `RECORD_GROUP_CONFLICT` warning carries `rows: [keptRow, disagreeingRow]`, ascending: the row the value was kept from, then the row that disagrees. Its message names the kept row, and `raw` is the value that lost. Rows that agree are not on it. *(Decided 2026-10-12; until then it carried every row of the record.)*
+  - Each distinct conflicting value gets its own warning. Several rows carrying the same conflicting value share one, with all of them after the kept row.
+  - The kept row is the first row that has a value for the field, which is not the record's first row when that row left it blank.
+  - A `RECORD_GROUP_NO_KEY` warning carries the one row it is about.
 - `rowsRead`, `skipped` and `failed` keep counting sheet rows; `imported` counts records. `failed` counts rows with an **error** only. The reconciliation becomes `rowsInImported + skipped + failed === rowsRead`, where `rowsInImported` is reported too.
 - If any row of a group fails coercion, the whole record fails and all its rows count as `failed`.
 - A cell that fails coercion is absent from the record, but it is not a cell nobody filled in. A target whose cell has a `CELL_*` error in a record MUST NOT also be reported as `RECORD_REQUIRED` in that record, grouped or not. *(Reversed on 2026-10-12. Until then this said the opposite, as 2.3 does: "a required target fed by it is reported as `RECORD_REQUIRED` as well".)* The target is matched where its value would have been: a numbered slot at the index it has after compaction, and a collected item at its index in the record. A slot or item whose only cells failed leaves no item, so nothing is required of it. Any other required target with no value is still reported.
@@ -477,7 +481,7 @@ Phase 1 is done when these types compile and the reader and contract tests below
 **Grouping**
 
 - [ ] 7 order rows with 4 distinct contiguous keys → 4 records; line items preserved in sheet order.
-- [ ] Parent-field disagreement → one `RECORD_GROUP_CONFLICT` entry in `warnings` (none in `errors`) with `rows`. The first row's value is kept, the record is imported, and `failed` is 0.
+- [ ] Parent-field disagreement → one `RECORD_GROUP_CONFLICT` entry in `warnings` (none in `errors`) per distinct conflicting value, with `rows: [keptRow, disagreeingRow]`. The first row's value is kept, the record is imported, and `failed` is 0.
 - [ ] A closed key reappearing → `GROUP_NOT_CONTIGUOUS` naming both rows.
 - [ ] A group straddling a batch boundary at `batchSize: 2` → one record, identical to the unbatched result.
 - [ ] `contiguous: false` → accepted by `applyMapping`, refused by `runImport` with `INVALID_PLAN` carrying a `PLAN_GROUP` problem, before any row is read.
@@ -725,3 +729,7 @@ A `custom` kind reaching `coerceValue` throws (§7).
 - **The student fixture passes once the plan says the dates are day first.** Its two dates read both ways, so the suggestion sets no `dateOrder` and the import refuses them, as §8 requires; the test asserts that too. The prototype assumed day first.
 - **The prototype's messages are mapped to codes in the test** (`CODE_OF`), since it has no codes: its email and pattern failures are `RECORD_FORMAT`, its number and date failures `CELL_FORMAT`, an unknown option `CELL_UNKNOWN_OPTION`.
 - **One comparison is looser than the item asks, and is the owner's to settle.** A group warning is compared by code and path only. The prototype puts the row that disagreed on it (`[8]`); the engine puts every row of the record (`[7, 8]`), which §5 has said since before this change. The test asserts both facts, so either choice will show up there.
+
+**2026-10-12: a group conflict warning names two rows (owner's decision).** A `RECORD_GROUP_CONFLICT` warning carried every row of its record, which on a long group does not say where to look. It now carries the row the value was kept from and the row that disagrees, in that order, and its message names the kept row. Each distinct conflicting value gets its own warning. §5 states this under rule 2 and under "Errors and counts".
+- **One reading the decision left open:** several rows carrying the *same* conflicting value share one warning, with all of those rows after the kept one, on the same principle as the merging of identical problems.
+- **The acceptance test now compares warnings by rows too.** The two notes above that called this comparison looser, and left it to the owner, are settled by this entry. The prototype's warning names only the row that disagreed; the kept row before it is the record's first row in both fixtures.

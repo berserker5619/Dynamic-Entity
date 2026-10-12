@@ -53,18 +53,44 @@ describe('grouping (§5)', () => {
     expect(reconciles(result)).toBe(true);
   });
 
-  it('keeps the first row on a parent-field disagreement, with one warning carrying every row', () => {
+  it('keeps the first row on a parent-field disagreement, warning with the kept row and the row that disagreed', () => {
+    const result = run([
+      ['A', 'a@example.com', 'S1', '1'],
+      ['A', 'a@example.com', 'S2', '1'],
+      ['A', 'other@example.com', 'S3', '1'],
+    ]);
+    expect(result.errors).toEqual([]);
+    // Row 3 agrees, so it is not on the warning.
+    expect(result.warnings).toEqual([
+      expect.objectContaining({ row: 2, rows: [2, 4], ref: 'customer.email', code: 'RECORD_GROUP_CONFLICT', raw: 'other@example.com' }),
+    ]);
+    expect(result.warnings?.[0].message).toContain('row 2');
+    expect(result.records[0]['customer']).toEqual({ email: 'a@example.com' });
+    expect(result).toMatchObject({ imported: 1, failed: 0 });
+  });
+
+  it('warns once for each value that disagrees, with every row that carries it', () => {
     const result = run([
       ['A', 'a@example.com', 'S1', '1'],
       ['A', 'other@example.com', 'S2', '1'],
       ['A', 'third@example.com', 'S3', '1'],
+      ['A', 'other@example.com', 'S4', '1'],
     ]);
-    expect(result.errors).toEqual([]);
-    expect(result.warnings).toEqual([
-      expect.objectContaining({ row: 2, rows: [2, 3, 4], ref: 'customer.email', code: 'RECORD_GROUP_CONFLICT' }),
+    expect(result.warnings?.map(({ row, rows, ref, code, raw }) => ({ row, rows, ref, code, raw }))).toEqual([
+      { row: 2, rows: [2, 3, 5], ref: 'customer.email', code: 'RECORD_GROUP_CONFLICT', raw: 'other@example.com' },
+      { row: 2, rows: [2, 4], ref: 'customer.email', code: 'RECORD_GROUP_CONFLICT', raw: 'third@example.com' },
     ]);
     expect(result.records[0]['customer']).toEqual({ email: 'a@example.com' });
-    expect(result).toMatchObject({ imported: 1, failed: 0 });
+  });
+
+  it('names the row the value was kept from, which is not the first row when that row left the field blank', () => {
+    const result = run([
+      ['A', '', 'S1', '1'],
+      ['A', 'a@example.com', 'S2', '1'],
+      ['A', 'other@example.com', 'S3', '1'],
+    ]);
+    expect(result.warnings).toEqual([expect.objectContaining({ row: 3, rows: [3, 4], ref: 'customer.email', code: 'RECORD_GROUP_CONFLICT' })]);
+    expect(result.warnings?.[0].message).toContain('row 3');
   });
 
   it('fills a parent field the first row left blank from a later row: nothing disagrees', () => {
@@ -273,7 +299,7 @@ describe('grouping (§5)', () => {
       p,
     );
     expect(result.records[0]['phones']).toEqual([{ number: '+44 20 7946 0000' }]);
-    expect(result.warnings).toEqual([expect.objectContaining({ ref: 'phones', code: 'RECORD_GROUP_CONFLICT' })]);
+    expect(result.warnings).toEqual([expect.objectContaining({ row: 2, rows: [2, 3], ref: 'phones', code: 'RECORD_GROUP_CONFLICT' })]);
   });
 
   it('finalizes and validates each group once, after its last row', () => {

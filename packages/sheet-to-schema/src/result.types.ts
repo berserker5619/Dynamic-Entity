@@ -15,7 +15,8 @@ export interface ImportRowError {
   /**
    * v2, on a grouped record: the sheet rows the problem came from, ascending. Every row of the
    * record for a problem with the record as a whole; the cell's own row for a cell that could
-   * not be read, or every row the same cell problem occurred on.
+   * not be read, or every row the same cell problem occurred on; and for rows that disagree,
+   * the row the value was kept from, then each row carrying the other value.
    */
   rows?: number[];
   /** The target ref, or `''` for a problem that belongs to the whole record. */

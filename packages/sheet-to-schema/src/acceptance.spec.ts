@@ -149,18 +149,15 @@ function accept(name: string, makeAdapter: (file: (leaf: string) => string) => S
       expect(result.errors.filter(error => !(error.rows ?? []).every(row => failedRows.includes(row)))).toEqual([]);
     });
 
-    it("warns where the prototype warned, on the same field", () => {
-      const theirs = run.records.flatMap(record => record.issues.filter(issue => issue.warn).map(issue => ({ ...issueOf(issue), within: record.rows })));
-      expect(sorted((result.warnings ?? []).map(warning => ({ code: warning.code, path: shape(warning.ref) })))).toEqual(
-        sorted(theirs.map(({ code, path }) => ({ code, path }))),
+    it("warns where the prototype warned, on the same field and rows", () => {
+      // The prototype puts the row that disagreed on a warning. The engine puts the row the
+      // value was kept from before it (spec §5, decided 2026-10-12). In both fixtures that is
+      // the record's first row, which is the one row the prototype's warning leaves unsaid.
+      const theirs = run.records.flatMap(record =>
+        record.issues.filter(issue => issue.warn).map(issue => ({ ...issueOf(issue), rows: [record.rows[0], ...issue.rows] })),
       );
-      // The rows differ, and are not compared: the prototype names the row that disagreed, and
-      // the engine names every row of the record (spec §5, left open on 2026-10-12).
-      for (const warning of result.warnings ?? []) {
-        const theirWarning = theirs.find(issue => issue.path === shape(warning.ref));
-        expect(warning.rows).toEqual(theirWarning?.within);
-        expect(theirWarning?.rows.every(row => warning.rows?.includes(row))).toBe(true);
-      }
+      expect(sorted((result.warnings ?? []).map(problemOf))).toEqual(sorted(theirs));
+      for (const warning of result.warnings ?? []) expect(warning.message).toContain(`row ${warning.rows?.[0]}`);
     });
 
     it('counts every sheet row once: imported, failed or skipped', () => {
