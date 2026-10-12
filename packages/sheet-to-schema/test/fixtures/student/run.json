@@ -1,0 +1,62 @@
+{
+  "groupBy": "Student ID",
+  "arrays": {
+    "guardians": {
+      "mode": "indexed",
+      "slots": 2,
+      "delim": ";"
+    },
+    "subjects": {
+      "mode": "rows",
+      "slots": 2,
+      "delim": ";"
+    },
+    "clubs": {
+      "mode": "split",
+      "slots": 2,
+      "delim": ";"
+    }
+  },
+  "bindings": {
+    "clubs[*]": "Clubs",
+    "studentId": "Student ID",
+    "enrolledOn": "Enrolled On",
+    "subjects[*].code": "Subject Code",
+    "guardians[0].name": "Guardian 1 Name",
+    "guardians[1].name": "Guardian 2 Name",
+    "guardians[0].phone": "Guardian 1 Phone",
+    "guardians[1].phone": "Guardian 2 Phone",
+    "guardians[0].relation": "Guardian 1 Relation",
+    "guardians[1].relation": "Guardian 2 Relation",
+    "name.first": "First Name",
+    "name.last": "Last Name",
+    "subjects[*].marks": "Marks",
+    "subjects[*].passed": "Passed"
+  },
+  "records": [
+    {
+      "label": "S-204",
+      "rows": [
+        2,
+        3
+      ],
+      "issues": []
+    },
+    {
+      "label": "S-205",
+      "rows": [
+        4,
+        5
+      ],
+      "issues": [
+        {
+          "path": "subjects[].marks",
+          "msg": "Not a whole number",
+          "rows": [
+            5
+          ]
+        }
+      ]
+    }
+  ]
+}

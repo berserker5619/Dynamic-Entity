@@ -2,24 +2,22 @@
  * exampleJsonAdapter (`example-json-adapter.ts`), on its own and through the engine
  * (`applyMapping`, `suggestMapping`, `slotsFor`).
  */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { applyMapping } from './apply-mapping';
 import { exampleJsonAdapter } from './example-json-adapter';
 import { slotsFor, suggestMapping } from './suggest';
 
-/** The student example (spec, "Acceptance": two guardians and a split `clubs` list). */
-const STUDENT = {
-  studentId: 'S-001',
-  name: 'Ada Lovelace',
-  born: '2012-03-07',
-  age: 12,
-  boarder: false,
-  address: { city: 'London', postcode: 'N1 9GU' },
-  guardians: [
-    { name: 'Anne', phone: '0123', relation: 'mother' },
-    { name: 'Byron', phone: '0456' },
-  ],
-  clubs: ['chess', 'choir'],
-};
+/**
+ * The prototype's own student sample (`test/fixtures/student`, and its README): one example
+ * record, the sheet used with it, and the records the prototype built.
+ */
+const FIXTURE = join(__dirname, '..', 'test', 'fixtures', 'student');
+const fixture = (name: string): string => readFileSync(join(FIXTURE, name), 'utf8');
+const STUDENT = JSON.parse(fixture('example.json')) as Record<string, unknown>;
+const [HEADERS, ...ROWS] = fixture('sample.csv').trim().split(/\r?\n/).map(line => line.split(','));
+const EXPECTED = JSON.parse(fixture('expected-output.json')) as Record<string, unknown>[];
 
 const adapter = exampleJsonAdapter(STUDENT);
 const at = (ref: string, slots: Record<string, number> = {}) => adapter.targets({ slots }).targets.find(t => t.ref === ref);
@@ -32,26 +30,29 @@ describe('exampleJsonAdapter — targets', () => {
     expect([named.id, named.version]).toEqual(['students', 2]);
   });
 
-  it('infers 2 guardian slots and a split clubs list from the student example', () => {
+  it('infers the arrays of objects and a split clubs list from the student example', () => {
     const set = adapter.targets({ slots: {} });
-    expect(set.arrays).toEqual([{ ref: 'guardians', label: 'guardians', itemKind: 'object', required: false, positional: true }]);
+    expect(set.arrays).toEqual([
+      { ref: 'guardians', label: 'guardians', itemKind: 'object', required: false, positional: true },
+      { ref: 'subjects', label: 'subjects', itemKind: 'object', required: false, positional: true },
+    ]);
+    // The example has one guardian, so one slot is the least offered.
     expect(set.targets.filter(t => t.arrayRef === 'guardians').map(t => t.ref)).toEqual([
       'guardians.0.name',
-      'guardians.0.phone',
       'guardians.0.relation',
-      'guardians.1.name',
-      'guardians.1.phone',
-      'guardians.1.relation',
+      'guardians.0.phone',
     ]);
     expect(at('clubs')?.value).toEqual({ kind: 'list', of: { kind: 'string' } });
+    expect(set.unsupported).toEqual([]);
   });
 
   it('infers each kind from its value', () => {
     expect(at('studentId')?.value).toEqual({ kind: 'string' });
-    expect(at('born')).toMatchObject({ value: { kind: 'date' }, format: 'YYYY-MM-DD' });
-    expect(at('age')?.value).toEqual({ kind: 'number' });
-    expect(at('boarder')?.value).toEqual({ kind: 'boolean' });
-    expect(at('address.city')).toMatchObject({ header: 'address / city', matchKeys: ['city'], meta: { sample: 'London' } });
+    expect(at('enrolledOn')).toMatchObject({ value: { kind: 'date' }, format: 'YYYY-MM-DD' });
+    // A number, never an integer: one example is not a bound (the prototype read an integer).
+    expect(at('subjects.0.marks')?.value).toEqual({ kind: 'number' });
+    expect(at('subjects.0.passed')?.value).toEqual({ kind: 'boolean' });
+    expect(at('name.first')).toMatchObject({ header: 'name / first', matchKeys: ['first'], meta: { sample: 'Kavya' } });
     const times = exampleJsonAdapter({ at: '2024-03-07T09:30:00Z', opens: '09:30' }).targets({ slots: {} }).targets;
     expect(times.map(t => t.value)).toEqual([{ kind: 'datetime' }, { kind: 'time' }]);
     expect(times[1].format).toBe('HH:mm');
@@ -62,7 +63,8 @@ describe('exampleJsonAdapter — targets', () => {
   });
 
   it('never offers fewer slots than the sample shows, and more when asked', () => {
-    expect(at('guardians.1.name', { guardians: 1 })).toBeDefined();
+    expect(at('guardians.0.name', { guardians: 0 })).toBeDefined();
+    expect(at('guardians.1.name')).toBeUndefined();
     expect(at('guardians.3.name', { guardians: 4 })).toMatchObject({
       shapeRef: 'guardians.name',
       header: 'guardians / name 4',
@@ -141,53 +143,44 @@ describe('exampleJsonAdapter — targets', () => {
   });
 });
 
-describe('exampleJsonAdapter — through the engine', () => {
+describe("exampleJsonAdapter — through the engine, on the prototype's sheet", () => {
   const ctx = undefined;
-  const HEADERS = ['studentId', 'name', 'born', 'age', 'Guardians 1 Name', 'Guardians 1 Phone', 'Guardians 2 Name', 'Guardians 2 Phone', 'clubs'];
 
-  it('suggests a mapping from a sheet shaped like the sample', () => {
-    expect(slotsFor(HEADERS, adapter)).toEqual({ guardians: 3 });
+  it("fills 2 guardian slots from the sheet's numbered headers", () => {
+    expect(slotsFor(HEADERS, adapter)).toEqual({ guardians: 3, subjects: 3 });
     const plan = suggestMapping(HEADERS, adapter);
     expect(plan.target).toBe('example-json');
-    expect(plan.entries.map(e => e.ref)).toEqual([
-      'studentId',
-      'name',
-      'born',
-      'age',
-      'clubs',
-      'guardians.0.name',
-      'guardians.0.phone',
-      'guardians.1.name',
-      'guardians.1.phone',
-    ]);
+    const guardians = Object.fromEntries(plan.entries.filter(e => e.ref.startsWith('guardians.')).map(e => [e.header, e.ref]));
+    expect(guardians).toEqual({
+      'Guardian 1 Name': 'guardians.0.name',
+      'Guardian 1 Relation': 'guardians.0.relation',
+      'Guardian 1 Phone': 'guardians.0.phone',
+      'Guardian 2 Name': 'guardians.1.name',
+      'Guardian 2 Relation': 'guardians.1.relation',
+      'Guardian 2 Phone': 'guardians.1.phone',
+    });
+    expect(plan.entries.find(e => e.header === 'Clubs')?.ref).toBe('clubs');
   });
 
-  it('imports rows into records shaped like the sample', () => {
+  it('imports the guardians and clubs the prototype built', () => {
     const plan = suggestMapping(HEADERS, adapter);
-    const result = applyMapping(
-      [
-        ['S-002', 'Mary', '2013-01-02', '11', 'Jo', '0789', '', '', 'chess; art'],
-        ['S-003', 'Tom', '', 'eleven', '', '', 'Sam', '0111', ''],
-      ],
-      plan,
-      adapter,
-      ctx,
-    );
-    expect(result.records[0]).toEqual({
-      studentId: 'S-002',
-      name: 'Mary',
-      born: '2013-01-02',
-      age: 11,
-      guardians: [{ name: 'Jo', phone: '0789' }],
-      clubs: ['chess', 'art'],
-    });
-    expect(result.errors.map(e => ({ ref: e.ref, code: e.code }))).toEqual([{ ref: 'age', code: 'CELL_FORMAT' }]);
+    const kept = { ...plan, entries: plan.entries.filter(e => e.ref.startsWith('guardians.') || e.ref === 'clubs') };
+    const result = applyMapping([ROWS[0], ROWS[2]], kept, adapter, ctx);
+    expect(result.errors).toEqual([]);
+    expect(result.records).toEqual(EXPECTED.map(({ guardians, clubs }) => ({ guardians, clubs })));
+  });
+
+  it('reports a cell the inferred kind cannot read', () => {
+    const plan = { planVersion: 2, target: 'example-json', entries: [{ ref: 'studentId', column: 0 }, { ref: 'subjects.0.marks', column: 11 }] };
+    const result = applyMapping(ROWS, plan, adapter, ctx);
+    expect(result.errors.map(e => ({ row: e.row, ref: e.ref, code: e.code, raw: e.raw }))).toEqual([{ row: 5, ref: 'subjects.0.marks', code: 'CELL_FORMAT', raw: 'sixty' }]);
+    expect(result.records).toHaveLength(3);
   });
 
   it("uses a caller's validator in place of the generic checks", () => {
-    const strict = exampleJsonAdapter(STUDENT, { validator: record => (record['name'] ? [] : [{ ref: 'name', code: 'RECORD_REQUIRED', message: 'missing' }]) });
-    const plan = { planVersion: 2, target: 'example-json', entries: [{ ref: 'studentId', column: 0 }, { ref: 'name', column: 1 }] };
-    const result = applyMapping([['S-1', '']], plan, strict, ctx);
+    const strict = exampleJsonAdapter(STUDENT, { validator: record => (record['enrolledOn'] ? [] : [{ ref: 'enrolledOn', code: 'RECORD_REQUIRED', message: 'missing' }]) });
+    const plan = { planVersion: 2, target: 'example-json', entries: [{ ref: 'studentId', column: 0 }, { ref: 'enrolledOn', column: 3 }] };
+    const result = applyMapping([['S-1', '', '', '']], plan, strict, ctx);
     expect(result.errors.map(e => e.code)).toEqual(['RECORD_REQUIRED']);
   });
 });

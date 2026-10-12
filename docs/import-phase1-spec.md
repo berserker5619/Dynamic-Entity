@@ -474,7 +474,7 @@ Phase 1 is done when these types compile and the reader and contract tests below
 
 - [ ] `entityFormConfigAdapter`: the full existing core and server suites pass unchanged against the generic engine, except for the additive `code` and `warnings` fields. A test that compared a whole error object may add the code, and nothing else (Phase 2 gate).
 - [ ] `jsonSchemaAdapter` on the order schema from the prototype produces the same records as the prototype's sample run.
-- [ ] `exampleJsonAdapter` on the student example infers 2 guardian slots and a split `clubs` list.
+- [ ] `exampleJsonAdapter` on the student example (`test/fixtures/student`) infers a split `clubs` list and one guardian slot from the example, and fills 2 guardian slots from the sheet's numbered headers.
 - [ ] A `custom` kind without `coerce` throws at adapter construction.
 
 **Added after the 2.3 audit**
@@ -650,3 +650,15 @@ A `custom` kind reaching `coerceValue` throws (§7).
 **2026-10-11: the package is named `sheet-to-schema`.** Decision 1 and the open item are updated. The workspace package was renamed from `sheet-importer-placeholder`, in its manifest, core's `devDependencies`, and core's `tsconfig.json` and `jest.config.js` mappings. Earlier entries in this log keep the placeholder name they were written with.
 - **The folder moved too,** from `packages/sheet-importer` to `packages/sheet-to-schema`, on the owner's word the same day. Earlier entries keep the old path.
 - **Unchanged:** it stays `private: true`. Publishing is Phase 2.
+
+**2026-10-12: the prototype's fixtures.** The prototype the acceptance items name was never in this repository. The owner supplied it on 2026-10-11, and it is now committed under `packages/sheet-to-schema/test/fixtures/`:
+- **`order/`:** `schema.json`, `sample.csv`, `expected-output.json`, `run.json`, the prototype itself (`schema-mapper.html`) and a README saying where each came from. Before the commit, the prototype's code was run again headlessly and reproduced the output and the run exactly.
+- **`student/`:** the prototype's own example-JSON sample, built the same way: `example.json`, `sample.csv`, `expected-output.json`, `run.json` and a README.
+- **Not published:** the package's `files` is now `dist` only, so nothing under `test/` can ship. `npm pack --dry-run` lists `dist` and `package.json`.
+- **`exampleJsonAdapter`'s spec reads the student fixture,** in place of the student record written for the first version of that spec. The acceptance item is reworded to what the fixture shows: the example has one guardian, and the second slot comes from the sheet's `Guardian 2 …` headers.
+- **Found by running the engine on the order fixture,** and decided by the owner the same day. Each lands in its own commit, with its own entry below:
+  1. slash dates were read month-first, silently;
+  2. the generic email check accepted `rahul.k@example`;
+  3. `jsonSchemaAdapter` refused a schema whose root is an array of records;
+  4. `suggestMapping` did not map one-item-per-row columns or propose a group;
+  5. a grouped record's cell errors were repeated per row and carried every row of the group.

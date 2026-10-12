@@ -1,0 +1,26 @@
+{
+  "studentId": "S-204",
+  "name": {
+    "first": "Kavya",
+    "last": "Iyer"
+  },
+  "enrolledOn": "2026-06-01",
+  "guardians": [
+    {
+      "name": "Lakshmi Iyer",
+      "relation": "mother",
+      "phone": "98400 12345"
+    }
+  ],
+  "subjects": [
+    {
+      "code": "MATH",
+      "marks": 91,
+      "passed": true
+    }
+  ],
+  "clubs": [
+    "chess",
+    "robotics"
+  ]
+}

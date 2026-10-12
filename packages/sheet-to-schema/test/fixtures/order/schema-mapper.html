@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sheet → structure mapper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#F2F5F4; --surface:#FFFFFF; --sunk:#E8EEEC; --ink:#15302B; --muted:#5A6D68; --line:#D3DDDA;
+  --primary:#1D5878; --primary-ink:#FFFFFF; --wire:#2B6F9A; --obj:#6B4FA0; --arr:#A0522D;
+  --ok:#1E7649; --ok-bg:#E3F2EA; --warn:#9A5806; --warn-bg:#FBF0DE; --err:#B42318; --err-bg:#FCE9E7; --focus:#2B6F9A;
+  --sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1918; --surface:#152321; --sunk:#1B2C2A; --ink:#E4EEEB; --muted:#9DB1AB; --line:#2A3E3B;
+    --primary:#5FA8D3; --primary-ink:#0B1A22; --wire:#6DB4DE; --obj:#B49BE3; --arr:#E39A6E;
+    --ok:#6CCB97; --ok-bg:#183327; --warn:#E8B062; --warn-bg:#33270F; --err:#F2877C; --err-bg:#3A1C19; --focus:#6DB4DE;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1918; --surface:#152321; --sunk:#1B2C2A; --ink:#E4EEEB; --muted:#9DB1AB; --line:#2A3E3B;
+  --primary:#5FA8D3; --primary-ink:#0B1A22; --wire:#6DB4DE; --obj:#B49BE3; --arr:#E39A6E;
+  --ok:#6CCB97; --ok-bg:#183327; --warn:#E8B062; --warn-bg:#33270F; --err:#F2877C; --err-bg:#3A1C19; --focus:#6DB4DE;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans)}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+code{font-family:var(--mono);font-size:.9em}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 20px 64px}
+header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between;margin-bottom:18px}
+header.top h1{font-size:26px;line-height:1.15;margin:0;font-weight:700;letter-spacing:-.01em}
+header.top p{margin:4px 0 0;color:var(--muted);max-width:62ch}
+.steps{display:flex;gap:6px;list-style:none;margin:0;padding:0}
+.steps button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px 6px 8px;display:flex;gap:8px;align-items:center;cursor:pointer;font-weight:500}
+.steps button:disabled{cursor:not-allowed;opacity:.5}
+.steps .n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--sunk);font-size:12px;font-weight:600}
+.steps [aria-current="step"]{border-color:var(--primary);color:var(--primary)}
+.steps [aria-current="step"] .n{background:var(--primary);color:var(--primary-ink)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 13px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:3px 9px;font-size:13px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.spacer{flex:1}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px}
+.inputs{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.inputs h2{margin:0 0 4px;font-size:18px}
+.inputs .sub{margin:0 0 12px;color:var(--muted);font-size:14px}
+textarea.code{width:100%;height:300px;border:1px solid var(--line);border-radius:8px;padding:10px;font:12.5px/1.5 var(--mono);background:var(--sunk);resize:vertical}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:30px 16px;text-align:center;height:300px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px}
+.drop.over{border-color:var(--primary);background:var(--sunk)}
+.drop p{margin:0;color:var(--muted)}
+.loaded{font-weight:600}
+.note{margin:12px 0 0;padding:9px 13px;border-radius:8px;background:var(--ok-bg);color:var(--ok);font-size:14px}
+.note.warn{background:var(--warn-bg);color:var(--warn)}
+.note.err{background:var(--err-bg);color:var(--err)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+.recbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0 0;padding:12px 14px;border-radius:10px;background:var(--sunk);font-size:14px}
+.recbar select{width:auto;min-width:200px}
+.board{position:relative;display:grid;grid-template-columns:minmax(0,.85fr) 90px minmax(0,1.5fr);align-items:start;margin-top:16px}
+.col-head{font-weight:600;margin:0 0 10px;font-size:14px;color:var(--muted)}
+.col-head b{color:var(--ink)}
+.sources{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.src{width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 11px;cursor:pointer;display:block}
+.src:hover{border-color:var(--muted)}
+.src.picked{border-color:var(--wire);box-shadow:0 0 0 3px color-mix(in srgb,var(--wire) 25%,transparent)}
+.src.unused{background:var(--sunk)}
+.src.key{border-left:4px solid var(--arr)}
+.src .h{font-weight:600;display:block;overflow-wrap:anywhere}
+.src .s{font:12px/1.45 var(--mono);color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src .u{font-size:12px;color:var(--muted);display:block}
+.src .u.on{color:var(--wire)}
+.wires{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.wires path{fill:none;stroke:var(--wire);stroke-width:1.75;opacity:.85}
+.wires circle{fill:var(--wire)}
+
+.tree,.tree ul{list-style:none;margin:0;padding:0}
+.tree ul{margin-left:14px;padding-left:12px;border-left:2px solid var(--line)}
+.tree li{margin:6px 0}
+.grp{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:6px 8px;border-radius:8px}
+.grp.o{background:color-mix(in srgb,var(--obj) 9%,transparent)}
+.grp.a{background:color-mix(in srgb,var(--arr) 10%,transparent)}
+.caret{border:0;background:none;cursor:pointer;width:22px;height:22px;border-radius:5px;display:inline-grid;place-items:center;color:var(--muted)}
+.caret:hover{background:var(--sunk)}
+.caret svg{transition:transform .15s}
+.caret[aria-expanded="false"] svg{transform:rotate(-90deg)}
+.gname{font-weight:600}
+.badge{font-size:12px;border-radius:5px;padding:1px 7px;font-weight:600}
+.badge.o{color:var(--obj);background:color-mix(in srgb,var(--obj) 14%,transparent)}
+.badge.a{color:var(--arr);background:color-mix(in srgb,var(--arr) 15%,transparent)}
+.grp select{width:auto}
+.grp input[type=number]{width:62px}
+.grp input[type=text]{width:56px}
+.slot{font-size:13px;font-weight:600;color:var(--arr);margin:8px 0 2px}
+.leaf{display:grid;grid-template-columns:minmax(0,1fr) minmax(140px,200px);gap:10px;align-items:center;border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 10px}
+.leaf.clickable{cursor:copy}
+.leaf.clickable:hover{border-color:var(--wire)}
+.leaf.missing{border-color:var(--err)}
+.leaf .nm{font-weight:600}
+.leaf .mt{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:3px 8px}
+.leaf .pth{font-family:var(--mono)}
+.req{color:var(--err);font-weight:600}
+select,input[type=text],input[type=number]{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:5px 7px}
+.leaf select{width:100%}
+details.out{margin-top:16px}
+details.out summary{cursor:pointer;font-weight:600}
+pre{background:var(--sunk);border-radius:8px;padding:12px;overflow:auto;max-height:420px;font:12.5px/1.5 var(--mono);margin:8px 0 0}
+
+.summary{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 14px}
+.pill{border-radius:999px;padding:5px 12px;font-weight:600;font-size:14px}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.err{background:var(--err-bg);color:var(--err)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.muted{background:var(--sunk);color:var(--muted)}
+.review{display:grid;grid-template-columns:minmax(220px,300px) minmax(0,1fr);gap:16px;margin-top:14px}
+.reclist{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:10px;max-height:560px;overflow:auto}
+.reclist button{width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:var(--surface);padding:9px 12px;cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+.reclist button[aria-current="true"]{background:var(--sunk);box-shadow:inset 3px 0 0 var(--primary)}
+.reclist .k{font-weight:600;font-family:var(--mono);font-size:13px}
+.reclist .c{font-size:12px;color:var(--muted)}
+.reclist .c.bad{color:var(--err);font-weight:600}
+.issues{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:6px}
+.issues li{padding:7px 11px;border-radius:7px;background:var(--err-bg);color:var(--err);font-size:13.5px}
+.issues li.warn{background:var(--warn-bg);color:var(--warn)}
+.issues code{color:inherit;font-weight:500}
+
+@media (max-width:860px){
+  .inputs,.review{grid-template-columns:1fr}
+  .board{grid-template-columns:1fr}
+  .board .gutter,.board .src-col,.wires{display:none}
+  .leaf{grid-template-columns:1fr}
+  .steps .t{display:none}
+  .steps button{padding:6px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Map a spreadsheet into any structure</h1>
+      <p>Give it a JSON Schema or an example JSON object, plus a CSV or Excel sheet. Nested objects and lists are mapped from flat columns.</p>
+    </div>
+    <nav aria-label="Steps"><ol class="steps" id="steps"></ol></nav>
+  </header>
+  <main id="view"></main>
+</div>
+
+<script>
+/* =================== samples =================== */
+const SAMPLE_SCHEMA = {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Orders",
+  "type": "array",
+  "items": { "$ref": "#/$defs/order" },
+  "$defs": {
+    "order": {
+      "type": "object",
+      "required": ["orderId", "customer", "items"],
+      "properties": {
+        "orderId": { "type": "string", "title": "Order ID" },
+        "orderDate": { "type": "string", "format": "date" },
+        "customer": {
+          "type": "object",
+          "required": ["name", "email"],
+          "properties": {
+            "name": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "phones": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["number"],
+                "properties": {
+                  "type": { "type": "string", "enum": ["mobile", "whatsapp", "home", "work"] },
+                  "number": { "type": "string" }
+                }
+              }
+            },
+            "address": {
+              "type": "object",
+              "properties": {
+                "street": { "type": "string" },
+                "city": { "type": "string" },
+                "pincode": { "type": "string", "pattern": "^\\d{6}$" }
+              }
+            }
+          }
+        },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["sku", "qty"],
+            "properties": {
+              "sku": { "type": "string", "title": "SKU" },
+              "productName": { "type": "string" },
+              "qty": { "type": "integer" },
+              "unitPrice": { "type": "number" }
+            }
+          }
+        },
+        "payment": {
+          "type": "object",
+          "properties": {
+            "method": { "type": "string", "enum": ["upi", "cod", "card"] },
+            "paid": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  }
+};
+
+const SAMPLE_JSON = {
+  "studentId": "S-204",
+  "name": { "first": "Kavya", "last": "Iyer" },
+  "enrolledOn": "2026-06-01",
+  "guardians": [{ "name": "Lakshmi Iyer", "relation": "mother", "phone": "98400 12345" }],
+  "subjects": [{ "code": "MATH", "marks": 91, "passed": true }],
+  "clubs": ["chess", "robotics"]
+};
+
+const SAMPLE_CSV = `Order ID,Order Date,Customer Name,Customer Email,Phone 1 Type,Phone 1 Number,Phone 2 Type,Phone 2 Number,Street,City,Pincode,Tags,SKU,Product,Qty,Unit Price,Payment Method,Paid
+NF-1001,05/09/2026,Divya S,divya@example.com,mobile,98400 11111,whatsapp,98400 22222,12 Anna Salai,Chennai,600002,festive; cotton,KUR-RED-M,Red cotton kurti,2,549,UPI,Yes
+NF-1001,05/09/2026,Divya S,divya@example.com,mobile,98400 11111,whatsapp,98400 22222,12 Anna Salai,Chennai,600002,festive; cotton,DUP-GLD,Gold dupatta,1,299,UPI,Yes
+NF-1002,06/09/2026,Rahul K,rahul.k@example,mobile,99620 33333,,,4 MG Road,Bengaluru,560001,casual,SHR-BLU-L,Blue linen shirt,1,799,COD,No
+NF-1003,07/09/2026,Fathima R,fathima@example.com,mobile,90030 44444,home,044 2345 6789,7 Beach Road,Chennai,6000,festive,SAR-SLK,Silk saree,1,2499,Card,Yes
+NF-1003,07/09/2026,Fathima R,fathima@example.com,mobile,90030 44444,home,044 2345 6789,7 Beach Road,Chennai,6000,festive,BLS-STD,Blouse stitching,one,350,Card,Yes
+NF-1004,31/09/2026,Arun P,arun@example.com,mobile,98765 43210,,,22 Lake View,Coimbatore,641001,casual; summer,TSH-WHT-M,White tee,3,399,Paytm,No
+NF-1004,31/09/2026,Arun P,arun.p@example.com,mobile,98765 43210,,,22 Lake View,Coimbatore,641001,casual; summer,TSH-BLK-M,Black tee,2,399,Paytm,No`;
+
+const SAMPLE_JSON_CSV = `Student ID,First Name,Last Name,Enrolled On,Guardian 1 Name,Guardian 1 Relation,Guardian 1 Phone,Guardian 2 Name,Guardian 2 Relation,Guardian 2 Phone,Subject Code,Marks,Passed,Clubs
+S-204,Kavya,Iyer,01/06/2026,Lakshmi Iyer,mother,98400 12345,Ravi Iyer,father,98400 54321,MATH,91,yes,chess; robotics
+S-204,Kavya,Iyer,01/06/2026,Lakshmi Iyer,mother,98400 12345,Ravi Iyer,father,98400 54321,PHY,78,yes,chess; robotics
+S-205,Imran,Basha,02/06/2026,Salma Basha,mother,99400 11122,,,,MATH,34,no,football
+S-205,Imran,Basha,02/06/2026,Salma Basha,mother,99400 11122,,,,CHEM,sixty,yes,football`;
+
+/* =================== state =================== */
+const state = {
+  step: "inputs", schemaText: JSON.stringify(SAMPLE_SCHEMA, null, 2), root: null, kind: "", recordNode: null, rootIsArray: false,
+  headers: [], rows: [], fileName: "", bind: {}, arrays: {}, groupBy: null, picked: null, collapsed: new Set(),
+  notice: null, recIdx: 0, schemaMsg: null
+};
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const norm = s => String(s).replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const human = k => { const n = norm(k); return n.charAt(0).toUpperCase() + n.slice(1); };
+const join = (a, b) => a ? a + "." + b : b;
+const tplOf = p => p.replace(/\[\d+\]/g, "[*]");
+const singular = w => w.endsWith("ies") ? w.slice(0, -3) + "y" : w.endsWith("ses") ? w.slice(0, -2) : w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const TRUE_SET = ["yes","y","true","1","t"], FALSE_SET = ["no","n","false","0","f"];
+const isPrim = n => n.type !== "object" && n.type !== "array";
+
+/* =================== schema parsing =================== */
+function isJsonSchema(o) {
+  return o && typeof o === "object" && !Array.isArray(o) && (o.$schema || o.properties || o.$defs || o.definitions || (typeof o.type === "string" && ["object","array"].includes(o.type) && (o.properties || o.items)));
+}
+function fromJsonSchema(s, key, required, rootDoc, depth = 0) {
+  if (depth > 8) return { key, label: human(key), type: "string", required };
+  if (s && s.$ref) {
+    const ref = s.$ref.replace(/^#\//, "").split("/").reduce((o, k) => o?.[k], rootDoc);
+    if (!ref) throw new Error(`Couldn't resolve ${s.$ref}. Only references inside this schema (#/...) are supported.`);
+    return fromJsonSchema({ ...ref, ...s, $ref: undefined }, key, required, rootDoc, depth + 1);
+  }
+  s = s || {};
+  if (s.allOf) s = s.allOf.reduce((acc, p) => ({ ...acc, ...p, properties: { ...(acc.properties || {}), ...(p.properties || {}) }, required: [...(acc.required || []), ...(p.required || [])] }), { ...s, allOf: undefined });
+  if (s.oneOf || s.anyOf) { const alt = (s.oneOf || s.anyOf).find(x => x.type !== "null") || {}; s = { ...alt, ...s, oneOf: undefined, anyOf: undefined }; }
+  let t = Array.isArray(s.type) ? s.type.find(x => x !== "null") : s.type;
+  if (!t) t = s.properties ? "object" : s.items ? "array" : "string";
+  const node = { key, label: s.title || human(key), type: t, required: !!required };
+  if (t === "object") {
+    const req = new Set(s.required || []);
+    node.children = Object.entries(s.properties || {}).map(([k, v]) => fromJsonSchema(v, k, req.has(k), rootDoc, depth + 1));
+  } else if (t === "array") {
+    node.items = fromJsonSchema(s.items || { type: "string" }, "item", true, rootDoc, depth + 1);
+  } else {
+    if (s.enum) node.enum = s.enum;
+    if (s.format) node.format = s.format;
+    if (s.pattern) node.pattern = s.pattern;
+  }
+  return node;
+}
+function mergeInferred(a, b) {
+  if (!a) return b; if (!b) return a;
+  if (a.type !== b.type) return a.type === "string" ? a : b.type === "string" ? b : a;
+  if (a.type === "object") {
+    const map = new Map(a.children.map(c => [c.key, c]));
+    b.children.forEach(c => map.set(c.key, mergeInferred(map.get(c.key), c)));
+    return { ...a, children: [...map.values()] };
+  }
+  if (a.type === "array") return { ...a, items: mergeInferred(a.items, b.items) };
+  if (a.type === "integer" && b.type === "number") return b;
+  return a;
+}
+function fromSample(v, key) {
+  const base = { key, label: human(key), required: false };
+  if (Array.isArray(v)) {
+    const items = v.map(x => fromSample(x, "item")).reduce(mergeInferred, null) || { key: "item", label: "Item", type: "string" };
+    return { ...base, type: "array", items: { ...items, required: true } };
+  }
+  if (v && typeof v === "object") return { ...base, type: "object", children: Object.entries(v).map(([k, x]) => fromSample(x, k)) };
+  if (typeof v === "number") return { ...base, type: Number.isInteger(v) ? "integer" : "number" };
+  if (typeof v === "boolean") return { ...base, type: "boolean" };
+  if (typeof v === "string") {
+    if (/^\d{4}-\d{2}-\d{2}/.test(v)) return { ...base, type: "string", format: "date" };
+    if (EMAIL_RE.test(v)) return { ...base, type: "string", format: "email" };
+  }
+  return { ...base, type: "string" };
+}
+function parseStructure(text) {
+  let doc;
+  try { doc = JSON.parse(text); } catch (e) { throw new Error("That isn't valid JSON: " + e.message); }
+  const schema = isJsonSchema(doc);
+  const root = schema ? fromJsonSchema(doc, "root", true, doc) : fromSample(doc, "root");
+  let rec = root, isArr = false;
+  if (root.type === "array") { rec = root.items; isArr = true; }
+  if (rec.type !== "object") throw new Error("The top level must be an object or a list of objects.");
+  return { root, rec, isArr, kind: schema ? "JSON Schema" : "example JSON" };
+}
+function countNodes(n) { if (n.type === "object") return n.children.reduce((s, c) => s + countNodes(c), 0); if (n.type === "array") return isPrim(n.items) ? 1 : countNodes(n.items); return 1; }
+function depthOf(n) { if (n.type === "object") return 1 + Math.max(0, ...n.children.map(depthOf)); if (n.type === "array") return 1 + depthOf(n.items); return 0; }
+
+/* =================== sheet parsing =================== */
+function parseCSV(text) {
+  const first = text.split(/\r?\n/)[0] || "";
+  const delim = [",", ";", "\t"].sort((a, b) => first.split(b).length - first.split(a).length)[0];
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === delim) { row.push(f); f = ""; }
+    else if (c === "\n") { row.push(f); rows.push(row); row = []; f = ""; }
+    else if (c !== "\r") f += c;
+  }
+  if (f !== "" || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(v => String(v).trim() !== ""));
+}
+function loadGrid(grid, name) {
+  if (grid.length < 2) { state.notice = { kind: "err", text: "The sheet needs a header row and at least one data row." }; render(); return; }
+  state.headers = grid[0].map((h, i) => String(h).trim() || `Column ${i + 1}`);
+  state.rows = grid.slice(1).map(r => state.headers.map((_, i) => String(r[i] ?? "").trim()));
+  state.fileName = name; state.notice = null; render();
+}
+async function readFile(file) {
+  try {
+    if (/\.(xlsx|xls)$/i.test(file.name)) {
+      if (!window.XLSX) throw new Error("The Excel reader didn't load. Save the sheet as CSV and try again.");
+      const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      loadGrid(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" }), file.name);
+    } else if (/\.json$/i.test(file.name)) {
+      state.schemaText = await file.text(); applySchema();
+    } else loadGrid(parseCSV(await file.text()), file.name);
+  } catch (e) { state.notice = { kind: "err", text: e.message }; render(); }
+}
+
+/* =================== mapping model =================== */
+function arrCfg(node, tpl) {
+  if (!state.arrays[tpl]) state.arrays[tpl] = { mode: isPrim(node.items) ? "split" : "rows", slots: 2, delim: ";" };
+  return state.arrays[tpl];
+}
+// enumerate leaves with concrete paths, honouring array modes
+function leaves(node = state.recordNode, path = "", out = [], ctx = []) {
+  if (node.type === "object") node.children.forEach(c => leaves(c, join(path, c.key), out, [...ctx, c]));
+  else if (node.type === "array") {
+    const cfg = arrCfg(node, tplOf(path));
+    if (cfg.mode === "indexed") for (let i = 0; i < cfg.slots; i++) leaves(node.items, `${path}[${i}]`, out, ctx);
+    else if (isPrim(node.items)) out.push({ path: path + "[*]", node: node.items, ctx, arrayNode: node });
+    else leaves(node.items, path + "[*]", out, ctx);
+  } else out.push({ path, node, ctx });
+  return out;
+}
+function headerInfo(h) {
+  const n = norm(h), m = n.match(/(^|\s)(\d{1,2})(\s|$)/);
+  if (!m) return { base: n, idx: null };
+  return { base: (n.slice(0, m.index) + " " + n.slice(m.index + m[0].length)).replace(/\s+/g, " ").trim(), idx: +m[2] - 1 };
+}
+function dice(a, b) {
+  a = a.replace(/ /g, ""); b = b.replace(/ /g, "");
+  if (a === b) return 1; if (a.length < 2 || b.length < 2) return 0;
+  const m = new Map(); for (let i = 0; i < a.length - 1; i++) { const g = a.substr(i, 2); m.set(g, (m.get(g) || 0) + 1); }
+  let n = 0; for (let i = 0; i < b.length - 1; i++) { const g = b.substr(i, 2), k = m.get(g); if (k > 0) { m.set(g, k - 1); n++; } }
+  return 2 * n / (a.length + b.length - 2);
+}
+function leafCandidates(L) {
+  const words = tplOf(L.path).replace(/\[\*\]/g, "").split(".").filter(Boolean).map(norm);
+  if (L.arrayNode) words[words.length - 1] = words[words.length - 1]; // primitive array: path ends with array key
+  const labelWord = norm(L.node.label && L.node.key !== "item" ? L.node.label : "");
+  const sing = words.map(w => w.split(" ").map(singular).join(" "));
+  const c = [];
+  const add = (s, w) => { s = s.trim(); if (s) c.push([s, w]); };
+  add(words.join(" "), 1); add(sing.join(" "), 1);
+  if (words.length >= 2) { add(words.slice(-2).join(" "), 0.95); add(sing.slice(-2).join(" "), 0.95); }
+  add(words[words.length - 1], words.length > 1 ? 0.8 : 1); add(sing[sing.length - 1], words.length > 1 ? 0.8 : 1);
+  if (labelWord) { add(labelWord, words.length > 1 ? 0.85 : 1); if (words.length >= 2) add(sing[sing.length - 2] + " " + labelWord, 0.95); }
+  return c;
+}
+function scoreLeaf(L, col) {
+  const hi = headerInfo(state.headers[col]);
+  const slot = (L.path.match(/\[(\d+)\]/) || [])[1];
+  if (slot != null ? hi.idx !== +slot : hi.idx != null) return 0;
+  const ht = hi.base.split(" ");
+  let best = 0;
+  for (const [cand, w] of leafCandidates(L)) {
+    if (hi.base === cand) { best = Math.max(best, w); continue; }
+    const ct = cand.split(" ");
+    if (ct.every(t => ht.includes(t)) || ht.every(t => ct.includes(t))) best = Math.max(best, 0.82 * w);
+    best = Math.max(best, dice(hi.base, cand) * w);
+  }
+  return best;
+}
+function detectIndexed(node = state.recordNode, path = "") {
+  if (node.type === "object") return node.children.forEach(c => detectIndexed(c, join(path, c.key)));
+  if (node.type !== "array") return;
+  const tpl = tplOf(path), cfg = arrCfg(node, tpl);
+  const word = norm(path.split(".").pop().replace(/\[.*$/, ""));
+  const names = [word, singular(word)];
+  let max = -1;
+  state.headers.forEach(h => { const hi = headerInfo(h); if (hi.idx != null && names.some(n => hi.base.split(" ").includes(n) || hi.base.startsWith(n))) max = Math.max(max, hi.idx); });
+  if (max >= 0) { cfg.mode = "indexed"; cfg.slots = max + 1; }
+  if (!isPrim(node.items)) detectIndexed(node.items, path + (cfg.mode === "indexed" ? "[0]" : "[*]"));
+}
+function autoMap() {
+  state.arrays = {}; state.bind = {}; state.groupBy = null; state.collapsed = new Set();
+  detectIndexed();
+  const ls = leaves(), pairs = [];
+  ls.forEach(L => state.headers.forEach((_, col) => { const s = scoreLeaf(L, col); if (s >= 0.62) pairs.push({ p: L.path, col, s }); }));
+  pairs.sort((a, b) => b.s - a.s || a.p.length - b.p.length);
+  const usedP = new Set(), usedC = new Set();
+  for (const x of pairs) { if (usedP.has(x.p) || usedC.has(x.col)) continue; state.bind[x.p] = x.col; usedP.add(x.p); usedC.add(x.col); }
+  // group-by: needed when a list is filled one item per row
+  const hasRowsArray = ls.some(L => L.path.includes("[*]") && !(L.arrayNode && arrCfg(L.arrayNode, tplOf(L.path.replace(/\[\*\]$/, ""))).mode === "split"));
+  if (hasRowsArray) {
+    const topCols = ls.filter(L => !L.path.includes("[") && state.bind[L.path] != null).map(L => state.bind[L.path]);
+    const keyish = c => /\b(id|no|number|code|key|ref)\b/.test(norm(state.headers[c]));
+    const dup = c => new Set(state.rows.map(r => r[c])).size < state.rows.length;
+    state.groupBy = topCols.find(c => keyish(c) && dup(c)) ?? topCols.find(dup) ?? null;
+  }
+}
+
+/* =================== build records =================== */
+function detectDateFormat(col) {
+  for (const r of state.rows) { const p = (r[col] || "").split(/[\/\-.]/); if (p.length !== 3) continue; if (p[0].length === 4) return "YMD"; if (+p[0] > 12) return "DMY"; if (+p[1] > 12) return "MDY"; }
+  return "DMY";
+}
+function parseDate(v, fmt) {
+  if (/^\d{4}-\d{2}-\d{2}/.test(v)) fmt = "YMD";
+  const p = v.split(/[\/\-.T ]/).slice(0, 3);
+  if (p.length !== 3 || p.some(x => !/^\d+$/.test(x))) return null;
+  let d, m, y; if (fmt === "YMD") [y, m, d] = p; else if (fmt === "MDY") [m, d, y] = p; else [d, m, y] = p;
+  y = +y; m = +m; d = +d; if (y < 100) y += y > 30 ? 1900 : 2000;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d ? dt.toISOString().slice(0, 10) : null;
+}
+function convert(node, raw, col, path, ctx) {
+  const bad = msg => { ctx.issues.push({ path, msg, rows: [ctx.rowNo] }); return raw; };
+  let v = raw;
+  switch (node.type) {
+    case "integer": { const n = Number(raw.replace(/,/g, "")); if (!Number.isInteger(n)) return bad("Not a whole number"); v = n; break; }
+    case "number": { const n = Number(raw.replace(/,/g, "")); if (Number.isNaN(n)) return bad("Not a number"); v = n; break; }
+    case "boolean": { const r = raw.toLowerCase(); if (TRUE_SET.includes(r)) v = true; else if (FALSE_SET.includes(r)) v = false; else return bad("Expected yes or no"); break; }
+    default:
+      if (node.format === "date" || node.format === "date-time") { const d = parseDate(raw, col != null ? detectDateFormat(col) : "DMY"); if (!d) return bad("Not a real date"); v = d; }
+      else if (node.format === "email") { v = raw.toLowerCase(); if (!EMAIL_RE.test(v)) return bad("Not a valid email"); }
+  }
+  if (node.enum) { const hit = node.enum.find(e => String(e).toLowerCase() === String(v).toLowerCase()); if (hit === undefined) return bad(`“${raw}” isn't one of: ${node.enum.join(", ")}`); v = hit; }
+  if (node.pattern && !new RegExp(node.pattern).test(String(v))) return bad(`Doesn't match ${node.pattern}`);
+  return v;
+}
+function buildNode(node, path, row, ctx) {
+  if (node.type === "object") {
+    const o = {}; let any = false;
+    for (const c of node.children) { const v = buildNode(c, join(path, c.key), row, ctx); if (v !== undefined) { o[c.key] = v; any = true; } }
+    return any ? o : undefined;
+  }
+  if (node.type === "array") {
+    const cfg = arrCfg(node, tplOf(path));
+    if (isPrim(node.items) && cfg.mode === "split") {
+      const col = state.bind[path + "[*]"]; if (col == null || !row[col]) return undefined;
+      const parts = row[col].split(cfg.delim || ";").map(s => s.trim()).filter(Boolean);
+      return parts.length ? parts.map(p => convert(node.items, p, col, path + "[]", ctx)) : undefined;
+    }
+    if (cfg.mode === "indexed") {
+      const arr = []; for (let i = 0; i < cfg.slots; i++) { const v = buildNode(node.items, `${path}[${i}]`, row, ctx); if (v !== undefined) arr.push(v); }
+      return arr.length ? arr : undefined;
+    }
+    const v = buildNode(node.items, path + "[*]", row, ctx);
+    return v === undefined ? undefined : [v];
+  }
+  const col = state.bind[path]; if (col == null) return undefined;
+  const raw = row[col]; if (raw === "") return undefined;
+  return convert(node, raw, col, tplOf(path).replace(/\[\*\]/g, "[]"), ctx);
+}
+const identity = (node, v) => isPrim(node) ? JSON.stringify(v) : JSON.stringify(node.type === "object" ? node.children.filter(isPrim).map(c => v?.[c.key]) : v);
+function mergeNode(node, a, b, path, ctx) {
+  if (a === undefined) return b; if (b === undefined) return a;
+  if (node.type === "object") { node.children.forEach(c => { const m = mergeNode(c, a[c.key], b[c.key], join(path, c.key), ctx); if (m !== undefined) a[c.key] = m; }); return a; }
+  if (node.type === "array") {
+    const cfg = arrCfg(node, tplOf(path.replace(/\[\]/g, "[*]")));
+    if (cfg.mode === "rows" || (isPrim(node.items) && cfg.mode === "split")) {
+      for (const el of b) {
+        const f = a.find(x => identity(node.items, x) === identity(node.items, el));
+        if (f === undefined) a.push(el); else if (!isPrim(node.items)) mergeNode(node.items, f, el, path + "[]", ctx);
+      }
+      return a;
+    }
+    if (JSON.stringify(a) !== JSON.stringify(b)) ctx.issues.push({ path, msg: "Rows in this group disagree; kept the first row's values", warn: true, rows: [ctx.rowNo] });
+    return a;
+  }
+  if (a !== b) ctx.issues.push({ path, msg: `Rows disagree (“${a}” vs “${b}”); kept the first`, warn: true, rows: [ctx.rowNo] });
+  return a;
+}
+function validate(node, v, path, issues, rows) {
+  if (v === undefined) { if (node.required) issues.push({ path: path || "(record)", msg: "Missing required value", rows }); return; }
+  if (node.type === "object") node.children.forEach(c => validate(c, v[c.key], join(path, c.key), issues, rows));
+  else if (node.type === "array") v.forEach((el, i) => validate(node.items, el, `${path}[${i}]`, issues, rows));
+}
+function buildRecords() {
+  const groups = new Map();
+  state.rows.forEach((r, i) => {
+    const k = state.groupBy != null && r[state.groupBy] !== "" ? "k:" + r[state.groupBy] : "r:" + i;
+    if (!groups.has(k)) groups.set(k, []); groups.get(k).push(i);
+  });
+  const out = [];
+  for (const [k, idxs] of groups) {
+    const ctx = { issues: [], rowNo: 0 }; let rec;
+    for (const i of idxs) { ctx.rowNo = i + 2; const v = buildNode(state.recordNode, "", state.rows[i], ctx); rec = rec === undefined ? v : mergeNode(state.recordNode, rec, v, "", ctx); }
+    if (rec === undefined) continue;
+    const rows = idxs.map(i => i + 2);
+    validate(state.recordNode, rec, "", ctx.issues, rows);
+    const merged = new Map();
+    for (const x of ctx.issues) {
+      const key = x.path + "|" + x.msg, m = merged.get(key);
+      if (m) x.rows.forEach(r => { if (!m.rows.includes(r)) m.rows.push(r); }); else merged.set(key, { ...x, rows: [...x.rows] });
+    }
+    ctx.issues = [...merged.values()];
+    const label = k.startsWith("k:") ? k.slice(2) : "Row " + (idxs[0] + 2);
+    out.push({ label, rows, value: rec, issues: ctx.issues, bad: ctx.issues.some(x => !x.warn) });
+  }
+  return out;
+}
+
+/* =================== rendering =================== */
+function renderSteps() {
+  const ready = !!state.recordNode && state.headers.length > 0;
+  const st = [["inputs", "Structure & sheet", true], ["map", "Map columns", ready], ["review", "Review records", ready]];
+  $("#steps").innerHTML = st.map(([k, t, ok], i) => `<li><button data-act="go" data-step="${k}" ${ok ? "" : "disabled"} ${state.step === k ? 'aria-current="step"' : ""}><span class="n">${i + 1}</span><span class="t">${t}</span></button></li>`).join("");
+}
+const noticeHTML = () => state.notice ? `<p class="note ${state.notice.kind === "ok" ? "" : state.notice.kind}" role="status">${esc(state.notice.text)}</p>` : "";
+
+function renderInputs() {
+  const s = state.schemaMsg;
+  const ready = !!state.recordNode && state.headers.length > 0;
+  return `<section class="panel">
+    <div class="inputs">
+      <div>
+        <h2>Target structure</h2>
+        <p class="sub">Paste a JSON Schema (with <code>$ref</code>, nested objects, arrays) or just an example of the JSON you want out.</p>
+        <textarea class="code" id="schemaText" spellcheck="false" aria-label="Structure JSON">${esc(state.schemaText)}</textarea>
+        <div class="toolbar" style="margin-top:10px">
+          <button class="btn primary" data-act="parse">Read structure</button>
+          <button class="btn" data-act="ex-schema">Order schema example</button>
+          <button class="btn" data-act="ex-json">Example JSON instead</button>
+        </div>
+        ${s ? `<p class="note ${s.err ? "err" : ""}">${esc(s.text)}</p>` : ""}
+      </div>
+      <div>
+        <h2>Spreadsheet</h2>
+        <p class="sub">CSV or Excel. The first row must hold column names; the first sheet is used.</p>
+        <div class="drop" id="drop">
+          ${state.headers.length ? `<p class="loaded">${esc(state.fileName)}</p><p>${state.rows.length} rows · ${state.headers.length} columns</p>` : `<p>Drop the sheet here</p>`}
+          <div class="toolbar" style="justify-content:center">
+            <label class="btn ${state.headers.length ? "" : "primary"}" for="file">${state.headers.length ? "Replace file" : "Choose file"}</label>
+            <input id="file" class="sr" type="file" accept=".csv,.txt,.xlsx,.xls">
+            <button class="btn" data-act="ex-sheet">Use matching sample sheet</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    ${noticeHTML()}
+    <div class="toolbar" style="margin-top:16px"><span class="spacer"></span>
+      <button class="btn primary" data-act="to-map" ${ready ? "" : "disabled"}>Map columns</button></div>
+  </section>`;
+}
+
+const caret = (path, open) => `<button class="caret" data-act="toggle" data-path="${esc(path)}" aria-expanded="${open}" aria-label="${open ? "Collapse" : "Expand"}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>`;
+function colSelect(path, label) {
+  const col = state.bind[path];
+  return `<select data-act="bind" data-path="${esc(path)}" aria-label="Column for ${esc(label)}"><option value="">Not mapped</option>${state.headers.map((h, i) => `<option value="${i}" ${col === i ? "selected" : ""}>${esc(h)}</option>`).join("")}</select>`;
+}
+function leafHTML(node, path, label) {
+  const missing = node.required && state.bind[path] == null && !path.includes("[");
+  const typ = node.format || node.type;
+  return `<div class="leaf ${state.picked != null ? "clickable" : ""} ${missing ? "missing" : ""}" data-act="drop-on" data-leaf="${esc(path)}">
+    <div><div class="nm">${esc(label)} ${node.required ? '<span class="req" title="Required">*</span>' : ""}</div>
+    <div class="mt"><span>${esc(typ)}${node.enum ? " · " + esc(node.enum.join(" / ")) : ""}</span><span class="pth">${esc(path.replace(/\[\*\]/g, "[]"))}</span></div></div>
+    ${colSelect(path, label)}</div>`;
+}
+function treeHTML(node, path) {
+  if (node.type === "object") return `<ul>${node.children.map(c => `<li>${nodeHTML(c, join(path, c.key))}</li>`).join("")}</ul>`;
+  return "";
+}
+function nodeHTML(node, path) {
+  const tpl = tplOf(path);
+  if (isPrim(node)) return leafHTML(node, path, node.label);
+  const open = !state.collapsed.has(path);
+  if (node.type === "object") {
+    return `<div class="grp o">${caret(path, open)}<span class="gname">${esc(node.label)}</span><span class="badge o">object</span>${node.required ? '<span class="req">*</span>' : ""}</div>${open ? treeHTML(node, path) : ""}`;
+  }
+  const cfg = arrCfg(node, tpl), prim = isPrim(node.items);
+  const modes = prim ? [["split", "Split one cell"], ["indexed", "Numbered columns"], ["rows", "One per row"]] : [["rows", "One item per row"], ["indexed", "Numbered columns"]];
+  const controls = `<select data-act="mode" data-tpl="${esc(tpl)}" aria-label="How ${esc(node.label)} appears in the sheet">${modes.map(([v, t]) => `<option value="${v}" ${cfg.mode === v ? "selected" : ""}>${t}</option>`).join("")}</select>
+    ${cfg.mode === "indexed" ? `<label>Slots <input type="number" min="1" max="20" value="${cfg.slots}" data-act="slots" data-tpl="${esc(tpl)}"></label>` : ""}
+    ${cfg.mode === "split" ? `<label>Separator <input type="text" value="${esc(cfg.delim)}" data-act="delim" data-tpl="${esc(tpl)}"></label>` : ""}`;
+  const head = `<div class="grp a">${caret(path, open)}<span class="gname">${esc(node.label)}</span><span class="badge a">list of ${prim ? esc(node.items.format || node.items.type) : "objects"}</span>${node.required ? '<span class="req">*</span>' : ""}${controls}</div>`;
+  if (!open) return head;
+  let body = "";
+  if (cfg.mode === "indexed") {
+    for (let i = 0; i < cfg.slots; i++) {
+      const p = `${path}[${i}]`;
+      body += `<li><div class="slot">Item ${i + 1}</div>${prim ? leafHTML(node.items, p, node.label + " " + (i + 1)) : treeHTML(node.items, p)}</li>`;
+    }
+  } else if (prim) body = `<li>${leafHTML(node.items, path + "[*]", cfg.mode === "split" ? `${node.label} (one cell)` : `${node.label} (one per row)`)}</li>`;
+  else body = `<li>${treeHTML(node.items, path + "[*]")}</li>`;
+  return head + `<ul>${body}</ul>`;
+}
+function renderMap() {
+  const ls = leaves();
+  const mapped = ls.filter(L => state.bind[L.path] != null).length;
+  const used = {}; ls.forEach(L => { const c = state.bind[L.path]; if (c != null) (used[c] = used[c] || []).push(L.path.replace(/\[\*\]/g, "[]")); });
+  const needsGroup = ls.some(L => L.path.includes("[*]") && state.bind[L.path] != null && !(L.arrayNode && arrCfg(L.arrayNode, tplOf(L.path.slice(0, -3))).mode === "split"));
+  const missingReq = ls.filter(L => L.node.required && !L.path.includes("[") && state.bind[L.path] == null && L.ctx.every(c => c.required));
+  const srcs = state.headers.map((h, col) => {
+    const s = state.rows.slice(0, 3).map(r => r[col]).filter(Boolean).join(" · ");
+    return `<li><button class="src ${used[col] ? "" : "unused"} ${state.picked === col ? "picked" : ""} ${state.groupBy === col ? "key" : ""}" data-act="pick" data-col="${col}" aria-pressed="${state.picked === col}">
+      <span class="h">${esc(h)}</span><span class="s">${esc(s || "No values")}</span>
+      <span class="u ${used[col] ? "on" : ""}">${state.groupBy === col ? "Groups rows · " : ""}${used[col] ? esc(used[col].join(", ")) : "Not imported"}</span></button></li>`;
+  }).join("");
+  const recs = buildRecords();
+  return `<section class="panel">
+    <div class="toolbar">
+      <span><b>${esc(state.fileName)}</b> · ${state.rows.length} rows → <b>${recs.length}</b> records · ${mapped} of ${ls.length} fields mapped</span>
+      <span class="spacer"></span>
+      <button class="btn" data-act="automap">Re-run auto-match</button>
+      <button class="btn" data-act="expand">Expand all</button>
+      <button class="btn primary" data-act="go" data-step="review">Review records</button>
+    </div>
+    <div class="recbar">
+      <span>Each record is built from</span>
+      <select data-act="groupby" aria-label="How rows form records">
+        <option value="" ${state.groupBy == null ? "selected" : ""}>one row</option>
+        ${state.headers.map((h, i) => `<option value="${i}" ${state.groupBy === i ? "selected" : ""}>all rows sharing the same “${esc(h)}”</option>`).join("")}
+      </select>
+      ${needsGroup && state.groupBy == null ? `<span style="color:var(--warn)">Lists filled one item per row only get one item each unless rows are grouped.</span>` : ""}
+    </div>
+    ${missingReq.length ? `<p class="note err">Required fields without a column: ${missingReq.map(L => esc(L.path)).join(", ")}</p>` : ""}
+    ${noticeHTML()}
+    ${state.picked != null ? `<p class="note">Click the field that “${esc(state.headers[state.picked])}” should fill. Press Esc to cancel.</p>` : ""}
+    <div class="board" id="board">
+      <div class="src-col"><p class="col-head"><b>Sheet columns</b> · click one, then a field</p><ul class="sources">${srcs}</ul></div>
+      <div class="gutter" aria-hidden="true"></div>
+      <div><p class="col-head"><b>${esc(state.root.label)}</b> · ${state.kind}${state.rootIsArray ? " · list of records" : ""}</p>
+        <div class="tree">${treeHTML(state.recordNode, "")}</div></div>
+      <svg class="wires" id="wires" aria-hidden="true"></svg>
+    </div>
+    <details class="out" open><summary>Live preview: first record</summary><pre>${esc(recs[0] ? JSON.stringify(recs[0].value, null, 2) : "Map at least one column to see output.")}</pre></details>
+  </section>`;
+}
+function renderReview() {
+  const recs = buildRecords();
+  const bad = recs.filter(r => r.bad).length, warns = recs.filter(r => !r.bad && r.issues.length).length;
+  state.recIdx = Math.min(state.recIdx, Math.max(0, recs.length - 1));
+  const cur = recs[state.recIdx];
+  const template = {
+    root: state.rootIsArray ? "array" : "object",
+    groupBy: state.groupBy != null ? state.headers[state.groupBy] : null,
+    lists: Object.fromEntries(Object.entries(state.arrays).map(([k, v]) => [k, v.mode === "indexed" ? { mode: v.mode, slots: v.slots } : v.mode === "split" ? { mode: v.mode, separator: v.delim } : { mode: v.mode }])),
+    columns: Object.fromEntries(leaves().filter(L => state.bind[L.path] != null).map(L => [L.path, state.headers[state.bind[L.path]]]))
+  };
+  return `<section class="panel">
+    <div class="summary">
+      <span class="pill ok">${recs.length - bad} records valid</span>
+      <span class="pill ${bad ? "err" : "muted"}">${bad} with errors</span>
+      ${warns ? `<span class="pill warn">${warns} with warnings</span>` : ""}
+      <span class="pill muted">from ${state.rows.length} rows</span>
+    </div>
+    <div class="toolbar">
+      <button class="btn" data-act="go" data-step="map">Back to mapping</button><span class="spacer"></span>
+      <button class="btn" data-act="copy-tpl">Copy mapping template</button>
+      <button class="btn primary" data-act="copy-out">Copy ${state.rootIsArray ? "all records" : "records"} as JSON</button>
+    </div>
+    ${noticeHTML()}
+    <div class="review">
+      <ul class="reclist" aria-label="Records">${recs.map((r, i) => `<li><button data-act="rec" data-i="${i}" aria-current="${i === state.recIdx}"><span class="k">${esc(r.label)}</span><span class="c ${r.bad ? "bad" : ""}">${r.bad ? r.issues.filter(x => !x.warn).length + " errors" : r.issues.length ? "warnings" : r.rows.length + (r.rows.length > 1 ? " rows" : " row")}</span></button></li>`).join("")}</ul>
+      <div>${cur ? `
+        <div class="toolbar" style="margin-bottom:8px"><b>${esc(cur.label)}</b><span style="color:var(--muted)">sheet rows ${cur.rows.join(", ")}</span></div>
+        ${cur.issues.length ? `<ul class="issues">${cur.issues.map(x => `<li class="${x.warn ? "warn" : ""}"><code>${esc(x.path)}</code>: ${esc(x.msg)} <span style="opacity:.75">(row ${x.rows.join(", ")})</span></li>`).join("")}</ul>` : ""}
+        <pre>${esc(JSON.stringify(cur.value, null, 2))}</pre>` : `<p>No records. Map some columns first.</p>`}
+      </div>
+    </div>
+    <details class="out"><summary>Mapping template (save this to reuse the mapping)</summary><pre id="tpl">${esc(JSON.stringify(template, null, 2))}</pre></details>
+  </section>`;
+}
+function render() {
+  renderSteps();
+  $("#view").innerHTML = state.step === "inputs" ? renderInputs() : state.step === "map" ? renderMap() : renderReview();
+  if (state.step === "inputs") bindDrop();
+  requestAnimationFrame(drawWires);
+}
+function drawWires() {
+  const board = $("#board"), svg = $("#wires"); if (!board || !svg) return;
+  if (matchMedia("(max-width: 860px)").matches) { svg.innerHTML = ""; return; }
+  const br = board.getBoundingClientRect(); svg.setAttribute("viewBox", `0 0 ${br.width} ${br.height}`);
+  let out = "";
+  board.querySelectorAll(".leaf[data-leaf]").forEach(t => {
+    const col = state.bind[t.dataset.leaf]; if (col == null) return;
+    const s = board.querySelector(`.src[data-col="${col}"]`); if (!s) return;
+    const sr = s.getBoundingClientRect(), tr = t.getBoundingClientRect();
+    const x1 = sr.right - br.left, y1 = sr.top + Math.min(sr.height / 2, 24) - br.top, x2 = tr.left - br.left, y2 = tr.top + tr.height / 2 - br.top, dx = (x2 - x1) * .55;
+    out += `<path d="M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}"/><circle cx="${x1}" cy="${y1}" r="3"/><circle cx="${x2}" cy="${y2}" r="3"/>`;
+  });
+  svg.innerHTML = out;
+}
+function bindDrop() {
+  const d = $("#drop"); if (!d) return;
+  ["dragenter", "dragover"].forEach(e => d.addEventListener(e, ev => { ev.preventDefault(); d.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(e => d.addEventListener(e, ev => { ev.preventDefault(); d.classList.remove("over"); }));
+  d.addEventListener("drop", ev => { const f = ev.dataTransfer.files[0]; if (f) readFile(f); });
+}
+function applySchema() {
+  try {
+    const r = parseStructure(state.schemaText);
+    Object.assign(state, { root: r.root, recordNode: r.rec, rootIsArray: r.isArr, kind: r.kind, arrays: {}, bind: {}, groupBy: null });
+    state.schemaMsg = { text: `Read as ${r.kind}: ${countNodes(r.rec)} fields, ${depthOf(r.rec)} levels deep${r.isArr ? ", top level is a list of records" : ""}.` };
+  } catch (e) { state.recordNode = null; state.schemaMsg = { err: true, text: e.message }; }
+  render();
+}
+async function copy(txt, msg) {
+  try { await navigator.clipboard.writeText(txt); state.notice = { kind: "ok", text: msg }; }
+  catch { state.notice = { kind: "warn", text: "Clipboard isn't available here. Copy from the JSON panel instead." }; }
+  render();
+}
+
+/* =================== events =================== */
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  const a = el.dataset.act;
+  if (a === "go") { state.step = el.dataset.step; state.notice = null; state.picked = null; render(); }
+  else if (a === "parse") { state.schemaText = $("#schemaText").value; applySchema(); }
+  else if (a === "ex-schema") { state.schemaText = JSON.stringify(SAMPLE_SCHEMA, null, 2); applySchema(); }
+  else if (a === "ex-json") { state.schemaText = JSON.stringify(SAMPLE_JSON, null, 2); applySchema(); }
+  else if (a === "ex-sheet") {
+    const t = $("#schemaText"); if (t) state.schemaText = t.value;
+    const isStudent = /studentId/.test(state.schemaText);
+    loadGrid(parseCSV(isStudent ? SAMPLE_JSON_CSV : SAMPLE_CSV), isStudent ? "students.csv" : "orders.csv");
+  }
+  else if (a === "to-map") { autoMap(); state.step = "map"; state.notice = { kind: "ok", text: "Columns matched automatically. Check the connections, list modes and grouping." }; render(); }
+  else if (a === "automap") { autoMap(); state.notice = { kind: "ok", text: "Re-matched from scratch." }; render(); }
+  else if (a === "expand") { state.collapsed.clear(); render(); }
+  else if (a === "toggle") { const p = el.dataset.path; state.collapsed.has(p) ? state.collapsed.delete(p) : state.collapsed.add(p); render(); }
+  else if (a === "pick") { const c = +el.dataset.col; state.picked = state.picked === c ? null : c; render(); }
+  else if (a === "drop-on" && state.picked != null && !e.target.closest("select")) { state.bind[el.dataset.leaf] = state.picked; state.picked = null; state.notice = null; render(); }
+  else if (a === "rec") { state.recIdx = +el.dataset.i; render(); }
+  else if (a === "copy-out") { const recs = buildRecords().map(r => r.value); copy(JSON.stringify(state.rootIsArray ? recs : recs, null, 2), `Copied ${recs.length} records.`); }
+  else if (a === "copy-tpl") copy($("#tpl")?.textContent || "", "Mapping template copied.");
+});
+document.addEventListener("change", e => {
+  const el = e.target, a = el.dataset.act;
+  if (el.id === "file" && el.files[0]) return readFile(el.files[0]);
+  if (!a) return;
+  if (a === "bind") { if (el.value === "") delete state.bind[el.dataset.path]; else state.bind[el.dataset.path] = +el.value; }
+  else if (a === "groupby") state.groupBy = el.value === "" ? null : +el.value;
+  else if (a === "mode") state.arrays[el.dataset.tpl].mode = el.value;
+  else if (a === "slots") state.arrays[el.dataset.tpl].slots = Math.max(1, Math.min(20, +el.value || 1));
+  else if (a === "delim") state.arrays[el.dataset.tpl].delim = el.value || ";";
+  state.notice = null; render();
+});
+document.addEventListener("input", e => { if (e.target.id === "schemaText") state.schemaText = e.target.value; });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && state.picked != null) { state.picked = null; render(); } });
+addEventListener("resize", () => requestAnimationFrame(drawWires));
+
+applySchema();
+</script>
+</body>
+</html>

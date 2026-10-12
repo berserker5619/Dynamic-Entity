@@ -1,0 +1,166 @@
+[
+  {
+    "orderId": "NF-1001",
+    "orderDate": "2026-09-05",
+    "customer": {
+      "name": "Divya S",
+      "email": "divya@example.com",
+      "phones": [
+        {
+          "type": "mobile",
+          "number": "98400 11111"
+        },
+        {
+          "type": "whatsapp",
+          "number": "98400 22222"
+        }
+      ],
+      "address": {
+        "street": "12 Anna Salai",
+        "city": "Chennai",
+        "pincode": "600002"
+      }
+    },
+    "tags": [
+      "festive",
+      "cotton"
+    ],
+    "items": [
+      {
+        "sku": "KUR-RED-M",
+        "productName": "Red cotton kurti",
+        "qty": 2,
+        "unitPrice": 549
+      },
+      {
+        "sku": "DUP-GLD",
+        "productName": "Gold dupatta",
+        "qty": 1,
+        "unitPrice": 299
+      }
+    ],
+    "payment": {
+      "method": "upi",
+      "paid": true
+    }
+  },
+  {
+    "orderId": "NF-1002",
+    "orderDate": "2026-09-06",
+    "customer": {
+      "name": "Rahul K",
+      "email": "rahul.k@example",
+      "phones": [
+        {
+          "type": "mobile",
+          "number": "99620 33333"
+        }
+      ],
+      "address": {
+        "street": "4 MG Road",
+        "city": "Bengaluru",
+        "pincode": "560001"
+      }
+    },
+    "tags": [
+      "casual"
+    ],
+    "items": [
+      {
+        "sku": "SHR-BLU-L",
+        "productName": "Blue linen shirt",
+        "qty": 1,
+        "unitPrice": 799
+      }
+    ],
+    "payment": {
+      "method": "cod",
+      "paid": false
+    }
+  },
+  {
+    "orderId": "NF-1003",
+    "orderDate": "2026-09-07",
+    "customer": {
+      "name": "Fathima R",
+      "email": "fathima@example.com",
+      "phones": [
+        {
+          "type": "mobile",
+          "number": "90030 44444"
+        },
+        {
+          "type": "home",
+          "number": "044 2345 6789"
+        }
+      ],
+      "address": {
+        "street": "7 Beach Road",
+        "city": "Chennai",
+        "pincode": "6000"
+      }
+    },
+    "tags": [
+      "festive"
+    ],
+    "items": [
+      {
+        "sku": "SAR-SLK",
+        "productName": "Silk saree",
+        "qty": 1,
+        "unitPrice": 2499
+      },
+      {
+        "sku": "BLS-STD",
+        "productName": "Blouse stitching",
+        "qty": "one",
+        "unitPrice": 350
+      }
+    ],
+    "payment": {
+      "method": "card",
+      "paid": true
+    }
+  },
+  {
+    "orderId": "NF-1004",
+    "orderDate": "31/09/2026",
+    "customer": {
+      "name": "Arun P",
+      "email": "arun@example.com",
+      "phones": [
+        {
+          "type": "mobile",
+          "number": "98765 43210"
+        }
+      ],
+      "address": {
+        "street": "22 Lake View",
+        "city": "Coimbatore",
+        "pincode": "641001"
+      }
+    },
+    "tags": [
+      "casual",
+      "summer"
+    ],
+    "items": [
+      {
+        "sku": "TSH-WHT-M",
+        "productName": "White tee",
+        "qty": 3,
+        "unitPrice": 399
+      },
+      {
+        "sku": "TSH-BLK-M",
+        "productName": "Black tee",
+        "qty": 2,
+        "unitPrice": 399
+      }
+    ],
+    "payment": {
+      "method": "Paytm",
+      "paid": false
+    }
+  }
+]

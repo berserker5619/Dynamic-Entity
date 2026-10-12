@@ -1,0 +1,122 @@
+{
+  "groupBy": "Order ID",
+  "arrays": {
+    "customer.phones": {
+      "mode": "indexed",
+      "slots": 2,
+      "delim": ";"
+    },
+    "tags": {
+      "mode": "split",
+      "slots": 2,
+      "delim": ";"
+    },
+    "items": {
+      "mode": "rows",
+      "slots": 2,
+      "delim": ";"
+    }
+  },
+  "bindings": {
+    "orderId": "Order ID",
+    "orderDate": "Order Date",
+    "customer.name": "Customer Name",
+    "customer.email": "Customer Email",
+    "customer.phones[0].type": "Phone 1 Type",
+    "customer.phones[0].number": "Phone 1 Number",
+    "customer.phones[1].type": "Phone 2 Type",
+    "customer.phones[1].number": "Phone 2 Number",
+    "customer.address.street": "Street",
+    "customer.address.city": "City",
+    "customer.address.pincode": "Pincode",
+    "tags[*]": "Tags",
+    "items[*].sku": "SKU",
+    "items[*].productName": "Product",
+    "items[*].qty": "Qty",
+    "items[*].unitPrice": "Unit Price",
+    "payment.method": "Payment Method",
+    "payment.paid": "Paid"
+  },
+  "records": [
+    {
+      "label": "NF-1001",
+      "rows": [
+        2,
+        3
+      ],
+      "issues": []
+    },
+    {
+      "label": "NF-1002",
+      "rows": [
+        4
+      ],
+      "issues": [
+        {
+          "path": "customer.email",
+          "msg": "Not a valid email",
+          "rows": [
+            4
+          ]
+        }
+      ]
+    },
+    {
+      "label": "NF-1003",
+      "rows": [
+        5,
+        6
+      ],
+      "issues": [
+        {
+          "path": "customer.address.pincode",
+          "msg": "Doesn't match ^\\d{6}$",
+          "rows": [
+            5,
+            6
+          ]
+        },
+        {
+          "path": "items[].qty",
+          "msg": "Not a whole number",
+          "rows": [
+            6
+          ]
+        }
+      ]
+    },
+    {
+      "label": "NF-1004",
+      "rows": [
+        7,
+        8
+      ],
+      "issues": [
+        {
+          "path": "orderDate",
+          "msg": "Not a real date",
+          "rows": [
+            7,
+            8
+          ]
+        },
+        {
+          "path": "payment.method",
+          "msg": "“Paytm” isn't one of: upi, cod, card",
+          "rows": [
+            7,
+            8
+          ]
+        },
+        {
+          "path": "customer.email",
+          "msg": "Rows disagree (“arun@example.com” vs “arun.p@example.com”); kept the first",
+          "warn": true,
+          "rows": [
+            8
+          ]
+        }
+      ]
+    }
+  ]
+}

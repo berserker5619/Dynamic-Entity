@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Orders",
+  "type": "array",
+  "items": {
+    "$ref": "#/$defs/order"
+  },
+  "$defs": {
+    "order": {
+      "type": "object",
+      "required": [
+        "orderId",
+        "customer",
+        "items"
+      ],
+      "properties": {
+        "orderId": {
+          "type": "string",
+          "title": "Order ID"
+        },
+        "orderDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "customer": {
+          "type": "object",
+          "required": [
+            "name",
+            "email"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "phones": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "number"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "mobile",
+                      "whatsapp",
+                      "home",
+                      "work"
+                    ]
+                  },
+                  "number": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "address": {
+              "type": "object",
+              "properties": {
+                "street": {
+                  "type": "string"
+                },
+                "city": {
+                  "type": "string"
+                },
+                "pincode": {
+                  "type": "string",
+                  "pattern": "^\\d{6}$"
+                }
+              }
+            }
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "sku",
+              "qty"
+            ],
+            "properties": {
+              "sku": {
+                "type": "string",
+                "title": "SKU"
+              },
+              "productName": {
+                "type": "string"
+              },
+              "qty": {
+                "type": "integer"
+              },
+              "unitPrice": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "payment": {
+          "type": "object",
+          "properties": {
+            "method": {
+              "type": "string",
+              "enum": [
+                "upi",
+                "cod",
+                "card"
+              ]
+            },
+            "paid": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    }
+  }
+}
