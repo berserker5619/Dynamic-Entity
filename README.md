@@ -407,6 +407,10 @@ A config already describes every field, its type, its validators and its options
 enough to derive the columns a spreadsheet may carry, generate a template shaped like them, and
 map an uploaded file back onto records. None of that is authored twice.
 
+Since 3.0 the engine underneath is [`sheet-to-schema`](./packages/sheet-to-schema), which
+also imports into a JSON Schema or any schema of your own, with no Dynamic Entity in sight.
+Coming from 2.x? See [MIGRATING-3.0.md](./docs/MIGRATING-3.0.md).
+
 The wizard is one component and works with **no backend at all**. Registering
 `@dynamic-entity/server` moves the same import onto a server for files a tab cannot hold; the
 wizard does not change, because it already talks to a transport.
