@@ -38,6 +38,13 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The Phase 2 gate (docs/phase2-plan.md): sheet-to-schema's entries import only what they
+      # may, what ships to a browser has no Node in it, no package or engine module imports in
+      # a circle, and every parity suite is still there and still runs. Reads the built files,
+      # so it sits after the build. A failure is a stop, not an expectation to adjust.
+      - name: Phase 2 parity gate
+        run: npm run check:parity
+
       - name: Test
         run: npm run test
 
