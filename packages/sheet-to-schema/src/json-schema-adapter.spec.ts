@@ -2,6 +2,9 @@
  * jsonSchemaAdapter (`json-schema-adapter.ts`), on its own and through the engine
  * (`applyMapping`, `suggestMapping`, `validatePlan`).
  */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { applyMapping } from './apply-mapping';
 import { jsonSchemaAdapter, type JsonSchemaNode } from './json-schema-adapter';
 import { readPlan } from './read-plan';
@@ -154,6 +157,63 @@ describe('jsonSchemaAdapter — targets', () => {
   it('refuses a schema that describes no record', () => {
     expect(() => jsonSchemaAdapter({ type: 'string' })).toThrow(/object with properties/);
     expect(() => jsonSchemaAdapter({ type: 'object' })).toThrow(/object with properties/);
+    // A list of something that is not a record is no better.
+    expect(() => jsonSchemaAdapter({ type: 'array', items: { type: 'string' } })).toThrow(/object with properties/);
+    expect(() => jsonSchemaAdapter({ type: 'array', items: { type: 'array', items: ORDER } })).toThrow(/object with properties/);
+    expect(() => jsonSchemaAdapter({ type: 'array' })).toThrow(/object with properties/);
+  });
+
+  describe('a schema whose root is a list of records', () => {
+    // The prototype's order schema, as written: `type: array`, its items a `$ref` to the order.
+    const LIST = JSON.parse(readFileSync(join(__dirname, '..', 'test', 'fixtures', 'order', 'schema.json'), 'utf8')) as JsonSchemaNode;
+    const list = jsonSchemaAdapter(LIST);
+
+    it('reads the items as the record', () => {
+      expect(list.id).toBe('Orders');
+      const set = list.targets({ slots: { 'customer.phones': 1, items: 1 } });
+      expect(set.targets.map(t => t.ref)).toEqual([
+        'orderId',
+        'orderDate',
+        'customer.name',
+        'customer.email',
+        'customer.phones.0.type',
+        'customer.phones.0.number',
+        'customer.address.street',
+        'customer.address.city',
+        'customer.address.pincode',
+        'tags',
+        'items.0.sku',
+        'items.0.productName',
+        'items.0.qty',
+        'items.0.unitPrice',
+        'payment.method',
+        'payment.paid',
+      ]);
+      expect(set.arrays.map(a => [a.ref, a.required])).toEqual([['customer.phones', false], ['items', true]]);
+      expect(set.unsupported).toEqual([]);
+    });
+
+    it('takes required from the record, not from the list around it', () => {
+      const required = list.targets({ slots: { 'customer.phones': 1, items: 1 } }).targets.filter(t => t.required).map(t => t.ref);
+      expect(required).toEqual(['orderId', 'customer.name', 'customer.email', 'customer.phones.0.number', 'items.0.sku', 'items.0.qty']);
+    });
+
+    it('gives the same targets as the record schema on its own', () => {
+      const record = jsonSchemaAdapter({ ...LIST.$defs!['order'], $defs: LIST.$defs });
+      const slots = { 'customer.phones': 2, items: 2 };
+      expect(list.targets({ slots })).toEqual(record.targets({ slots }));
+    });
+
+    it('reports a list of records that refers back to itself, rather than recursing', () => {
+      const looped = jsonSchemaAdapter({
+        type: 'array',
+        items: { $ref: '#/$defs/node' },
+        $defs: { node: { type: 'object', properties: { name: { type: 'string' }, parent: { $ref: '#/$defs/node' } } } },
+      });
+      const set = looped.targets({ slots: {} });
+      expect(set.targets.map(t => t.ref)).toEqual(['name']);
+      expect(set.unsupported).toEqual([{ ref: 'parent', reason: 'its $ref refers back to itself' }]);
+    });
   });
 
   it('is pure: the same slots give the same targets', () => {

@@ -2,6 +2,7 @@
  * json-schema-adapter.ts — a JSON Schema as import targets (spec §7, "Adapters in scope").
  *
  * The schema decides the targets. Each node is read like this:
+ * - A root of `type: array` is a list of records: its `items` are the record.
  * - `properties` recurse into the path.
  * - An array of objects becomes numbered slots, and its children become slot targets.
  * - An array of primitives becomes one `list` target, read from a split cell (§6).
@@ -104,8 +105,8 @@ function typeOf(node: JsonSchemaNode): string | undefined {
 /**
  * Wrap a JSON Schema as a `SchemaAdapter`.
  *
- * Throws at construction when the schema's root is not an object with `properties`: a schema
- * that describes no record cannot be imported into.
+ * Throws at construction when the schema's root is not an object with `properties`, or a list
+ * of them: a schema that describes no record cannot be imported into.
  */
 export function jsonSchemaAdapter(schema: JsonSchemaNode, options: JsonSchemaAdapterOptions = {}): SchemaAdapter<JsonSchemaMeta> {
   /** One node with `$ref`, `allOf` and `oneOf`/`anyOf` taken out. `seen` stops a `$ref` loop. */
@@ -189,9 +190,13 @@ export function jsonSchemaAdapter(schema: JsonSchemaNode, options: JsonSchemaAda
   };
 
   const titleOf = (node: JsonSchemaNode, name: string): string => node.title ?? name;
-  const rootFlat = flatten(schema).node;
-  if (typeOf(rootFlat) !== 'object' || !rootFlat.properties) {
-    throw new Error('jsonSchemaAdapter: the schema must describe an object with properties.');
+  // A schema for a file of records is usually written as the list: `type: array`, its items the
+  // record. The list itself is not a target; the import already produces one record per row or group.
+  const top = flatten(schema);
+  const root = typeOf(top.node) === 'array' ? flatten(top.node.items ?? {}, top.seen) : top;
+  const rootFlat = root.node;
+  if (root.loop || typeOf(rootFlat) !== 'object' || !rootFlat.properties) {
+    throw new Error('jsonSchemaAdapter: the schema must describe an object with properties, or a list of them.');
   }
 
   return {
@@ -286,7 +291,7 @@ export function jsonSchemaAdapter(schema: JsonSchemaNode, options: JsonSchemaAda
         }
       };
 
-      walk(rootFlat, [], [], true, undefined, new Set());
+      walk(rootFlat, [], [], true, undefined, root.seen);
       return { targets, arrays, unsupported };
     },
   };
