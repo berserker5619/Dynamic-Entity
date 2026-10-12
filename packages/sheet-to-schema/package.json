@@ -1,8 +1,8 @@
 {
   "name": "sheet-to-schema",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.1",
   "private": true,
-  "description": "Schema-agnostic spreadsheet import engine (docs/import-phase1-spec.md). The main entry is browser-safe with no runtime dependencies; sheet-to-schema/node reads files and serves HTTP. Private until the owner publishes it.",
+  "description": "Turn spreadsheet rows into records that fit a schema you already have. The main entry is browser-safe with no runtime dependencies; sheet-to-schema/node reads files and serves HTTP.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",

@@ -132,7 +132,8 @@ describe('POST /:name/preview', () => {
     const response = await request(app())
       .post('/import/employee/preview')
       .attach('file', Buffer.from(CSV_TEXT), 'people.csv');
-    expect(response.body.engineVersion).toMatch(/^\d+\.\d+\.\d+$/);
+    // A semver, which for a release candidate carries a prerelease tag: 1.0.0-rc.1.
+    expect(response.body.engineVersion).toMatch(/^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/);
   });
 
   it('previews a workbook the same way', async () => {

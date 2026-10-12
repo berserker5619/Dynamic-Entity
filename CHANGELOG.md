@@ -8,6 +8,76 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.0.0-rc.1]
+
+A release candidate. **The spreadsheet-import engine is now its own package,
+[`sheet-to-schema`](./packages/sheet-to-schema), and Dynamic Entity runs on top of it.** Forms,
+rules, the renderer and the builder are unchanged. If your app does not import spreadsheets,
+this release changes nothing for you.
+
+If it does: the same file and the same stored mapping import to the same records. That is
+held by a test against what the published 2.5.0 produced, for every config shipped in this
+repository and seventeen cases written by hand. What changes is the shape of a mapping plan,
+the wording of some messages, and where a few functions are imported from.
+[MIGRATING-3.0.md](./docs/MIGRATING-3.0.md) has the whole list and what to do about each.
+
+### Upgrading
+- Be on **2.5.0** first. It changed how a date such as `05/09/2026` is read, and its entry
+  below says how to find records imported with the wrong date.
+- Deploy the browser app and the server together where you can. A 3.0 wizard talking to a 2.x
+  server works: it sends the mapping in the 2.x form. A plan that uses something only plan v2
+  has is refused before it is sent, because a 2.x server would ignore it.
+- `@dynamic-entity/core` has one dependency, `sheet-to-schema`, and `@dynamic-entity/server`
+  depends on it too. npm installs it; there is nothing to add.
+
+### Changed — breaking
+- **A mapping plan is plan v2.** `target`, `schemaVersion` and `planVersion: 2`, where 2.x
+  wrote `entity` and `configVersion`. `suggestMapping`, a preview's `suggestion` and the
+  mapper all produce v2. **Every stored 2.x plan still imports**, unchanged, wherever a plan
+  is taken.
+- **`MappingPlan` is the v2 type.** Type a 2.x plan as `MappingPlanV1`, or as
+  `AnyMappingPlan` when it may be either. The wizard's contracts
+  (`ImportPreview.suggestion`, the `[plan]` inputs, `ImportTransport.commit`) take either.
+- **Plan-problem messages are reworded**, and say "schema" where they said "config". Codes
+  and paths are the same. Match on `code`.
+- **A ref into `__proto__`, `constructor` or `prototype` is `PLAN_UNSAFE_PATH`**, where it
+  was `PLAN_UNKNOWN_REF`. Still an error; still nothing is imported.
+- **A required field whose cell could not be read is reported once**, as unreadable. 2.x
+  reported it a second time as required. The same rows fail.
+- **The server refuses a plan that groups rows** (`INVALID_PLAN`, 400). Its streaming runner
+  does not group yet, and ignoring `group` would import one record per row.
+- **`HttpImportTransport.commit` rejects** a plan using `group`, `lists`, or an entry's
+  `split` or `dateOrder` when the server did not report that it reads plan v2.
+
+### Added
+- **`entityFormConfigAdapter(config, options)`**: a config as a `sheet-to-schema` adapter.
+- **`readPlan`**, to read a plan in either shape as v2; **`planForServer`** and
+  **`v2OnlyFields`**, for a client deciding what it may send; **`planForConfig`**. All from
+  `@dynamic-entity/core`.
+- **Every import error carries a `code`** (`CELL_FORMAT`, `RECORD_REQUIRED`, …), and a
+  result may carry `warnings`: problems that did not stop a record being imported.
+- **Through a v2 plan, `applyMapping` and the wizard can group several rows into one record**
+  and read each date column in its own order. The mapper does not build such a plan yet.
+- **Server answers say more**: `adapter` (`{ name: 'dynamic-entity', version }`),
+  `planVersions` (`[1, 2]`), `slots`, `warnings`, `warningCount`, `rowsInImported`.
+  Nothing was removed, and `engineVersion` is still the server's `@dynamic-entity/core`
+  version.
+- **The review step reads each column in its plan entry's date order**, as the commit does.
+
+### Deprecated
+Removed in 4.0. Each is the same function or type, re-exported.
+- From `@dynamic-entity/core`, now in `sheet-to-schema`: the CSV functions and types
+  (`parseCsv`, `toCsv`, `createCsvReader`, …), `cellText`, `ImportPreviewResponse`,
+  `ImportErrorResponse`, `PLAN_PROBLEM_CODES`, `PlanProblemCode`. And `MappingPlanV1`.
+- From `@dynamic-entity/server`, now in `sheet-to-schema/node`: the limits, `ImportError`
+  and `toErrorBody`, the byte helpers, `guardZip`, `xlsxRows`, `cellValue`, `readSheet`,
+  `detectFormat`, `guardRows`, and the template constants.
+
+`applyMapping`, `suggestMapping`, `validateMappingPlan`, `runImport`, `previewSheet`,
+`writeTemplate` and `createImportRouter` keep their signatures and are not deprecated.
+
+---
+
 ## [2.5.0]
 
 ### Changed — check your imports of dates

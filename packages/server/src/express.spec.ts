@@ -183,7 +183,7 @@ describe('POST /:entity/preview', () => {
     const response = await request(app())
       .post('/import/employee/preview')
       .attach('file', Buffer.from(CSV_TEXT), 'people.csv');
-    expect(response.body.engineVersion).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(response.body.engineVersion).toMatch(/^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/);
   });
 
   it('previews a workbook the same way', async () => {

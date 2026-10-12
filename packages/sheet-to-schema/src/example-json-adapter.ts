@@ -19,6 +19,7 @@
  * ever `null`, an empty object or array, an array inside an array (a v2 non-goal), and a field
  * that is an object in one sample and a value in another.
  */
+import { IMPORTER_VERSION } from './version';
 import type { ImportTarget, RecordProblem, SchemaAdapter, TargetArray, TargetSet, ValueKind } from './adapter.types';
 
 export interface ExampleJsonAdapterOptions {
@@ -143,7 +144,7 @@ export function exampleJsonAdapter(sample: unknown, options: ExampleJsonAdapterO
   return {
     id: options.id ?? 'example-json',
     ...(options.version !== undefined ? { version: options.version } : {}),
-    adapterVersion: '0.0.0',
+    adapterVersion: IMPORTER_VERSION,
     ...(options.validator ? { validate: options.validator } : {}),
 
     targets({ slots }): TargetSet<ExampleJsonMeta> {

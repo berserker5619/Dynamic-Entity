@@ -26,6 +26,7 @@
  * the engine's generic checks, or a caller's `validator` (an Ajv-compiled schema wrapped in a
  * function, say) — Ajv itself is never a dependency.
  */
+import { IMPORTER_VERSION } from './version';
 import type { ImportTarget, RecordProblem, SchemaAdapter, TargetArray, TargetSet, ValueKind } from './adapter.types';
 
 /** The parts of a JSON Schema node this adapter reads. Anything else is ignored. */
@@ -202,7 +203,7 @@ export function jsonSchemaAdapter(schema: JsonSchemaNode, options: JsonSchemaAda
   return {
     id: options.id ?? schema.$id ?? schema.title ?? 'json-schema',
     ...(options.version !== undefined ? { version: options.version } : {}),
-    adapterVersion: '0.0.0',
+    adapterVersion: IMPORTER_VERSION,
     ...(options.validator ? { validate: options.validator } : {}),
 
     targets({ slots }): TargetSet<JsonSchemaMeta> {
