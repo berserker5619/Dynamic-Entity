@@ -365,6 +365,8 @@ export function coerceValue(kind: ValueKind, raw: unknown, opts?: { decimal?: '.
 
 **Generic validation** (when the adapter has no `validate`): `required` (absent, or an empty list), `number` min/max, `string` min/max length, `pattern`, `format`, `list` min/max items. `pattern` runs on input bounded by `maxCellLength`, as today. Array items are validated per existing item; an empty optional array passes.
 
+`format: 'email'` MUST be judged by the rule `ajv-formats` applies to the `email` format (version 3, its default "full" mode): a dot-separated local part and a domain of at least two labels. So the generic checks and a JSON Schema validator given the same schema agree, and `rahul.k@example` is refused by both. The DE adapter does not use the generic checks: its `validate` keeps DE's rule, which follows Angular's `Validators.email` and accepts that address, because the form does.
+
 ## Results, errors and versions
 
 The result types change by additive, optional fields only, and no existing field changes type. Two kinds of code depend on the shapes and both must still compile: code that reads a 2.x result, and code that *builds* one. `ImportTransport.commit` returns an `ImportResult`, so every custom transport builds one.
@@ -683,3 +685,7 @@ A `custom` kind reaching `coerceValue` throws (§7).
   - the rule is applied to `month` and to the date part of a `datetime`, which went through `Date` the same way;
   - `dateOrder` on a target that holds no date is ignored. No code exists for it, and none was added.
 - **Dynamic Entity is unchanged.** The DE adapter reads cells with `coerceCell`, which still reads `05/09/2026` month first, in every release from 1.14.0 to 2.4.1. That is written up, with a proposed fix, in `docs/de-date-order-issue.md`.
+
+**2026-10-12: the generic email rule is ajv-formats' (owner's decision 2).** The generic checks had DE's email pattern, which follows Angular's `Validators.email` and needs no dot in the domain. On the order fixture that passed `rahul.k@example`, which the prototype and Ajv both refuse. §8 now states the rule under "Generic validation".
+- **The pattern is copied,** not imported, so the package still has no runtime dependency. A check at the time of writing found it identical to `fullFormats.email` in ajv-formats 3.0.1.
+- **Dynamic Entity is unchanged.** A test in core's adapter spec holds both sides: `rahul.k@example` passes through the DE adapter, as it does in 2.x, and fails the generic checks.

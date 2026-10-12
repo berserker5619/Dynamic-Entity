@@ -401,6 +401,15 @@ describe('entityFormConfigAdapter — parity, case by case', () => {
     expect(expectParity([['Ada', '']], plan, config, { lang: 'de' }).neu.errors[0].message).toBe('Preis is required');
   });
 
+  it('keeps the form\'s email rule, which takes an address the generic rule refuses', () => {
+    // Angular's Validators.email, which the form applies, needs no dot in the domain. The
+    // generic engine holds `format: 'email'` to ajv-formats' rule and refuses this address.
+    const config = configWith(text('email', 'Email', { validators: { email: true } }));
+    const { neu } = expectParity([['Rahul', 'rahul.k@example'], ['Ada', 'ada@']], planFor(['name', 'email']), config, { stamp: false });
+    expect(neu.records).toEqual([{ name: 'Rahul', email: 'rahul.k@example' }]);
+    expect(neu.errors.map(e => [e.row, e.ref, e.code])).toEqual([[3, 'email', 'RECORD_FORMAT']]);
+  });
+
   it('takes a typed constant as it is, and a text one through the field', () => {
     const config = configWith({ id: 'active', type: 'boolean', label: { en: 'Active' } }, { id: 'tier', type: 'dropdown', label: { en: 'Tier' }, options: [{ en: 'Gold' }] });
     const plan = { entity: 'people', entries: [{ ref: 'name', column: 0 }, { ref: 'active', constant: 'yes' }, { ref: 'tier', constant: { en: 'Gold' } }] };

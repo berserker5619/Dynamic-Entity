@@ -4,8 +4,10 @@
  * `required`, number `min`/`max`, string length, `pattern`, `format` and list item counts,
  * each reported with its `RECORD_*` code. The meanings are Dynamic Entity 2.3's
  * `applyFieldValidators` (`core/src/import-engine.ts`), keyed by `ValueKind` instead of field
- * validators; the email, URL and phone tests are copied from DE for the same reason as the
- * rest of this package.
+ * validators; the URL and phone tests are copied from DE for the same reason as the rest of
+ * this package. The email test is not: it is the rule `ajv-formats` applies to
+ * `format: "email"`, so the generic checks and a JSON Schema validator given the same schema
+ * agree about an address. DE's own rule, which follows Angular's, stays in the DE adapter.
  *
  * A repeating target is checked per item that exists, as 2.3 does. An empty optional array is
  * not a failure, and requiring a child of an item nobody added would make one impossible.
@@ -13,9 +15,12 @@
 import type { ImportTarget, RecordProblem, TargetArray, TargetSet } from './adapter.types';
 import { getRecordValue } from './record-path';
 
-/** Approximates Angular's `Validators.email`, as DE does. */
+/**
+ * The `email` format of ajv-formats 3 in its default ("full") mode, copied: a dot-separated
+ * local part, and a domain of at least two labels. `rahul.k@example` is not an address.
+ */
 const EMAIL =
-  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i;
 const PHONE_CHARS = /^\+?[0-9\s().-]+$/;
 
 /** An absolute `http:` or `https:` URL with a host. */

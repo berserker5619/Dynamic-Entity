@@ -44,6 +44,15 @@ describe('validateRecord', () => {
     expect(codes({ v: bad }, formatted)).toEqual([{ ref: 'v', code: 'RECORD_FORMAT' }]);
   });
 
+  // The address the prototype's order sheet seeds as invalid (test/fixtures/order, row 4).
+  it('holds an email to the rule ajv-formats uses, so a schema validator and the engine agree', () => {
+    const email = one({ kind: 'string', format: 'email' });
+    for (const good of ['ada@example.com', 'Rahul.K@Example.CO.IN', 'a+b@sub.example.org']) expect(codes({ v: good }, email)).toEqual([]);
+    for (const bad of ['rahul.k@example', 'a..b@example.com', '.ada@example.com', 'ada@example.', 'ada@-example.com', 'ada lovelace@example.com']) {
+      expect(codes({ v: bad }, email)).toEqual([{ ref: 'v', code: 'RECORD_FORMAT' }]);
+    }
+  });
+
   it('checks list sizes on both sides', () => {
     const sized = one({ kind: 'list', of: { kind: 'string' }, minItems: 2, maxItems: 3 });
     expect(codes({ v: ['a'] }, sized)).toEqual([{ ref: 'v', code: 'RECORD_RANGE' }]);
