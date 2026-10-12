@@ -213,6 +213,10 @@ export type {
 // preview's `suggestion`, can normalise it to plan v2 without a second import.
 export { readPlan } from 'sheet-to-schema';
 export type { NormalizedPlan, ReadPlanOptions, ReadPlanResult } from 'sheet-to-schema';
+// A 2.x plan that names no entity, given the config's: what every Dynamic Entity entry point
+// does to a plan before sheet-to-schema reads it. Exported for code that calls the generic
+// engine or runner with `entityFormConfigAdapter` directly, as `@dynamic-entity/server` does.
+export { planFor as planForConfig } from './import-columns';
 // The config as sheet-to-schema's schema adapter: what the three functions below run on.
 export { entityFormConfigAdapter } from './entity-form-config-adapter';
 export type { EntityFormConfigAdapterOptions, EntityImportContext } from './entity-form-config-adapter';

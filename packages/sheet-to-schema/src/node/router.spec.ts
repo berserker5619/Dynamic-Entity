@@ -864,3 +864,75 @@ describe('the router\'s date order', () => {
     expect((await preview(server(undefined))).body).not.toHaveProperty('dateOrder');
   });
 });
+
+/**
+ * Dynamic Entity's router is this one with a config behind each name. Its clients were written
+ * before this package existed, so what they read and send has to stay what it was, and each
+ * of these is one thing a wrapper states to keep it so.
+ */
+describe('a wrapper that keeps the wire contract its clients already have', () => {
+  const mounted = (options: Partial<ImportRouterOptions>, written: Record<string, unknown>[] = []): express.Express =>
+    app({ ...options }, written);
+
+  it('names the path parameter, which is where its writer reads the name from', async () => {
+    const seen: unknown[] = [];
+    const server = mounted({ param: 'entity', onImport: (_records, context) => void seen.push([context.name, context.request.params['entity'], context.request.params['name']]) });
+
+    const response = await request(server).post('/import/employee/import').field('plan', JSON.stringify(PLAN)).attach('file', Buffer.from(CSV_TEXT), 'p.csv');
+    expect(response.status).toBe(200);
+    expect(seen).toEqual([['employee', 'employee', undefined]]);
+    expect((await request(server).get('/import/employee/template')).status).toBe(200);
+    expect((await request(server).post('/import/nobody/validate').attach('file', Buffer.from(CSV_TEXT), 'p.csv')).body.error.code).toBe('UNKNOWN_ENTITY');
+  });
+
+  it('answers with its own version as engineVersion, and still says which adapter and which plans', async () => {
+    const server = mounted({ engineVersion: '3.0.0' });
+    const preview = await request(server).post('/import/employee/preview').attach('file', Buffer.from(CSV_TEXT), 'p.csv');
+    expect(preview.body).toMatchObject({ engineVersion: '3.0.0', planVersions: [1, 2], adapter: { name: 'json-schema' } });
+
+    const commit = await request(server).post('/import/employee/validate').field('plan', JSON.stringify(PLAN)).attach('file', Buffer.from(CSV_TEXT), 'p.csv');
+    expect(commit.body).toMatchObject({ engineVersion: '3.0.0', adapter: { name: 'json-schema' } });
+  });
+
+  it('names the template download itself, through the same filter as any other name', async () => {
+    const binding: ImportBinding = { ...EMPLOYEE, templateName: 'staff "2026"\r\nX-Injected: 1' };
+    const response = await request(mounted({ bindings: { employee: binding } })).get('/import/employee/template');
+    expect(response.headers['content-disposition']).toBe('attachment; filename="staff--2026---X-Injected--1-template.csv"');
+    expect(response.headers['x-injected']).toBeUndefined();
+  });
+
+  it("answers a preview with the suggestion its own client's suggester makes", async () => {
+    const own = { planVersion: 2, target: 'employee', entries: [{ ref: 'personal.firstName', column: 0, confidence: 'exact' }] };
+    const binding: ImportBinding = { ...EMPLOYEE, previewExtras: () => ({ suggestion: own }) };
+    const preview = await request(mounted({ bindings: { employee: binding } })).post('/import/employee/preview').attach('file', Buffer.from(CSV_TEXT), 'p.csv');
+    expect(preview.body.suggestion).toEqual(own);
+    expect(preview.body.headers).toEqual(HEADERS);
+  });
+
+  it('reads a plan through the binding first, so a plan an older client sends can still be read', async () => {
+    const written: Record<string, unknown>[] = [];
+    const nameless = { entries: PLAN.entries };
+    const binding: ImportBinding = { ...EMPLOYEE, plan: plan => ({ ...(plan as object), entity: 'employee' }) };
+
+    const refused = await request(mounted({}, written)).post('/import/employee/import').field('plan', JSON.stringify(nameless)).attach('file', Buffer.from(CSV_TEXT), 'p.csv');
+    expect(refused.body.planProblems.some((problem: { level: string }) => problem.level === 'error')).toBe(true);
+    expect(written).toEqual([]);
+
+    const read = await request(mounted({ bindings: { employee: binding } }, written)).post('/import/employee/import').field('plan', JSON.stringify(nameless)).attach('file', Buffer.from(CSV_TEXT), 'p.csv');
+    expect(read.body.planProblems).toEqual([]);
+    expect(read.body.imported).toBe(written.length);
+    expect(written.length).toBeGreaterThan(0);
+  });
+
+  it('closes the upload when the binding refuses the plan', async () => {
+    const binding: ImportBinding = {
+      ...EMPLOYEE,
+      plan: () => {
+        throw new ImportError('INVALID_PLAN', 'Not a plan this schema ever wrote.');
+      },
+    };
+    const response = await request(mounted({ bindings: { employee: binding } })).post('/import/employee/import').field('plan', JSON.stringify(PLAN)).attach('file', Buffer.from(CSV_TEXT), 'p.csv');
+    expect(response.status).toBe(400);
+    expect(response.body.error).toEqual({ code: 'INVALID_PLAN', message: 'Not a plan this schema ever wrote.' });
+  });
+});

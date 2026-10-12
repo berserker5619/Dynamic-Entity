@@ -33,5 +33,8 @@ export { GROUPING_NOT_STREAMED, previewSheet, runImport } from './run-import';
 export type { BatchInfo, ImportRunResult, OnBatch, PreviewSheetOptions, RunImportOptions, SheetPreview } from './run-import';
 
 // ─── Over HTTP ──────────────────────────────────────────────────────────────
+// The upload reader on its own, for a server that wires its own routes on another framework.
+export { readPlanField, receiveUpload, safeFieldName } from './multipart';
+export type { Upload } from './multipart';
 export { createImportRouter, sendFailure, templateFilename, templateOf } from './router';
 export type { BindingSource, ImportBinding, ImportRouterOptions, OnImport } from './router';

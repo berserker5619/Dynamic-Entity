@@ -10,5 +10,5 @@ export default defineConfig({
   treeshake: true,
   // Nothing in `dependencies` or `peerDependencies` is bundled: exceljs and busboy stay
   // separate packages a consumer can patch and audit, and express is theirs entirely.
-  external: ['@dynamic-entity/core', 'exceljs', 'busboy', 'express'],
+  external: ['@dynamic-entity/core', 'sheet-to-schema', 'sheet-to-schema/node', 'exceljs', 'busboy', 'express'],
 });

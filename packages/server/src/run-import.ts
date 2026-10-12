@@ -1,48 +1,42 @@
 /**
- * run-import.ts — the package, really. Everything else is plumbing around this file.
+ * run-import.ts — a file in, records out, with memory bounded by `batchSize` and not by the file.
  *
- * `runImport` pulls rows off the reader in batches, hands each batch to core's `applyMapping`,
- * **awaits** `onBatch`, and drops the batch. Peak memory is a function of `batchSize`, not of
- * the file's size — which is the one reason this package exists, and the claim every decision
- * below is answerable against.
+ * Since 3.0 the runner is sheet-to-schema's (`sheet-to-schema/node`), which takes a schema
+ * adapter. These are Dynamic Entity's signatures over it: a config, its rules and its lookups
+ * in, and the same result out. The config becomes `entityFormConfigAdapter`, which is also
+ * what a browser import runs on, so the two cannot disagree about what a file produces.
  *
- * Nothing here decides anything core already decides. The mapping rules, the coercion, the
- * validation and the record shape all come from `applyMapping`; this file's entire job is to
- * feed it and to not accumulate.
+ * Nothing here decides anything core already decides, and nothing here reads a row.
  */
 
 import {
-  applyMapping,
   arrayBoundFor,
-  decimalMarkFor,
   deriveImportColumns,
+  entityFormConfigAdapter,
+  planForConfig,
   suggestMapping,
-  validateMappingPlan,
+  type AnyMappingPlan,
   type ConfigProblem,
   type CsvDelimiter,
+  type DateOrder,
   type EntityFormConfig,
   type FormRule,
-  type DateOrder,
   type ImportLookups,
   type ImportRowError,
-  type AnyMappingPlan,
   type MappingPlan,
 } from '@dynamic-entity/core';
-import { destroySource, type ByteSource } from './bytes';
-import { sampleText } from './cell-text';
-import { ImportError } from './errors';
-import { resolveLimits, type ImportLimits } from './limits';
-import { readSheet, type SheetFormat } from './read-sheet';
+import {
+  previewSheet as previewOverAdapter,
+  runImport as runOverAdapter,
+  type BatchInfo as ImporterBatchInfo,
+  type OnBatch as ImporterOnBatch,
+} from 'sheet-to-schema/node';
+import type { ByteSource } from './bytes';
+import type { ImportLimits } from './limits';
+import type { SheetFormat } from './read-sheet';
 
 /** Where a batch sits in the user's spreadsheet, for a consumer that logs or reports progress. */
-export interface BatchInfo {
-  /** Zero-based batch number. */
-  index: number;
-  /** Spreadsheet row number of the first row this batch was built from. */
-  firstRow: number;
-  /** Records handed over before this batch, so `imported + records.length` is the running total. */
-  imported: number;
-}
+export type BatchInfo = ImporterBatchInfo;
 
 /**
  * Write a batch of records.
@@ -55,10 +49,7 @@ export interface BatchInfo {
  * **It must be idempotent.** A stream that fails at row 30,000 has already written 29,999
  * records, and an HTTP client — or a proxy, or a user — will retry. See SECURITY.md.
  */
-export type OnBatch = (
-  records: Record<string, unknown>[],
-  info: BatchInfo,
-) => void | Promise<void>;
+export type OnBatch = ImporterOnBatch;
 
 export interface RunImportOptions {
   stream: ByteSource;
@@ -77,9 +68,9 @@ export interface RunImportOptions {
    */
   decimal?: '.' | ',';
   /**
-   * The order of a date written in digits, such as `05/09/2026`. Without it, one that reads
-   * two ways fails its row: it is never guessed. `MDY` reads it month first, as every release
-   * before 2.5.0 did without saying so.
+   * The order of a date written in digits, such as `05/09/2026`, for every column whose plan
+   * entry states none. Without either, one that reads two ways fails its row: it is never
+   * guessed. `MDY` reads it month first, as every release before 2.5.0 did without saying so.
    */
   dateOrder?: DateOrder;
   /** Omit to validate without writing: the identical pipeline, every error, nothing stored. */
@@ -97,15 +88,9 @@ export interface ImportRunResult {
   /** Rows that held no values at all. A blank line is not an error and is not a record. */
   skipped: number;
   /**
-   * Rows that produced at least one error, counted exactly — **not** derived from `errors`.
-   *
-   * `errors` is capped, so counting the distinct rows in it answers how many rows fitted in the
-   * cap rather than how many failed. Measured on a run of a thousand rows where two hundred
-   * failed: the sample held seven of them. The number a user acts on is "which rows do I fix",
-   * so it is the one that has to be exact.
-   *
-   * Row numbers never span a batch, so summing the per-batch distinct counts is exact rather
-   * than approximate.
+   * Rows that produced at least one error, counted exactly — **not** derived from `errors`,
+   * which is capped: the distinct rows in it say how many fitted in the cap, not how many
+   * failed. The number a user acts on is "which rows do I fix", so it is the exact one.
    */
   failed: number;
   /** A **sample**, capped at `limits.maxReportedErrors`. `errorCount` is the true total. */
@@ -119,144 +104,39 @@ export interface ImportRunResult {
   /** Data rows read from the sheet, blank ones included. */
   rowsRead: number;
   /**
-   * What the file turned out to be — **absent when no byte of it was ever read**.
-   *
-   * A plan refused before the stream is touched has nothing to report here, and it used to
-   * report `'csv'` anyway. A guessed field is worse than a missing one: it is indistinguishable
-   * from a measured one.
+   * What the file turned out to be — **absent when no byte of it was ever read**. A guessed
+   * field is worse than a missing one: it is indistinguishable from a measured one.
    */
   format?: SheetFormat;
+  /** Since 3.0: sheet rows the imported records came from. Equal to `imported` while no plan groups rows. */
+  rowsInImported?: number;
+  /** Since 3.0: a sample of the warnings, capped like `errors`. A record with a warning was imported. */
+  warnings?: ImportRowError[];
+  /** Since 3.0: every warning found, whether or not it was retained. */
+  warningCount?: number;
 }
 
 /**
- * Check the plan before a single row is read.
+ * Run an import, or with no `onBatch` a validation: every row read, every error found.
  *
- * A plan naming a field the config does not have is wrong about every row, so discovering it
- * at row 30,000 of a file that has already written 29,999 records is the worst available
- * moment. `applyMapping` checks it too — per batch, on its own account — and this is not that
- * check moved but that check brought forward.
+ * The plan is checked before a single row is read. A plan that groups rows is refused with
+ * `INVALID_PLAN`: the streaming runner does not group yet, and one that ignored `group` would
+ * import a record per row and report success. The browser import does group.
  */
-function checkPlan(plan: AnyMappingPlan, config: EntityFormConfig, lang?: string): ConfigProblem[] {
-  return validateMappingPlan(plan, config, {
-    lang,
-    // The same derivation `applyMapping` uses, or the two would disagree about which refs
-    // exist and the pre-flight would pass a plan the run then rejects.
-    includeReadonly: true,
-    includeSystemDefault: true,
-  });
-}
-
-export async function runImport(options: RunImportOptions): Promise<ImportRunResult> {
-  const limits = resolveLimits(options.limits);
-  const { plan, config, onBatch } = options;
-
-  const planProblems = checkPlan(plan, config, options.lang);
-  if (planProblems.some(problem => problem.level === 'error')) {
-    // Nothing was read, so nothing needs unwinding — but the request body is still open, and
-    // an undrained socket is a leaked handle.
-    destroySource(options.stream);
-    return {
-      imported: 0,
-      skipped: 0,
-      failed: 0,
-      errors: [],
-      errorCount: 0,
-      truncated: false,
-      planProblems,
-      rowsRead: 0,
-    };
-  }
-
-  const sheet = await readSheet({
+export function runImport(options: RunImportOptions): Promise<ImportRunResult> {
+  const { config } = options;
+  return runOverAdapter({
     stream: options.stream,
     filename: options.filename,
-    limits,
+    // A 2.x plan that names no entity is read against this config, as 2.x read it.
+    plan: planForConfig(options.plan, config),
+    adapter: entityFormConfigAdapter(config, { rules: options.rules, lookups: options.lookups }),
+    ctx: { lang: options.lang },
+    decimal: options.decimal,
+    dateOrder: options.dateOrder,
+    onBatch: options.onBatch,
+    limits: options.limits,
   });
-
-  const decimal = options.decimal ?? decimalMarkFor(sheet.delimiter);
-  const errors: ImportRowError[] = [];
-  let errorCount = 0;
-  let imported = 0;
-  let skipped = 0;
-  let failed = 0;
-  let rowsRead = 0;
-  let batchIndex = 0;
-
-  let batch: unknown[][] = [];
-  /** The spreadsheet row number of `batch[0]`. The header is row 1. */
-  let firstRow = 2;
-
-  const flush = async (): Promise<void> => {
-    if (!batch.length) return;
-    const rows = batch;
-    batch = [];
-
-    const result = applyMapping(rows, plan, config, {
-      lang: options.lang,
-      decimal,
-      dateOrder: options.dateOrder,
-      rules: options.rules,
-      lookups: options.lookups,
-      firstRowNumber: firstRow,
-    });
-
-    skipped += result.skipped;
-    errorCount += result.errors.length;
-    // Distinct rows, not problems: one row failing two validators is one row to go and fix.
-    failed += new Set(result.errors.map(error => error.row)).size;
-    // Retained, not accumulated. A file where every row fails is fifty thousand error objects
-    // otherwise, which is the same unbounded growth as holding the file.
-    for (const error of result.errors) {
-      if (errors.length >= limits.maxReportedErrors) break;
-      errors.push(error);
-    }
-
-    if (result.records.length && onBatch) {
-      const info: BatchInfo = { index: batchIndex, firstRow, imported };
-      try {
-        // Awaited before the next batch is pulled. This is the backpressure.
-        await onBatch(result.records, info);
-      } catch (cause) {
-        throw new ImportError(
-          'IMPORT_FAILED',
-          'The import stopped partway through. Rows before the failure may already have ' +
-            'been written — this import is not transactional.',
-          { cause },
-        );
-      }
-    }
-
-    imported += result.records.length;
-    firstRow += rows.length;
-    batchIndex++;
-  };
-
-  try {
-    for await (const row of sheet.rows) {
-      rowsRead++;
-      batch.push(row as unknown[]);
-      if (batch.length >= limits.batchSize) await flush();
-    }
-    await flush();
-  } catch (error) {
-    // A failure anywhere — a limit, a malformed file, the consumer's own writer — leaves the
-    // request body half-read. Destroying it is what stops a hostile uploader from holding a
-    // socket open after the guard that refused them has already fired.
-    destroySource(options.stream);
-    throw error;
-  }
-
-  return {
-    imported,
-    skipped,
-    failed,
-    errors,
-    errorCount,
-    truncated: errorCount > errors.length,
-    planProblems,
-    rowsRead,
-    format: sheet.format,
-  };
 }
 
 // ─── Preview ──────────────────────────────────────────────────────────────────
@@ -274,7 +154,7 @@ export interface SheetPreview {
   headers: string[];
   /** The first few rows as text, for the mapping screen to show under each column. */
   sample: string[][];
-  /** Every inferred match is tagged `guess`. */
+  /** Every inferred match is tagged `guess`. Plan v2 since 3.0. */
   suggestion: MappingPlan;
   /** Data rows in the file, which the whole stream is read to count. */
   rowCount: number;
@@ -286,6 +166,24 @@ export interface SheetPreview {
 }
 
 /**
+ * The suggestion for a sheet's headers, and the rows of each repeating field it was sized for.
+ *
+ * **The same derivation the browser transport uses**, so the two suggest the same mapping for
+ * the same file: sized from the headers, so a sheet with `Phone 6 Number` is offered six
+ * rows, and without readonly and system-default fields, because nobody maps a column onto a
+ * field the form fills in itself.
+ */
+export function suggestionFor(
+  headers: readonly string[],
+  config: EntityFormConfig,
+  lang?: string,
+): { suggestion: MappingPlan; arrayBound: number } {
+  const arrayBound = arrayBoundFor(headers, config, null, lang);
+  const { columns } = deriveImportColumns(config, { lang, maxArrayRows: arrayBound });
+  return { suggestion: suggestMapping(headers, columns, config?.entity ?? ''), arrayBound };
+}
+
+/**
  * Headers, a sample, and a suggested mapping.
  *
  * The whole file is read, because `rowCount` is a number the user is shown before they commit
@@ -294,40 +192,19 @@ export interface SheetPreview {
  * endpoint that skipped them would be the cheapest way in.
  */
 export async function previewSheet(options: PreviewSheetOptions): Promise<SheetPreview> {
-  const limits = resolveLimits(options.limits);
-  const sheet = await readSheet({
+  const preview = await previewOverAdapter({
     stream: options.stream,
     filename: options.filename,
-    limits,
+    adapter: entityFormConfigAdapter(options.config, { includeReadonly: false, includeSystemDefault: false }),
+    lang: options.lang,
+    limits: options.limits,
   });
-
-  const sample: string[][] = [];
-  let rowCount = 0;
-
-  try {
-    for await (const row of sheet.rows) {
-      rowCount++;
-      if (sample.length < limits.sampleRows) sample.push(row.map(sampleText));
-    }
-  } catch (error) {
-    destroySource(options.stream);
-    throw error;
-  }
-
-  // The same derivation the browser transport uses, so the two suggest the same mapping for
-  // the same file. Readonly and system-default fields stay out of a *suggestion* for the same
-  // reason they are marked: nobody maps a column onto a field the form fills in itself.
-  // Sized from the headers, so a sheet with `Phone 6 Number` is offered six rows.
-  const arrayBound = arrayBoundFor(sheet.headers, options.config, null, options.lang);
-  const { columns } = deriveImportColumns(options.config, { lang: options.lang, maxArrayRows: arrayBound });
-
   return {
-    headers: sheet.headers,
-    sample,
-    rowCount,
-    suggestion: suggestMapping(sheet.headers, columns, options.config?.entity ?? ''),
-    format: sheet.format,
-    ...(sheet.delimiter ? { delimiter: sheet.delimiter } : {}),
-    arrayBound,
+    headers: preview.headers,
+    sample: preview.sample,
+    rowCount: preview.rowCount,
+    format: preview.format,
+    ...(preview.delimiter ? { delimiter: preview.delimiter } : {}),
+    ...suggestionFor(preview.headers, options.config, options.lang),
   };
 }

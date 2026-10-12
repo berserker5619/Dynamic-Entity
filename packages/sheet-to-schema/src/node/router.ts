@@ -49,8 +49,24 @@ export interface ImportBinding<TMeta = unknown, TCtx = unknown> {
    * selection, as shape refs, or `undefined` for everything.
    */
   template?: (request: { lang: string; fields: string[] | undefined }) => TemplateSheet;
-  /** Fields added to a preview answer, for what this schema's clients expect beside the standard ones. */
+  /**
+   * The name the template downloads under, before `-template.csv`. Default the adapter's `id`.
+   * Never taken from the request by this router; a binding that sets it answers for it.
+   */
+  templateName?: string;
+  /**
+   * Fields added to a preview answer, for what this schema's clients expect beside the
+   * standard ones. It may also restate `suggestion` or `slots`: a schema whose browser client
+   * runs its own suggester has to be answered with that one, or the two sides would propose
+   * different mappings for one file. It cannot restate the version stamps.
+   */
   previewExtras?: (preview: SheetPreview) => Record<string, unknown>;
+  /**
+   * A plan as it arrived, before it is read. For a schema whose older clients sent plans the
+   * reader would refuse, such as one that never named its target. What it returns is read and
+   * checked like any other plan.
+   */
+  plan?: (plan: unknown) => unknown;
 }
 
 /**
@@ -94,6 +110,19 @@ export interface ImportRouterOptions {
    * same way. Without it, and without the entry's, a date that reads two ways fails its row.
    */
   dateOrder?: DateOrder;
+  /**
+   * The name of the path parameter: routes are `/:<param>/template` and so on, and a writer
+   * reads it from `request.params`. Default `name`.
+   */
+  param?: string;
+  /**
+   * The version stamped on every answer as `engineVersion`. Default this package's.
+   *
+   * For a package that wraps this router and whose clients already compare `engineVersion`
+   * with that package's own version: it goes on answering with its own. The `adapter` stamp
+   * and `planVersions` are this router's either way.
+   */
+  engineVersion?: string;
 }
 
 /** A property of the map itself, never one it inherited: `constructor` is not a binding. */
@@ -189,16 +218,19 @@ export function sendFailure(response: Response, error: unknown): void {
  *
  *     app.use('/import', createImportRouter(express.Router(), { bindings, onImport }));
  *
- * `GET /:name/template`, `POST /:name/preview`, `POST /:name/validate`, `POST /:name/import`.
+ * `GET /:name/template`, `POST /:name/preview`, `POST /:name/validate`, `POST /:name/import`,
+ * with `name` whatever `options.param` calls it.
  */
 export function createImportRouter(router: Router, options: ImportRouterOptions): Router {
   const limits = resolveLimits(options.limits);
+  const param = options.param ?? 'name';
+  const engineVersion = options.engineVersion ?? IMPORTER_VERSION;
 
   const languageOf = (request: Request): string =>
     typeof options.lang === 'function' ? options.lang(request) : options.lang ?? 'en';
 
   const bindingFor = async (request: Request): Promise<{ name: string; binding: ImportBinding }> => {
-    const name = String(request.params['name'] ?? '');
+    const name = String(request.params[param] ?? '');
     const binding =
       typeof options.bindings === 'function' ? await options.bindings(name, request) : ownValue(options.bindings, name);
     // The wire code is Dynamic Entity's, kept because clients branch on it (`errors.ts`).
@@ -224,7 +256,7 @@ export function createImportRouter(router: Router, options: ImportRouterOptions)
     warnings: result.warnings,
     warningCount: result.warningCount,
     planProblems: result.planProblems,
-    engineVersion: IMPORTER_VERSION,
+    engineVersion,
     adapter: stampOf(binding),
   });
 
@@ -236,7 +268,7 @@ export function createImportRouter(router: Router, options: ImportRouterOptions)
     };
 
   router.get(
-    '/:name/template',
+    `/:${param}/template`,
     route(async (request, response) => {
       const { binding } = await bindingFor(request);
       const format = readFormat(request.query['format']);
@@ -245,14 +277,14 @@ export function createImportRouter(router: Router, options: ImportRouterOptions)
       const sheet = binding.template ? binding.template({ lang, fields }) : templateOf(binding.adapter, lang, fields);
 
       response.setHeader('Content-Type', TEMPLATE_MEDIA_TYPE[format]);
-      // Named from the schema, never from the path: the path is the client's.
-      response.setHeader('Content-Disposition', `attachment; filename="${templateFilename(binding.adapter.id, format)}"`);
+      // Named from the schema, or by the binding, never from the path by this router.
+      response.setHeader('Content-Disposition', `attachment; filename="${templateFilename(binding.templateName ?? binding.adapter.id, format)}"`);
       await writeTemplate({ sheet, format, out: response, limits });
     }),
   );
 
   router.post(
-    '/:name/preview',
+    `/:${param}/preview`,
     route(async (request, response) => {
       const { binding } = await bindingFor(request);
       const upload = await receiveUpload(request, limits);
@@ -276,7 +308,7 @@ export function createImportRouter(router: Router, options: ImportRouterOptions)
         ...binding.previewExtras?.(preview),
         // After the extras, so nothing a binding adds can restate what this server is.
         planVersions: [...PLAN_VERSIONS],
-        engineVersion: IMPORTER_VERSION,
+        engineVersion,
         adapter: stampOf(binding),
       };
       response.json(body);
@@ -291,14 +323,14 @@ export function createImportRouter(router: Router, options: ImportRouterOptions)
    * halfway" that does not require a transaction.
    */
   router.post(
-    '/:name/validate',
+    `/:${param}/validate`,
     route(async (request, response) => {
       response.json(await execute(request, false));
     }),
   );
 
   router.post(
-    '/:name/import',
+    `/:${param}/import`,
     route(async (request, response) => {
       response.json(await execute(request, true));
     }),
@@ -311,6 +343,7 @@ export function createImportRouter(router: Router, options: ImportRouterOptions)
     let plan: unknown;
     try {
       plan = readPlanField(upload.fields);
+      if (binding.plan) plan = binding.plan(plan);
     } catch (error) {
       // The plan is wrong and the file is still arriving. Draining it would be reading a body
       // there is no longer any reason to read.
