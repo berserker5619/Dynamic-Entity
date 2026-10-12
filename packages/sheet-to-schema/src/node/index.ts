@@ -7,3 +7,14 @@
 // same thing on both sides.
 
 export { loadOptional } from './optional';
+
+// ─── Limits and failures ────────────────────────────────────────────────────
+export { DEFAULT_LIMITS, resolveLimits } from './limits';
+export type { ImportLimits } from './limits';
+export { ImportError, toErrorBody } from './errors';
+export type { ImportErrorBody, ImportErrorCode } from './errors';
+
+// ─── Bytes ──────────────────────────────────────────────────────────────────
+export { destroySource, limitBytes, peek, toByteStream } from './bytes';
+export type { ByteSource } from './bytes';
+export { guardZip } from './guard-zip';
