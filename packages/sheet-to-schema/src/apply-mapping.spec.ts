@@ -209,12 +209,44 @@ describe('applyMapping — adapter hooks', () => {
 
   it("carries the adapter's coerce failure, code and all", () => {
     const adapter = ordersAdapter({ coerce: () => ({ error: 'no', code: 'CELL_UNKNOWN_OPTION' }) });
-    // As in 2.3, a cell that failed is also absent from the record, so a required target is
-    // reported as required too: the record is judged as it stands.
-    expect(errorsOf(run([['7']], planFor(['orderId']), adapter))).toEqual([
-      { row: 2, ref: 'orderId', code: 'CELL_UNKNOWN_OPTION' },
-      { row: 2, ref: 'orderId', code: 'RECORD_REQUIRED' },
+    // A cell that failed is absent from the record, but it is not a cell nobody filled in: the
+    // required target it feeds is not reported as required too (reversed on 2026-10-12; 2.3 did).
+    expect(errorsOf(run([['7']], planFor(['orderId']), adapter))).toEqual([{ row: 2, ref: 'orderId', code: 'CELL_UNKNOWN_OPTION' }]);
+  });
+
+  it('follows a failed cell to where its slot lands after compaction', () => {
+    // Slot 1's number cannot be read, and slot 0 is empty, so the item compacts to index 0.
+    const adapter = ordersAdapter({
+      coerce: (target, raw) => (target.shapeRef === 'phones.number' && raw === 'BAD' ? { error: 'unreadable', code: 'CELL_FORMAT' } : null),
+    });
+    const refs = ['orderId', 'phones.0.number', 'phones.0.kind', 'phones.1.number', 'phones.1.kind', 'phones.2.kind'];
+    expect(errorsOf(run([['A-1', '', '', 'BAD', 'home', 'work']], planFor(refs), adapter))).toEqual([
+      { row: 2, ref: 'phones.1.number', code: 'CELL_FORMAT' },
+      // Slot 2 has a kind and no number at all; it lands at index 1 and is still required.
+      { row: 2, ref: 'phones.1.number', code: 'RECORD_REQUIRED' },
     ]);
+    // With an item before it, the failed slot stays at index 1, and is not called required there.
+    expect(errorsOf(run([['A-1', '0123 456 789', '', 'BAD', 'home', '']], planFor(refs), adapter))).toEqual([{ row: 2, ref: 'phones.1.number', code: 'CELL_FORMAT' }]);
+    // A slot whose only cell failed leaves no item, so there is nothing to require.
+    expect(errorsOf(run([['A-1', '', '', 'BAD', '', '']], planFor(refs), adapter))).toEqual([{ row: 2, ref: 'phones.1.number', code: 'CELL_FORMAT' }]);
+  });
+
+  it('keeps a slot where it is with compact: false, so its failed cell is found there', () => {
+    const adapter = ordersAdapter({
+      coerce: (target, raw) => (target.shapeRef === 'guardians.name' && raw === 'BAD' ? { error: 'unreadable', code: 'CELL_FORMAT' } : null),
+      targets: options => {
+        const set = ordersAdapter().targets(options);
+        return {
+          ...set,
+          targets: [
+            ...set.targets.map(t => (t.shapeRef === 'guardians.name' ? { ...t, required: true } : t)),
+            ...[0, 1].map(slot => ({ ...set.targets[0], ref: `guardians.${slot}.phone`, shapeRef: 'guardians.phone', arrayRef: 'guardians', arrayIndex: slot, required: false })),
+          ],
+        };
+      },
+    });
+    const plan = planFor(['orderId', 'guardians.0.name', 'guardians.1.name', 'guardians.1.phone'], { lists: { guardians: { compact: false } } });
+    expect(errorsOf(run([['A-1', '', 'BAD', '0123']], plan, adapter))).toEqual([{ row: 2, ref: 'guardians.1.name', code: 'CELL_FORMAT' }]);
   });
 
   it('runs finalize after compaction and before validation', () => {

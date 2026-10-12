@@ -10,9 +10,13 @@ import type { RowProblemCode } from './problem-codes';
 
 /** One thing wrong with, or worth saying about, one record. */
 export interface ImportRowError {
-  /** The sheet row the record started on, counting the header as row 1. */
+  /** The first of `rows`: the row the record started on, or the row of the cell. The header is row 1. */
   row: number;
-  /** v2: every sheet row of a grouped record, ascending. */
+  /**
+   * v2, on a grouped record: the sheet rows the problem came from, ascending. Every row of the
+   * record for a problem with the record as a whole; the cell's own row for a cell that could
+   * not be read, or every row the same cell problem occurred on.
+   */
   rows?: number[];
   /** The target ref, or `''` for a problem that belongs to the whole record. */
   ref: string;

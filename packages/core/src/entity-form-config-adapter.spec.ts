@@ -3,8 +3,11 @@
  *
  * The claim under test is parity. The same rows and the same stored plan go through 2.x's
  * `applyMapping` (this package) and through the importer's `applyMapping` over the adapter, and
- * must give the same records, the same errors and the same skips. The importer adds a `code`
- * to each error, and that is the only difference allowed.
+ * must give the same records, the same errors and the same skips. Two differences are allowed:
+ * - the importer adds a `code` to each error;
+ * - 2.x reports a required field whose cell could not be read twice, once as unreadable and
+ *   once as required. The generic engine reports it as unreadable only (spec §5, reversed on
+ *   2026-10-12). `withoutDoubleRequired` takes exactly those second reports out of 2.x's list.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -24,7 +27,7 @@ import { ratingScale, sliderBounds } from './field-values';
 import type { EntityFormConfig, FormRule, NestedFieldConfig } from './form-model.types';
 import { buildTemplateSpec, deriveImportColumns } from './import-columns';
 import { applyMapping, suggestMapping, type ApplyMappingOptions, type ImportLookups } from './import-engine';
-import type { ImportColumn, MappingPlan } from './import-model.types';
+import type { ImportColumn, ImportRowError, MappingPlan } from './import-model.types';
 import { lookupValuesToOptions, normalizeLookupValues } from './lookup-list';
 
 const ROOT = join(__dirname, '..', '..', '..');
@@ -67,11 +70,25 @@ const withoutCode = (errors: readonly GenericRowError[]) =>
     return copy;
   });
 
+const shapeOfRef = (ref: string): string => ref.split('.').filter(segment => !/^\d+$/.test(segment)).join('.');
+
+/**
+ * 2.x's errors without the "required" it adds for a field whose cell, on the same row, it
+ * has already reported as unreadable. 2.x errors carry no code, so the second report is known
+ * by its shape: no column, and the message validators give a missing value.
+ */
+function withoutDoubleRequired(errors: readonly ImportRowError[]): ImportRowError[] {
+  const unread = new Set(errors.filter(error => error.column !== undefined).map(error => `${error.row} ${shapeOfRef(error.ref)}`));
+  return errors.filter(
+    error => !(error.column === undefined && / is required$/.test(error.message) && unread.has(`${error.row} ${shapeOfRef(error.ref)}`)),
+  );
+}
+
 /** Assert the two engines agree, and hand both results back for anything more specific. */
 function expectParity(...args: Parameters<typeof both>) {
   const { old, neu } = both(...args);
   expect(neu.records).toEqual(old.records);
-  expect(withoutCode(neu.errors)).toEqual(old.errors);
+  expect(withoutCode(neu.errors)).toEqual(withoutDoubleRequired(old.errors));
   expect(neu.skipped).toBe(old.skipped);
   expect(neu.planProblems.map(p => `${p.level} ${p.code}`).sort()).toEqual(old.planProblems.map(p => `${p.level} ${p.code}`).sort());
   // Every error the generic engine reports says why, in a code.
@@ -408,6 +425,17 @@ describe('entityFormConfigAdapter — parity, case by case', () => {
     const { neu } = expectParity([['Rahul', 'rahul.k@example'], ['Ada', 'ada@']], planFor(['name', 'email']), config, { stamp: false });
     expect(neu.records).toEqual([{ name: 'Rahul', email: 'rahul.k@example' }]);
     expect(neu.errors.map(e => [e.row, e.ref, e.code])).toEqual([[3, 'email', 'RECORD_FORMAT']]);
+  });
+
+  it('reports a required field whose cell could not be read once, where 2.x reports it twice', () => {
+    const config = configWith({ id: 'age', type: 'number', label: { en: 'Age' }, validators: { required: true } }, text('city', 'City', { validators: { required: true } }));
+    const { old, neu } = expectParity([['Ada', 'old', '']], planFor(['name', 'age', 'city']), config, { stamp: false });
+    expect(old.errors.map(e => e.ref)).toEqual(['age', 'age', 'city']);
+    expect(neu.errors.map(e => [e.ref, e.code])).toEqual([
+      ['age', 'CELL_FORMAT'],
+      // Nothing was typed for the city, which is what required means.
+      ['city', 'RECORD_REQUIRED'],
+    ]);
   });
 
   it('takes a typed constant as it is, and a text one through the field', () => {

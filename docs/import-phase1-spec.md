@@ -212,11 +212,14 @@ With `group` set, consecutive sheet rows sharing a key produce one record, and e
 
 **Errors and counts**
 
-- Grouped errors and warnings carry `rows: number[]`, the sheet rows of the record in ascending order, in addition to `row` (= `rows[0]`). A list, not a `[first, last]` range: under `contiguous: false` a group's rows need not be adjacent. See §9.
+- Grouped errors and warnings carry `rows: number[]`, the sheet rows the problem came from in ascending order, in addition to `row` (= `rows[0]`). A list, not a `[first, last]` range: under `contiguous: false` a group's rows need not be adjacent. See §9.
+  - A problem with the record as a whole (every `RECORD_*` code) carries every row of the record.
+  - A cell that could not be read (every `CELL_*` code) carries the row of its cell: `rows: [thatRow]`, and `row` is that row.
+  - Identical problems in one record, meaning the same `code`, `ref` and `message`, MUST be merged into one, with `rows` the union. A parent cell that fails on each of a record's three rows is one error carrying three rows, not three errors.
 - Group warnings go in `warnings`, never in `errors` (§9). A record with warnings is imported.
 - `rowsRead`, `skipped` and `failed` keep counting sheet rows; `imported` counts records. `failed` counts rows with an **error** only. The reconciliation becomes `rowsInImported + skipped + failed === rowsRead`, where `rowsInImported` is reported too.
 - If any row of a group fails coercion, the whole record fails and all its rows count as `failed`.
-- As in 2.3, a cell that fails coercion is also absent from the record, so a required target fed by it is reported as `RECORD_REQUIRED` as well. The record is judged as it stands.
+- A cell that fails coercion is absent from the record, but it is not a cell nobody filled in. A target whose cell has a `CELL_*` error in a record MUST NOT also be reported as `RECORD_REQUIRED` in that record, grouped or not. *(Reversed on 2026-10-12. Until then this said the opposite, as 2.3 does: "a required target fed by it is reported as `RECORD_REQUIRED` as well".)* The target is matched where its value would have been: a numbered slot at the index it has after compaction, and a collected item at its index in the record. A slot or item whose only cells failed leaves no item, so nothing is required of it. Any other required target with no value is still reported.
 
 ## Lists
 
@@ -373,8 +376,8 @@ The result types change by additive, optional fields only, and no existing field
 
 ```typescript
 export interface ImportRowError {
-  row: number;                 // first sheet row of the record
-  rows?: number[];             // v2: every sheet row of a grouped record, ascending
+  row: number;                 // rows[0]: the first sheet row of the record, or the row of the cell
+  rows?: number[];             // v2, grouped records: the sheet rows the problem came from, ascending (§5)
   ref: string;                 // unchanged, still required; '' for a problem that belongs to the whole record
   column?: number;
   code?: RowProblemCode;       // v2: optional on the type; set on everything the engine emits
@@ -485,7 +488,7 @@ Phase 1 is done when these types compile and the reader and contract tests below
 
 **Adapters**
 
-- [ ] `entityFormConfigAdapter`: the full existing core and server suites pass unchanged against the generic engine, except for the additive `code` and `warnings` fields. A test that compared a whole error object may add the code, and nothing else (Phase 2 gate).
+- [ ] `entityFormConfigAdapter`: the full existing core and server suites pass unchanged against the generic engine, except for the additive `code` and `warnings` fields, and for one removal: the second, `required` report of a field whose cell could not be read (§5, reversed on 2026-10-12). A test that compared a whole error object may add the code, a test that expected that second report may drop it, and nothing else (Phase 2 gate).
 - [ ] `jsonSchemaAdapter` on the order schema from the prototype produces the same records as the prototype's sample run.
 - [ ] `exampleJsonAdapter` on the student example (`test/fixtures/student`) infers a split `clubs` list and one guardian slot from the example, and fills 2 guardian slots from the sheet's numbered headers.
 - [ ] A `custom` kind without `coerce` throws at adapter construction.
@@ -691,3 +694,10 @@ A `custom` kind reaching `coerceValue` throws (§7).
 - **Dynamic Entity is unchanged.** A test in core's adapter spec holds both sides: `rahul.k@example` passes through the DE adapter, as it does in 2.x, and fails the generic checks.
 
 **2026-10-12: `jsonSchemaAdapter` takes a list of records (owner's decision 3, a Phase 1 requirement).** The prototype's order schema is written as the file it describes: `type: array`, with `items` a `$ref` to the order. The adapter refused it, wanting an object at the root. It now reads the items as the record, and §7's table says so. `required` is taken from the record; the list around it adds nothing. A root list of anything else (strings, lists, nothing) still throws.
+
+**2026-10-12: problems of a record are reported once each (owner's decision 5, a Phase 1 requirement).** On the order fixture, a grouped record's errors were hard to act on: a bad date on both rows of an order was two errors, each claiming both rows, and a quantity of `one` on row 6 was reported against rows 5 and 6 and then again as a missing required value.
+- **§5, "Errors and counts", now states three rules:** a `CELL_*` error carries the row of its own cell; identical problems in one record are merged, with their rows unioned; and a target with a `CELL_*` error is not also `RECORD_REQUIRED`.
+- **The third rule reverses what this spec said.** The entry of 2026-10-10 on `applyMapping` kept "2.3's double report of a failed required cell". It applies to every record, grouped or not, so it is a difference from Dynamic Entity 2.x:
+  - the Phase 2 gate's acceptance item now allows that one removal, besides the additive fields;
+  - core's adapter parity spec states it, and takes exactly those second reports out of 2.x's errors before comparing.
+- **Not changed, and left for the owner:** a group warning (`RECORD_GROUP_CONFLICT`) still carries every row of the record. The prototype's own warning names only the row that disagreed.

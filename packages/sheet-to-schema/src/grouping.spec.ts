@@ -164,9 +164,74 @@ describe('grouping (§5)', () => {
       ['B', '', 'S3', '1'],
     ]);
     expect(result.records.map(r => r['orderId'])).toEqual(['B']);
-    expect(result.errors).toEqual([expect.objectContaining({ row: 2, rows: [2, 3], ref: 'items.qty', column: 3, code: 'CELL_FORMAT' })]);
+    // The error names the row its cell is on; the count is still every row of the record.
+    expect(result.errors).toEqual([expect.objectContaining({ row: 3, rows: [3], ref: 'items.qty', column: 3, code: 'CELL_FORMAT' })]);
     expect(result).toMatchObject({ failed: 2, rowsInImported: 1, imported: 1 });
     expect(reconciles(result)).toBe(true);
+  });
+
+  describe('problems of a grouped record', () => {
+    /** Columns: 0 order id, 1 placed (a date), 2 sku, 3 qty. */
+    const dated = {
+      planVersion: 2,
+      target: 'orders',
+      entries: [
+        { ref: 'orderId', column: 0 },
+        { ref: 'placed', column: 1 },
+        { ref: 'items.sku', column: 2 },
+        { ref: 'items.qty', column: 3 },
+      ],
+      group: { key: [0], collect: ['items'] },
+    };
+    const problems = (result: ImportResult) => result.errors.map(({ row, rows, ref, code }) => ({ row, rows, ref, code }));
+
+    it('reports a parent cell that fails on every row of the record once, with those rows', () => {
+      const result = run([['A', '31/09/2026', 'S1', '1'], ['A', '31/09/2026', 'S2', '1'], ['A', '31/09/2026', 'S3', '1']], dated);
+      expect(problems(result)).toEqual([{ row: 2, rows: [2, 3, 4], ref: 'placed', code: 'CELL_FORMAT' }]);
+      expect(result.errors[0]).toMatchObject({ column: 1, raw: '31/09/2026' });
+      expect(result).toMatchObject({ failed: 3, imported: 0 });
+    });
+
+    it('keeps two problems apart when their messages differ, each on its own row', () => {
+      const result = run([['A', 'never', 'S1', '1'], ['A', '2026-09-05', 'S2', '1'], ['A', 'soon', 'S3', '1']], dated);
+      expect(problems(result)).toEqual([
+        { row: 2, rows: [2], ref: 'placed', code: 'CELL_FORMAT' },
+        { row: 4, rows: [4], ref: 'placed', code: 'CELL_FORMAT' },
+      ]);
+    });
+
+    it('merges the same item-cell failure on two rows, and leaves a record-level problem on every row', () => {
+      const result = run([['A', '', 'S1', 'one'], ['A', '', 'S2', 'one'], ['A', '', '', '2']], dated);
+      expect(problems(result)).toEqual([
+        { row: 2, rows: [2, 3], ref: 'items.qty', code: 'CELL_FORMAT' },
+        // The third row's item has a qty and no sku at all.
+        { row: 2, rows: [2, 3, 4], ref: 'items.2.sku', code: 'RECORD_REQUIRED' },
+      ]);
+    });
+
+    it('does not also call an item field required when its own cell could not be read', () => {
+      const adapter = ordersAdapter({
+        coerce: (target, raw) => (target.shapeRef === 'items.sku' && raw === 'BAD' ? { error: 'unreadable', code: 'CELL_FORMAT' } : null),
+      });
+      const result = run([['A', '', 'S1', '1'], ['A', '', 'BAD', '2'], ['A', '', '', '3']], dated, adapter);
+      expect(problems(result)).toEqual([
+        { row: 3, rows: [3], ref: 'items.sku', code: 'CELL_FORMAT' },
+        // Row 4 said nothing in its sku cell, which is what required means.
+        { row: 2, rows: [2, 3, 4], ref: 'items.2.sku', code: 'RECORD_REQUIRED' },
+      ]);
+    });
+
+    it('does not call a parent field required when its cell could not be read on any row', () => {
+      const adapter = ordersAdapter({
+        coerce: (target, raw) => (target.ref === 'placed' && raw === 'BAD' ? { error: 'unreadable', code: 'CELL_FORMAT' } : null),
+        targets: options => {
+          const set = ordersAdapter().targets(options);
+          return { ...set, targets: set.targets.map(t => (t.ref === 'placed' ? { ...t, required: true } : t)) };
+        },
+      });
+      expect(problems(run([['A', 'BAD', 'S1', '1'], ['A', '', 'S2', '1']], dated, adapter))).toEqual([{ row: 2, rows: [2], ref: 'placed', code: 'CELL_FORMAT' }]);
+      expect(problems(run([['B', '', 'S1', '1']], dated, adapter))).toEqual([{ row: 2, rows: [2], ref: 'placed', code: 'RECORD_REQUIRED' }]);
+    });
   });
 
   it('appends identical items as two items, and drops an all-blank one', () => {

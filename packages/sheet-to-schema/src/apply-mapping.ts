@@ -13,13 +13,16 @@
  *    record: parent fields first-row-wins, collected items appended (§5).
  * 3. Each record is finalized, then validated (the adapter's `validate`, else the generic
  *    checks), once, after its last row.
+ * 4. Its problems are reported once each. A cell that could not be read names its own row,
+ *    the same problem on several rows is one problem carrying those rows, and a target whose
+ *    cell could not be read is not also called required.
  */
 import type { CoerceOutcome, ImportTarget, SchemaAdapter, TargetSet, ValueKind } from './adapter.types';
 import { cellText } from './cell-text';
 import { coerceValue } from './coerce';
 import { ImportFailure } from './import-failure';
 import type { GroupSpec, NormalizedPlan, PlanProblem } from './plan.types';
-import { planSlots } from './plan-slots';
+import { planSlots, slotOf } from './plan-slots';
 import { readPlan } from './read-plan';
 import { getRecordValue, isEmptyValue, setRecordValue } from './record-path';
 import type { ImportResult, ImportRowError } from './result.types';
@@ -107,6 +110,29 @@ interface MappedRow {
   parent: Record<string, unknown>;
   items: Map<string, Record<string, unknown>>;
   errors: ImportRowError[];
+  /** Parent refs whose cell could not be read, at the address the value would have had after its array settled. */
+  unread: string[];
+  /** The same for a collected array's item: paths within the item, by array ref. */
+  unreadInItem: Map<string, string[]>;
+}
+
+/**
+ * The same problem reported more than once in one record — a parent cell that fails on every
+ * row of a group — as one problem carrying every row it came from.
+ */
+function mergeProblems(problems: ImportRowError[]): ImportRowError[] {
+  const merged = new Map<string, ImportRowError>();
+  for (const problem of problems) {
+    const key = JSON.stringify([problem.code, problem.ref, problem.message]);
+    const known = merged.get(key);
+    if (!known) {
+      merged.set(key, problem);
+      continue;
+    }
+    const rows = [...new Set([...(known.rows ?? [known.row]), ...(problem.rows ?? [problem.row])])].sort((a, b) => a - b);
+    merged.set(key, { ...known, row: rows[0], rows });
+  }
+  return [...merged.values()];
 }
 
 /** The rows of one record. A keyless group is a row with a blank key, imported on its own. */
@@ -234,7 +260,8 @@ export function applyMapping<TMeta, TCtx>(
   }
 
   const mapRow = (cells: readonly unknown[], rowNumber: number): { row: MappedRow; sawValue: boolean } => {
-    const row: MappedRow = { rowNumber, cells, parent: {}, items: new Map(), errors: [] };
+    const row: MappedRow = { rowNumber, cells, parent: {}, items: new Map(), errors: [], unread: [], unreadInItem: new Map() };
+    const unreadRefs: string[] = [];
     let sawValue = false;
     for (const entry of ready.entries) {
       const collect = collectOf(entry.ref);
@@ -259,6 +286,8 @@ export function applyMapping<TMeta, TCtx>(
           message: outcome.error,
           raw,
         });
+        if (collect) row.unreadInItem.set(collect, [...(row.unreadInItem.get(collect) ?? []), entry.ref.slice(collect.length + 1)]);
+        else unreadRefs.push(entry.ref);
         sawValue = true;
         continue;
       }
@@ -273,10 +302,28 @@ export function applyMapping<TMeta, TCtx>(
         setRecordValue(row.parent, entry.ref, outcome.value);
       }
     }
+    /** Where each slot's item is once its array has settled, or `null` when it left no item. */
+    const landed = new Map<string, (slot: number) => number | null>();
     for (const array of set.arrays) {
       if (collected.has(array.ref)) continue;
       const items = getRecordValue(row.parent, array.ref);
-      if (Array.isArray(items)) setRecordValue(row.parent, array.ref, settleArray(items, ready.lists?.[array.ref]?.compact ?? true));
+      const compact = ready.lists?.[array.ref]?.compact ?? true;
+      const before: unknown[] = Array.isArray(items) ? items : [];
+      if (Array.isArray(items)) setRecordValue(row.parent, array.ref, settleArray(items, compact));
+      landed.set(array.ref, slot => {
+        if (isEmptyValue(before[slot])) return null;
+        return compact ? before.slice(0, slot).filter(item => !isEmptyValue(item)).length : slot;
+      });
+    }
+    for (const ref of unreadRefs) {
+      const at = slotOf(ref);
+      const land = at && landed.get(at.arrayRef);
+      if (!at || !land) {
+        row.unread.push(ref);
+        continue;
+      }
+      const index = land(at.slot);
+      if (index !== null) row.unread.push(`${at.arrayRef}.${index}${ref.slice(at.arrayRef.length + 1 + String(at.slot).length)}`);
     }
     return { row, sawValue };
   };
@@ -288,16 +335,32 @@ export function applyMapping<TMeta, TCtx>(
   let failed = 0;
   let rowsInImported = 0;
 
-  /** Finalize and judge one record. A grouped record's problems carry every row it came from. */
-  const finish = (record: Record<string, unknown>, rowNumbers: number[], cellErrors: ImportRowError[], recordWarnings: ImportRowError[]): void => {
-    const stamp = (problem: ImportRowError): ImportRowError => (group ? { ...problem, row: rowNumbers[0], rows: rowNumbers } : problem);
+  /**
+   * Finalize and judge one record. In a grouped record a problem with the whole record carries
+   * every row it came from, and a cell that could not be read carries its own.
+   *
+   * `unread` holds the refs whose cell could not be read. Such a target is absent from the
+   * record, but it is not one nobody filled in, so it is not reported as required as well
+   * (§5; 2.3 reported both).
+   */
+  const finish = (
+    record: Record<string, unknown>,
+    rowNumbers: number[],
+    cellErrors: ImportRowError[],
+    recordWarnings: ImportRowError[],
+    unread: ReadonlySet<string>,
+  ): void => {
+    const ofRecord = (problem: ImportRowError): ImportRowError => (group ? { ...problem, row: rowNumbers[0], rows: rowNumbers } : problem);
+    const ofCell = (problem: ImportRowError): ImportRowError => (group ? { ...problem, rows: [problem.row] } : problem);
     const finished = adapter.finalize ? adapter.finalize(record, ctx) : record;
-    const problems = adapter.validate ? adapter.validate(finished, ctx) : validateRecord(finished, set);
-    const recordErrors = [
-      ...cellErrors,
-      ...problems.map(problem => ({ row: rowNumbers[0], ref: problem.ref, code: problem.code, message: problem.message, raw: problem.raw })),
-    ].map(stamp);
-    warnings.push(...recordWarnings.map(stamp));
+    const problems = (adapter.validate ? adapter.validate(finished, ctx) : validateRecord(finished, set)).filter(
+      problem => !(problem.code === 'RECORD_REQUIRED' && unread.has(problem.ref)),
+    );
+    const recordErrors = mergeProblems([
+      ...cellErrors.map(ofCell),
+      ...problems.map(problem => ofRecord({ row: rowNumbers[0], ref: problem.ref, code: problem.code, message: problem.message, raw: problem.raw })),
+    ]);
+    warnings.push(...mergeProblems(recordWarnings.map(ofRecord)));
     if (recordErrors.length) {
       errors.push(...recordErrors);
       // §5: if any row of a group fails, the whole record fails and every row of it counts.
@@ -337,15 +400,19 @@ export function applyMapping<TMeta, TCtx>(
         }
       }
     }
+    const unread = new Set(members.flatMap(member => member.unread));
     for (const array of collected) {
       // Not de-duplicated: two identical line items are two items. An all-blank item is no item.
-      const items = members.flatMap(member => {
+      const items: Record<string, unknown>[] = [];
+      for (const member of members) {
         const item = member.items.get(array);
-        return item && !isEmptyValue(item) ? [item] : [];
-      });
+        if (!item || isEmptyValue(item)) continue;
+        for (const path of member.unreadInItem.get(array) ?? []) unread.add(`${array}.${items.length}.${path}`);
+        items.push(item);
+      }
       if (items.length) setRecordValue(record, array, items);
     }
-    finish(record, rowNumbers, members.flatMap(member => member.errors), recordWarnings);
+    finish(record, rowNumbers, members.flatMap(member => member.errors), recordWarnings, unread);
   };
 
   const firstRow = options.firstRowNumber ?? 2;
@@ -357,7 +424,7 @@ export function applyMapping<TMeta, TCtx>(
   });
 
   if (group) for (const members of groupRows(mapped, group)) buildGroup(members);
-  else for (const row of mapped) finish(row.parent, [row.rowNumber], row.errors, []);
+  else for (const row of mapped) finish(row.parent, [row.rowNumber], row.errors, [], new Set(row.unread));
 
   return {
     records,
