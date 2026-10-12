@@ -82,7 +82,13 @@ day was over 12 failed with an error at the time and were not imported.
   `RunImportOptions`, `ImportRouterOptions`, and `ImportContext` (which is how it reaches
   `LocalImportTransport`), with a `dateOrder` input on the wizard. It is an option of the
   import; `MappingPlan` is unchanged in 2.x.
-- Stating `'MDY'` gives exactly the reading every earlier release applied.
+- Stating `'MDY'` gives exactly the reading every earlier release applied, two-digit years
+  included: `5/9/26` is 9 May 2026. A two-digit year takes the century `Date` gives it, in
+  either stated order.
+- A preview response carries the router's `dateOrder`. The wizard reads its review sample
+  with the order the transport reports, refuses to commit when the host stated a different
+  one, and warns when the host stated one that the transport does not confirm. A server
+  older than 2.5.0 confirms none and reads month first, and the warning says so.
 - A date only one order fits, a year-first date, an ISO date and a typed date cell read
   exactly as before. `import-engine.timezone.spec.ts` holds that against the old algorithm in
   six timezones.

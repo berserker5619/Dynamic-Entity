@@ -314,3 +314,13 @@ describe('LocalImportTransport — a date written in digits', () => {
     expect((await commit('MDY')).records.map(record => record['born'])).toEqual(['2026-05-09', '2026-09-06']);
   });
 });
+
+describe('LocalImportTransport.preview — the date order it will read with', () => {
+  it('reports the order the context states, and nothing when it states none', async () => {
+    const transport = TestBed.inject(LocalImportTransport);
+    const stated = await transport.preview(csvFile('p.csv', 'First Name\nAlice\n'), { ...CONTEXT, dateOrder: 'DMY' });
+    expect(stated.dateOrder).toBe('DMY');
+    const unstated = await transport.preview(csvFile('q.csv', 'First Name\nAlice\n'), CONTEXT);
+    expect(unstated).not.toHaveProperty('dateOrder');
+  });
+});

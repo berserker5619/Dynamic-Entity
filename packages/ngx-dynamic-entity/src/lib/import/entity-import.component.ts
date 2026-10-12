@@ -28,7 +28,7 @@ import { ImportErrorsComponent } from './import-errors.component';
 import { ImportMapperComponent } from './import-mapper.component';
 import { ImportPreviewComponent } from './import-preview.component';
 import { ImportTemplateComponent } from './import-template.component';
-import type { ImportContext, ImportTransport, TemplateFormat } from './import-contracts';
+import { compareDateOrders, type ImportContext, type ImportTransport, type TemplateFormat } from './import-contracts';
 
 type Step = 'upload' | 'map' | 'review' | 'done';
 
@@ -113,6 +113,18 @@ type Step = 'upload' | 'map' | 'review' | 'done';
           @if (delimiterText(); as separator) {
             <p class="ngx-entity-import__delimiter" data-testid="import-delimiter">{{ separator }}</p>
           }
+          @switch (dateOrderCheck()) {
+            @case ('mismatch') {
+              <p class="ngx-entity-import__problem" role="alert" data-testid="import-date-order-mismatch">
+                {{ ui.text('importDateOrderMismatch', language, dateOrders()) }}
+              </p>
+            }
+            @case ('unconfirmed') {
+              <p class="ngx-entity-import__delimiter" data-testid="import-date-order-unconfirmed">
+                {{ ui.text('importDateOrderUnconfirmed', language, dateOrders()) }}
+              </p>
+            }
+          }
           @if (plan(); as current) {
             <ngx-import-preview
               [config]="config"
@@ -122,13 +134,13 @@ type Step = 'upload' | 'map' | 'review' | 'done';
               [rules]="rules"
               [language]="language"
               [decimal]="decimal()"
-              [dateOrder]="dateOrder"
+              [dateOrder]="reportedDateOrder()"
             />
           }
           <button
             type="button"
             data-testid="import-commit"
-            [disabled]="busy()"
+            [disabled]="busy() || dateOrderCheck() === 'mismatch'"
             (click)="commit()"
           >
             {{
@@ -267,6 +279,10 @@ export class EntityImportComponent {
    * The order of a date written in digits in the sheets this wizard imports: `DMY` for day
    * first, `MDY` for month first. Without it, a date that reads two ways (`05/09/2026`) is
    * shown, and imported, as an error rather than guessed.
+   *
+   * The transport reads the file, so the order it reports at preview is the one applied, and
+   * the one the review step shows. If that differs from this, the wizard refuses to commit;
+   * if the transport reports none, the wizard warns that this order is not being applied.
    */
   @Input() dateOrder?: DateOrder;
   /** Format asked of the transport when a template is downloaded. */
@@ -288,6 +304,8 @@ export class EntityImportComponent {
   protected readonly rowCount = signal(0);
   /** The separator a delimited file turned out to use, so the user can see how it was read. */
   protected readonly delimiter = signal<CsvDelimiter | undefined>(undefined);
+  /** The date order the transport said it will read with at commit, from its preview. */
+  protected readonly reportedDateOrder = signal<DateOrder | undefined>(undefined);
   protected readonly fileName = signal('');
   protected readonly plan = signal<MappingPlan | null>(null);
   protected readonly result = signal<ImportResult | null>(null);
@@ -386,6 +404,7 @@ export class EntityImportComponent {
       this.sample.set(preview.sample);
       this.rowCount.set(preview.rowCount);
       this.delimiter.set(preview.delimiter);
+      this.reportedDateOrder.set(preview.dateOrder);
       this.plan.set(preview.suggestion);
       this.step.set('map');
     } catch (error) {
@@ -401,6 +420,13 @@ export class EntityImportComponent {
     const plan = this.plan();
     if (!this.file || !plan) {
       this.problem.set(this.ui.text('importNeedFile', this.language));
+      return;
+    }
+
+    // Never on a mismatch: the review showed dates read one way and the commit would store
+    // them read another. The button is disabled too; this is for whatever calls it anyway.
+    if (this.dateOrderCheck() === 'mismatch') {
+      this.problem.set(this.ui.text('importDateOrderMismatch', this.language, this.dateOrders()));
       return;
     }
 
@@ -473,6 +499,16 @@ export class EntityImportComponent {
    */
   protected failedRowCount(result: ImportResult): number {
     return result.failed ?? new Set(result.errors.map(error => error.row)).size;
+  }
+
+  /** How the order the host states compares with the one the transport reads with. */
+  protected dateOrderCheck(): 'agreed' | 'mismatch' | 'unconfirmed' {
+    return compareDateOrders(this.dateOrder, this.reportedDateOrder());
+  }
+
+  /** The two orders, for a message that names them. Only asked for when they do not agree. */
+  protected dateOrders(): { stated: string; reported: string } {
+    return { stated: String(this.dateOrder), reported: String(this.reportedDateOrder()) };
   }
 
   /** The decimal mark the commit will read numbers with, so the preview reads them the same. */

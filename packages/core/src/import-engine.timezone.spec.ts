@@ -247,8 +247,9 @@ describe(`a date written in digits is read in a stated order, or not at all (TZ=
     expect(coerceCell(DATE_FIELD, '09/31/2026', { dateOrder: 'DMY' })).toEqual({ error: '"09/31/2026" is not a date' });
     expect(coerceCell(DATE_FIELD, '13/09/2026', { dateOrder: 'MDY' })).toEqual({ error: '"13/09/2026" is not a date' });
     expect(coerceCell(DATE_FIELD, '05/09/2026', { dateOrder: 'YMD' })).toEqual({ error: '"05/09/2026" is not a date' });
-    // No century is chosen for the sheet either.
-    expect(coerceCell(DATE_FIELD, '5/9/26', { dateOrder: 'DMY' })).toEqual({ error: '"5/9/26" is not a date' });
+    // A year of one or three digits is not a year.
+    expect(coerceCell(DATE_FIELD, '5/9/026', { dateOrder: 'DMY' })).toEqual({ error: '"5/9/026" is not a date' });
+    expect(coerceCell(DATE_FIELD, '5/9/6', { dateOrder: 'MDY' })).toEqual({ error: '"5/9/6" is not a date' });
     expect(coerceCell(DATETIME_FIELD, '31/09/2026 10:30', { dateOrder: 'DMY' })).toEqual({ error: '"31/09/2026 10:30" is not a date and time' });
     expect(coerceCell(MONTH_FIELD, '31/09/2026', { dateOrder: 'DMY' })).toEqual({ error: '"31/09/2026" is not a month and year' });
   });
@@ -267,6 +268,41 @@ describe(`a date written in digits is read in a stated order, or not at all (TZ=
     'not a date',
   ])('reads %s, which is not ambiguous, exactly as before', text => {
     expect(coerceCell(DATE_FIELD, text)).toEqual(before2_5(text));
+  });
+
+  /**
+   * A two-digit year. 2.4.1 read `5/9/26` as 9 May 2026: month first, and the century `Date`
+   * picks (00 to 49 is 20xx, 50 to 99 is 19xx). Stating month first must give exactly that
+   * back, or a month-first sheet written this way could not be imported at all.
+   */
+  it.each(['5/9/26', '9/13/26', '5/9/49', '5/9/50', '12/31/99', '1/1/00', '02/29/24'])(
+    'reads %s exactly as before when month first is stated',
+    text => {
+      expect(coerceCell(DATE_FIELD, text, { dateOrder: 'MDY' })).toEqual(before2_5(text));
+    },
+  );
+
+  it('reads a two-digit year day first with the same century, when day first is stated', () => {
+    expect(coerceCell(DATE_FIELD, '5/9/26', { dateOrder: 'DMY' })).toEqual({ value: '2026-09-05' });
+    expect(coerceCell(DATE_FIELD, '13/9/26', { dateOrder: 'DMY' })).toEqual({ value: '2026-09-13' });
+    expect(coerceCell(DATE_FIELD, '5/9/49', { dateOrder: 'DMY' })).toEqual({ value: '2049-09-05' });
+    expect(coerceCell(DATE_FIELD, '5/9/50', { dateOrder: 'DMY' })).toEqual({ value: '1950-09-05' });
+    expect(coerceCell(DATE_FIELD, '29/02/24', { dateOrder: 'DMY' })).toEqual({ value: '2024-02-29' });
+    expect(coerceCell(DATE_FIELD, '29/02/23', { dateOrder: 'DMY' })).toEqual({ error: '"29/02/23" is not a date' });
+    expect(coerceCell(MONTH_FIELD, '5/9/26', { dateOrder: 'DMY' })).toEqual({ value: '2026-09' });
+    expect(coerceCell(DATETIME_FIELD, '5/9/26 10:30', { dateOrder: 'MDY' })).toEqual({ value: new Date('5/9/26 10:30').toISOString() });
+    expect(coerceCell(DATETIME_FIELD, '5/9/26 10:30', { dateOrder: 'DMY' })).toEqual({ value: new Date(2026, 8, 5, 10, 30).toISOString() });
+  });
+
+  it('with no order stated, reads a two-digit year exactly as before unless the date reads two ways', () => {
+    // Only one order fits these, so they go the way they always went.
+    expect(coerceCell(DATE_FIELD, '9/13/26')).toEqual(before2_5('9/13/26'));
+    expect(coerceCell(DATE_FIELD, '9/13/26')).toEqual({ value: '2026-09-13' });
+    expect(coerceCell(DATE_FIELD, '13/9/26')).toEqual(before2_5('13/9/26'));
+    expect(coerceCell(DATE_FIELD, '13/9/26')).toEqual({ error: '"13/9/26" is not a date' });
+    // This one imported as 9 May 2026, and is now refused until the order is stated.
+    expect(before2_5('5/9/26')).toEqual({ value: '2026-05-09' });
+    expect(coerceCell(DATE_FIELD, '5/9/26')).toEqual(refused);
   });
 
   it('reads an ISO date exactly as before, whatever order is stated', () => {

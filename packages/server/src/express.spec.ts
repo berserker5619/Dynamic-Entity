@@ -773,3 +773,19 @@ describe('createImportRouter — dateOrder', () => {
     expect(validated.body).toMatchObject({ failed: 0, errors: [] });
   });
 });
+
+describe('POST /:entity/preview — the date order the router reads with', () => {
+  const preview = (overrides: Parameters<typeof app>[0]) =>
+    request(app(overrides)).post('/import/employee/preview').attach('file', Buffer.from(CSV_TEXT), 'people.csv');
+
+  it('reports the order the router states, so a client can read its sample the same way', async () => {
+    expect((await preview({ dateOrder: 'DMY' })).body.dateOrder).toBe('DMY');
+    expect((await preview({ dateOrder: 'MDY' })).body.dateOrder).toBe('MDY');
+  });
+
+  it('leaves it out when the router states none', async () => {
+    const response = await preview({});
+    expect(response.status).toBe(200);
+    expect(response.body).not.toHaveProperty('dateOrder');
+  });
+});

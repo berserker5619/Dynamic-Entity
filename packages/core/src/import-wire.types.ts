@@ -12,6 +12,7 @@
  */
 
 import type { CsvDelimiter } from './csv';
+import type { DateOrder } from './import-engine';
 import type { ImportRowError, MappingPlan } from './import-model.types';
 import type { ConfigProblem } from './validate-config';
 
@@ -31,6 +32,13 @@ export interface ImportPreviewResponse {
   arrayBound?: number;
   /** The field separator a CSV upload turned out to use. Absent for a workbook. */
   delimiter?: CsvDelimiter;
+  /**
+   * The order this server reads a date written in digits in (its router's `dateOrder`).
+   * Absent when it states none, and from every server older than 2.5.0, which read such a date
+   * month first without saying so. A client reads its review sample with this, and must not
+   * commit when it was itself told a different order.
+   */
+  dateOrder?: DateOrder;
   /**
    * `CORE_VERSION` on the machine that produced this.
    *

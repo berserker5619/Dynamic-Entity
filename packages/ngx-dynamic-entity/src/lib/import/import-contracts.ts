@@ -102,6 +102,32 @@ export interface ImportPreview {
   arrayBound?: number;
   /** The field separator a delimited-text file used. Absent for a workbook. */
   delimiter?: CsvDelimiter;
+  /**
+   * The order this transport will read a date written in digits in when it commits. Absent
+   * when it will read with none, or cannot say.
+   *
+   * The wizard reads the review sample with it, so the review shows what the commit will
+   * store. When the host stated a different order the wizard refuses to commit, and when the
+   * host stated one and the transport reports none it warns.
+   */
+  dateOrder?: DateOrder;
+}
+
+/**
+ * How the order the host states compares with the one the transport reports it reads with.
+ *
+ * - `mismatch`: both state one and they differ. Committing would store dates read one way
+ *   after a review that showed them the other, so nothing may be committed.
+ * - `unconfirmed`: the host states one and the transport reports none. The transport reads the
+ *   file, so the host's order is not applied: worth a warning, not a refusal.
+ * - `agreed`: anything else. Only the transport stating one is fine: it is the one that reads.
+ */
+export function compareDateOrders(
+  stated: DateOrder | undefined,
+  reported: DateOrder | undefined,
+): 'agreed' | 'mismatch' | 'unconfirmed' {
+  if (!stated || stated === reported) return 'agreed';
+  return reported ? 'mismatch' : 'unconfirmed';
 }
 
 /**

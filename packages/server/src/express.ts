@@ -340,6 +340,9 @@ export function createImportRouter(options: ImportRouterOptions): Router {
         rowCount: preview.rowCount,
         arrayBound: preview.arrayBound,
         ...(preview.delimiter ? { delimiter: preview.delimiter } : {}),
+        // The order every import through this router is read in, so the client reads its
+        // sample the same way and can refuse to commit when it was told another.
+        ...(options.dateOrder ? { dateOrder: options.dateOrder } : {}),
         engineVersion: CORE_VERSION,
       };
       response.json(body);

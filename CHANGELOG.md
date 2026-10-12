@@ -67,8 +67,19 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - With no order stated, a date that reads two ways (both of its first two parts are 12 or
     less) fails its row: `"05/09/2026" could be day first or month first; state the import's
     date order`. The other rows of the file still import.
-  - With a server transport, state the same order on the router and on the wizard. The
-    wizard's review step reads the sample in the browser, and the server reads the file.
+  - **With a server transport, the server's order is the one that is applied,** because the
+    server reads the file. Its preview now says which order its router reads with, and the
+    wizard reads the review sample with that, so the review shows what will be stored.
+    - If the wizard's `[dateOrder]` differs from the server's, **the import is refused**
+      before anything is sent, with a message naming both. The commit button is disabled and
+      `HttpImportTransport.commit` throws. Nothing is ever committed on a mismatch.
+    - If the wizard states an order and the server confirms none, the wizard's order is not
+      being applied. That is a warning, on the review step and through the transport's
+      `warn`, not a refusal. It says what the server will do: a server on 2.5.0 or later
+      refuses a date that reads two ways, and **a server older than 2.5.0 reads it month
+      first**, whatever the wizard states. Upgrade the server and state the order on its
+      router.
+    - Stating the order on the router alone is enough. The wizard needs no `[dateOrder]`.
   - The order is an option of the import, not part of a `MappingPlan`. A stored plan is
     unchanged and needs no migration.
 
@@ -81,14 +92,32 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - A year-first date with slashes (`2026/09/05`) and a date with a month's name
     (`March 7, 2024`) read exactly as before.
 
-  One thing is stricter when an order is stated: the year must have four digits. `5/9/26`
-  is an error, because choosing a century for the sheet is a guess of the same kind.
+  **Two-digit years.** With no order stated, a date that only one order fits still reads as
+  it did. One that reads two ways used to import and is now refused:
+
+  | Cell, no order stated | 2.4.1 | 2.5.0 |
+  | --- | --- | --- |
+  | `9/13/26` | `2026-09-13` | `2026-09-13`, unchanged |
+  | `13/9/26` | error, `is not a date` | the same error, unchanged |
+  | `5/9/26` | `2026-05-09`, 9 May | **refused**: could be day first or month first |
+
+  So a month-first sheet written with two-digit years, which 2.4.1 imported correctly, now
+  fails on every date whose day is 12 or less. **The workaround is to state
+  `dateOrder: 'MDY'`**: `5/9/26` is then `2026-05-09` again, exactly as before. A two-digit
+  year takes the century it always took, 00 to 49 in the 2000s and 50 to 99 in the 1900s, in
+  either order, so `'DMY'` reads `5/9/26` as `2026-09-05` and `13/9/26` as `2026-09-13`.
 
 ### Added
 - `dateOrder?: 'DMY' | 'MDY' | 'YMD'` on `CoerceOptions` (and so `ApplyMappingOptions`),
   `RunImportOptions`, `ImportRouterOptions` and `ImportContext`; a `dateOrder` input on
   `ngx-entity-import` and on the import preview component; and the `DateOrder` type, exported
   from `@dynamic-entity/core`.
+- `dateOrder?` on `ImportPreviewResponse`, which is the order the server's router reads
+  with, and on `ImportPreview`, which is the order a transport will commit with. Both are
+  optional and absent when none is stated, so a transport or a server written for 2.4 still
+  fits. `LocalImportTransport` reports the order it was given.
+- `compareDateOrders(stated, reported)` from `ngx-dynamic-entity`, for a custom transport
+  that wants the wizard's rule: `'agreed'`, `'mismatch'` or `'unconfirmed'`.
 
 ### Upgrading
 - This is a minor release that can fail an import that used to pass. That is deliberate: the

@@ -282,7 +282,9 @@ will name their zip `.csv`.
   `05/09/2026` reads two ways, so it is an error unless you say which: pass
   `dateOrder: 'DMY'` (day first) or `'MDY'` (month first) to `createImportRouter` or
   `runImport`. It is never guessed. Releases before 2.5.0 read it month first without
-  saying so; see the changelog if your sheets are day first.
+  saying so; see the changelog if your sheets are day first. A preview response carries the
+  router's `dateOrder`, so the wizard reads its review the same way and refuses to commit if
+  it was told a different order.
 - A pre-2007 `.xls` and a UTF-16 file are **named** rather than parsed into nonsense.
 
 ---

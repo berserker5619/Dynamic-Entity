@@ -597,3 +597,108 @@ describe('HttpImportTransport — the defaults', () => {
     expect(calls[0].init.headers).toEqual({});
   });
 });
+
+/**
+ * The order of a date written in digits is the server's to apply: it reads the file. The
+ * wizard only reads the review sample. So the server says which order it reads with, and the
+ * transport refuses to commit when the wizard was told a different one.
+ */
+describe('HttpImportTransport — the date order the server reads with', () => {
+  const server = (previewBody: Record<string, unknown>) => {
+    const warnings: string[] = [];
+    const { fetch, calls } = stubFetch(url => json(url.endsWith('/preview') ? { ...PREVIEW_BODY, ...previewBody } : COMMIT_BODY));
+    const transport = new HttpImportTransport({ baseUrl: '/api/import', fetch, warn: message => warnings.push(message) });
+    const commits = () => calls.filter(call => call.url.endsWith('/import'));
+    /** Warnings about the date order, leaving out the engine-version one an older server also earns. */
+    const dateWarnings = () => warnings.filter(message => message.includes('date order'));
+    return { transport, commits, dateWarnings };
+  };
+
+  it('hands the wizard the order the server states, to read the review sample with', async () => {
+    const { transport } = server({ dateOrder: 'DMY' });
+    expect((await transport.preview(file(), CONTEXT)).dateOrder).toBe('DMY');
+    const none = server({});
+    expect(await none.transport.preview(file(), CONTEXT)).not.toHaveProperty('dateOrder');
+  });
+
+  it('commits when the wizard and the server state the same order, and says nothing', async () => {
+    const { transport, commits, dateWarnings } = server({ dateOrder: 'DMY' });
+    const upload = file();
+    await transport.preview(upload, { ...CONTEXT, dateOrder: 'DMY' });
+    await transport.commit(upload, PLAN, { ...CONTEXT, dateOrder: 'DMY' });
+    expect(commits()).toHaveLength(1);
+    expect(dateWarnings()).toEqual([]);
+  });
+
+  it('commits when only the server states an order: the server is the one that reads the file', async () => {
+    const { transport, commits, dateWarnings } = server({ dateOrder: 'DMY' });
+    const upload = file();
+    await transport.preview(upload, CONTEXT);
+    await transport.commit(upload, PLAN, CONTEXT);
+    expect(commits()).toHaveLength(1);
+    expect(dateWarnings()).toEqual([]);
+  });
+
+  it('refuses to commit when the two differ, naming both, and sends nothing', async () => {
+    const { transport, commits } = server({ dateOrder: 'DMY' });
+    const upload = file();
+    await transport.preview(upload, { ...CONTEXT, dateOrder: 'MDY' });
+    const refusal = await transport.commit(upload, PLAN, { ...CONTEXT, dateOrder: 'MDY' }).catch((error: Error) => error);
+    expect(refusal).toBeInstanceOf(Error);
+    expect((refusal as Error).message).toContain('MDY');
+    expect((refusal as Error).message).toContain('DMY');
+    expect((refusal as Error).message).toContain('Nothing was imported');
+    expect(commits()).toEqual([]);
+  });
+
+  it('refuses a mismatch even when the wizard only states its order at commit', async () => {
+    const { transport, commits } = server({ dateOrder: 'YMD' });
+    const upload = file();
+    await transport.preview(upload, CONTEXT);
+    await expect(transport.commit(upload, PLAN, { ...CONTEXT, dateOrder: 'DMY' })).rejects.toThrow(/DMY.*YMD|YMD.*DMY/);
+    expect(commits()).toEqual([]);
+  });
+
+  it('warns, and still commits, when a server older than 2.5 cannot confirm the order: it reads month first', async () => {
+    const { transport, commits, dateWarnings } = server({ engineVersion: '2.4.1' });
+    const upload = file();
+    await transport.preview(upload, { ...CONTEXT, dateOrder: 'DMY' });
+    expect(dateWarnings()).toHaveLength(1);
+    expect(dateWarnings()[0]).toContain('DMY');
+    expect(dateWarnings()[0]).toContain('2.4.1');
+    expect(dateWarnings()[0]).toContain('month first');
+    await transport.commit(upload, PLAN, { ...CONTEXT, dateOrder: 'DMY' });
+    expect(commits()).toHaveLength(1);
+  });
+
+  it('says the same of a server that reports no version at all', async () => {
+    const { transport, dateWarnings } = server({ engineVersion: undefined });
+    await transport.preview(file(), { ...CONTEXT, dateOrder: 'MDY' });
+    expect(dateWarnings()).toHaveLength(1);
+    expect(dateWarnings()[0]).toContain('month first');
+  });
+
+  it('warns differently when a current server simply states no order: it will refuse those dates', async () => {
+    const { transport, commits, dateWarnings } = server({});
+    const upload = file();
+    await transport.preview(upload, { ...CONTEXT, dateOrder: 'DMY' });
+    expect(dateWarnings()).toHaveLength(1);
+    expect(dateWarnings()[0]).toContain('DMY');
+    expect(dateWarnings()[0]).toContain('refuse');
+    expect(dateWarnings()[0]).not.toContain('reads them month first');
+    await transport.commit(upload, PLAN, { ...CONTEXT, dateOrder: 'DMY' });
+    expect(commits()).toHaveLength(1);
+  });
+
+  it('says nothing when neither states an order', async () => {
+    const { transport, dateWarnings } = server({ engineVersion: '2.4.1' });
+    await transport.preview(file(), CONTEXT);
+    expect(dateWarnings()).toEqual([]);
+  });
+
+  it('commits a file it never previewed: it has nothing to compare', async () => {
+    const { transport, commits } = server({ dateOrder: 'DMY' });
+    await transport.commit(file(), PLAN, { ...CONTEXT, dateOrder: 'MDY' });
+    expect(commits()).toHaveLength(1);
+  });
+});

@@ -132,6 +132,10 @@ export const DEFAULT_UI_TEXT = {
   importDelimiterComma: 'Columns are separated by commas.',
   importDelimiterSemicolon: 'Columns are separated by semicolons, and numbers use a decimal comma.',
   importDelimiterTab: 'Columns are separated by tabs.',
+  importDateOrderMismatch:
+    'This page reads dates as {stated} but the import reads them as {reported}. Nothing can be imported until both use the same date order.',
+  importDateOrderUnconfirmed:
+    'The import did not confirm the date order {stated}, so it is not applied. A date such as 05/09/2026 is refused, or read month first by a server older than 2.5.0.',
   importRowRejected: 'This row will not be imported: {reason}',
   importRunImport: 'Import {count} row(s)',
   importImporting: 'Importing…',

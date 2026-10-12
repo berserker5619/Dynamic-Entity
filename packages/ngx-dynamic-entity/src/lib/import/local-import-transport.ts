@@ -85,6 +85,8 @@ export class LocalImportTransport implements ImportTransport {
       suggestion: suggestMapping(sheet.headers, columns, context.config?.entity ?? ''),
       arrayBound,
       ...(sheet.delimiter ? { delimiter: sheet.delimiter } : {}),
+      // What `commit` below will read with, so the review step reads its sample the same way.
+      ...(context.dateOrder ? { dateOrder: context.dateOrder } : {}),
     };
   }
 

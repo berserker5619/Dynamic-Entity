@@ -16,6 +16,7 @@ import {
   DEFAULT_ARRAY_ROWS,
   deriveImportColumns,
   stripIndices,
+  type DateOrder,
   type ImportCommitResponse,
   type ImportErrorResponse,
   type ImportPreviewResponse,
@@ -25,11 +26,12 @@ import {
 } from '@dynamic-entity/core';
 import type { Provider } from '@angular/core';
 import { IMPORT_TRANSPORT } from '../tokens/injection-tokens';
-import type {
-  ImportContext,
-  ImportPreview,
-  ImportTransport,
-  TemplateFormat,
+import {
+  compareDateOrders,
+  type ImportContext,
+  type ImportPreview,
+  type ImportTransport,
+  type TemplateFormat,
 } from './import-contracts';
 
 export interface HttpImportTransportOptions {
@@ -126,8 +128,46 @@ function selectionOf(
  * to resolve — and a consumer who wants two of them, pointed at two backends, gets that for
  * free.
  */
+/** The first release whose server says which date order it reads with, and refuses to guess one. */
+const DATE_ORDER_SINCE = [2, 5];
+
+/** Whether an engine version is from before the server stopped reading dates month first. */
+function readsMonthFirst(version: string | undefined): boolean {
+  if (!version) return true;
+  const [major, minor] = version.split('.').map(Number);
+  return major < DATE_ORDER_SINCE[0] || (major === DATE_ORDER_SINCE[0] && minor < DATE_ORDER_SINCE[1]);
+}
+
 class HttpImportTransport implements ImportTransport {
+  /**
+   * The date order each previewed file's server reported, for `commit` to compare against.
+   * Keyed on the `File`, so it lives exactly as long as the file does.
+   */
+  private readonly reported = new WeakMap<File, DateOrder | undefined>();
+
   constructor(private readonly options: HttpImportTransportOptions) {}
+
+  private warn(message: string): void {
+    (this.options.warn ?? ((text: string) => console.warn(text)))(message);
+  }
+
+  /**
+   * The server reads the file, so its date order is the one that is applied. When the host
+   * stated one and the server confirms none, the host's order does nothing there: say so, and
+   * say what the server will do instead, which depends on how old it is.
+   */
+  private checkDateOrder(stated: DateOrder | undefined, reported: DateOrder | undefined, version: string | undefined): void {
+    if (compareDateOrders(stated, reported) !== 'unconfirmed') return;
+    this.warn(
+      `[ngx-dynamic-entity] This app states the date order ${stated}, but the import server did not confirm one, ` +
+        (readsMonthFirst(version)
+          ? `and runs @dynamic-entity/core ${version ?? '(unreported)'}, from before 2.5.0. A server that old reads a ` +
+            'date such as 05/09/2026 month first, whatever this app states. Upgrade the server and state ' +
+            'the same dateOrder on its router.'
+          : 'so it will refuse a date such as 05/09/2026 that could be day first or month first. ' +
+            'State the same dateOrder on its router.'),
+    );
+  }
 
   private get base(): string {
     return trimSlash(this.options.baseUrl);
@@ -157,8 +197,7 @@ class HttpImportTransport implements ImportTransport {
     // line in the console on every preview and every commit, which is how people learn to
     // scroll past the warning that does matter.
     if (!version || sameLine(version, CORE_VERSION)) return;
-    const warn = this.options.warn ?? ((message: string) => console.warn(message));
-    warn(
+    this.warn(
       `[ngx-dynamic-entity] The import server runs @dynamic-entity/core ${version}; this app ` +
         `was built against ${CORE_VERSION}. The two halves of an import are supposed to be the ` +
         'same engine — bring them into step before trusting a difference in what they produce.',
@@ -178,6 +217,8 @@ class HttpImportTransport implements ImportTransport {
 
     const preview = (await response.json()) as ImportPreviewResponse;
     this.checkEngine(preview.engineVersion);
+    this.reported.set(file, preview.dateOrder);
+    this.checkDateOrder(context?.dateOrder, preview.dateOrder, preview.engineVersion);
 
     return {
       headers: preview.headers ?? [],
@@ -187,10 +228,21 @@ class HttpImportTransport implements ImportTransport {
       // A server older than 2.3 does not say, and always sized for the default.
       arrayBound: preview.arrayBound ?? DEFAULT_ARRAY_ROWS,
       ...(preview.delimiter ? { delimiter: preview.delimiter } : {}),
+      ...(preview.dateOrder ? { dateOrder: preview.dateOrder } : {}),
     };
   }
 
   async commit(file: File, plan: MappingPlan, context: ImportContext): Promise<ImportResult> {
+    // Before a byte is sent. The review this user approved read dates one way and the server
+    // would store them another, and a streaming import cannot be taken back.
+    const reported = this.reported.get(file);
+    if (compareDateOrders(context?.dateOrder, reported) === 'mismatch') {
+      throw new Error(
+        `This app reads dates as ${context.dateOrder} but the import server reads them as ${reported}. ` +
+          'Nothing was imported. Set the same dateOrder on the wizard and on the server\'s router.',
+      );
+    }
+
     const body = new FormData();
     // **The plan first, and the file second.** The server starts importing while the file is
     // still arriving — that is the whole reason it exists — so the plan has to have arrived

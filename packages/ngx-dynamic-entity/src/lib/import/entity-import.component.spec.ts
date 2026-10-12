@@ -1,7 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { EntityFormConfig, FormRule, ImportResult } from '@dynamic-entity/core';
 import { IMPORT_TRANSPORT, LOOKUP_REGISTRY } from '../tokens/injection-tokens';
+import { By } from '@angular/platform-browser';
 import { EntityImportComponent } from './entity-import.component';
+import { ImportPreviewComponent } from './import-preview.component';
 import type { ImportTransport } from './import-contracts';
 
 const STATUS = [
@@ -303,6 +305,92 @@ describe('EntityImportComponent', () => {
     await settle();
 
     expect(seen).toEqual(['DMY', 'DMY']);
+  });
+
+  describe('the date order the transport reads with', () => {
+    /** A transport that reports `reported` at preview, and records whether it was asked to commit. */
+    const reporting = (reported: 'DMY' | 'MDY' | 'YMD' | undefined) => {
+      const committed: boolean[] = [];
+      const transport: ImportTransport = {
+        preview: async () => ({
+          headers: ['First Name'],
+          sample: [['Alice']],
+          rowCount: 1,
+          suggestion: { entity: 'employees', entries: [{ ref: 'personal.firstName', column: 0 }] },
+          ...(reported ? { dateOrder: reported } : {}),
+        }),
+        commit: async () => {
+          committed.push(true);
+          return { records: [{}], errors: [], skipped: 0, planProblems: [] };
+        },
+        template: async () => new Blob(),
+      };
+      return { transport, committed };
+    };
+    const toReview = async (transport: ImportTransport, stated?: 'DMY' | 'MDY' | 'YMD'): Promise<void> => {
+      await mount([{ provide: IMPORT_TRANSPORT, useValue: transport }]);
+      if (stated) fixture.componentRef.setInput('dateOrder', stated);
+      fixture.detectChanges();
+      await chooseFile(csvFile('p.csv', 'ignored'));
+      fixture.nativeElement.querySelector('[data-testid="import-to-review"]').click();
+      fixture.detectChanges();
+    };
+    const find = (testid: string): HTMLElement | null => fixture.nativeElement.querySelector(`[data-testid="${testid}"]`);
+    const clickCommit = async (): Promise<void> => {
+      (find('import-commit') as HTMLButtonElement).click();
+      await fixture.whenStable();
+      await settle();
+      fixture.detectChanges();
+    };
+
+    it('reads the review sample in the order the transport reports, not the one the host states', async () => {
+      const { transport } = reporting('DMY');
+      await toReview(transport);
+      const preview = fixture.debugElement.query(By.directive(ImportPreviewComponent)).componentInstance as ImportPreviewComponent;
+      expect(preview.dateOrder).toBe('DMY');
+    });
+
+    it('commits when the host and the transport state the same order', async () => {
+      const { transport, committed } = reporting('DMY');
+      await toReview(transport, 'DMY');
+      expect(find('import-date-order-mismatch')).toBeNull();
+      expect(find('import-date-order-unconfirmed')).toBeNull();
+      await clickCommit();
+      expect(committed).toEqual([true]);
+    });
+
+    it('refuses to commit when they differ, naming both, and never calls the transport', async () => {
+      const { transport, committed } = reporting('DMY');
+      await toReview(transport, 'MDY');
+      const message = find('import-date-order-mismatch')?.textContent ?? '';
+      expect(message).toContain('MDY');
+      expect(message).toContain('DMY');
+      expect((find('import-commit') as HTMLButtonElement).disabled).toBe(true);
+      // Even if something calls commit anyway.
+      await (fixture.componentInstance as unknown as { commit(): Promise<void> }).commit();
+      expect(committed).toEqual([]);
+    });
+
+    it('warns, and still commits, when the transport does not confirm the order the host states', async () => {
+      const { transport, committed } = reporting(undefined);
+      await toReview(transport, 'DMY');
+      expect(find('import-date-order-mismatch')).toBeNull();
+      const warning = find('import-date-order-unconfirmed')?.textContent ?? '';
+      expect(warning).toContain('DMY');
+      expect(warning).toContain('month first');
+      // The sample is read as the transport said it would be read: with no order.
+      const preview = fixture.debugElement.query(By.directive(ImportPreviewComponent)).componentInstance as ImportPreviewComponent;
+      expect(preview.dateOrder).toBeUndefined();
+      await clickCommit();
+      expect(committed).toEqual([true]);
+    });
+
+    it('says nothing when neither states an order', async () => {
+      const { transport } = reporting(undefined);
+      await toReview(transport);
+      expect(find('import-date-order-mismatch')).toBeNull();
+      expect(find('import-date-order-unconfirmed')).toBeNull();
+    });
   });
 
   it('drives a registered transport instead of the local one', async () => {

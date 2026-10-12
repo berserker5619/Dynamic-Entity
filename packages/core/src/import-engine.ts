@@ -96,8 +96,8 @@ export interface CoerceOptions {
    * Without it, a date that reads two ways (both of its first two parts are 12 or less) is an
    * error, never a guess. Until 2.5.0 such a date went to `Date`, which reads month first, so
    * a sheet of day-first dates imported as the wrong days with no error. State `MDY` to keep
-   * reading them as before. `YMD` says the sheet is year first, so a date that is not is an
-   * error. An ISO date (`2026-09-05`), a typed date cell, and a date only one order fits are
+   * reading them as before, two-digit years included. `YMD` says the sheet is year first, so
+   * a date that is not is an error. An ISO date (`2026-09-05`), a typed date cell, and a date only one order fits are
    * read exactly as they always were, whatever is stated here.
    */
   dateOrder?: DateOrder;
@@ -282,8 +282,10 @@ type SlashDate =
  * Decide how a date written in digits is read (2.5.0).
  *
  * `Date` reads `05/09/2026` as 9 May, whatever the sheet meant, and says nothing. So:
- * - with `order` stated, the parts are read in that order, and never through `Date`. The year
- *   must have four digits, because choosing a century is a guess of the same kind;
+ * - with `order` stated, the parts are read in that order, and never through `Date`. A year
+ *   of two digits takes the century `Date` has always given it, 00 to 49 in the 2000s and 50
+ *   to 99 in the 1900s, so that stating month first reads `5/9/26` exactly as it was read
+ *   before the order had to be stated;
  * - with none stated, a date both orders fit is ambiguous, and is refused;
  * - anything else is left to the reading it always had.
  */
@@ -295,9 +297,10 @@ function readSlashDate(text: string, order: DateOrder | undefined): SlashDate {
   const rest = text.slice(match[0].length);
 
   if (!order) return first <= 12 && second <= 12 ? { read: 'ambiguous' } : { read: 'as-before' };
-  if (order === 'YMD' || match[3].length !== 4) return { read: 'stated', date: null, rest };
+  if (order === 'YMD' || (match[3].length !== 4 && match[3].length !== 2)) return { read: 'stated', date: null, rest };
 
-  const year = Number(match[3]);
+  const written = Number(match[3]);
+  const year = match[3].length === 4 ? written : written < 50 ? 2000 + written : 1900 + written;
   const [day, month] = order === 'DMY' ? [first, second] : [second, first];
   // Built in UTC purely to check the day exists; no local time is ever consulted.
   const probe = new Date(Date.UTC(year, month - 1, day));
