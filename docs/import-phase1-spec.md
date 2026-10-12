@@ -496,8 +496,11 @@ Phase 1 is done when these types compile and the reader and contract tests below
 **Adapters**
 
 - [ ] `entityFormConfigAdapter`: the full existing core and server suites pass unchanged against the generic engine, except for the additive `code` and `warnings` fields, and for one removal: the second, `required` report of a field whose cell could not be read (§5, reversed on 2026-10-12). A test that compared a whole error object may add the code, a test that expected that second report may drop it, and nothing else (Phase 2 gate).
-- [ ] `jsonSchemaAdapter` on the order schema from the prototype produces the same records as the prototype's sample run.
-- [ ] `exampleJsonAdapter` on the student example (`test/fixtures/student`) infers a split `clubs` list and one guardian slot from the example, and fills 2 guardian slots from the sheet's numbered headers.
+- [ ] `jsonSchemaAdapter` on the prototype's order schema and sheet (`test/fixtures/order`, held by `src/acceptance.spec.ts`). *(Reworded by the owner on 2026-10-12; it read "produces the same records as the prototype's sample run", which a failed record cannot meet: the prototype keeps one with the bad value left raw, and the engine returns none.)*
+  - `suggestMapping`, from the headers and the sheet's rows, reproduces `run.json`'s bindings, list modes and group key.
+  - Every record with no errors equals `expected-output.json` exactly.
+  - Every failed record is compared with `run.json` by its problems: the code its issue maps to, the path, and the rows. Not by output.
+- [ ] `exampleJsonAdapter` on the student example (`test/fixtures/student`) infers a split `clubs` list and one guardian slot from the example, and fills 2 guardian slots from the sheet's numbered headers. The same three checks as the order fixture hold on it in `src/acceptance.spec.ts`, once the plan states `dateOrder: 'DMY'` for the one date column the sheet leaves ambiguous.
 - [ ] A `custom` kind without `coerce` throws at adapter construction.
 
 **Added after the 2.3 audit**
@@ -716,3 +719,9 @@ A `custom` kind reaching `coerceValue` throws (§7).
   - **No key found.** Item refs are only valid inside a group, so with nothing to group under they are written to slot 0.
   - **Several candidates for the key:** the first in sheet order.
 - **Both fixtures now reproduce the prototype's bindings and group key** from headers and sample rows alone. The order sheet's date column gets `dateOrder: 'DMY'` from its `31/09/2026`. The student sheet's dates show no order, so its suggested plan refuses them until `DMY` is set by hand.
+
+**2026-10-12: the acceptance test.** `packages/sheet-to-schema/src/acceptance.spec.ts` holds the engine to the prototype's run on both fixtures, as the owner reworded the item: the suggestion reproduces the bindings, list modes and group key; clean records equal the prototype's exactly; failed records are compared by code, path and rows.
+- **The order fixture passes as it stands.** One record is clean (NF-1001) and three fail, with the five problems the prototype found, on the same rows.
+- **The student fixture passes once the plan says the dates are day first.** Its two dates read both ways, so the suggestion sets no `dateOrder` and the import refuses them, as §8 requires; the test asserts that too. The prototype assumed day first.
+- **The prototype's messages are mapped to codes in the test** (`CODE_OF`), since it has no codes: its email and pattern failures are `RECORD_FORMAT`, its number and date failures `CELL_FORMAT`, an unknown option `CELL_UNKNOWN_OPTION`.
+- **One comparison is looser than the item asks, and is the owner's to settle.** A group warning is compared by code and path only. The prototype puts the row that disagreed on it (`[8]`); the engine puts every row of the record (`[7, 8]`), which §5 has said since before this change. The test asserts both facts, so either choice will show up there.
