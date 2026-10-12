@@ -259,7 +259,8 @@ A failure in any of these means stop and report.
 1. **Every DE suite passes with its expectations unchanged**, except:
    - the new optional `code` and `rows` fields on errors, and `warnings` on results;
    - the one removal the spec allows: the second, "required" report of a field whose cell
-     could not be read (Decision 16).
+     could not be read (Decision 16);
+   - the three changes of "The plan-type exception" below, and nothing else.
 2. **Every parity prerequisite stays green**, with no `it.failing`: the shared preview
    fixture, the moved-container snapshots, the browser typed-parser tests in the timezone
    suite, the decimal-comma test, and the xlsx browser-and-server test.
@@ -269,6 +270,36 @@ A failure in any of these means stop and report.
    `sheet-to-schema` imports nothing from `@dynamic-entity/*`, which the lint rule already
    enforces.
 5. **The acceptance test** against the prototype's fixtures still passes.
+
+### The plan-type exception
+
+Decision 7 makes `MappingPlan` the v2 type, and DE's own tests were written against the 2.x
+one. The owner allowed exactly these changes to DE tests on 2026-10-12:
+
+- **(a)** a type annotation `MappingPlan` becomes `MappingPlanV1` on a v1 literal;
+- **(b)** `suggestion.entity` becomes `suggestion.target` in the three assertions that read it
+  (`server/src/run-import.spec.ts`, twice, and `local-import-transport.spec.ts`);
+- **(c)** a test asserting a plan problem's message text may assert its `code` and `path`
+  instead, only where the generic message differs from DE's.
+
+Rules that go with them:
+
+- Every changed line is listed in its commit message.
+- No value, count or behaviour may change. Anything else that fails is a stop and a report.
+- **v1 fixtures stay v1 literals, with `entity`.** They are the proof that stored 2.x plans
+  keep importing.
+- One test is added: a v2 suggestion committed through the DE adapter gives the same records
+  as the equivalent v1 plan.
+
+### What MIGRATING-3.0.md must say because of it
+
+Three entries, for commit 5.1:
+
+1. A suggested plan carries `target`, not `entity`.
+2. Plan-problem messages changed. Match on `code`.
+3. A plan saved by a 3.0 wizard is v2, so an app rolled back to 2.5 cannot read it. Talking
+   to an older server over HTTP is different, and handled: the wizard sends such a server the
+   plan in v1 form (commit 3.3).
 
 ## Risks
 
