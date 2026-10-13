@@ -8,6 +8,7 @@ import {
   parseCsv,
   type MappingPlan,
 } from './index';
+import { collectedHeap } from './node/sheet.fixtures';
 
 describe('fresh sheet-to-schema end-to-end scenarios', () => {
   it('Scenario 1: maps and coerces spreadsheet rows against a JSON Schema with nested fields and split lists', () => {
@@ -385,9 +386,12 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       expect(problems).toEqual([]);
       expect(validatePlan(normalizedPlan!, adapter)).toEqual([]);
 
+      const heapBefore = collectedHeap();
       const startTime = Date.now();
       const result = applyMapping(rows, plan, adapter, { headers });
       const durationMs = Date.now() - startTime;
+      const heapAfter = collectedHeap();
+      const heapDelta = heapAfter - heapBefore;
 
       expect(result.errors).toEqual([]);
       expect(result.records).toHaveLength(ROW_COUNT);
@@ -420,7 +424,13 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       expect(last['org']['hierarchy']['division']['region']).toBe('EU-CENTRAL');
       expect(last['metrics']['annualRecurringRevenue']).toBe(224987.5);
 
-      expect(durationMs).toBeGreaterThanOrEqual(0);
+      // Retained heap bound: measured ~9.8 MB. 25 MB discriminates against retaining intermediate structures or raw row arrays.
+      expect(heapDelta).toBeLessThan(25 * 1024 * 1024);
+
+      // Catastrophic regression tripwire: local ~350-500ms; 10x tripwire set at 5,000ms.
+      expect(durationMs).toBeLessThan(5000);
+
+      console.log(`[Stress Test 1 (10k)] duration: ${durationMs}ms, heapAfter: ${(heapAfter / 1024 / 1024).toFixed(2)}MB, heapDelta: ${(heapDelta / 1024 / 1024).toFixed(2)}MB`);
     });
 
     it('Stress Test 2: aggregates 6,000 multi-row spreadsheet entries into 1,000 grouped parent records with child items', () => {
@@ -546,7 +556,7 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       expect(lastOrder['orderId']).toBe('ORD-01000');
       expect(lastOrder['lineItems']).toHaveLength(ITEMS_PER_ORDER);
 
-      expect(durationMs).toBeGreaterThanOrEqual(0);
+      console.log(`[Stress Test 2] duration: ${durationMs}ms`);
     });
 
     it('Stress Test 3: parses and maps a high-volume CSV payload with embedded quotes and complex formatting', () => {
@@ -571,7 +581,6 @@ ORD-882,Beacon Systems,980.50,FALSE`;
 
       expect(headers).toEqual(['Transaction ID', 'Entity Name', 'Amount', 'Category', 'Settled']);
       expect(rows).toHaveLength(CSV_ROWS);
-      expect(parseDurationMs).toBeGreaterThanOrEqual(0);
 
       const exampleRecord = {
         txId: 'TX-000000',
@@ -619,7 +628,7 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       // 2501 % 4 === 1 -> TRUE -> true
       expect(record2501['settled']).toBe(true);
 
-      expect(mapDurationMs).toBeGreaterThanOrEqual(0);
+      console.log(`[Stress Test 3] parse: ${parseDurationMs}ms, map: ${mapDurationMs}ms`);
     });
   });
 
@@ -748,9 +757,12 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       expect(problems).toEqual([]);
       expect(validatePlan(normalizedPlan!, adapter)).toEqual([]);
 
+      const heapBefore = collectedHeap();
       const startTime = Date.now();
       const result = applyMapping(rows, plan, adapter, { headers });
       const durationMs = Date.now() - startTime;
+      const heapAfter = collectedHeap();
+      const heapDelta = heapAfter - heapBefore;
 
       expect(result.errors).toEqual([]);
       expect(result.records).toHaveLength(COUNT);
@@ -782,7 +794,13 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       expect(last['cluster']['topology']['region']).toBe('eu-west-1');
       expect(last['telemetry']['memoryBytes']).toBe(68719476736);
 
-      expect(durationMs).toBeGreaterThanOrEqual(0);
+      // Retained heap bound: measured ~10.6 MB. 25 MB discriminates sharply against holding clones/ASTs.
+      expect(heapDelta).toBeLessThan(25 * 1024 * 1024);
+
+      // Catastrophic regression tripwire: local ~350-500ms; 10x tripwire set at 5,000ms.
+      expect(durationMs).toBeLessThan(5000);
+
+      console.log(`[Hardcore 10k] duration: ${durationMs}ms, heapAfter: ${(heapAfter / 1024 / 1024).toFixed(2)}MB, heapDelta: ${(heapDelta / 1024 / 1024).toFixed(2)}MB`);
     }, 45000);
 
     it('Hardcore 20k: streams and maps 20,000 tabular rows across multi-level commercial finance schemas', () => {
@@ -897,9 +915,12 @@ ORD-882,Beacon Systems,980.50,FALSE`;
         ],
       };
 
+      const heapBefore = collectedHeap();
       const startTime = Date.now();
       const result = applyMapping(rows, plan, adapter, { headers });
       const durationMs = Date.now() - startTime;
+      const heapAfter = collectedHeap();
+      const heapDelta = heapAfter - heapBefore;
 
       expect(result.errors).toEqual([]);
       expect(result.records).toHaveLength(COUNT);
@@ -930,7 +951,13 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       expect(last['transactionId']).toBe('TXN-0020000');
       expect(last['merchant']['profile']['countryCode']).toBe('GB');
 
-      expect(durationMs).toBeGreaterThanOrEqual(0);
+      // Retained heap bound: measured ~13.8 MB. 30 MB discriminates against holding raw row data.
+      expect(heapDelta).toBeLessThan(30 * 1024 * 1024);
+
+      // Catastrophic regression tripwire: local ~1,100-1,500ms; 10x tripwire set at 15,000ms (15s).
+      expect(durationMs).toBeLessThan(15000);
+
+      console.log(`[Hardcore 20k] duration: ${durationMs}ms, heapAfter: ${(heapAfter / 1024 / 1024).toFixed(2)}MB, heapDelta: ${(heapDelta / 1024 / 1024).toFixed(2)}MB`);
     }, 45000);
 
     it('Hardcore 20k Grouping: aggregates 20,000 spreadsheet rows into 4,000 hierarchical parent orders with 5 child line items each', () => {
@@ -1020,9 +1047,12 @@ ORD-882,Beacon Systems,980.50,FALSE`;
         ],
       };
 
+      const heapBefore = collectedHeap();
       const startTime = Date.now();
       const result = applyMapping(rows, plan, adapter, { headers });
       const durationMs = Date.now() - startTime;
+      const heapAfter = collectedHeap();
+      const heapDelta = heapAfter - heapBefore;
 
       expect(result.errors).toEqual([]);
       expect(result.records).toHaveLength(ORDER_COUNT);
@@ -1061,7 +1091,13 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       expect(lastOrder['orderId']).toBe('PO-004000');
       expect(lastOrder['items']).toHaveLength(ITEMS_PER_ORDER);
 
-      expect(durationMs).toBeGreaterThanOrEqual(0);
+      // Retained heap bound: measured ~3.5 MB. 15 MB discriminates against holding intermediate maps.
+      expect(heapDelta).toBeLessThan(15 * 1024 * 1024);
+
+      // Catastrophic regression tripwire: local ~500-700ms; 10x tripwire set at 7,000ms.
+      expect(durationMs).toBeLessThan(7000);
+
+      console.log(`[Hardcore 20k Grouping] duration: ${durationMs}ms, heapAfter: ${(heapAfter / 1024 / 1024).toFixed(2)}MB, heapDelta: ${(heapDelta / 1024 / 1024).toFixed(2)}MB`);
     }, 45000);
   });
 });
