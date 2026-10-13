@@ -46,6 +46,7 @@ Needs Node. `exceljs`, `busboy` and `express` are optional peers, loaded when fi
 - **`writeTemplate`**, `receiveUpload`, the limits and the one error envelope.
 
 ### Not in this release
-- The streaming runner does not group rows. It refuses a plan with `group` rather than
-  ignore it. `applyMapping` groups.
+- The mapper cannot build grouped plans yet.
+- The streaming runner does not group rows: servers refuse them (`PLAN_GROUP`, Phase 3). `applyMapping` groups.
+- The wizard shows no warnings yet.
 - A header row other than row 1.

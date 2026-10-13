@@ -427,8 +427,8 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       // Retained heap bound: measured ~9.8 MB. 25 MB discriminates against retaining intermediate structures or raw row arrays.
       expect(heapDelta).toBeLessThan(25 * 1024 * 1024);
 
-      // Catastrophic regression tripwire: local ~350-500ms; 10x tripwire set at 5,000ms.
-      expect(durationMs).toBeLessThan(5000);
+      // Catastrophic regression tripwire: CI max 2,760ms; tripwire set to 10,000ms (>= 3x CI).
+      expect(durationMs).toBeLessThan(10000);
 
       console.log(`[Stress Test 1 (10k)] duration: ${durationMs}ms, heapAfter: ${(heapAfter / 1024 / 1024).toFixed(2)}MB, heapDelta: ${(heapDelta / 1024 / 1024).toFixed(2)}MB`);
     });
@@ -797,8 +797,8 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       // Retained heap bound: measured ~10.6 MB. 25 MB discriminates sharply against holding clones/ASTs.
       expect(heapDelta).toBeLessThan(25 * 1024 * 1024);
 
-      // Catastrophic regression tripwire: local ~350-500ms; 10x tripwire set at 5,000ms.
-      expect(durationMs).toBeLessThan(5000);
+      // Catastrophic regression tripwire: CI max 2,847ms; tripwire set to 10,000ms (>= 3x CI).
+      expect(durationMs).toBeLessThan(10000);
 
       console.log(`[Hardcore 10k] duration: ${durationMs}ms, heapAfter: ${(heapAfter / 1024 / 1024).toFixed(2)}MB, heapDelta: ${(heapDelta / 1024 / 1024).toFixed(2)}MB`);
     }, 45000);
@@ -1094,8 +1094,8 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       // Retained heap bound: measured ~3.5 MB. 15 MB discriminates against holding intermediate maps.
       expect(heapDelta).toBeLessThan(15 * 1024 * 1024);
 
-      // Catastrophic regression tripwire: local ~500-700ms; 10x tripwire set at 7,000ms.
-      expect(durationMs).toBeLessThan(7000);
+      // Catastrophic regression tripwire: CI max 2,884ms; tripwire set to 10,000ms (>= 3x CI).
+      expect(durationMs).toBeLessThan(10000);
 
       console.log(`[Hardcore 20k Grouping] duration: ${durationMs}ms, heapAfter: ${(heapAfter / 1024 / 1024).toFixed(2)}MB, heapDelta: ${(heapDelta / 1024 / 1024).toFixed(2)}MB`);
     }, 45000);

@@ -50,11 +50,13 @@ export interface ImportBinding<TMeta = unknown, TCtx = unknown> {
    */
   template?: (request: { lang: string; fields: string[] | undefined }) => TemplateSheet;
   /**
+   * @internal Wire compatibility with Dynamic Entity.
    * The name the template downloads under, before `-template.csv`. Default the adapter's `id`.
    * Never taken from the request by this router; a binding that sets it answers for it.
    */
   templateName?: string;
   /**
+   * @internal Wire compatibility with Dynamic Entity.
    * Fields added to a preview answer, for what this schema's clients expect beside the
    * standard ones. It may also restate `suggestion` or `slots`: a schema whose browser client
    * runs its own suggester has to be answered with that one, or the two sides would propose
@@ -62,6 +64,7 @@ export interface ImportBinding<TMeta = unknown, TCtx = unknown> {
    */
   previewExtras?: (preview: SheetPreview) => Record<string, unknown>;
   /**
+   * @internal Wire compatibility with Dynamic Entity.
    * A plan as it arrived, before it is read. For a schema whose older clients sent plans the
    * reader would refuse, such as one that never named its target. What it returns is read and
    * checked like any other plan.
@@ -111,11 +114,13 @@ export interface ImportRouterOptions {
    */
   dateOrder?: DateOrder;
   /**
+   * @internal Wire compatibility with Dynamic Entity.
    * The name of the path parameter: routes are `/:<param>/template` and so on, and a writer
    * reads it from `request.params`. Default `name`.
    */
   param?: string;
   /**
+   * @internal Wire compatibility with Dynamic Entity.
    * The version stamped on every answer as `engineVersion`. Default this package's.
    *
    * For a package that wraps this router and whose clients already compare `engineVersion`

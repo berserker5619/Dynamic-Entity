@@ -45,7 +45,7 @@ the wording of some messages, and where a few functions are imported from.
 - **A required field whose cell could not be read is reported once**, as unreadable. 2.x
   reported it a second time as required. The same rows fail.
 - **The server refuses a plan that groups rows** (`INVALID_PLAN`, 400). Its streaming runner
-  does not group yet, and ignoring `group` would import one record per row.
+  does not group yet (deferred to Phase 3), and ignoring `group` would import one record per row.
 - **`HttpImportTransport.commit` rejects** a plan using `group`, `lists`, or an entry's
   `split` or `dateOrder` when the server did not report that it reads plan v2.
 
@@ -57,7 +57,8 @@ the wording of some messages, and where a few functions are imported from.
 - **Every import error carries a `code`** (`CELL_FORMAT`, `RECORD_REQUIRED`, …), and a
   result may carry `warnings`: problems that did not stop a record being imported.
 - **Through a v2 plan, `applyMapping` and the wizard can group several rows into one record**
-  and read each date column in its own order. The mapper does not build such a plan yet.
+  and read each date column in its own order. Note that the mapper cannot build grouped plans yet,
+  streaming servers refuse them (Phase 3), and the wizard shows no warnings yet in its review UI.
 - **Server answers say more**: `adapter` (`{ name: 'dynamic-entity', version }`),
   `planVersions` (`[1, 2]`), `slots`, `warnings`, `warningCount`, `rowsInImported`.
   Nothing was removed, and `engineVersion` is still the server's `@dynamic-entity/core`
