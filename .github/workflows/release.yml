@@ -219,6 +219,9 @@ jobs:
       # For sheet-to-schema, until a stable 1.0.0 exists (i.e. its `latest` dist-tag is still a prerelease),
       # publishing with --tag next also advances `latest` to the new version. Once stable 1.0.0 is published,
       # future prereleases will only touch `next`.
+      # Note: Trusted publishing (OIDC) may not permit dist-tag changes without explicit opt-in permissions
+      # on npmjs.com. Therefore, the dist-tag step is non-fatal: if it fails, a clear warning is logged with
+      # the exact manual command so the workflow run still succeeds.
       # Each publish is skipped when that exact version is already on the registry, so
       # re-running a release — or tagging a commit that was published by dispatch — is a
       # no-op rather than a hard failure on "You cannot publish over the previously
@@ -238,7 +241,10 @@ jobs:
               case "$CURRENT_LATEST" in
                 *-*)
                   echo "sheet-to-schema latest dist-tag is a prerelease ($CURRENT_LATEST) — advancing latest to $VERSION."
-                  npm dist-tag add "sheet-to-schema@$VERSION" latest
+                  if ! npm dist-tag add "sheet-to-schema@$VERSION" latest; then
+                    echo "::warning::Could not update 'latest' dist-tag via trusted publishing (OIDC token may lack dist-tag permissions)."
+                    echo "::warning::To update manually, run: npm dist-tag add sheet-to-schema@$VERSION latest"
+                  fi
                   ;;
                 *)
                   echo "sheet-to-schema latest dist-tag is stable ($CURRENT_LATEST) — leaving latest unchanged."
