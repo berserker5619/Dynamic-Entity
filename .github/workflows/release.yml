@@ -216,6 +216,9 @@ jobs:
       #
       # --access public is required for scoped packages and new packages.
       # --tag next is used when the version has a prerelease suffix (-rc.1, etc.); plain versions use latest.
+      # For sheet-to-schema, until a stable 1.0.0 exists (i.e. its `latest` dist-tag is still a prerelease),
+      # publishing with --tag next also advances `latest` to the new version. Once stable 1.0.0 is published,
+      # future prereleases will only touch `next`.
       # Each publish is skipped when that exact version is already on the registry, so
       # re-running a release — or tagging a commit that was published by dispatch — is a
       # no-op rather than a hard failure on "You cannot publish over the previously
@@ -230,6 +233,18 @@ jobs:
             echo "sheet-to-schema@$VERSION is already published — skipping."
           else
             npm publish ./packages/sheet-to-schema --access public --tag "$TAG" --provenance
+            if [ "$TAG" = "next" ]; then
+              CURRENT_LATEST=$(npm view sheet-to-schema dist-tags.latest 2>/dev/null || true)
+              case "$CURRENT_LATEST" in
+                *-*)
+                  echo "sheet-to-schema latest dist-tag is a prerelease ($CURRENT_LATEST) — advancing latest to $VERSION."
+                  npm dist-tag add "sheet-to-schema@$VERSION" latest
+                  ;;
+                *)
+                  echo "sheet-to-schema latest dist-tag is stable ($CURRENT_LATEST) — leaving latest unchanged."
+                  ;;
+              esac
+            fi
           fi
 
       - name: Publish @dynamic-entity/core

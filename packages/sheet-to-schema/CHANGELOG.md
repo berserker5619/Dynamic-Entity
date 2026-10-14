@@ -2,14 +2,14 @@
 
 All notable changes to `sheet-to-schema`.
 
-This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Members marked `@internal` are not covered by semver and may change in any release.
 
 ---
 
 ## [1.0.0-rc.1]
 
 The first release candidate. The package is the spreadsheet-import engine of
-[Dynamic Entity](../../README.md), extracted so it can be used with any schema. Dynamic Entity
+[Dynamic Entity](https://github.com/berserker5619/Dynamic-Entity#readme), extracted so it can be used with any schema. Dynamic Entity
 3.0 runs on it, and is the proof that it holds: the same files import to the same records as
 Dynamic Entity 2.5.0 produced.
 
