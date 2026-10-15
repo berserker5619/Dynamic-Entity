@@ -169,6 +169,9 @@ export function coerceValue(kind: ValueKind, raw: unknown, options: CoerceValueO
 
   switch (kind.kind) {
     case 'string':
+      if (typeof raw === 'number' && Math.abs(raw) > Number.MAX_SAFE_INTEGER) {
+        return fail('CELL_FORMAT', 'too many digits to read exactly; format the column as Text in the source file');
+      }
       return { value: text };
     case 'number':
       return coerceNumber(kind, raw, text, options.decimal ?? '.');

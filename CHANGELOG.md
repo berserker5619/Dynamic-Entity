@@ -8,6 +8,14 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.0.0-rc.2]
+
+A release candidate.
+- Bumps exact dependency on `sheet-to-schema` to `1.0.0-rc.2`.
+- **Unsafe integer guard**: When a numeric cell's absolute value exceeds `Number.MAX_SAFE_INTEGER` and its target is a string kind, both generic adapters and the Dynamic Entity adapter report `CELL_FORMAT`: `"too many digits to read exactly; format the column as Text in the source file"`. Numeric targets remain unchanged.
+- **`SheetParser` contract for merged ranges**: Documented that covered cells of a merged range must be `''` (as the server streaming reader emits). Updated the documented xlsx examples and test parsers to follow this contract.
+- Added parity tests and CI test suites for real-world fixtures (Mac Excel 1904 dates, numeric identifiers, and merged headers).
+
 ## [3.0.0-rc.1]
 
 A release candidate. **The spreadsheet-import engine is now its own package,

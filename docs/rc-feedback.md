@@ -40,10 +40,11 @@ Log issues and observations from testing the release candidates (`sheet-to-schem
 - **App**: Full stack consumer app (`sheet-to-schema@1.0.0-rc.1`, `@dynamic-entity/server@3.0.0-rc.1`, `exceljs@4.4.0`)
 - **Sheet shape**: Binary `.xlsx` workbook containing native cell types: boolean (`true`/`false`), floating point (`98.5`), integer (`100`), and native JS `Date` (`2026-06-15T00:00:00Z`).
 - **What happened**:
-  1. Browser path (`readSheet` -> `applyMapping`): extracted cells as `unknown[]` preserving native booleans, numbers, and dates. Records produced typed fields (`typeof active === 'boolean'`, `typeof score === 'number'`).
-  2. Server path (`createImportRouter` via Express multipart POST): received upload stream, parsed workbook rows, and executed `onImport` with identical typed records.
+  1. Simulated browser path (`readSheet` from `sheet-to-schema/node` -> `applyMapping`): Note: `readSheet` is Node-only (`sheet-to-schema/node`) and was used as a stand-in reader; browser `defaultSheetParser` does not read `.xlsx` and requires registering a custom `SheetParser` (e.g. over ExcelJS/SheetJS). When supplied with parsed rows, `applyMapping` preserved native booleans, numbers, and dates into exact schema types.
+  2. Server path (`createImportRouter` via Express multipart POST): natively streamed the upload through `sheet-to-schema/node` workbook reader, executed `onImport` with identical typed records without string conversion degradation.
 - **Expected**: Zero stringification degradation (such as `'TRUE'` or `'98.5'`) when Excel cells are natively typed.
 - **Severity**: Pass / Working as expected.
+  - *Correction / Clarification*: The server path natively handles `.xlsx` via `sheet-to-schema/node`. The browser path requires a consumer-registered `SheetParser` to accept `.xlsx` (tested with a custom ExcelJS `SheetParser` in Round 2 below).
 
 ### 4. Numbered columns with compacted array slots
 - **Date**: 2026-10-14
@@ -79,3 +80,132 @@ Log issues and observations from testing the release candidates (`sheet-to-schem
   3. When submitting a flat plan, `planForServer` automatically downgraded the plan to v1 format (`entity` instead of `target`, stripped `planVersion`) allowing the 2.5 server to execute the import.
 - **Expected**: Client detects older server capabilities, prevents sending unsupported v2 features that would silently corrupt data, and downgrades flat plans gracefully.
 - **Severity**: Pass / Working as expected.
+
+---
+
+## Second RC Test Round (Real-World Files & Standalone Angular App)
+
+Tested against published npm `@next` packages only (`sheet-to-schema@1.0.0-rc.1`, `@dynamic-entity/core@3.0.0-rc.1`, `@dynamic-entity/server@3.0.0-rc.1`, `ngx-dynamic-entity@3.0.0-rc.1`).
+
+### A1. Mac Excel 1904 Date System
+- **Date**: 2026-10-14
+- **App**: Dual test harness (Browser `SheetParser` over ExcelJS vs Server `createImportRouter` over HTTP)
+- **Sheet shape**: Binary `.xlsx` generated with openpyxl setting `wb.epoch = CALENDAR_MAC_1904` (`<workbookPr date1904="1"/>` in `xl/workbook.xml`), containing dates `2026-05-15`, `1904-01-02` (day 1 in 1904 epoch), `1985-10-26`, and `2020-03-01`.
+- **What happened**:
+  - *Browser path*: ExcelJS `Workbook.xlsx.load` detected `date1904="1"`. Both dates parsed as exact UTC dates (`2026-05-15`, `1904-01-02`). `applyMapping` formatted them into ISO strings `2026-05-15` and `1904-01-02`.
+  - *Server path*: Preview sample and commit imported identical records: Alice Mac (`birthDate: '2026-05-15'`, `joinDate: '1904-01-02'`), Bob Mac (`birthDate: '1985-10-26'`, `joinDate: '2020-03-01'`).
+- **Expected**: Dates must not shift by 1462 days (the ~4-year gap between 1900 and 1904 date epochs).
+- **Severity**: Pass / Working as expected. Zero epoch drift.
+
+### A2. Numeric cells holding identifiers mapped to string fields
+- **Date**: 2026-10-14
+- **App**: Dual test harness (Browser `SheetParser` over ExcelJS vs Server `createImportRouter` over HTTP)
+- **Sheet shape**: `.xlsx` with numeric cells (`<c t="n">`) holding:
+  - 10-digit phone (`9876543210`)
+  - 16-digit National ID (`1234567890123456`, `9876543210987654`)
+  - Pincodes (`600001`, and `12345` entered without leading apostrophe)
+  - Whole numbers / counts (`42`, `100`)
+  - Mapped to schema fields of type `text` (string).
+- **What happened**:
+  - Both Browser and Server paths produced identical strings:
+    - `phone`: `"9876543210"`
+    - `nationalId`: `"1234567890123456"` (no scientific notation `1.23457e+15`; safe integer below `Number.MAX_SAFE_INTEGER`)
+    - `postalCode`: `"600001"`, and `"12345"`
+    - `itemCount`: `"42"`, `"100"`
+  - *Correction on round 2's "zero precision loss" note*: The second 16-digit case (`9876543210987654`) exceeds `Number.MAX_SAFE_INTEGER` (`9007199254740991`) and passed only because the value was even. An odd value above the limit (such as `9876543210987653`) loses precision in IEEE-754 float64 (becoming `9876543210987652`). In rc.2, when a numeric cell's absolute value exceeds `Number.MAX_SAFE_INTEGER` and its target is a string kind, the importer reports `CELL_FORMAT`: `"too many digits to read exactly; format the column as Text in the source file"`.
+- **Expected**: Numeric cell values coerced to strings should retain full digit strings without exponential notation; values exceeding safe integer precision mapped to strings must report `CELL_FORMAT`.
+- **Severity**: Pass / Resolved in rc.2 with unsafe integer guard.
+  - *Observation*: Pincode `12345` (intended as `012345`) imported as `"12345"`. When a user types a leading zero into a default Excel cell without text formatting, Excel's engine discards the leading zero before saving to XML. The coercion faithfully read the stored numeric value.
+
+### A3. CSV Flavors & LibreOffice Calc (.xlsx)
+- **Date**: 2026-10-14
+- **App**: Dual test harness (Browser `defaultSheetParser` / `exceljsParser` vs Server `createImportRouter` over HTTP)
+- **Sheet shape**:
+  1. *Excel CSV UTF-8 with BOM*: Starts with byte order mark `\uFEFF`, comma-delimited, CRLF.
+  2. *Excel Semicolon CSV*: `;` delimiter with European comma decimals (`12,50`, `4,8`).
+  3. *Google Sheets CSV export*: Standard UTF-8, commas, multiline cell `"123 Main St\nApt 4B"`, escaped quotes `"Special order: ""fragile"""`.
+  4. *LibreOffice Calc xlsx*: Native `.xlsx` with LibreOffice generator metadata in `docProps/app.xml`.
+- **What happened**:
+  - *Excel CSV UTF-8 (BOM)*: Both browser and server stripped `\uFEFF` from header 1. `parsedHeaders[0]` was `"Name"` (not `"\uFEFFName"`), allowing `suggestMapping` and `applyMapping` to achieve 100% exact match.
+  - *Excel Semicolon CSV*: `detectDelimiter` detected `;`. Coercion with `decimalMarkFor(';')` converted `12,50` to `12.5` and `4,8` to `4.8`.
+  - *Google Sheets CSV*: Multiline addresses and escaped quotes were preserved without row splitting or truncated quotes.
+  - *LibreOffice Calc xlsx*: Streamed and parsed with 100% parity to Excel workbooks.
+- **Expected**: Universal interoperability across major spreadsheet software exports.
+- **Severity**: Pass / Working as expected.
+
+### A4. Complex .xlsx (merged headers, hidden column, formulas, multiple sheets, trailing rows, duplicate headers)
+- **Date**: 2026-10-14
+- **App**: Dual test harness (Browser `SheetParser` over ExcelJS vs Server `createImportRouter` over HTTP)
+- **Sheet shape**: Binary `.xlsx` containing:
+  - Merged header cells `A1:B1` ("Customer Info")
+  - Hidden column F (`<col min="6" max="6" hidden="1"/>`) containing "Secret"
+  - Formula cells in column E (`=C2*D2` and `=C3*D3` with cached values `255` and `400`)
+  - Two sheets (`Sales` with data, `Instructions` as sheet 2)
+  - 7 trailing empty styled rows (rows 4 to 10)
+  - Duplicate header name (`Status` at column 6 and column 7)
+- **What happened**:
+  - *Formula cells*: Both paths evaluated to cached formula values `255` and `400`. The raw formula string `=C2*D2` was never emitted.
+  - *Hidden column*: Both paths parsed column F without shifting subsequent column indices.
+  - *Two sheets*: Both paths read sheet 1 (`Sales`) and ignored sheet 2 (`Instructions`).
+  - *Trailing empty rows*: Server commit reported `rowsRead: 9, imported: 2, skipped: 7`. Both paths silently skipped the 7 empty rows without generating errors or null records.
+  - *Duplicate headers*: `suggestMapping` mapped `status` to column 6 (first occurrence); column 7 was left unmapped.
+  - *Merged header cells*: 
+    - In Browser (non-streaming `getSheetValues()`): ExcelJS duplicated the master cell text into covered cells: `['Customer Info', 'Customer Info', 'Qty', ...]`.
+    - In Server (streaming `WorkbookReader`): The covered cell was emitted as empty string: `['Customer Info', '', 'Qty', ...]`.
+- **Expected**: Formula results used; empty rows skipped; sheet 1 prioritized; hidden columns kept in index alignment.
+- **Severity**: Pass (with Minor observation on merged header cell text duplication in non-streaming browser parser vs empty cell on streaming server parser).
+
+### A5. Non-Latin text (Tamil script, complex combining marks, emojis)
+- **Date**: 2026-10-14
+- **App**: Dual test harness (Browser vs Server, across both `.xlsx` and `.csv`)
+- **Sheet shape**:
+  - Headers: `['பெயர்', 'மின்னஞ்சல்', '📦 ஆர்டர் எண்', '💰 தொகை', '🚀 நிலை']`
+  - Values: `கார்த்திக் சுந்தரம்`, `மலர்விழி செல்வம்`, `Rajesh Kumar 🎉`, `✅ வழங்கப்பட்டது`, `⚡ செயலாக்கத்தில் உள்ளது`, `❌ ரத்து செய்யப்பட்டது`.
+- **What happened**:
+  - Full UTF-8 fidelity in both Browser and Server paths across both XLSX and CSV.
+  - All Tamil conjuncts and glyphs (`த்`, `தி`, `ழ`, `க்`) and astral plane emojis (`📦`, `💰`, `🚀`, `✅`, `⚡`, `❌`, `🎉`) preserved without mojibake or surrogate corruption.
+- **Expected**: 100% character preservation across all languages and emojis.
+- **Severity**: Pass / Working as expected.
+
+---
+
+### B. Fresh Standalone Angular App (`ngx-dynamic-entity@next`, `@dynamic-entity/core@next`, `@dynamic-entity/server@next`)
+
+- **Date**: 2026-10-14
+- **App**: Standalone Angular 21 project built outside monorepo (`fresh-angular-rc-app`), installing packages from npm registry. Driven end-to-end via Playwright.
+- **Screenshots saved to**: `docs/rc-screens/`
+
+#### 1. LocalImportTransport (In-Browser) Flow
+- Screen 1: `01-local-upload.png` — Wizard upload step with template download button and file dropzone.
+- Screen 2: `02-local-map.png` — Column mapping screen matching `Full Name *`, `Email Address *`, and `City`.
+- Screen 3: `03-local-review.png` — Review table rendering 3 sample rows with formatted values.
+- Screen 4: `04-local-commit-success.png` — Import completed with success status `Imported 3 record(s). Saved 3 records in browser memory.`
+
+#### 2. HttpImportTransport (Against `@dynamic-entity/server@next`) Flow
+- Screen 5: `05-http-upload.png` — Server transport upload screen.
+- Screen 6: `06-http-map.png` — Server-suggested mapping screen.
+- Screen 7: `07-http-review.png` — Server preview sample table.
+- Screen 8: `08-http-commit-success.png` — Multipart POST `/commit` executed, backend console logged `[SERVER] Imported 3 customers to backend database.`, wizard displayed `Imported 3 record(s).`
+
+#### 3. Date-Order Mismatch Guard (Wizard `DMY` vs Server `MDY`)
+- Screen 9: `09-date-order-mismatch.png`
+- **What happened**: Wizard configured with `[dateOrder]="'DMY'"` connected to server router configured with `dateOrder: 'MDY'`. When previewing ambiguous dates (`05/09/2026`, `15/10/2026`), the review screen immediately displayed the mismatch alert:
+  > *"This page reads dates as DMY but the import reads them as MDY. Nothing can be imported until both use the same date order."*
+  The "Import 2 row(s)" commit button was automatically disabled. Emma Watson's row flagged `"15/10/2026" is not a date`.
+- **Expected**: Immediate UI guard preventing accidental date corruption before a single record is written.
+- **Severity**: Pass / Working as expected.
+
+#### 4. Stored 2.5 Plan Reopened in 3.0 Wizard
+- Screen 10: `10-stored-25-plan-reopened.png`
+- Screen 11: `11-stored-25-plan-imported.png`
+- **What happened**: Stored 2.5 plan `{ entity: 'customers', configVersion: 1, entries: [{ ref: 'name', column: 0 }, { ref: 'email', column: 1 }, { ref: 'city', column: 2 }] }` provided via custom preview suggestion. `ImportMapperComponent` automatically normalized the legacy plan via `upgradeLegacyRefs` and pre-populated all column select dropdowns (`3 of 3 field(s) matched.`). The user proceeded to Review and Commit without re-mapping any column.
+- **Expected**: Flawless backward compatibility when reopening existing saved mapping plans.
+- **Severity**: Pass / Working as expected.
+
+---
+
+## Deferred Items
+
+### Duplicate header names: preview should flag them
+- **Status**: Deferred to Phase 4.
+- **Description**: When an uploaded spreadsheet carries duplicate header names (such as multiple columns titled "Status"), the preview step should detect and flag them to alert the user during mapping.

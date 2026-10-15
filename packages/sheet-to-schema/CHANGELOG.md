@@ -6,6 +6,11 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.0.0-rc.2]
+
+- **Unsafe integer guard**: When a numeric cell's absolute value exceeds `Number.MAX_SAFE_INTEGER` and its target is a string kind, generic adapters report `CELL_FORMAT`: `"too many digits to read exactly; format the column as Text in the source file"`. Numeric target fields are unchanged.
+- **Merged ranges contract**: Covered cells of a merged range are `''` (as the streaming server reader emits).
+
 ## [1.0.0-rc.1]
 
 The first release candidate. The package is the spreadsheet-import engine of

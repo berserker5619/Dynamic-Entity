@@ -12,7 +12,7 @@ one record per row, or per group of rows, reporting every cell it could not use.
 - **The same engine on both sides.** A file imports to the same records in the browser and
   on the server, because both run the same function over the same plan.
 
-> **Status: release candidate (1.0.0-rc.1).** It is the import engine of
+> **Status: release candidate (1.0.0-rc.2).** It is the import engine of
 > [Dynamic Entity](https://github.com/berserker5619/Dynamic-Entity#readme) 3.0, extracted so it can be used without it.
 > Members marked `@internal` are not covered by semver and may change in any release.
 

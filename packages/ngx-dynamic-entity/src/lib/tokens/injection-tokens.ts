@@ -156,11 +156,11 @@ export const UPLOAD_HANDLER = new InjectionToken<FileUploadHandler>('UPLOAD_HAND
  * @example
  * provideNgxDynamicEntity({
  *   sheetParser: async file => {
- *     const wb = XLSX.read(await file.arrayBuffer());
+ *     const wb = XLSX.read(await file.arrayBuffer(), { cellDates: true });
  *     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {
- *       header: 1, raw: false, defval: '',
- *     }) as string[][];
- *     return { headers: rows[0] ?? [], rows: rows.slice(1) };
+ *       header: 1, raw: true, defval: '', UTC: true,
+ *     }) as unknown[][];
+ *     return { headers: (rows[0] ?? []).map(cellText), rows: rows.slice(1) };
  *   },
  * })
  */

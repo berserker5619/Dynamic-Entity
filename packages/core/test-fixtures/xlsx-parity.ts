@@ -124,3 +124,29 @@ export async function buildParityWorkbook(): Promise<Uint8Array> {
   }
   return repacked.generateAsync({ type: 'uint8array', compression: 'DEFLATE', platform: 'UNIX' });
 }
+
+export const MERGED_HEADER_HEADERS = ['Customer Info', '', 'Quantity'];
+export const MERGED_HEADER_ROWS = [['Alice', 'Wonder', 42]];
+
+/** A workbook with a merged header range (A1:B1) where covered cells must be emitted as ''. */
+export async function buildMergedHeaderWorkbook(): Promise<Uint8Array> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.created = workbook.modified = FIXED_DATE;
+  workbook.creator = workbook.lastModifiedBy = 'dynamic-entity tests';
+  const sheet = workbook.addWorksheet('MergedHeader');
+  sheet.getCell('A1').value = 'Customer Info';
+  sheet.mergeCells('A1:B1');
+  sheet.getCell('C1').value = 'Quantity';
+  sheet.getCell('A2').value = 'Alice';
+  sheet.getCell('B2').value = 'Wonder';
+  sheet.getCell('C2').value = 42;
+
+  const written = await JSZip.loadAsync(await workbook.xlsx.writeBuffer());
+  const repacked = new JSZip();
+  for (const name of Object.keys(written.files).sort()) {
+    const entry = written.files[name];
+    if (entry.dir) continue;
+    repacked.file(name, await entry.async('uint8array'), { date: FIXED_DATE, createFolders: false });
+  }
+  return repacked.generateAsync({ type: 'uint8array', compression: 'DEFLATE', platform: 'UNIX' });
+}

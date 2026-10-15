@@ -715,8 +715,11 @@ Every one of those options matters, and each was checked against SheetJS 0.20.3:
   also how the server's reader delivers one. Without it, SheetJS builds *local* midnight,
   which in UTC is the previous day for anyone east of Greenwich: `2024-03-07` imported as
   `2024-03-06` in India.
+- **`defval: ''`** emits `''` for covered cells of a merged range. The `SheetParser` contract
+  requires that covered cells of a merged range are `''` (as the server reader emits); the
+  master cell at the top-left holds the value.
 
-With all three, a workbook imported in the browser produces the same records as the same
+With all four, a workbook imported in the browser produces the same records as the same
 workbook posted to `@dynamic-entity/server`. A parser that returns text (`SheetData`) still
 works; it just loses the types.
 

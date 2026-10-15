@@ -38,6 +38,10 @@ import type {
  * text is whatever a library's formatter printed. A parser returning text (`SheetData`, as 2.2's
  * did) still fits.
  *
+ * Covered cells of a merged range are `''` (as the server reader emits). The master cell at
+ * the top-left of the range holds the value; every covered cell must be `''`, never repeating
+ * the master value and never omitted.
+ *
  * The library ships a delimited-text reader and no more. Registering one that understands
  * `.xlsx` is how a consumer adds it, and which spreadsheet library they use stays their
  * choice — this package has no runtime dependency and gains none here.
@@ -46,6 +50,7 @@ import type {
  * // SheetJS 0.20.3+ from https://cdn.sheetjs.com — the npm `xlsx` package stopped at 0.18.5,
  * // which has known vulnerabilities. `UTC: true` matters: without it a date cell arrives at
  * // *local* midnight, which is the previous day in UTC for anyone east of Greenwich.
+ * // `defval: ''` ensures covered cells of merged ranges are `''`, matching the server reader.
  * provideNgxDynamicEntity({
  *   sheetParser: async file => {
  *     const workbook = XLSX.read(await file.arrayBuffer(), { cellDates: true });

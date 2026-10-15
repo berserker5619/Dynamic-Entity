@@ -148,6 +148,17 @@ describe('coerceCell for the newer field types', () => {
     // An xlsx holds a phone number typed without a plus as a number cell.
     expect(coerceCell(field('phone'), 15555550123)).toEqual({ value: '15555550123' });
   });
+
+  it('refuses unsafe integers mapped to string fields, but leaves numeric targets unchanged', () => {
+    expect(coerceCell(field('text'), Number('9876543210987653'))).toEqual({
+      error: 'too many digits to read exactly; format the column as Text in the source file',
+    });
+    expect(coerceCell(field('phone'), Number('9876543210987653'))).toEqual({
+      error: 'too many digits to read exactly; format the column as Text in the source file',
+    });
+    expect(coerceCell(field('text'), 1234567890123456)).toEqual({ value: '1234567890123456' });
+    expect(coerceCell(field('number'), Number('9876543210987653'))).toEqual({ value: Number('9876543210987653') });
+  });
 });
 
 describe('validateImportedRecord applies the new flag validators the form applies', () => {

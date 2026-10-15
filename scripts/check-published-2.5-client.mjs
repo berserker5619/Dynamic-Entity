@@ -3,12 +3,12 @@
  * check-published-2.5-client.mjs — verify published 2.5.0 client wire compatibility with 3.0 server.
  *
  * Installs published ngx-dynamic-entity@2.5.0 and @dynamic-entity/core@2.5.0 into a temp
- * directory and runs their HttpImportTransport against a 3.0.0-rc.1 server built from this tree.
+ * directory and runs their HttpImportTransport against a 3.0.0-rc.2 server built from this tree.
  *
  * Asserts:
  *   1. Same dateOrder on both sides (DMY) -> commits with no month-first warning.
  *   2. Different dateOrders (MDY client vs DMY server) -> refused before sending a byte.
- *   3. 2.5.0's version comparison correctly handles "3.0.0-rc.1" without falling back to month-first.
+ *   3. 2.5.0's version comparison correctly handles "3.0.0-rc.2" without falling back to month-first.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -63,7 +63,7 @@ async function run() {
   const { HttpImportTransport } = await import(pathToFileURL(NGX_MJS).href);
   const { createImportRouter } = await import(pathToFileURL(SERVER_DIST).href);
 
-  // 1. Verify 2.5.0 version comparison logic against "3.0.0-rc.1"
+  // 1. Verify 2.5.0 version comparison logic against "3.0.0-rc.2"
   // In published 2.5.0 ngx-dynamic-entity:
   // const DATE_ORDER_SINCE = [2, 5];
   // function readsMonthFirst(version) {
@@ -71,10 +71,10 @@ async function run() {
   //     const [major, minor] = version.split('.').map(Number);
   //     return major < DATE_ORDER_SINCE[0] || (major === DATE_ORDER_SINCE[0] && minor < DATE_ORDER_SINCE[1]);
   // }
-  const [major, minor] = '3.0.0-rc.1'.split('.').map(Number);
+  const [major, minor] = '3.0.0-rc.2'.split('.').map(Number);
   const wouldReadMonthFirst = major < 2 || (major === 2 && minor < 5);
   if (wouldReadMonthFirst) {
-    console.error('CRITICAL: 2.5.0 version comparison mishandles "3.0.0-rc.1" and assumes month-first!');
+    console.error('CRITICAL: 2.5.0 version comparison mishandles "3.0.0-rc.2" and assumes month-first!');
     process.exit(1);
   }
 
@@ -168,10 +168,10 @@ async function run() {
       throw new Error(`Unexpected refusal message: "${refusalError}"`);
     }
 
-    console.log('✓ Published 2.5.0 client vs 3.0.0-rc.1 server parity check passed:');
+    console.log('✓ Published 2.5.0 client vs 3.0.0-rc.2 server parity check passed:');
     console.log('  - Same dateOrder (DMY) committed 2 records with zero month-first warnings');
     console.log('  - Different dateOrder (MDY vs DMY) correctly refused by 2.5.0 client');
-    console.log('  - 2.5.0 version comparison correctly treats "3.0.0-rc.1" as modern engine (not month-first)');
+    console.log('  - 2.5.0 version comparison correctly treats "3.0.0-rc.2" as modern engine (not month-first)');
   } finally {
     server.close();
   }

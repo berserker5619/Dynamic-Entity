@@ -41,6 +41,20 @@ describe('coerceValue — string', () => {
     expect(value(STRING, 42)).toBe('42');
     expect(value(STRING, true)).toBe('true');
   });
+
+  it('imports safe integer below limit exactly, but flags unsafe integers above MAX_SAFE_INTEGER', () => {
+    expect(value(STRING, 1234567890123456)).toBe('1234567890123456');
+    expect(read(STRING, Number('9876543210987653'))).toEqual({
+      code: 'CELL_FORMAT',
+      error: 'too many digits to read exactly; format the column as Text in the source file',
+    });
+    expect(read(STRING, -Number('9876543210987653'))).toEqual({
+      code: 'CELL_FORMAT',
+      error: 'too many digits to read exactly; format the column as Text in the source file',
+    });
+    // Formatted as text in source:
+    expect(value(STRING, '9876543210987653')).toBe('9876543210987653');
+  });
 });
 
 describe('coerceValue — number', () => {

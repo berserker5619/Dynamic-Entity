@@ -11,13 +11,16 @@
  * `coerceTypedCell` (`import-engine.ts:334`: a `Date` by its UTC components). Run in every
  * zone by `check:timezones`.
  */
+import { readSheet } from './read-sheet';
 import { runImport } from './run-import';
 import { chunked } from './sheet.fixtures';
 import {
+  MERGED_HEADER_HEADERS,
   PARITY_XLSX_CONFIG,
   PARITY_XLSX_EXPECTED,
   PARITY_XLSX_PLAN,
   PARITY_XLSX_SHA256,
+  buildMergedHeaderWorkbook,
   buildParityWorkbook,
   sha256,
 } from '../../core/test-fixtures/xlsx-parity';
@@ -47,5 +50,11 @@ describe('an xlsx import, against the shared parity workbook', () => {
 
     expect(result.format).toBe('xlsx');
     expect({ records, errors: result.errors, skipped: result.skipped }).toEqual(PARITY_XLSX_EXPECTED);
+  });
+
+  it('emits covered cells of a merged header range as empty string in parity with browser', async () => {
+    const mergedBytes = await buildMergedHeaderWorkbook();
+    const sheet = await readSheet({ stream: chunked(mergedBytes, 1024), filename: 'merged.xlsx' });
+    expect(sheet.headers).toEqual(MERGED_HEADER_HEADERS);
   });
 });

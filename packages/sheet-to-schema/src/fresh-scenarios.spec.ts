@@ -40,7 +40,7 @@ describe('fresh sheet-to-schema end-to-end scenarios', () => {
     };
 
     const adapter = jsonSchemaAdapter(employeeSchema);
-    expect(adapter.adapterVersion).toBe('1.0.0-rc.1');
+    expect(adapter.adapterVersion).toBe('1.0.0-rc.2');
 
     // Sample raw spreadsheet table (header row + data rows)
     const headers = [

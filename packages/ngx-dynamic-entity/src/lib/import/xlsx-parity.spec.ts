@@ -26,6 +26,8 @@ import {
   PARITY_XLSX_HEADERS,
   PARITY_XLSX_PLAN,
   PARITY_XLSX_SHA256,
+  MERGED_HEADER_HEADERS,
+  buildMergedHeaderWorkbook,
   buildParityWorkbook,
   sha256,
 } from '../../../../core/test-fixtures/xlsx-parity';
@@ -41,12 +43,24 @@ function cellOf(value: ExcelJS.CellValue | undefined): unknown {
   return '';
 }
 
-/** A typed `SheetParser` over exceljs: first worksheet, row 1 as headers, gaps kept. */
+/** A typed `SheetParser` over exceljs: first worksheet, row 1 as headers, gaps kept, covered cells blank. */
 async function exceljsParser(file: File): Promise<SheetGrid> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(await file.arrayBuffer());
+  const ws = workbook.worksheets[0];
   // One-based, with a hole wherever a row is blank; each row one-based with a hole at 0.
-  const rows = workbook.worksheets[0].getSheetValues() as (ExcelJS.CellValue[] | undefined)[];
+  const rows = ws.getSheetValues() as (ExcelJS.CellValue[] | undefined)[];
+  // Covered cells of a merged range are '', as the SheetParser contract states.
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    if (!row) continue;
+    for (let c = 1; c < row.length; c++) {
+      const cell = ws.getCell(r, c);
+      if (cell.isMerged && cell.master.address !== cell.address) {
+        row[c] = '';
+      }
+    }
+  }
   const cells = (row: ExcelJS.CellValue[] | undefined): unknown[] =>
     Array.from({ length: Math.max(0, (row?.length ?? 1) - 1) }, (_, i) => cellOf(row?.[i + 1]));
   const headers = cells(rows[1]).map(String);
@@ -95,5 +109,12 @@ describe('an xlsx import in the browser, against the shared parity workbook', ()
     expect({ records: result.records, errors: result.errors, skipped: result.skipped }).toEqual(
       PARITY_XLSX_EXPECTED,
     );
+  });
+
+  it('emits covered cells of a merged header range as empty string in parity with server', async () => {
+    const mergedBytes = await buildMergedHeaderWorkbook();
+    const preview = await local.preview(workbookFile(mergedBytes), { config: PARITY_XLSX_CONFIG, lang: 'en' });
+    expect(preview.headers).toEqual(MERGED_HEADER_HEADERS);
+    expect(preview.sample[0]).toEqual(['Alice', 'Wonder', '42']);
   });
 });

@@ -573,6 +573,9 @@ export function coerceCell(
     }
 
     default:
+      if (typeof raw === 'number' && Math.abs(raw) > Number.MAX_SAFE_INTEGER) {
+        return { error: 'too many digits to read exactly; format the column as Text in the source file' };
+      }
       return { value: text };
   }
 }
