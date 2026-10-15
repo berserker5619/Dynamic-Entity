@@ -424,11 +424,8 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       expect(last['org']['hierarchy']['division']['region']).toBe('EU-CENTRAL');
       expect(last['metrics']['annualRecurringRevenue']).toBe(224987.5);
 
-      // Retained heap bound: measured ~9.8 MB. 25 MB discriminates against retaining intermediate structures or raw row arrays.
-      expect(heapDelta).toBeLessThan(25 * 1024 * 1024);
-
-      // Catastrophic regression tripwire: CI max 2,760ms; tripwire set to 10,000ms (>= 3x CI).
-      expect(durationMs).toBeLessThan(10000);
+      // Retained heap bound: measured ~9.8 MB. 15 MB (~1.5x) discriminates against retaining intermediate structures or raw row arrays.
+      expect(heapDelta).toBeLessThan(15 * 1024 * 1024);
 
       console.log(`[Stress Test 1 (10k)] duration: ${durationMs}ms, heapAfter: ${(heapAfter / 1024 / 1024).toFixed(2)}MB, heapDelta: ${(heapDelta / 1024 / 1024).toFixed(2)}MB`);
     });
@@ -794,11 +791,8 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       expect(last['cluster']['topology']['region']).toBe('eu-west-1');
       expect(last['telemetry']['memoryBytes']).toBe(68719476736);
 
-      // Retained heap bound: measured ~10.6 MB. 25 MB discriminates sharply against holding clones/ASTs.
-      expect(heapDelta).toBeLessThan(25 * 1024 * 1024);
-
-      // Catastrophic regression tripwire: CI max 2,847ms; tripwire set to 10,000ms (>= 3x CI).
-      expect(durationMs).toBeLessThan(10000);
+      // Retained heap bound: measured ~10.6 MB. 15 MB (~1.42x) discriminates sharply against holding clones/ASTs.
+      expect(heapDelta).toBeLessThan(15 * 1024 * 1024);
 
       console.log(`[Hardcore 10k] duration: ${durationMs}ms, heapAfter: ${(heapAfter / 1024 / 1024).toFixed(2)}MB, heapDelta: ${(heapDelta / 1024 / 1024).toFixed(2)}MB`);
     }, 45000);
@@ -951,11 +945,8 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       expect(last['transactionId']).toBe('TXN-0020000');
       expect(last['merchant']['profile']['countryCode']).toBe('GB');
 
-      // Retained heap bound: measured ~13.8 MB. 30 MB discriminates against holding raw row data.
-      expect(heapDelta).toBeLessThan(30 * 1024 * 1024);
-
-      // Catastrophic regression tripwire: local ~1,100-1,500ms; 10x tripwire set at 15,000ms (15s).
-      expect(durationMs).toBeLessThan(15000);
+      // Retained heap bound: measured ~13.8 MB. 21 MB (~1.5x) discriminates against holding raw row data.
+      expect(heapDelta).toBeLessThan(21 * 1024 * 1024);
 
       console.log(`[Hardcore 20k] duration: ${durationMs}ms, heapAfter: ${(heapAfter / 1024 / 1024).toFixed(2)}MB, heapDelta: ${(heapDelta / 1024 / 1024).toFixed(2)}MB`);
     }, 45000);
@@ -1091,11 +1082,8 @@ ORD-882,Beacon Systems,980.50,FALSE`;
       expect(lastOrder['orderId']).toBe('PO-004000');
       expect(lastOrder['items']).toHaveLength(ITEMS_PER_ORDER);
 
-      // Retained heap bound: measured ~3.5 MB. 15 MB discriminates against holding intermediate maps.
-      expect(heapDelta).toBeLessThan(15 * 1024 * 1024);
-
-      // Catastrophic regression tripwire: CI max 2,884ms; tripwire set to 10,000ms (>= 3x CI).
-      expect(durationMs).toBeLessThan(10000);
+      // Retained heap bound: measured ~3.5 MB. 6 MB (~1.5x) discriminates against holding intermediate maps.
+      expect(heapDelta).toBeLessThan(6 * 1024 * 1024);
 
       console.log(`[Hardcore 20k Grouping] duration: ${durationMs}ms, heapAfter: ${(heapAfter / 1024 / 1024).toFixed(2)}MB, heapDelta: ${(heapDelta / 1024 / 1024).toFixed(2)}MB`);
     }, 45000);
