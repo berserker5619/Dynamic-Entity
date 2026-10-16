@@ -235,7 +235,7 @@ jobs:
           if npm view "sheet-to-schema@$VERSION" version >/dev/null 2>&1; then
             echo "sheet-to-schema@$VERSION is already published — skipping."
           else
-            npm publish ./packages/sheet-to-schema --access public --tag "$TAG" --provenance
+            npm publish ./packages/sheet-to-schema --access public --tag "$TAG" --provenance --loglevel verbose
             if [ "$TAG" = "next" ]; then
               CURRENT_LATEST=$(npm view sheet-to-schema dist-tags.latest 2>/dev/null || true)
               case "$CURRENT_LATEST" in
