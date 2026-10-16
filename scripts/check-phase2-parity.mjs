@@ -214,6 +214,30 @@ for (const src of ['packages/sheet-to-schema/src', 'packages/core/src', 'package
   report.push(`${src}: ${files.length} modules, no cycle`);
 }
 
+// ─── 4. Publishable package repository metadata ──────────────────────────────
+
+const PUBLISHABLE = [
+  { name: 'sheet-to-schema', dir: 'packages/sheet-to-schema' },
+  { name: '@dynamic-entity/core', dir: 'packages/core' },
+  { name: 'ngx-dynamic-entity', dir: 'packages/ngx-dynamic-entity' },
+  { name: 'ngx-dynamic-entity-builder', dir: 'packages/ngx-dynamic-entity-builder' },
+  { name: '@dynamic-entity/server', dir: 'packages/server' },
+];
+
+const EXPECTED_REPO_URL = 'git+https://github.com/berserker5619/Dynamic-Entity.git';
+
+for (const { dir } of PUBLISHABLE) {
+  const pkgPath = `${dir}/package.json`;
+  const pkg = JSON.parse(read(pkgPath));
+  if (pkg.repository?.url !== EXPECTED_REPO_URL) {
+    problems.push(`${pkgPath} must declare repository.url = '${EXPECTED_REPO_URL}', was '${pkg.repository?.url}'.`);
+  }
+  if (pkg.repository?.directory !== dir) {
+    problems.push(`${pkgPath} must declare repository.directory = '${dir}', was '${pkg.repository?.directory}'.`);
+  }
+}
+report.push(`repository metadata: all ${PUBLISHABLE.length} publishable packages point to ${EXPECTED_REPO_URL} with matching directory`);
+
 // ─── Verdict ─────────────────────────────────────────────────────────────────
 
 if (problems.length) {
