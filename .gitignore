@@ -6,6 +6,7 @@ node_modules/
 # Build and package outputs
 dist/
 **/dist/
+*.tgz
 .angular/
 .turbo/
 .nx/
