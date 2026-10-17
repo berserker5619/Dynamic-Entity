@@ -33,11 +33,11 @@
   },
   "devDependencies": {
     "@dynamic-entity/core": "^3.0.0",
-    "@types/busboy": "^1.5.4",
+    "@types/busboy": "^1.5.5",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.14.0",
-    "@types/supertest": "^6.0.3",
+    "@types/supertest": "^7.2.1",
     "express": "^5.2.1",
     "jest": "^30.0.0",
     "jszip": "^3.10.1",
