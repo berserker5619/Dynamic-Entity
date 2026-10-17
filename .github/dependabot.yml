@@ -26,10 +26,11 @@ updates:
       # moved 7 of the 9 framework packages (#27, 21.2.24 -> 21.2.25) and left animations and
       # platform-browser-dynamic, whose exact @angular/core peer then fails `npm ci`; plain
       # `npm update` of the full set fails the same way. When that PR goes red, do the patch
-      # by hand: delete the nine node_modules/@angular/<pkg> entries (animations, common,
-      # compiler, compiler-cli, core, forms, platform-browser, platform-browser-dynamic,
-      # router) from package-lock.json and run `npm install`. It re-resolves them together
-      # within the existing ranges, and Dependabot closes its PR as superseded.
+      # by hand, as CONTRIBUTING.md "Updating Angular, or any group that moves in lockstep"
+      # describes: one `npm update` of the whole group from a clean `npm ci`, then a check
+      # that no package left the lockfile. Deleting lockfile entries and rerunning `npm
+      # install` is safe only for direct dependencies such as these nine framework packages;
+      # for a transitive one npm drops the package instead of re-resolving it.
       angular:
         patterns:
           - '@angular/*'

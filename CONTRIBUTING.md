@@ -124,6 +124,65 @@ Conventional-commit prefixes (`fix:`, `feat:`, `docs:`, `ci:`, `test:`, `build:`
 scope where it helps (`fix(renderer):`). Explain *why* in the body, not just what — the
 existing history is the guide.
 
+## Updating Angular, or any group that moves in lockstep
+
+Angular's framework packages, its CLI and devkit packages, and a few others pinned to them
+(`.github/dependabot.yml` lists the groups) only install when they move together. Dependabot
+cannot always manage that, so a patch is often done by hand. The method:
+
+1. **Start from the committed lockfile and a matching tree.**
+
+   ```bash
+   git checkout -- package-lock.json
+   npm ci
+   ```
+
+2. **Update the whole group in one `npm update` call**, naming every package in it, so npm
+   resolves them against each other within the ranges already declared. For the CLI and devkit
+   group:
+
+   ```bash
+   npm update @angular/cli @angular/build @angular-devkit/build-angular \
+     @angular-devkit/architect @angular-devkit/build-webpack @angular-devkit/core \
+     @angular-devkit/schematics @schematics/angular
+   ```
+
+   For the framework packages, name all of them the same way (animations, cdk, common,
+   compiler, compiler-cli, core, forms, material, platform-browser, platform-browser-dynamic,
+   router). One package at a time is a partial bump with no resolution.
+
+3. **Check that nothing left the lockfile**, before committing (it compares with `HEAD`):
+
+   ```bash
+   git show HEAD:package-lock.json | node -e "
+     const before = JSON.parse(require('fs').readFileSync(0, 'utf8')).packages;
+     const after = require('./package-lock.json').packages;
+     const names = p => new Set(Object.keys(p).filter(k => k.includes('node_modules/')).map(k => k.slice(k.lastIndexOf('node_modules/') + 13)));
+     const now = names(after);
+     const gone = [...names(before)].filter(n => !now.has(n));
+     console.log(gone.length ? 'Gone from the lockfile entirely:\n  ' + gone.join('\n  ') : 'No package left the lockfile.');
+   "
+   ```
+
+   A name on that list is only right if no package depends on it any more. Read each one.
+   Then run `npm run check:lockfile` and the gate.
+
+**Do not delete entries from `package-lock.json` and rerun `npm install`** to force a
+re-resolve. npm starts from the lockfile and resolves again only what something declares
+directly: a deleted entry for a workspace's own dependency comes back, but a deleted entry for
+a transitive dependency whose parent is untouched is simply left out. npm then reports the tree
+as up to date, with the package gone. On 2026-10-17 that silently removed `handlebars`,
+`shell-quote` and `source-map-js` from the tree; deleting `node_modules/handlebars` alone, with
+`ts-jest` left in place, reproduces it (`handlebars`, `uglify-js` and `wordwrap` disappear).
+Deleting the parent as well brings the child back, but moves the parent too.
+
+The `npm update` method above is the one that worked for the CLI and devkit group (21.2.24 to
+21.2.27) and for the dev-only alert fixes. For the framework packages it has not been
+exercised since: the record in `.github/dependabot.yml` says a plain `npm update` of that set
+once failed the same way Dependabot did (#27). If it does, the fallback is to delete the
+lockfile entries of the nine framework packages only. That works because every one of them is a
+direct dependency, so npm resolves each again. Then run the step 3 check all the same.
+
 ## Releasing
 
 Maintainers only, and mostly automatic:
