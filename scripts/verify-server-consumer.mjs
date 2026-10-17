@@ -67,10 +67,9 @@ step(`Packing tarballs into ${tarballs}`);
 // Both publish their build output: each `dist/package.json` is written by that package's
 // build-manifest.mjs, so scripts and devDependencies never ship.
 //
-// Since 3.0 core depends on sheet-to-schema, which is not on npm. It is packed from its own
-// folder (its manifest lists `dist` under `files`) and installed beside the others, where it
-// satisfies core's range: without it this install would go to the registry and fail.
-for (const dir of ['packages/sheet-to-schema', 'packages/core/dist', 'packages/server/dist']) {
+// sheet-to-schema is not packed: core and server both pin it, and it comes from the registry
+// at that version, exactly as it will for a user.
+for (const dir of ['packages/core/dist', 'packages/server/dist']) {
   run('npm', ['pack', path.join(ROOT, dir)], { cwd: tarballs });
   console.log(`  packed ${dir}`);
 }
@@ -96,7 +95,6 @@ fs.writeFileSync(
       // `require` reaches, and it is the half that a wrong `main` breaks silently.
       version: '1.0.0',
       dependencies: {
-        'sheet-to-schema': tgz('sheet-to-schema'),
         '@dynamic-entity/core': tgz('dynamic-entity-core'),
         '@dynamic-entity/server': tgz('dynamic-entity-server'),
         express: '^5.0.0',

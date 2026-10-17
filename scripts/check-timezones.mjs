@@ -24,7 +24,6 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CORE = path.join(ROOT, 'packages', 'core');
 const SERVER = path.join(ROOT, 'packages', 'server');
 const NGX = path.join(ROOT, 'packages', 'ngx-dynamic-entity');
-const IMPORTER = path.join(ROOT, 'packages', 'sheet-to-schema');
 
 /**
  * Chosen to straddle Greenwich rather than to be exhaustive.
@@ -63,14 +62,13 @@ const ZONES = [
  * the server's reader and through a typed browser parser, and holds both to the same records:
  * the case where a zone-dependent date would show up as the two disagreeing.
  *
- * `importer/coerce` is the schema-agnostic coercer the extraction moves the rules into; it has to
- * hold in every zone before any adapter is built on it.
+ * sheet-to-schema's own coercer is held to the same six zones in its own repository
+ * (github.com/berserker5619/sheet-to-schema); here it runs, installed, under the suites above.
  */
 const SUITES = [
   { cwd: CORE, label: 'core', pattern: 'timezone|import-columns|import-engine' },
   { cwd: SERVER, label: 'server', pattern: 'all-configs|xlsx-parity' },
   { cwd: NGX, label: 'ngx', pattern: 'local-import-transport|xlsx-parity' },
-  { cwd: IMPORTER, label: 'importer', pattern: 'coerce' },
 ];
 
 const failures = [];

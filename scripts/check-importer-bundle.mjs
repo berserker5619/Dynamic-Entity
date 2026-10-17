@@ -10,13 +10,16 @@
  * the main entry: two copies means two `ImportFailure` classes, and an `instanceof` across
  * them is false.
  *
- * Read from the built files, because that is what ships. Run after the package is built.
+ * Read from the installed package, `node_modules/sheet-to-schema/dist`, because that is what
+ * Dynamic Entity ships on top of. The package is built and published from its own repository
+ * (github.com/berserker5619/sheet-to-schema), whose CI holds these rules more strictly; this
+ * is Dynamic Entity noticing a bad published build before its own users do.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { builtinModules } from 'node:module';
 import { join } from 'node:path';
 
-const DIST = join(process.cwd(), 'packages', 'sheet-to-schema', 'dist');
+const DIST = join(process.cwd(), 'node_modules', 'sheet-to-schema', 'dist');
 const NODE_ONLY = ['exceljs', 'busboy', 'express'];
 const BUILTINS = new Set(builtinModules.flatMap(name => [name, `node:${name}`]));
 
@@ -24,7 +27,7 @@ const BUILTINS = new Set(builtinModules.flatMap(name => [name, `node:${name}`]))
 function importsOf(file) {
   const text = readFileSync(file, 'utf8');
   const found = new Set();
-  for (const pattern of [/\bfrom\s*['"]([^'"]+)['"]/g, /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g, /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g, /^\s*import\s*['"]([^'"]+)['"]/gm]) {
+  for (const pattern of [/\bfrom\s*['"]([^'"]+)['"]/g, /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g, /(?:\b|__)require\s*\(\s*['"]([^'"]+)['"]\s*\)/g, /^\s*import\s*['"]([^'"]+)['"]/gm]) {
     for (const match of text.matchAll(pattern)) found.add(match[1]);
   }
   return { text, specifiers: [...found] };
@@ -37,7 +40,7 @@ const report = [];
 for (const name of ['index.js', 'index.mjs']) {
   const file = join(DIST, name);
   if (!existsSync(file)) {
-    problems.push(`${name} is missing: build sheet-to-schema first.`);
+    problems.push(`${name} is missing from the installed sheet-to-schema: run npm ci.`);
     continue;
   }
   const { specifiers } = importsOf(file);
@@ -53,7 +56,7 @@ for (const name of ['index.js', 'index.mjs']) {
 for (const name of ['node/index.js', 'node/index.mjs']) {
   const file = join(DIST, name);
   if (!existsSync(file)) {
-    problems.push(`${name} is missing: build sheet-to-schema first.`);
+    problems.push(`${name} is missing from the installed sheet-to-schema: run npm ci.`);
     continue;
   }
   const { text, specifiers } = importsOf(file);

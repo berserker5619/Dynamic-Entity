@@ -407,8 +407,10 @@ A config already describes every field, its type, its validators and its options
 enough to derive the columns a spreadsheet may carry, generate a template shaped like them, and
 map an uploaded file back onto records. None of that is authored twice.
 
-Since 3.0 the engine underneath is [`sheet-to-schema`](./packages/sheet-to-schema), which
+Since 3.0 the engine underneath is [`sheet-to-schema`](https://github.com/berserker5619/sheet-to-schema), which
 also imports into a JSON Schema or any schema of your own, with no Dynamic Entity in sight.
+It moved out of this repository and now lives at
+[github.com/berserker5619/sheet-to-schema](https://github.com/berserker5619/sheet-to-schema).
 Coming from 2.x? See [MIGRATING-3.0.md](./docs/MIGRATING-3.0.md).
 
 The wizard is one component and works with **no backend at all**. Registering

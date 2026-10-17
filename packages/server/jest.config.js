@@ -12,14 +12,6 @@ module.exports = {
     './src/**/*.ts': { statements: 90, branches: 80, functions: 100, lines: 90 },
   },
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
-  // sheet-to-schema is read from its source here, as its own suites read it. Its built
-  // CommonJS entry loads exceljs and busboy with a real `import()`, which Node runs and Jest's
-  // module sandbox does not. The built packages are exercised, installed from tarballs, by
-  // scripts/verify-server-consumer.mjs.
-  moduleNameMapper: {
-    '^sheet-to-schema$': '<rootDir>/../sheet-to-schema/src/index.ts',
-    '^sheet-to-schema/node$': '<rootDir>/../sheet-to-schema/src/node/index.ts',
-  },
   transform: {
     '^.+\.ts$': ['ts-jest', { tsconfig: { strict: true, esModuleInterop: true, skipLibCheck: true } }],
   },

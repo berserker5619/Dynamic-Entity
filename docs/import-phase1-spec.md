@@ -2,6 +2,10 @@
 
 Oct 4, 2026 · @Nizamudeen S · revised Oct 10, 2026 · canonical copy: `docs/import-phase1-spec.md`
 
+> **Moved.** sheet-to-schema now lives in its own repository, and the copy of this spec that is
+> kept current is there: [berserker5619/sheet-to-schema, docs/import-phase1-spec.md](https://github.com/berserker5619/sheet-to-schema/blob/main/docs/import-phase1-spec.md).
+> This one is left as the record of how Phase 1 was decided here.
+
 ## Purpose and scope
 
 This spec fixes two contracts before any code moves: **MappingPlan v2**, which is persisted and crosses the wire, and the **SchemaAdapter** family, which replaces the engine's hard dependency on `EntityFormConfig`. Phase 2 (the extraction) and Phase 3 (grouping, split lists, JSON Schema) implement against it.

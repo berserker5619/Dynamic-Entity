@@ -1,8 +1,0 @@
-Order ID,Order Date,Customer Name,Customer Email,Phone 1 Type,Phone 1 Number,Phone 2 Type,Phone 2 Number,Street,City,Pincode,Tags,SKU,Product,Qty,Unit Price,Payment Method,Paid
-NF-1001,05/09/2026,Divya S,divya@example.com,mobile,98400 11111,whatsapp,98400 22222,12 Anna Salai,Chennai,600002,festive; cotton,KUR-RED-M,Red cotton kurti,2,549,UPI,Yes
-NF-1001,05/09/2026,Divya S,divya@example.com,mobile,98400 11111,whatsapp,98400 22222,12 Anna Salai,Chennai,600002,festive; cotton,DUP-GLD,Gold dupatta,1,299,UPI,Yes
-NF-1002,06/09/2026,Rahul K,rahul.k@example,mobile,99620 33333,,,4 MG Road,Bengaluru,560001,casual,SHR-BLU-L,Blue linen shirt,1,799,COD,No
-NF-1003,07/09/2026,Fathima R,fathima@example.com,mobile,90030 44444,home,044 2345 6789,7 Beach Road,Chennai,6000,festive,SAR-SLK,Silk saree,1,2499,Card,Yes
-NF-1003,07/09/2026,Fathima R,fathima@example.com,mobile,90030 44444,home,044 2345 6789,7 Beach Road,Chennai,6000,festive,BLS-STD,Blouse stitching,one,350,Card,Yes
-NF-1004,31/09/2026,Arun P,arun@example.com,mobile,98765 43210,,,22 Lake View,Coimbatore,641001,casual; summer,TSH-WHT-M,White tee,3,399,Paytm,No
-NF-1004,31/09/2026,Arun P,arun.p@example.com,mobile,98765 43210,,,22 Lake View,Coimbatore,641001,casual; summer,TSH-BLK-M,Black tee,2,399,Paytm,No

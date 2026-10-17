@@ -1,0 +1,112 @@
+name: sheet-to-schema drift
+
+# Dynamic Entity's import engine is sheet-to-schema, published from its own repository
+# (github.com/berserker5619/sheet-to-schema). Core and server pin it exactly during the release
+# candidates, so nothing here moves when it publishes. This job is how Dynamic Entity finds out,
+# within a day, that a newly published sheet-to-schema would break it: before a user does, and
+# before the pin is raised.
+#
+# For each of the `latest` and `next` dist-tags: resolve it to a version, install that version
+# in place of the pin (and prove it is the only copy), build, then run the Phase 2 parity gate
+# and the import suites. A failure names the version and the dist-tag.
+
+on:
+  schedule:
+    - cron: '17 4 * * *' # daily, off the hour
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sheet-to-schema-drift
+  cancel-in-progress: false
+
+env:
+  CI: true
+  FORCE_COLOR: 0
+
+jobs:
+  drift:
+    name: sheet-to-schema@${{ matrix.dist-tag }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dist-tag: [latest, next]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Resolve sheet-to-schema@${{ matrix.dist-tag }}
+        id: resolve
+        run: |
+          VERSION=$(npm view "sheet-to-schema@${{ matrix.dist-tag }}" version)
+          PINNED=$(node -p "require('./packages/core/package.json').dependencies['sheet-to-schema']")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "sheet-to-schema@${{ matrix.dist-tag }} is $VERSION; Dynamic Entity pins $PINNED."
+          {
+            echo "### sheet-to-schema@${{ matrix.dist-tag }} = \`$VERSION\`"
+            echo "Dynamic Entity pins \`$PINNED\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Every workspace that depends on it is moved, not just the root: a root-level install
+      # would leave core and server resolving their own pinned copy beside it, and this job
+      # would test the pin while reporting the new version.
+      - name: Install sheet-to-schema@${{ steps.resolve.outputs.version }} in place of the pin
+        env:
+          VERSION: ${{ steps.resolve.outputs.version }}
+        run: |
+          for WS in packages/core packages/server; do
+            npm pkg set "dependencies.sheet-to-schema=$VERSION" --workspace "$WS"
+          done
+          npm install --no-audit --no-fund
+          node -e "
+            const fs = require('fs');
+            const want = process.env.VERSION;
+            const root = require('./node_modules/sheet-to-schema/package.json').version;
+            const nested = fs.readdirSync('packages').filter(p => fs.existsSync('packages/' + p + '/node_modules/sheet-to-schema'));
+            if (root !== want || nested.length) {
+              console.error('Expected one copy of sheet-to-schema@' + want + '; root has ' + root + (nested.length ? ', nested under ' + nested.join(', ') : ''));
+              process.exit(1);
+            }
+            console.log('One copy of sheet-to-schema, at ' + root + '.');
+          "
+          npm ls sheet-to-schema
+
+      - name: Build
+        run: npm run build
+
+      - name: Phase 2 parity gate
+        run: npm run check:parity
+
+      - name: Import suites (core, server)
+        run: npx turbo run test --filter=@dynamic-entity/core --filter=@dynamic-entity/server
+
+      - name: Import suites (ngx-dynamic-entity)
+        working-directory: packages/ngx-dynamic-entity
+        run: npx jest src/lib/import
+
+      - name: Name the version that broke
+        if: failure()
+        env:
+          VERSION: ${{ steps.resolve.outputs.version }}
+        run: |
+          MESSAGE="Dynamic Entity fails against sheet-to-schema@${VERSION:-unresolved} (dist-tag ${{ matrix.dist-tag }})."
+          echo "::error title=sheet-to-schema drift::$MESSAGE"
+          {
+            echo ""
+            echo "## :x: $MESSAGE"
+            echo "The failing step above is where it broke. Reproduce locally with:"
+            echo '```'
+            echo "npm pkg set dependencies.sheet-to-schema=${VERSION} --workspace packages/core --workspace packages/server && npm install"
+            echo '```'
+            echo "Fix it in sheet-to-schema first, or hold Dynamic Entity's pin where it is."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -14,7 +14,10 @@ name: Release
 # that used to bypass it (November 2025 — granular tokens only). Trusted publishing issues a
 # short-lived credential scoped to this workflow, needs no NPM_TOKEN secret, and is not
 # subject to the 2FA prompt. It requires the id-token: write permission below, and npm
-# >= 11.5.1 on Node >= 22.14, which is why the publish steps re-pin Node.
+# >= 11.5.1 on Node >= 22.14, which is why npm is installed at a pinned version below.
+#
+# sheet-to-schema, the import engine core and server depend on, is published from its own
+# repository (github.com/berserker5619/sheet-to-schema) and installed here from npm.
 #
 # Each package must name this repository and workflow as a trusted publisher in its npm
 # settings before a publish will be accepted.
@@ -62,10 +65,11 @@ jobs:
       - name: Build
         run: npm run build
 
-      # The Phase 2 gate (docs/phase2-plan.md): sheet-to-schema's entries import only what they
-      # may, what ships to a browser has no Node in it, no package or engine module imports in
-      # a circle, and every parity suite is still there and still runs. Reads the built files,
-      # so it sits after the build. A failure is a stop, not an expectation to adjust.
+      # The Phase 2 gate (docs/phase2-plan.md): the installed sheet-to-schema's entries import
+      # only what they may, what ships to a browser has no Node in it, no package or engine
+      # module imports in a circle, and every parity suite is still there and still runs. Reads
+      # the built files, so it sits after the build. A failure is a stop, not an expectation to
+      # adjust.
       - name: Phase 2 parity gate
         run: npm run check:parity
 
@@ -122,13 +126,16 @@ jobs:
           retention-days: 7
 
       # Trusted publishing needs npm >= 11.5.1, which is newer than the npm bundled with any
-      # Node release, so it is installed rather than assumed. The whole job used to build on
+      # Node release, so it is installed rather than assumed. Pinned, not @latest: a release
+      # should not change the tool that publishes it on the day a new npm comes out. 12.2.0 is
+      # the version sheet-to-schema 1.0.0-rc.3 published with through trusted publishing,
+      # provenance and the `latest` dist-tag move. Raise it deliberately. The whole job used to build on
       # Node 20 and switch to 24 only here, on the grounds that Angular 17's build tooling
       # needed 20; that turned out to be untrue — Angular 17.3.12 installs the packed
       # tarballs and compiles under strictTemplates on Node 24 — so the job runs one runtime.
       - name: Ensure npm supports trusted publishing
         run: |
-          npm install -g npm@latest
+          npm install -g npm@12.2.0
           echo "npm $(npm --version) on node $(node --version)"
 
       # A tag that disagrees with the manifests would publish a version nobody expects.
@@ -173,7 +180,7 @@ jobs:
         if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
         run: |
           MISSING=""
-          for PKG in sheet-to-schema @dynamic-entity/core ngx-dynamic-entity ngx-dynamic-entity-builder @dynamic-entity/server; do
+          for PKG in @dynamic-entity/core ngx-dynamic-entity ngx-dynamic-entity-builder @dynamic-entity/server; do
             if OUT=$(npm view "$PKG" version 2>&1); then
               echo "$PKG is on the registry at $OUT"
               continue
@@ -202,7 +209,7 @@ jobs:
             exit 1
           fi
 
-          echo "All five packages exist; trusted publishing can do the rest."
+          echo "All four packages exist; trusted publishing can do the rest."
 
       # Paths are written as ./packages/... deliberately. `npm publish packages/core` reads
       # a one-slash argument as GitHub shorthand for a repository and tries to fetch
@@ -210,49 +217,18 @@ jobs:
       # forces it to be treated as a directory. The two-slash dist paths happen to escape
       # this, which is what made it easy to miss.
       #
-      # Dependency order matters: sheet-to-schema goes first because @dynamic-entity/core and
-      # @dynamic-entity/server depend on it. Then core, followed by the Angular packages which
-      # peer-depend on the one before them. @dynamic-entity/server goes last.
+      # Dependency order matters: core first, followed by the Angular packages which
+      # peer-depend on the one before them. @dynamic-entity/server goes last. sheet-to-schema,
+      # which core and server depend on, is already on npm at the version they pin: the
+      # consumer-install steps above installed it from the registry.
       #
       # --access public is required for scoped packages and new packages.
       # --tag next is used when the version has a prerelease suffix (-rc.1, etc.); plain versions use latest.
-      # For sheet-to-schema, until a stable 1.0.0 exists (i.e. its `latest` dist-tag is still a prerelease),
-      # publishing with --tag next also advances `latest` to the new version. Once stable 1.0.0 is published,
-      # future prereleases will only touch `next`.
-      # Note: Trusted publishing (OIDC) may not permit dist-tag changes without explicit opt-in permissions
-      # on npmjs.com. Therefore, the dist-tag step is non-fatal: if it fails, a clear warning is logged with
-      # the exact manual command so the workflow run still succeeds.
       # Each publish is skipped when that exact version is already on the registry, so
       # re-running a release — or tagging a commit that was published by dispatch — is a
       # no-op rather than a hard failure on "You cannot publish over the previously
       # published versions". A genuine failure still fails: only the already-published case
       # is tolerated.
-      - name: Publish sheet-to-schema
-        if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
-        run: |
-          VERSION=$(node -p "require('./packages/sheet-to-schema/package.json').version")
-          TAG=$(node -p "require('./packages/sheet-to-schema/package.json').version.includes('-') ? 'next' : 'latest'")
-          if npm view "sheet-to-schema@$VERSION" version >/dev/null 2>&1; then
-            echo "sheet-to-schema@$VERSION is already published — skipping."
-          else
-            npm publish ./packages/sheet-to-schema --access public --tag "$TAG" --provenance --loglevel verbose
-            if [ "$TAG" = "next" ]; then
-              CURRENT_LATEST=$(npm view sheet-to-schema dist-tags.latest 2>/dev/null || true)
-              case "$CURRENT_LATEST" in
-                *-*)
-                  echo "sheet-to-schema latest dist-tag is a prerelease ($CURRENT_LATEST) — advancing latest to $VERSION."
-                  if ! npm dist-tag add "sheet-to-schema@$VERSION" latest; then
-                    echo "::warning::Could not update 'latest' dist-tag via trusted publishing (OIDC token may lack dist-tag permissions)."
-                    echo "::warning::To update manually, run: npm dist-tag add sheet-to-schema@$VERSION latest"
-                  fi
-                  ;;
-                *)
-                  echo "sheet-to-schema latest dist-tag is stable ($CURRENT_LATEST) — leaving latest unchanged."
-                  ;;
-              esac
-            fi
-          fi
-
       - name: Publish @dynamic-entity/core
         if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
         run: |
@@ -301,7 +277,6 @@ jobs:
       - name: Pack only (dry run)
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true' }}
         run: |
-          npm pack ./packages/sheet-to-schema --dry-run
           npm pack ./packages/core/dist --dry-run
           npm pack ./packages/ngx-dynamic-entity/dist --dry-run
           npm pack ./packages/ngx-dynamic-entity-builder/dist --dry-run

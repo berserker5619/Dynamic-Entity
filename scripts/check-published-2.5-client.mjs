@@ -3,16 +3,17 @@
  * check-published-2.5-client.mjs — verify published 2.5.0 client wire compatibility with 3.0 server.
  *
  * Installs published ngx-dynamic-entity@2.5.0 and @dynamic-entity/core@2.5.0 into a temp
- * directory and runs their HttpImportTransport against a 3.0.0-rc.2 server built from this tree.
+ * directory and runs their HttpImportTransport against a server built from this tree, at its
+ * CORE_VERSION.
  *
  * Asserts:
  *   1. Same dateOrder on both sides (DMY) -> commits with no month-first warning.
  *   2. Different dateOrders (MDY client vs DMY server) -> refused before sending a byte.
- *   3. 2.5.0's version comparison correctly handles "3.0.0-rc.2" without falling back to month-first.
+ *   3. 2.5.0's version comparison correctly handles this tree's version without falling back to month-first.
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
@@ -20,6 +21,11 @@ import { pathToFileURL } from 'node:url';
 
 const ROOT = process.cwd();
 const SERVER_DIST = path.join(ROOT, 'packages', 'server', 'dist', 'express.js');
+// The version this tree's server reports, read rather than written here, so a release cannot
+// leave the check testing the previous one.
+const CORE_VERSION = /export const CORE_VERSION = '([^']+)'/.exec(
+  readFileSync(path.join(ROOT, 'packages', 'core', 'src', 'constants.ts'), 'utf8'),
+)[1];
 
 if (!existsSync(SERVER_DIST)) {
   console.error('packages/server/dist/express.js not found. Run npm run build first.');
@@ -63,7 +69,7 @@ async function run() {
   const { HttpImportTransport } = await import(pathToFileURL(NGX_MJS).href);
   const { createImportRouter } = await import(pathToFileURL(SERVER_DIST).href);
 
-  // 1. Verify 2.5.0 version comparison logic against "3.0.0-rc.2"
+  // 1. Verify 2.5.0 version comparison logic against this tree's CORE_VERSION
   // In published 2.5.0 ngx-dynamic-entity:
   // const DATE_ORDER_SINCE = [2, 5];
   // function readsMonthFirst(version) {
@@ -71,10 +77,10 @@ async function run() {
   //     const [major, minor] = version.split('.').map(Number);
   //     return major < DATE_ORDER_SINCE[0] || (major === DATE_ORDER_SINCE[0] && minor < DATE_ORDER_SINCE[1]);
   // }
-  const [major, minor] = '3.0.0-rc.2'.split('.').map(Number);
+  const [major, minor] = CORE_VERSION.split('.').map(Number);
   const wouldReadMonthFirst = major < 2 || (major === 2 && minor < 5);
   if (wouldReadMonthFirst) {
-    console.error('CRITICAL: 2.5.0 version comparison mishandles "3.0.0-rc.2" and assumes month-first!');
+    console.error(`CRITICAL: 2.5.0 version comparison mishandles "${CORE_VERSION}" and assumes month-first!`);
     process.exit(1);
   }
 
@@ -168,10 +174,10 @@ async function run() {
       throw new Error(`Unexpected refusal message: "${refusalError}"`);
     }
 
-    console.log('✓ Published 2.5.0 client vs 3.0.0-rc.2 server parity check passed:');
+    console.log(`✓ Published 2.5.0 client vs ${CORE_VERSION} server parity check passed:`);
     console.log('  - Same dateOrder (DMY) committed 2 records with zero month-first warnings');
     console.log('  - Different dateOrder (MDY vs DMY) correctly refused by 2.5.0 client');
-    console.log('  - 2.5.0 version comparison correctly treats "3.0.0-rc.2" as modern engine (not month-first)');
+    console.log(`  - 2.5.0 version comparison correctly treats "${CORE_VERSION}" as modern engine (not month-first)`);
   } finally {
     server.close();
   }

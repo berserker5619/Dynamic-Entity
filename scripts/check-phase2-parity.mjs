@@ -17,7 +17,10 @@
  *      three that hold the engine. And sheet-to-schema imports nothing of Dynamic Entity's.
  *
  * Read from the built files where it says built, because that is what ships. Run after every
- * package is built: `npm run build && npm run check:parity`.
+ * package is built: `npm run build && npm run check:parity`. sheet-to-schema is read where it is
+ * installed, `node_modules/sheet-to-schema`: it is built and published from its own repository
+ * (github.com/berserker5619/sheet-to-schema), which holds its own source to no cycle, and its
+ * own acceptance test.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { builtinModules } from 'node:module';
@@ -51,15 +54,13 @@ const SUITES = [
   { file: 'packages/core/src/__snapshots__/import-moved-containers.spec.ts.snap', has: ['exports['] },
   // The browser's typed-parser tests, which the timezone gate runs in every zone.
   { file: 'packages/ngx-dynamic-entity/src/lib/import/local-import-transport.spec.ts', has: ['LocalImportTransport with a typed parser'] },
-  { file: 'scripts/check-timezones.mjs', has: ['NGX', 'IMPORTER', 'local-import-transport'] },
+  { file: 'scripts/check-timezones.mjs', has: ['NGX', 'local-import-transport', 'xlsx-parity'] },
   // One workbook, through the browser and through the server.
   { file: 'packages/core/test-fixtures/xlsx-parity.ts', has: ['PARITY_XLSX_EXPECTED'] },
   { file: 'packages/server/src/xlsx-parity.spec.ts', has: ['PARITY_XLSX_EXPECTED'] },
   { file: 'packages/ngx-dynamic-entity/src/lib/import/xlsx-parity.spec.ts', has: ['PARITY_XLSX_EXPECTED'] },
   // What 2.5.0 imported, which the 3.x engine is compared with.
   { file: 'packages/core/src/entity-form-config-adapter.spec.ts', has: ['import-golden-2.5.0.json', 'a v2 suggestion and the equivalent stored v1 plan'] },
-  // The acceptance test against the prototype's fixtures.
-  { file: 'packages/sheet-to-schema/src/acceptance.spec.ts', has: ['describe('] },
 ];
 
 for (const { file, has } of SUITES) {
@@ -96,7 +97,7 @@ function importsOf(text) {
   const patterns = [
     /^\s*(?:import|export)\s+(?!type\b)[^'"]*?\bfrom\s*['"]([^'"]+)['"]/gm,
     /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
-    /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+    /(?:\b|__)require\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
     /^\s*import\s*['"]([^'"]+)['"]/gm,
   ];
   for (const pattern of patterns) for (const match of text.matchAll(pattern)) found.add(match[1]);
@@ -104,8 +105,8 @@ function importsOf(text) {
 }
 
 const BROWSER_BUNDLES = [
-  'packages/sheet-to-schema/dist/index.js',
-  'packages/sheet-to-schema/dist/index.mjs',
+  'node_modules/sheet-to-schema/dist/index.js',
+  'node_modules/sheet-to-schema/dist/index.mjs',
   'packages/core/dist/index.js',
   'packages/core/dist/index.mjs',
   'packages/ngx-dynamic-entity/dist/fesm2022/ngx-dynamic-entity.mjs',
@@ -122,7 +123,7 @@ for (const file of BROWSER_BUNDLES) {
     }
     if (specifier === 'sheet-to-schema/node') problems.push(`${file} imports "sheet-to-schema/node", the entry that needs Node. It ships to a browser.`);
   }
-  report.push(`${file.replace('packages/', '')}: ${specifiers.length} imports, none of Node`);
+  report.push(`${file.replace(/^(packages|node_modules)\//, '')}: ${specifiers.length} imports, none of Node`);
 }
 
 // ─── 3. No import cycle ──────────────────────────────────────────────────────
@@ -153,8 +154,8 @@ function cycleIn(graph) {
 
 // Between packages, from what each one's built entries import.
 const PACKAGES = {
-  'sheet-to-schema': ['packages/sheet-to-schema/dist/index.js', 'packages/sheet-to-schema/dist/index.mjs'],
-  'sheet-to-schema/node': ['packages/sheet-to-schema/dist/node/index.js', 'packages/sheet-to-schema/dist/node/index.mjs'],
+  'sheet-to-schema': ['node_modules/sheet-to-schema/dist/index.js', 'node_modules/sheet-to-schema/dist/index.mjs'],
+  'sheet-to-schema/node': ['node_modules/sheet-to-schema/dist/node/index.js', 'node_modules/sheet-to-schema/dist/node/index.mjs'],
   '@dynamic-entity/core': ['packages/core/dist/index.js', 'packages/core/dist/index.mjs', 'packages/core/dist/cli.js', 'packages/core/dist/cli.mjs'],
   '@dynamic-entity/server': ['packages/server/dist/index.js', 'packages/server/dist/index.mjs'],
   '@dynamic-entity/server/express': ['packages/server/dist/express.js', 'packages/server/dist/express.mjs'],
@@ -195,7 +196,7 @@ function sourceFiles(dir) {
     return /\.ts$/.test(name) && !/\.(spec|fixtures|d)\.ts$/.test(name) ? [path] : [];
   });
 }
-for (const src of ['packages/sheet-to-schema/src', 'packages/core/src', 'packages/server/src']) {
+for (const src of ['packages/core/src', 'packages/server/src']) {
   const files = sourceFiles(at(src));
   const known = new Set(files);
   const graph = new Map();
@@ -217,7 +218,6 @@ for (const src of ['packages/sheet-to-schema/src', 'packages/core/src', 'package
 // ─── 4. Publishable package repository metadata ──────────────────────────────
 
 const PUBLISHABLE = [
-  { name: 'sheet-to-schema', dir: 'packages/sheet-to-schema' },
   { name: '@dynamic-entity/core', dir: 'packages/core' },
   { name: 'ngx-dynamic-entity', dir: 'packages/ngx-dynamic-entity' },
   { name: 'ngx-dynamic-entity-builder', dir: 'packages/ngx-dynamic-entity-builder' },

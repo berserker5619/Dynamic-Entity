@@ -55,7 +55,6 @@ export default tseslint.config(
           './packages/ngx-dynamic-entity-builder/tsconfig.json',
           './packages/ngx-dynamic-entity-builder/tsconfig.spec.json',
           './packages/demo-angular/tsconfig.json',
-          './packages/sheet-to-schema/tsconfig.json',
         ],
         tsconfigRootDir: import.meta.dirname,
       },
@@ -130,62 +129,6 @@ export default tseslint.config(
       // A spec that asserts on a promise's result awaits it; one that asserts a call was
       // made does not have to.
       '@typescript-eslint/no-floating-promises': 'off',
-    },
-  },
-
-  {
-    // The importer depends on nothing in Dynamic Entity (docs/import-phase1-spec.md, "Package
-    // boundaries"): the DE adapter imports it, never the reverse, or core's re-exports make a
-    // cycle. A rule rather than a convention, so a stray import fails `npm run lint`.
-    files: ['packages/sheet-to-schema/**/*.ts'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            { group: ['@dynamic-entity/*', 'ngx-dynamic-entity', 'ngx-dynamic-entity-builder'], message: 'The importer must not depend on Dynamic Entity.' },
-            { group: ['../../*'], message: 'The importer must not reach into another package.' },
-          ],
-        },
-      ],
-    },
-  },
-
-  {
-    // The main entry runs in a browser (docs/phase2-plan.md). Nothing in it may reach `/node`,
-    // a Node built-in, or a package that only Node has.
-    files: ['packages/sheet-to-schema/src/*.ts'],
-    // Tests read fixtures from disk; only what ships has to run in a browser.
-    ignores: ['**/*.spec.ts', '**/*.fixtures.ts'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            { group: ['@dynamic-entity/*', 'ngx-dynamic-entity', 'ngx-dynamic-entity-builder'], message: 'The importer must not depend on Dynamic Entity.' },
-            { group: ['../../*'], message: 'The importer must not reach into another package.' },
-            { group: ['./node', './node/*'], message: 'The main entry is browser-safe: it must not import /node.' },
-            { group: ['node:*', 'exceljs', 'busboy', 'express'], message: 'The main entry is browser-safe: no Node built-ins and no Node-only packages.' },
-          ],
-        },
-      ],
-    },
-  },
-
-  {
-    // `/node` imports the main entry as "sheet-to-schema", never by a relative path, so its
-    // bundle holds no second copy of the engine.
-    files: ['packages/sheet-to-schema/src/node/**/*.ts'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            { group: ['@dynamic-entity/*', 'ngx-dynamic-entity', 'ngx-dynamic-entity-builder'], message: 'The importer must not depend on Dynamic Entity.' },
-            { group: ['../*'], message: 'Import the main entry as "sheet-to-schema", so /node carries no second copy of it.' },
-          ],
-        },
-      ],
     },
   },
 

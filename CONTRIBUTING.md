@@ -21,7 +21,7 @@ Everything CI enforces, you can run locally:
 |---|---|
 | `npm run lint` | Control characters, build order, extension-point coverage, visual baselines in Linux/Windows pairs, eslint, and each package's typecheck |
 | `npm run check:build-graph` | Every sibling a package imports is one turbo will build first |
-| `npm run build` | All five packages via turbo |
+| `npm run build` | All five workspaces via turbo (four published packages and the demo) |
 | `npm test` | Unit tests |
 | `npm run test:coverage` | Coverage thresholds — a ratchet, see below |
 | `npm run check:timezones` | Runs the date-sensitive suites once per timezone |
@@ -38,6 +38,46 @@ still appears to work. Those scripts are what prove an actual consumer can insta
 and they are two scripts rather than one because an Angular consumer and a Node consumer break
 in different ways: one fails to AOT-compile a template, the other fails to resolve an `exports`
 subpath.
+
+## Working on sheet-to-schema
+
+Dynamic Entity's import engine is [`sheet-to-schema`](https://github.com/berserker5619/sheet-to-schema), developed in its own
+repository. Core and server pin it exactly during the release candidates (`1.0.0-rc.3` now) and
+take `^1.0.0` from its 1.0.0.
+
+**An engine change lands in sheet-to-schema first:** a pull request there, a release, then a
+separate Dynamic Entity commit that raises the pin. A Dynamic Entity change that needs the
+engine to behave differently is two pull requests, the engine's first. The
+`sheet-to-schema drift` workflow here tests Dynamic Entity against the engine's `latest` and
+`next` every day, so a published engine change that would break Dynamic Entity shows up before
+the pin moves.
+
+To work on both at once, with the two repositories checked out side by side, point Dynamic
+Entity at the local engine. Either way, keep the change out of your commits, and go back with
+`git checkout package-lock.json packages/core/package.json packages/server/package.json && npm ci`.
+
+- **A `file:` dependency on a packed tarball**, which is what a user installs, and the one to
+  trust before opening a pull request. Repack and reinstall after each engine change.
+
+  ```bash
+  # in sheet-to-schema
+  npm run build && npm pack
+  # in Dynamic Entity: both workspaces that depend on it, so there is one copy
+  npm pkg set dependencies.sheet-to-schema=file:../sheet-to-schema/sheet-to-schema-<version>.tgz \
+    --workspace packages/core --workspace packages/server
+  npm install
+  npm ls sheet-to-schema   # one version, the tarball's
+  ```
+
+- **`npm link`**, for a faster loop: rebuild the engine (`npm run build`) and Dynamic Entity
+  sees it at once. The linked engine resolves its optional peers (`exceljs`, `busboy`,
+  `express`) from its own checkout, so it can find different copies of them than Dynamic Entity
+  does; confirm a result with the tarball before relying on it.
+
+  ```bash
+  cd ../sheet-to-schema && npm run build && npm link
+  cd ../Dynamic-Entity && npm link sheet-to-schema
+  ```
 
 ## Things that will fail review
 

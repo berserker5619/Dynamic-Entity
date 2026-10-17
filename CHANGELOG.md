@@ -8,6 +8,25 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.0.0-rc.3]
+
+A release candidate. **`sheet-to-schema` has moved to its own repository,
+[berserker5619/sheet-to-schema](https://github.com/berserker5619/sheet-to-schema)**, and
+Dynamic Entity now installs it from npm like any other dependency. Nothing changes for an app.
+- Pins `sheet-to-schema` exactly at `1.0.0-rc.3` (core and server). It is `^1.0.0` from the
+  engine's 1.0.0.
+- From `sheet-to-schema@1.0.0-rc.3`: its CommonJS `/node` build loads `exceljs` and `busboy`
+  with `require`, so a CommonJS Jest suite that imports `@dynamic-entity/server` and reads a
+  workbook no longer needs `--experimental-vm-modules`; and its typings no longer import
+  `@types/express`, so a project with Express 4 and 5 types installed side by side compiles.
+- The Phase 2 parity gate and the bundle check read the installed engine
+  (`node_modules/sheet-to-schema`), so a bad published build of it still fails this repository's
+  CI. Its own source-level checks and acceptance test are in its repository.
+- A daily `sheet-to-schema drift` workflow runs the parity gate and the import suites against
+  the engine's `latest` and `next` dist-tags, and names the version when one fails.
+- The Release workflow publishes four packages, and installs npm at a pinned version rather than
+  `npm@latest`.
+
 ## [3.0.0-rc.2]
 
 A release candidate.
