@@ -1,0 +1,3 @@
+# Real-world spreadsheet inputs are kept byte for byte: an Excel CSV ends its lines in CRLF,
+# and normalizing that away would test a file Excel never wrote.
+test-harness/rc-round3/files/*.csv -text
