@@ -461,3 +461,36 @@ Resolved: `@dynamic-entity/server@3.0.0-rc.4`, `sheet-to-schema@1.0.0`.
   cells, typed dates at UTC midnight, the 1904 date system, and every character a workbook
   stores, however it stores it. `exceljs` stays an optional peer, loaded on first use. The
   main entry stays dependency-free.
+
+---
+
+## Released (2026-10-17)
+
+The release-candidate rounds are closed. What shipped, all published from CI with npm
+provenance:
+
+| Package | Version | Repository |
+|---|---|---|
+| `sheet-to-schema` | 1.0.0 (`latest` and `next`) | [berserker5619/sheet-to-schema](https://github.com/berserker5619/sheet-to-schema), tag `v1.0.0` |
+| `@dynamic-entity/core`, `ngx-dynamic-entity`, `ngx-dynamic-entity-builder`, `@dynamic-entity/server` | 3.0.0 | this repository, tag `v3.0.0` |
+
+- **`next` on the four Dynamic Entity packages** was not moved up to 3.0.0 by the release
+  workflow: npm answered 403, "This trusted publisher cannot manage dist-tags", because
+  "Allow npm dist-tag" is not enabled on their trusted publishers (it is on sheet-to-schema's,
+  whose `next` moved). The workflow printed the manual commands; `latest` is 3.0.0 on all four.
+- Core and server depend on `sheet-to-schema` `^1.0.0`. The daily `sheet-to-schema drift`
+  workflow tests Dynamic Entity against the engine's `latest` and `next`.
+- The rounds of testing against the published packages (Round 2, Round 3, rc.4) found two
+  problems in Round 2 (fixed in rc.2: the unsafe-integer guard and the merged-cell contract)
+  and five in Round 3 (R3-1 to R3-5, fixed in rc.4). The rc.4 round found nothing new.
+- Upgrading from 2.x: [MIGRATING-3.0.md](./MIGRATING-3.0.md).
+
+### Deferred, with where each is tracked
+
+| Item | Deferred to | Why it waits |
+|---|---|---|
+| An official browser `.xlsx` parser | `sheet-to-schema` 1.1 | See "Planned for sheet-to-schema 1.1" above. Until then EXTENDING.md's ExcelJS example, held to the server path by `documented-sheet-parser.spec.ts`, is the supported way. |
+| Grouping rows in the streaming (server) runner | Phase 3 | The server refuses a grouped plan with `INVALID_PLAN` rather than importing one record per row. The browser import groups. |
+| Flagging duplicate header names in the mapper's preview | Phase 4 | See "Deferred Items" above. Duplicate headers import correctly; the mapper does not yet point them out. |
+| esbuild #35 (low) and sprintf-js #157 (medium) | After the finals | Dev-only; no non-major fix (esbuild 0.28 needs tsup 9; sprintf-js has no patched release). See "Left until after the finals". |
+| uuid #30 (medium), dismissed as "vulnerable code not used" | An exceljs release with `uuid >= 11.1.1` | exceljs calls only `uuid.v4()`; the advisory is v3/v5/v6 with `buf`. Waiting on [exceljs/exceljs#3041](https://github.com/exceljs/exceljs/issues/3041) (and PR #3085). |
