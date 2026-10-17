@@ -8,6 +8,82 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.0.0]
+
+**The spreadsheet-import engine is now its own package,
+[`sheet-to-schema`](https://github.com/berserker5619/sheet-to-schema), developed in its own
+repository, and Dynamic Entity runs on top of it.** Forms, rules, the renderer and the builder
+are unchanged: if your app does not import spreadsheets, 3.0 is a version bump.
+
+If it does, the same file and the same stored mapping import to the same records as 2.5.0
+produced, for every config in this repository and seventeen cases written by hand.
+[MIGRATING-3.0.md](https://github.com/berserker5619/Dynamic-Entity/blob/main/docs/MIGRATING-3.0.md)
+lists everything that changes and what to do about each. The code is identical to 3.0.0-rc.4;
+what follows is the whole change from 2.5.0, gathered from the four release candidates.
+
+### Upgrading
+- Be on **2.5.0** first. It changed how a date such as `05/09/2026` is read.
+- Deploy the browser app and the server together where you can. A 3.0 wizard talking to a 2.x
+  server works; a plan using something only plan v2 has is refused before it is sent.
+- `@dynamic-entity/core` and `@dynamic-entity/server` depend on `sheet-to-schema` `^1.0.0`. npm
+  installs it; there is nothing to add.
+
+### Changed — breaking
+- **A mapping plan is plan v2** (`target`, `schemaVersion`, `planVersion: 2`, where 2.x wrote
+  `entity` and `configVersion`). Every stored 2.x plan still imports, unchanged.
+- **`MappingPlan` is the v2 type.** Type a 2.x plan as `MappingPlanV1`, or `AnyMappingPlan`.
+- **Plan-problem messages are reworded** ("schema" where they said "config"). Codes and paths
+  are the same: match on `code`.
+- **A ref into `__proto__`, `constructor` or `prototype` is `PLAN_UNSAFE_PATH`** (was
+  `PLAN_UNKNOWN_REF`).
+- **A required field whose cell could not be read is reported once**, as unreadable.
+- **The server refuses a plan that groups rows** (`INVALID_PLAN`, 400); its streaming runner
+  does not group yet.
+- **`HttpImportTransport.commit` rejects** a v2-only plan when the server has not said it reads
+  plan v2.
+- **A numeric cell past `Number.MAX_SAFE_INTEGER` mapped to a text field is `CELL_FORMAT`**
+  ("too many digits to read exactly; format the column as Text in the source file"), on both
+  sides, instead of importing digits it could not read exactly.
+- **`@dynamic-entity/server/express` typings name nothing from `express`.** The `request`
+  handed to `configs`, `onImport` and `lang` is an `ImportRequest`; a callback that reads
+  Express-only properties annotates its parameter (`(entity, request: express.Request) => ...`)
+  and the options take that type. A TypeScript app compiles with `@types/express` 4, 5 or none.
+  Nothing changes at run time.
+
+### Added
+- **`entityFormConfigAdapter`**, a config as a `sheet-to-schema` adapter; **`readPlan`**,
+  **`planForServer`**, **`v2OnlyFields`** and **`planForConfig`** from `@dynamic-entity/core`.
+- **Every import error carries a `code`**, and a result may carry `warnings`.
+- **Through a v2 plan, `applyMapping` and the wizard group rows into records** and read each
+  date column in its own order (the mapper cannot build grouped plans yet).
+- **Server answers say more**: `adapter`, `planVersions`, `slots`, `warnings`, `warningCount`,
+  `rowsInImported`. Nothing was removed; `engineVersion` is still core's version.
+- **The review step reads each column in its plan entry's date order**, as the commit does.
+
+### Fixed during the release candidates
+- `sheet-to-schema/node` under CommonJS Jest: no `--experimental-vm-modules` needed (rc.3).
+- Browser `.xlsx`: EXTENDING.md's `sheetParser` example uses ExcelJS, held to the server path
+  by a test; the SheetJS example lost characters above U+FFFF in openpyxl-written workbooks
+  (rc.4).
+- The covered cells of a merged range are `''` on both sides, as the `SheetParser` contract now
+  states (rc.2).
+- Links in the published READMEs are absolute, so they work on npmjs.com (rc.4).
+
+### Deprecated
+Removed in 4.0; each is the same function or type, re-exported.
+- From `@dynamic-entity/core`, now in `sheet-to-schema`: the CSV functions and types,
+  `cellText`, `ImportPreviewResponse`, `ImportErrorResponse`, `PLAN_PROBLEM_CODES`,
+  `PlanProblemCode`, and `MappingPlanV1`.
+- From `@dynamic-entity/server`, now in `sheet-to-schema/node`: the limits, `ImportError`,
+  `toErrorBody`, the byte helpers, `guardZip`, `xlsxRows`, `cellValue`, `readSheet`,
+  `detectFormat`, `guardRows`, and the template constants.
+
+### Release process
+- `release.yml` publishes a stable version as `latest` and moves `next` up to it where `next`
+  is older; npm is installed at a pinned version.
+- A daily `sheet-to-schema drift` workflow tests Dynamic Entity against the engine's `latest`
+  and `next`.
+
 ## [3.0.0-rc.4]
 
 A release candidate. Fixes from the third round of testing against the published packages

@@ -415,6 +415,40 @@ files.
 
 The harnesses are in `test-harness/rc-round3/`.
 
+## rc.4 (published `@next`: Dynamic Entity 3.0.0-rc.4, sheet-to-schema 1.0.0)
+
+- **Date**: 2026-10-17
+- **Installed from the registry only**, fresh projects, Node 24.19.0 (Windows). Round 3's cases
+  c and d, rerun from `test-harness/rc-round3/` unchanged.
+- **Result**: both pass. R3-2 and R3-3 are fixed in the published packages; nothing new found.
+
+### c. TypeScript strict, `skipLibCheck` off
+
+| File | @types/express 4.17.25 | @types/express 5.0.6 | none |
+|---|---|---|---|
+| `de-plain.ts`: DE router, used plainly | compiles | compiles | n/a |
+| `de-typed.ts`: DE router, `configs: (entity, request: TenantRequest) => ...` | compiles (TS2322 in Round 3) | compiles (TS2322 in Round 3) | n/a |
+| `s2s-typed.ts`: sheet-to-schema router, typed request | compiles | compiles | n/a |
+| `de-only.ts`: DE router, no `@types/express` installed | n/a | n/a | compiles (TS7016 in Round 3) |
+
+Resolved: `@dynamic-entity/server@3.0.0-rc.4`, `sheet-to-schema@1.0.0`.
+
+### d. Fresh Angular 21 app on `ngx-dynamic-entity@next`
+
+- **Installed**: `ngx-dynamic-entity`, `@dynamic-entity/core`, `@dynamic-entity/server` at
+  3.0.0-rc.4; `sheet-to-schema` 1.0.0.
+- **Screenshots**: `docs/rc-screens/rc4/01` to `11`.
+- **What happened**: all four flows as in Round 3. Local: 3 of 3 matched, 3 rows reviewed,
+  "Imported 3 record(s)". HTTP: the server logged `Imported 3 customers`, the wizard says
+  "Imported 3 record(s)". Date-order mismatch (wizard `DMY`, server `MDY`): the review says
+  "This page reads dates as DMY but the import reads them as MDY. Nothing can be imported until
+  both use the same date order." and Import is disabled. Stored 2.5 plan: 3 of 3 matched,
+  imported 3 records without remapping.
+- The test app's own "Imported 0 records to backend" line is unchanged: it reads
+  `records.length`, which over HTTP is empty by design (R3-4, now documented). The wizard's
+  count is right.
+- **Severity**: Pass.
+
 ## Planned for sheet-to-schema 1.1
 
 ### An official browser `.xlsx` parser

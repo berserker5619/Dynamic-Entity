@@ -42,11 +42,10 @@ subpath.
 ## Working on sheet-to-schema
 
 Dynamic Entity's import engine is [`sheet-to-schema`](https://github.com/berserker5619/sheet-to-schema), developed in its own
-repository. Core and server pin it exactly during the release candidates (`1.0.0-rc.3` now) and
-take `^1.0.0` from its 1.0.0.
+repository. Core and server depend on it as `^1.0.0`.
 
 **An engine change lands in sheet-to-schema first:** a pull request there, a release, then a
-separate Dynamic Entity commit that raises the pin. A Dynamic Entity change that needs the
+separate Dynamic Entity commit that raises the `sheet-to-schema` range when it needs the new version. A Dynamic Entity change that needs the
 engine to behave differently is two pull requests, the engine's first. The
 `sheet-to-schema drift` workflow here tests Dynamic Entity against the engine's `latest` and
 `next` every day, so a published engine change that would break Dynamic Entity shows up before

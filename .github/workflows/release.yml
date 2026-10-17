@@ -273,6 +273,33 @@ jobs:
             npm publish ./packages/server/dist --access public --tag "$TAG" --provenance
           fi
 
+      # A stable release goes out as `latest` (above). `next` is then moved up to it on each
+      # package where it points at an older version, so `npm install <pkg>@next` never installs
+      # something older than `latest`. A `next` that is already ahead (a newer prerelease) is
+      # left. Non-fatal: if trusted publishing may not move a dist-tag, the release still stands
+      # and the step prints the command to run by hand. Idempotent, so a re-run is safe.
+      - name: Move next up to a stable release
+        if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
+        run: |
+          VERSION=$(node -p "require('./packages/core/dist/package.json').version")
+          case "$VERSION" in
+            *-*) echo "$VERSION is a prerelease — next was set by the publish steps."; exit 0 ;;
+          esac
+          for PKG in @dynamic-entity/core ngx-dynamic-entity ngx-dynamic-entity-builder @dynamic-entity/server; do
+            CURRENT_NEXT=$(npm view "$PKG" dist-tags.next 2>/dev/null || true)
+            if [ -z "$CURRENT_NEXT" ]; then
+              echo "$PKG has no next dist-tag — nothing to move."
+            elif node scripts/semver-lt.mjs "$CURRENT_NEXT" "$VERSION"; then
+              echo "$PKG next dist-tag ($CURRENT_NEXT) is older than $VERSION — advancing next to $VERSION."
+              if ! npm dist-tag add "$PKG@$VERSION" next; then
+                echo "::warning::Could not update the 'next' dist-tag of $PKG via trusted publishing (OIDC token may lack dist-tag permissions)."
+                echo "::warning::To update manually, run: npm dist-tag add $PKG@$VERSION next"
+              fi
+            else
+              echo "$PKG next dist-tag ($CURRENT_NEXT) is not older than $VERSION — leaving next unchanged."
+            fi
+          done
+
       # On a dry run, show exactly what would have gone out.
       - name: Pack only (dry run)
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true' }}

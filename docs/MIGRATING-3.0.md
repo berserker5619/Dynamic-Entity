@@ -26,6 +26,8 @@ imported with the wrong date. 3.0 keeps that behaviour and adds nothing to it.
 | store plans the wizard emits | Nothing, unless you may roll back to 2.5: see "Plans are v2". |
 | import server helpers such as `readSheet` or `ImportError` | Nothing yet. They are deprecated re-exports; move the import to `sheet-to-schema/node` before 4.0. |
 | wrote your own `ImportTransport` | Its `commit` may now be handed a plan in either shape. |
+| read Express-only properties of `request` in `createImportRouter`'s `configs`, `onImport` or `lang` | Annotate the parameter with your request type: `(entity, request: express.Request) => ...`. See "The server". |
+| use `@types/express` only for `@dynamic-entity/server` | Nothing. The typings no longer need it, in either major or at all. |
 
 ## Plans are v2
 
@@ -141,7 +143,7 @@ position). One behaviour is new:
   does not group rows yet, and ignoring `group` would import one record per row. The browser
   import does group.
 
-One typing change, from `3.0.0-rc.4`: the `request` handed to `configs`, `onImport` and `lang`
+One typing change: the `request` handed to `configs`, `onImport` and `lang`
 is typed `ImportRequest` (a Node request with `params` and `query`), not Express's `Request`,
 so the typings need no `@types/express`. Code that reads something Express or your middleware
 adds, such as `request.user`, annotates the callback's parameter, and the options take that
@@ -154,11 +156,10 @@ Only for contributors: an app that uses Dynamic Entity installs `sheet-to-schema
 needs none of this.
 
 Dynamic Entity's import engine is [`sheet-to-schema`](https://github.com/berserker5619/sheet-to-schema), developed in its own
-repository. Core and server pin it exactly during the release candidates (`1.0.0-rc.3` now) and
-take `^1.0.0` from its 1.0.0.
+repository. Core and server depend on it as `^1.0.0`.
 
 **An engine change lands in sheet-to-schema first:** a pull request there, a release, then a
-separate Dynamic Entity commit that raises the pin. A Dynamic Entity change that needs the
+separate Dynamic Entity commit that raises the `sheet-to-schema` range when it needs the new version. A Dynamic Entity change that needs the
 engine to behave differently is two pull requests, the engine's first. The
 `sheet-to-schema drift` workflow here tests Dynamic Entity against the engine's `latest` and
 `next` every day, so a published engine change that would break Dynamic Entity shows up before
