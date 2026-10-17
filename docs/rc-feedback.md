@@ -280,3 +280,126 @@ as a dependency.
   babel-plugin-istanbul → @istanbuljs/load-nyc-config → js-yaml 3 → argparse 1. No patched
   version is published. It runs only in the test toolchain, on our own inputs. Revisit after
   the finals.
+
+---
+
+## Round 3 (published `@next`: sheet-to-schema 1.0.0-rc.3, Dynamic Entity 3.0.0-rc.3)
+
+- **Date**: 2026-10-17
+- **Installed from the registry only**: `sheet-to-schema@1.0.0-rc.3`, `@dynamic-entity/core`,
+  `@dynamic-entity/server`, `ngx-dynamic-entity` at `3.0.0-rc.3`. Every project was fresh,
+  outside the monorepo, on Node 24.19.0 (Windows).
+- **Nothing was fixed in this round.** The findings below are the open items.
+
+### Findings
+
+| # | Severity | Finding | Case |
+|---|---|---|---|
+| R3-1 | Medium | The browser path, using the `.xlsx` parser EXTENDING.md documents (SheetJS 0.20.3), silently corrupts characters above U+FFFF when a workbook stores them as numeric character references. The server path is correct, so browser/server parity breaks for those files | e (5a) |
+| R3-2 | Low | `createImportRouter` from `@dynamic-entity/server/express` rejects a typed request: a `configs` callback annotated with the app's own request type fails with TS2322 on `@types/express` 4 and 5. `sheet-to-schema/node`'s router accepts the same code | c |
+| R3-3 | Low | `@dynamic-entity/server/express`'s typings import `express`, so a TypeScript app without `@types/express` fails with TS7016 (with `skipLibCheck` off). The server README's Install section does not mention `@types/express` | c |
+| R3-4 | Low (docs) | Over HTTP, `importComplete` carries `records: []` and an `imported` count, by design (the server's `onImport` wrote them). The ngx README describes `importComplete` as "the records … this is where you write them". Round 2's test app read `records.length` and reported 0 (Round 2's screenshot 08 shows it too) | d |
+| R3-5 | Low (docs) | The ngx README as published on npm links to `../server` and `../../EXTENDING.md#spreadsheet-import`, which do not resolve on npmjs.com | e |
+
+**R3-1 in detail.** `case5_non_latin.xlsx` (written by openpyxl) stores every non-ASCII
+character as a numeric character reference in an inline string: `&#128230; &#2950;...` for
+`📦 ஆர்டர் எண்`. SheetJS 0.20.3 decodes a reference above U+FFFF to its low 16 bits:
+`&#128230;` (U+1F4E6, 📦) becomes U+F4E6, a private-use character that renders as nothing.
+Tamil (all below U+FFFF) and ✅ ⚡ ❌ survive; 📦 💰 🚀 🎉 do not. The same emoji stored as
+plain UTF-8 round-trips through SheetJS intact. The result is identical whether SheetJS is
+given a Node `Buffer`, an `ArrayBuffer`, or `await file.arrayBuffer()` as documented. The
+server (exceljs, streamed) reads every character correctly:
+
+| | header C | row 3 `name` |
+|---|---|---|
+| Browser (documented SheetJS parser) | `" ஆர்டர் எண்"` (U+F4E6 first) | `"Rajesh Kumar "` (U+F4E6 last) |
+| Server | `"📦 ஆர்டர் எண்"` | `"Rajesh Kumar 🎉"` |
+
+Round 2 did not see this: its browser path used a hand-written ExcelJS reader, not the
+documented parser. EXTENDING.md's claim that "a workbook imported in the browser produces the
+same records as the same workbook posted to `@dynamic-entity/server`" does not hold for these
+files.
+
+### a. Fresh app: `@dynamic-entity/core@next` + `sheet-to-schema@next`
+
+- **What happened**: `npm install @dynamic-entity/core@next sheet-to-schema@next` added two
+  packages. `npm ls` shows one `sheet-to-schema@1.0.0-rc.3`, deduplicated under core. A second
+  project (case e) that also installed `@dynamic-entity/server@next` resolved to the same single
+  copy.
+- **Severity**: Pass.
+
+### b. CommonJS Express server on `@dynamic-entity/server@next` (express 4, then 5)
+
+- **App**: a CommonJS script (`require`) per Express major: express 4.22.3 and 5.3.0, each
+  with `@dynamic-entity/server@3.0.0-rc.3`. File `case1_1904_dates.xlsx`.
+- **What happened**: on both majors, all five checks passed: `readSheet` read the `.xlsx`
+  (3 headers, 2 rows); `GET /template?format=xlsx` returned a workbook; `POST /preview` gave
+  `rowCount 2` and `engineVersion 3.0.0-rc.3`; `POST /validate` answered `written: false` and
+  wrote nothing; `POST /import` wrote both records with no 1904 drift (`2026-05-15`,
+  `1904-01-02`, `1985-10-26`, `2020-03-01`).
+- **Jest**: the same five checks as a CommonJS Jest 30 suite, run with `NODE_OPTIONS` empty and
+  no transform. Five of five passed on both majors.
+- **Severity**: Pass. (The rc.2 failure mode, `A dynamic import callback was invoked without
+  --experimental-vm-modules`, does not occur.)
+
+### c. TypeScript strict on `@types/express` 4 and 5 (`skipLibCheck: false`)
+
+- **App**: three files compiled separately with `--strict --skipLibCheck false`
+  (`module`/`moduleResolution: nodenext`), against `@types/express` 4.17.25 and 5.0.6.
+
+| File | @types/express 4 | @types/express 5 |
+|---|---|---|
+| DE `createImportRouter`, used plainly | compiles | compiles |
+| DE `createImportRouter`, `configs: (entity, request: TenantRequest) => ...` | TS2322 (R3-2) | TS2322 (R3-2) |
+| sheet-to-schema `createImportRouter`, `bindings: (name, request: TenantRequest) => ...` | compiles | compiles |
+| DE router with no `@types/express` installed | n/a | TS7016 in `express.d.ts` (R3-3) |
+
+- **R3-2 error**: `Type '(entity: string, request: TenantRequest) => ...' is not assignable to
+  type 'ConfigSource'. ... Property 'tenant' is missing in type 'Request<...>'`. DE's
+  `ConfigSource`, `OnImport` and `lang` are typed with Express's own `Request`, so an app has
+  to cast where sheet-to-schema infers the request type.
+- **Severity**: Low (R3-2, R3-3). Everything compiles once the request is cast and
+  `@types/express` is installed.
+
+### d. Fresh Angular 21 app on `ngx-dynamic-entity@next`
+
+- **App**: Round 2's test app, rebuilt from its source in a fresh project installing
+  `@next` from the registry (`ngx-dynamic-entity`, `@dynamic-entity/core`,
+  `@dynamic-entity/server` at 3.0.0-rc.3, `sheet-to-schema` 1.0.0-rc.3), with an Express 5
+  backend. Driven by Playwright (Chromium headless).
+- **Screenshots**: `docs/rc-screens/round3/01` to `11`, the same flows and names as Round 2.
+- **What happened**:
+  1. *Local transport*: upload, map (3 of 3 matched), review (3 rows), commit: "Imported 3
+     record(s)" (01–04).
+  2. *HTTP transport*: same flow against `@dynamic-entity/server@next`; the server logged
+     `Imported 3 customers`; the wizard says "Imported 3 record(s)" (05–08). The test app's
+     own line says "Imported 0 records to backend" because it reads `records.length` (R3-4).
+  3. *Date-order mismatch* (wizard `DMY`, server `MDY`): the review shows "This page reads
+     dates as DMY but the import reads them as MDY. Nothing can be imported until both use the
+     same date order." and the Import button is disabled (09).
+  4. *Stored 2.5 plan*: reopened with 3 of 3 fields matched, then imported 3 records without
+     remapping (10–11).
+- **Severity**: Pass (R3-4 is documentation).
+
+### e. Round 2's real-world files through both paths
+
+- **App**: a Node harness on the published packages. The browser path does what
+  `LocalImportTransport` does (`File.text()` → `parseCsv`, or for `.xlsx` the SheetJS 0.20.3
+  parser EXTENDING.md documents, then `suggestMapping` and `applyMapping` with
+  `decimalMarkFor(delimiter)`). The server path posts each file to `@dynamic-entity/server`'s
+  router (express 5). The files, configs and plans are Round 2's. Each result was compared
+  across paths and with Round 2's recorded output.
+
+| Case | Browser = server | Same as Round 2 | Notes |
+|---|---|---|---|
+| 1. 1904 dates (Mac Excel) | yes | yes | no 1462-day drift |
+| 2. Numeric identifiers | yes | no, by design | row 3's `9876543210987654` is past `MAX_SAFE_INTEGER` and now reports `CELL_FORMAT` on both paths (rc.2 change); 1 imported, 1 failed |
+| 3a. Excel CSV UTF-8 with BOM | yes | yes | BOM stripped from the first header |
+| 3b. Excel semicolon CSV | yes | yes | `12,50` → 12.5 |
+| 3c. Google Sheets CSV | yes | yes | multiline cell and escaped quotes intact |
+| 3d. LibreOffice xlsx | yes | yes | |
+| 4. Merged/complex xlsx | yes | yes | headers now agree (`''` for the covered cell; Round 2's ExcelJS reader repeated the master text); server `rowsRead 9, imported 2, skipped 7` |
+| 5a. Tamil and emoji, xlsx | **no** (R3-1) | browser no, server yes | astral emoji lost in the browser path |
+| 5b. Tamil and emoji, CSV | yes | yes | |
+
+- **Severity**: Medium for 5a (R3-1); everything else passes.
