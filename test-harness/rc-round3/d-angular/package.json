@@ -1,0 +1,28 @@
+{
+  "name": "r3-angular-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@angular/common": "^21.0.0",
+    "@angular/compiler": "^21.0.0",
+    "@angular/core": "^21.0.0",
+    "@angular/forms": "^21.0.0",
+    "@angular/platform-browser": "^21.0.0",
+    "@dynamic-entity/core": "next",
+    "@dynamic-entity/server": "next",
+    "ngx-dynamic-entity": "next",
+    "sheet-to-schema": "next",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.16.0"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^21.0.0",
+    "@angular/cli": "^21.0.0",
+    "@angular/compiler-cli": "^21.0.0",
+    "express": "^5.0.0",
+    "playwright": "^1.63.0",
+    "typescript": "~5.9.3"
+  }
+}

@@ -1,7 +1,7 @@
 # ngx-dynamic-entity-builder
 
 [![npm version](https://img.shields.io/npm/v/ngx-dynamic-entity-builder.svg?color=purple)](https://www.npmjs.com/package/ngx-dynamic-entity-builder)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/berserker5619/Dynamic-Entity/blob/main/LICENSE)
 
 Visual Angular builder for authoring `EntityFormConfig` schemas consumed by `ngx-dynamic-entity`. Supports Angular **17.2** through 22. It needs 17.2 rather than 17.0 because the panel bindings use `model()`; the renderer and core still support 17.0.
 
@@ -32,7 +32,7 @@ export const appConfig: ApplicationConfig = {
 - **Palette & canvas** — click a field type in the palette to add it; drag to reorder within the canvas and tree. The palette is grouped by kind and filterable by label, type or description.
 - **Property inspector** — configure validators, options, display flags, `hint`, `criticalField`, `maskData`, `autoPatch`, and `patchOnTrue`. A **Width** control sets `colSpan`, and a **Tab** picker moves a field to another tab. Every section opens expanded and collapses on click.
 - **Regex pattern playground** — beside `validators.pattern`, type sample input and see *matches*, *does not match*, or *invalid regex syntax* live. Presets are provided for the common shapes (letters, alphanumeric, digits, postal code, phone, slug).
-- **Stable option keys** — each new option gets a `$key` minted from its label, shown read-only in the inspector and never rewritten on rename. **Assign stable keys** backfills an existing schema. See [Option identity](../../README.md#-option-identity).
+- **Stable option keys** — each new option gets a `$key` minted from its label, shown read-only in the inspector and never rewritten on rename. **Assign stable keys** backfills an existing schema. See [Option identity](https://github.com/berserker5619/Dynamic-Entity/blob/main/README.md#-option-identity).
 - **Entity reference designer** — registry key mapping, display fields, static filters, and parent→child cascades (`parentField` + `lookupFilter`).
 - **Referenced-field drift** — a field linked to another entity's field shows when its source has changed since it was copied, with **Sync with Source**.
 - **Rules manager** — create, reorder, edit, and toggle reactive rules (`RuleFormComponent`, `FieldRulesListComponent`). Fields are chosen from a path list (`[work.address]`), never typed, and renaming a field repoints every rule that named it.

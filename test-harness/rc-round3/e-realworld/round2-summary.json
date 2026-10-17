@@ -1,0 +1,1278 @@
+[
+  {
+    "scenario": "1. 1904 Date System (Mac Excel)",
+    "browser": {
+      "parsedHeaders": [
+        "Name",
+        "BirthDate",
+        "JoinDate"
+      ],
+      "rowCount": 2,
+      "records": [
+        {
+          "name": "Alice Mac",
+          "birthDate": "2026-05-15",
+          "joinDate": "1904-01-02",
+          "_configVersion": 1
+        },
+        {
+          "name": "Bob Mac",
+          "birthDate": "1985-10-26",
+          "joinDate": "2020-03-01",
+          "_configVersion": 1
+        }
+      ],
+      "errors": []
+    },
+    "server": {
+      "preview": {
+        "headers": [
+          "Name",
+          "BirthDate",
+          "JoinDate"
+        ],
+        "sample": [
+          [
+            "Alice Mac",
+            "2026-05-15",
+            "1904-01-02"
+          ],
+          [
+            "Bob Mac",
+            "1985-10-26",
+            "2020-03-01"
+          ]
+        ],
+        "suggestion": {
+          "planVersion": 2,
+          "target": "employees",
+          "sourceHeaders": [
+            "Name",
+            "BirthDate",
+            "JoinDate"
+          ],
+          "entries": [
+            {
+              "ref": "name",
+              "column": 0,
+              "header": "Name",
+              "confidence": "exact"
+            },
+            {
+              "ref": "birthDate",
+              "column": 1,
+              "header": "BirthDate",
+              "confidence": "exact"
+            },
+            {
+              "ref": "joinDate",
+              "column": 2,
+              "header": "JoinDate",
+              "confidence": "exact"
+            }
+          ]
+        },
+        "rowCount": 2,
+        "slots": {},
+        "arrayBound": 3,
+        "planVersions": [
+          1,
+          2
+        ],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "commit": {
+        "written": true,
+        "imported": 2,
+        "skipped": 0,
+        "failed": 0,
+        "rowsRead": 2,
+        "rowsInImported": 2,
+        "errors": [],
+        "errorCount": 0,
+        "truncated": false,
+        "warnings": [],
+        "warningCount": 0,
+        "planProblems": [],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "imported": [
+        {
+          "name": "Alice Mac",
+          "birthDate": "2026-05-15",
+          "joinDate": "1904-01-02",
+          "_configVersion": 1
+        },
+        {
+          "name": "Bob Mac",
+          "birthDate": "1985-10-26",
+          "joinDate": "2020-03-01",
+          "_configVersion": 1
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "2. Numeric cells holding phone, 16-digit ID, pincode, count mapped to string fields",
+    "browser": {
+      "parsedHeaders": [
+        "Name",
+        "Phone",
+        "NationalID",
+        "PostalCode",
+        "ItemCount"
+      ],
+      "rowCount": 2,
+      "records": [
+        {
+          "name": "Alice",
+          "phone": "9876543210",
+          "nationalId": "1234567890123456",
+          "postalCode": "600001",
+          "itemCount": "42",
+          "_configVersion": 1
+        },
+        {
+          "name": "Bob",
+          "phone": "8765432109",
+          "nationalId": "9876543210987654",
+          "postalCode": "12345",
+          "itemCount": "100",
+          "_configVersion": 1
+        }
+      ],
+      "errors": []
+    },
+    "server": {
+      "preview": {
+        "headers": [
+          "Name",
+          "Phone",
+          "NationalID",
+          "PostalCode",
+          "ItemCount"
+        ],
+        "sample": [
+          [
+            "Alice",
+            "9876543210",
+            "1234567890123456",
+            "600001",
+            "42"
+          ],
+          [
+            "Bob",
+            "8765432109",
+            "9876543210987654",
+            "12345",
+            "100"
+          ]
+        ],
+        "suggestion": {
+          "planVersion": 2,
+          "target": "identifiers",
+          "sourceHeaders": [
+            "Name",
+            "Phone",
+            "NationalID",
+            "PostalCode",
+            "ItemCount"
+          ],
+          "entries": [
+            {
+              "ref": "name",
+              "column": 0,
+              "header": "Name",
+              "confidence": "exact"
+            },
+            {
+              "ref": "phone",
+              "column": 1,
+              "header": "Phone",
+              "confidence": "exact"
+            },
+            {
+              "ref": "nationalId",
+              "column": 2,
+              "header": "NationalID",
+              "confidence": "exact"
+            },
+            {
+              "ref": "postalCode",
+              "column": 3,
+              "header": "PostalCode",
+              "confidence": "exact"
+            },
+            {
+              "ref": "itemCount",
+              "column": 4,
+              "header": "ItemCount",
+              "confidence": "exact"
+            }
+          ]
+        },
+        "rowCount": 2,
+        "slots": {},
+        "arrayBound": 3,
+        "planVersions": [
+          1,
+          2
+        ],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "commit": {
+        "written": true,
+        "imported": 2,
+        "skipped": 0,
+        "failed": 0,
+        "rowsRead": 2,
+        "rowsInImported": 2,
+        "errors": [],
+        "errorCount": 0,
+        "truncated": false,
+        "warnings": [],
+        "warningCount": 0,
+        "planProblems": [],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "imported": [
+        {
+          "name": "Alice",
+          "phone": "9876543210",
+          "nationalId": "1234567890123456",
+          "postalCode": "600001",
+          "itemCount": "42",
+          "_configVersion": 1
+        },
+        {
+          "name": "Bob",
+          "phone": "8765432109",
+          "nationalId": "9876543210987654",
+          "postalCode": "12345",
+          "itemCount": "100",
+          "_configVersion": 1
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "3a. Excel CSV UTF-8 (BOM)",
+    "browser": {
+      "parsedHeaders": [
+        "Name",
+        "Department",
+        "Salary"
+      ],
+      "rowCount": 2,
+      "records": [
+        {
+          "name": "Alice",
+          "department": "Engineering",
+          "salary": 75000,
+          "_configVersion": 1
+        },
+        {
+          "name": "Bob",
+          "department": "Design",
+          "salary": 65000,
+          "_configVersion": 1
+        }
+      ],
+      "errors": []
+    },
+    "server": {
+      "preview": {
+        "headers": [
+          "Name",
+          "Department",
+          "Salary"
+        ],
+        "sample": [
+          [
+            "Alice",
+            "Engineering",
+            "75000"
+          ],
+          [
+            "Bob",
+            "Design",
+            "65000"
+          ]
+        ],
+        "suggestion": {
+          "planVersion": 2,
+          "target": "salaries",
+          "sourceHeaders": [
+            "Name",
+            "Department",
+            "Salary"
+          ],
+          "entries": [
+            {
+              "ref": "name",
+              "column": 0,
+              "header": "Name",
+              "confidence": "exact"
+            },
+            {
+              "ref": "department",
+              "column": 1,
+              "header": "Department",
+              "confidence": "exact"
+            },
+            {
+              "ref": "salary",
+              "column": 2,
+              "header": "Salary",
+              "confidence": "exact"
+            }
+          ]
+        },
+        "rowCount": 2,
+        "slots": {},
+        "delimiter": ",",
+        "arrayBound": 3,
+        "planVersions": [
+          1,
+          2
+        ],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "commit": {
+        "written": true,
+        "imported": 2,
+        "skipped": 0,
+        "failed": 0,
+        "rowsRead": 2,
+        "rowsInImported": 2,
+        "errors": [],
+        "errorCount": 0,
+        "truncated": false,
+        "warnings": [],
+        "warningCount": 0,
+        "planProblems": [],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "imported": [
+        {
+          "name": "Alice",
+          "department": "Engineering",
+          "salary": 75000,
+          "_configVersion": 1
+        },
+        {
+          "name": "Bob",
+          "department": "Design",
+          "salary": 65000,
+          "_configVersion": 1
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "3b. Excel Semicolon CSV (comma decimals)",
+    "browser": {
+      "parsedHeaders": [
+        "Product",
+        "Price",
+        "Rating"
+      ],
+      "rowCount": 2,
+      "records": [
+        {
+          "product": "Widget A",
+          "price": 12.5,
+          "rating": 4.8,
+          "_configVersion": 1
+        },
+        {
+          "product": "Widget B",
+          "price": 99.95,
+          "rating": 4.2,
+          "_configVersion": 1
+        }
+      ],
+      "errors": []
+    },
+    "server": {
+      "preview": {
+        "headers": [
+          "Product",
+          "Price",
+          "Rating"
+        ],
+        "sample": [
+          [
+            "Widget A",
+            "12,50",
+            "4,8"
+          ],
+          [
+            "Widget B",
+            "99,95",
+            "4,2"
+          ]
+        ],
+        "suggestion": {
+          "planVersion": 2,
+          "target": "products",
+          "sourceHeaders": [
+            "Product",
+            "Price",
+            "Rating"
+          ],
+          "entries": [
+            {
+              "ref": "product",
+              "column": 0,
+              "header": "Product",
+              "confidence": "exact"
+            },
+            {
+              "ref": "price",
+              "column": 1,
+              "header": "Price",
+              "confidence": "exact"
+            },
+            {
+              "ref": "rating",
+              "column": 2,
+              "header": "Rating",
+              "confidence": "exact"
+            }
+          ]
+        },
+        "rowCount": 2,
+        "slots": {},
+        "delimiter": ";",
+        "arrayBound": 3,
+        "planVersions": [
+          1,
+          2
+        ],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "commit": {
+        "written": true,
+        "imported": 2,
+        "skipped": 0,
+        "failed": 0,
+        "rowsRead": 2,
+        "rowsInImported": 2,
+        "errors": [],
+        "errorCount": 0,
+        "truncated": false,
+        "warnings": [],
+        "warningCount": 0,
+        "planProblems": [],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "imported": [
+        {
+          "product": "Widget A",
+          "price": 12.5,
+          "rating": 4.8,
+          "_configVersion": 1
+        },
+        {
+          "product": "Widget B",
+          "price": 99.95,
+          "rating": 4.2,
+          "_configVersion": 1
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "3c. Google Sheets CSV export (multiline & quotes)",
+    "browser": {
+      "parsedHeaders": [
+        "Order ID",
+        "Customer",
+        "Address",
+        "Notes"
+      ],
+      "rowCount": 2,
+      "records": [
+        {
+          "orderId": "1001",
+          "customer": "Smith, John",
+          "address": "123 Main St\nApt 4B",
+          "notes": "Special order: \"fragile\"",
+          "_configVersion": 1
+        },
+        {
+          "orderId": "1002",
+          "customer": "Doe, Jane",
+          "address": "456 Oak Ave",
+          "notes": "Standard delivery",
+          "_configVersion": 1
+        }
+      ],
+      "errors": []
+    },
+    "server": {
+      "preview": {
+        "headers": [
+          "Order ID",
+          "Customer",
+          "Address",
+          "Notes"
+        ],
+        "sample": [
+          [
+            "1001",
+            "Smith, John",
+            "123 Main St\nApt 4B",
+            "Special order: \"fragile\""
+          ],
+          [
+            "1002",
+            "Doe, Jane",
+            "456 Oak Ave",
+            "Standard delivery"
+          ]
+        ],
+        "suggestion": {
+          "planVersion": 2,
+          "target": "orders",
+          "sourceHeaders": [
+            "Order ID",
+            "Customer",
+            "Address",
+            "Notes"
+          ],
+          "entries": [
+            {
+              "ref": "orderId",
+              "column": 0,
+              "header": "Order ID",
+              "confidence": "exact"
+            },
+            {
+              "ref": "customer",
+              "column": 1,
+              "header": "Customer",
+              "confidence": "exact"
+            },
+            {
+              "ref": "address",
+              "column": 2,
+              "header": "Address",
+              "confidence": "exact"
+            },
+            {
+              "ref": "notes",
+              "column": 3,
+              "header": "Notes",
+              "confidence": "exact"
+            }
+          ]
+        },
+        "rowCount": 2,
+        "slots": {},
+        "delimiter": ",",
+        "arrayBound": 3,
+        "planVersions": [
+          1,
+          2
+        ],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "commit": {
+        "written": true,
+        "imported": 2,
+        "skipped": 0,
+        "failed": 0,
+        "rowsRead": 2,
+        "rowsInImported": 2,
+        "errors": [],
+        "errorCount": 0,
+        "truncated": false,
+        "warnings": [],
+        "warningCount": 0,
+        "planProblems": [],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "imported": [
+        {
+          "orderId": "1001",
+          "customer": "Smith, John",
+          "address": "123 Main St\nApt 4B",
+          "notes": "Special order: \"fragile\"",
+          "_configVersion": 1
+        },
+        {
+          "orderId": "1002",
+          "customer": "Doe, Jane",
+          "address": "456 Oak Ave",
+          "notes": "Standard delivery",
+          "_configVersion": 1
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "3d. LibreOffice Calc xlsx",
+    "browser": {
+      "parsedHeaders": [
+        "SKU",
+        "Title",
+        "Stock",
+        "Price"
+      ],
+      "rowCount": 2,
+      "records": [
+        {
+          "sku": "LO-001",
+          "title": "Libre Book",
+          "stock": "15",
+          "price": 29.99,
+          "_configVersion": 1
+        },
+        {
+          "sku": "LO-002",
+          "title": "Libre Pen",
+          "stock": "120",
+          "price": 1.5,
+          "_configVersion": 1
+        }
+      ],
+      "errors": []
+    },
+    "server": {
+      "preview": {
+        "headers": [
+          "SKU",
+          "Title",
+          "Stock",
+          "Price"
+        ],
+        "sample": [
+          [
+            "LO-001",
+            "Libre Book",
+            "15",
+            "29.99"
+          ],
+          [
+            "LO-002",
+            "Libre Pen",
+            "120",
+            "1.5"
+          ]
+        ],
+        "suggestion": {
+          "planVersion": 2,
+          "target": "inventory",
+          "sourceHeaders": [
+            "SKU",
+            "Title",
+            "Stock",
+            "Price"
+          ],
+          "entries": [
+            {
+              "ref": "sku",
+              "column": 0,
+              "header": "SKU",
+              "confidence": "exact"
+            },
+            {
+              "ref": "title",
+              "column": 1,
+              "header": "Title",
+              "confidence": "exact"
+            },
+            {
+              "ref": "stock",
+              "column": 2,
+              "header": "Stock",
+              "confidence": "exact"
+            },
+            {
+              "ref": "price",
+              "column": 3,
+              "header": "Price",
+              "confidence": "exact"
+            }
+          ]
+        },
+        "rowCount": 2,
+        "slots": {},
+        "arrayBound": 3,
+        "planVersions": [
+          1,
+          2
+        ],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "commit": {
+        "written": true,
+        "imported": 2,
+        "skipped": 0,
+        "failed": 0,
+        "rowsRead": 2,
+        "rowsInImported": 2,
+        "errors": [],
+        "errorCount": 0,
+        "truncated": false,
+        "warnings": [],
+        "warningCount": 0,
+        "planProblems": [],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "imported": [
+        {
+          "sku": "LO-001",
+          "title": "Libre Book",
+          "stock": "15",
+          "price": 29.99,
+          "_configVersion": 1
+        },
+        {
+          "sku": "LO-002",
+          "title": "Libre Pen",
+          "stock": "120",
+          "price": 1.5,
+          "_configVersion": 1
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "4. Complex xlsx (merged headers, hidden col, formulas, 2 sheets, empty rows, duplicate headers)",
+    "browser": {
+      "parsedHeaders": [
+        "Customer Info",
+        "Customer Info",
+        "Qty",
+        "Price",
+        "Total",
+        "Secret",
+        "Status",
+        "Status"
+      ],
+      "rowCount": 9,
+      "records": [
+        {
+          "customer": "Acme Corp",
+          "qty": "10",
+          "price": 25.5,
+          "total": 255,
+          "secret": "Internal discount applied",
+          "status": "Pending",
+          "_configVersion": 1
+        },
+        {
+          "customer": "Globex",
+          "qty": "4",
+          "price": 100,
+          "total": 400,
+          "secret": "VIP client",
+          "status": "Shipped",
+          "_configVersion": 1
+        }
+      ],
+      "errors": []
+    },
+    "server": {
+      "preview": {
+        "headers": [
+          "Customer Info",
+          "",
+          "Qty",
+          "Price",
+          "Total",
+          "Secret",
+          "Status",
+          "Status"
+        ],
+        "sample": [
+          [
+            "Acme Corp",
+            "North America",
+            "10",
+            "25.5",
+            "255",
+            "Internal discount applied",
+            "Pending",
+            "Active"
+          ],
+          [
+            "Globex",
+            "Europe",
+            "4",
+            "100",
+            "400",
+            "VIP client",
+            "Shipped",
+            "Archived"
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        ],
+        "suggestion": {
+          "planVersion": 2,
+          "target": "sales",
+          "sourceHeaders": [
+            "Customer Info",
+            "",
+            "Qty",
+            "Price",
+            "Total",
+            "Secret",
+            "Status",
+            "Status"
+          ],
+          "entries": [
+            {
+              "ref": "qty",
+              "column": 2,
+              "header": "Qty",
+              "confidence": "exact"
+            },
+            {
+              "ref": "price",
+              "column": 3,
+              "header": "Price",
+              "confidence": "exact"
+            },
+            {
+              "ref": "total",
+              "column": 4,
+              "header": "Total",
+              "confidence": "exact"
+            },
+            {
+              "ref": "secret",
+              "column": 5,
+              "header": "Secret",
+              "confidence": "exact"
+            },
+            {
+              "ref": "status",
+              "column": 6,
+              "header": "Status",
+              "confidence": "exact"
+            }
+          ]
+        },
+        "rowCount": 9,
+        "slots": {},
+        "arrayBound": 3,
+        "planVersions": [
+          1,
+          2
+        ],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "commit": {
+        "written": true,
+        "imported": 2,
+        "skipped": 7,
+        "failed": 0,
+        "rowsRead": 9,
+        "rowsInImported": 2,
+        "errors": [],
+        "errorCount": 0,
+        "truncated": false,
+        "warnings": [],
+        "warningCount": 0,
+        "planProblems": [],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "imported": [
+        {
+          "customer": "Acme Corp",
+          "qty": "10",
+          "price": 25.5,
+          "total": 255,
+          "secret": "Internal discount applied",
+          "status": "Pending",
+          "_configVersion": 1
+        },
+        {
+          "customer": "Globex",
+          "qty": "4",
+          "price": 100,
+          "total": 400,
+          "secret": "VIP client",
+          "status": "Shipped",
+          "_configVersion": 1
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "5a. Non-Latin text (Tamil & Emoji) in XLSX",
+    "browser": {
+      "parsedHeaders": [
+        "பெயர்",
+        "மின்னஞ்சல்",
+        "📦 ஆர்டர் எண்",
+        "💰 தொகை",
+        "🚀 நிலை"
+      ],
+      "rowCount": 3,
+      "records": [
+        {
+          "name": "கார்த்திக் சுந்தரம்",
+          "email": "karthik@example.com",
+          "orderId": "ORD-IN-101",
+          "amount": 12500.5,
+          "status": "✅ வழங்கப்பட்டது",
+          "_configVersion": 1
+        },
+        {
+          "name": "மலர்விழி செல்வம்",
+          "email": "malar@example.com",
+          "orderId": "ORD-IN-102",
+          "amount": 4500,
+          "status": "⚡ செயலாக்கத்தில் உள்ளது",
+          "_configVersion": 1
+        },
+        {
+          "name": "Rajesh Kumar 🎉",
+          "email": "rajesh@example.com",
+          "orderId": "ORD-IN-103",
+          "amount": 890,
+          "status": "❌ ரத்து செய்யப்பட்டது",
+          "_configVersion": 1
+        }
+      ],
+      "errors": []
+    },
+    "server": {
+      "preview": {
+        "headers": [
+          "பெயர்",
+          "மின்னஞ்சல்",
+          "📦 ஆர்டர் எண்",
+          "💰 தொகை",
+          "🚀 நிலை"
+        ],
+        "sample": [
+          [
+            "கார்த்திக் சுந்தரம்",
+            "karthik@example.com",
+            "ORD-IN-101",
+            "12500.5",
+            "✅ வழங்கப்பட்டது"
+          ],
+          [
+            "மலர்விழி செல்வம்",
+            "malar@example.com",
+            "ORD-IN-102",
+            "4500",
+            "⚡ செயலாக்கத்தில் உள்ளது"
+          ],
+          [
+            "Rajesh Kumar 🎉",
+            "rajesh@example.com",
+            "ORD-IN-103",
+            "890",
+            "❌ ரத்து செய்யப்பட்டது"
+          ]
+        ],
+        "suggestion": {
+          "planVersion": 2,
+          "target": "unicodedata",
+          "sourceHeaders": [
+            "பெயர்",
+            "மின்னஞ்சல்",
+            "📦 ஆர்டர் எண்",
+            "💰 தொகை",
+            "🚀 நிலை"
+          ],
+          "entries": []
+        },
+        "rowCount": 3,
+        "slots": {},
+        "arrayBound": 3,
+        "planVersions": [
+          1,
+          2
+        ],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "commit": {
+        "written": true,
+        "imported": 3,
+        "skipped": 0,
+        "failed": 0,
+        "rowsRead": 3,
+        "rowsInImported": 3,
+        "errors": [],
+        "errorCount": 0,
+        "truncated": false,
+        "warnings": [],
+        "warningCount": 0,
+        "planProblems": [],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "imported": [
+        {
+          "name": "கார்த்திக் சுந்தரம்",
+          "email": "karthik@example.com",
+          "orderId": "ORD-IN-101",
+          "amount": 12500.5,
+          "status": "✅ வழங்கப்பட்டது",
+          "_configVersion": 1
+        },
+        {
+          "name": "மலர்விழி செல்வம்",
+          "email": "malar@example.com",
+          "orderId": "ORD-IN-102",
+          "amount": 4500,
+          "status": "⚡ செயலாக்கத்தில் உள்ளது",
+          "_configVersion": 1
+        },
+        {
+          "name": "Rajesh Kumar 🎉",
+          "email": "rajesh@example.com",
+          "orderId": "ORD-IN-103",
+          "amount": 890,
+          "status": "❌ ரத்து செய்யப்பட்டது",
+          "_configVersion": 1
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "5b. Non-Latin text (Tamil & Emoji) in CSV",
+    "browser": {
+      "parsedHeaders": [
+        "பெயர்",
+        "மின்னஞ்சல்",
+        "📦 ஆர்டர் எண்",
+        "💰 தொகை",
+        "🚀 நிலை"
+      ],
+      "rowCount": 3,
+      "records": [
+        {
+          "name": "கார்த்திக் சுந்தரம்",
+          "email": "karthik@example.com",
+          "orderId": "ORD-IN-101",
+          "amount": 12500.5,
+          "status": "✅ வழங்கப்பட்டது",
+          "_configVersion": 1
+        },
+        {
+          "name": "மலர்விழி செல்வம்",
+          "email": "malar@example.com",
+          "orderId": "ORD-IN-102",
+          "amount": 4500,
+          "status": "⚡ செயலாக்கத்தில் உள்ளது",
+          "_configVersion": 1
+        },
+        {
+          "name": "Rajesh Kumar 🎉",
+          "email": "rajesh@example.com",
+          "orderId": "ORD-IN-103",
+          "amount": 890,
+          "status": "❌ ரத்து செய்யப்பட்டது",
+          "_configVersion": 1
+        }
+      ],
+      "errors": []
+    },
+    "server": {
+      "preview": {
+        "headers": [
+          "பெயர்",
+          "மின்னஞ்சல்",
+          "📦 ஆர்டர் எண்",
+          "💰 தொகை",
+          "🚀 நிலை"
+        ],
+        "sample": [
+          [
+            "கார்த்திக் சுந்தரம்",
+            "karthik@example.com",
+            "ORD-IN-101",
+            "12500.50",
+            "✅ வழங்கப்பட்டது"
+          ],
+          [
+            "மலர்விழி செல்வம்",
+            "malar@example.com",
+            "ORD-IN-102",
+            "4500.00",
+            "⚡ செயலாக்கத்தில் உள்ளது"
+          ],
+          [
+            "Rajesh Kumar 🎉",
+            "rajesh@example.com",
+            "ORD-IN-103",
+            "890.00",
+            "❌ ரத்து செய்யப்பட்டது"
+          ]
+        ],
+        "suggestion": {
+          "planVersion": 2,
+          "target": "unicodedata",
+          "sourceHeaders": [
+            "பெயர்",
+            "மின்னஞ்சல்",
+            "📦 ஆர்டர் எண்",
+            "💰 தொகை",
+            "🚀 நிலை"
+          ],
+          "entries": []
+        },
+        "rowCount": 3,
+        "slots": {},
+        "delimiter": ",",
+        "arrayBound": 3,
+        "planVersions": [
+          1,
+          2
+        ],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "commit": {
+        "written": true,
+        "imported": 3,
+        "skipped": 0,
+        "failed": 0,
+        "rowsRead": 3,
+        "rowsInImported": 3,
+        "errors": [],
+        "errorCount": 0,
+        "truncated": false,
+        "warnings": [],
+        "warningCount": 0,
+        "planProblems": [],
+        "engineVersion": "3.0.0-rc.1",
+        "adapter": {
+          "name": "dynamic-entity",
+          "version": "3.0.0-rc.1"
+        }
+      },
+      "imported": [
+        {
+          "name": "கார்த்திக் சுந்தரம்",
+          "email": "karthik@example.com",
+          "orderId": "ORD-IN-101",
+          "amount": 12500.5,
+          "status": "✅ வழங்கப்பட்டது",
+          "_configVersion": 1
+        },
+        {
+          "name": "மலர்விழி செல்வம்",
+          "email": "malar@example.com",
+          "orderId": "ORD-IN-102",
+          "amount": 4500,
+          "status": "⚡ செயலாக்கத்தில் உள்ளது",
+          "_configVersion": 1
+        },
+        {
+          "name": "Rajesh Kumar 🎉",
+          "email": "rajesh@example.com",
+          "orderId": "ORD-IN-103",
+          "amount": 890,
+          "status": "❌ ரத்து செய்யப்பட்டது",
+          "_configVersion": 1
+        }
+      ]
+    }
+  }
+]

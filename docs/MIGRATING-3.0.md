@@ -141,6 +141,13 @@ position). One behaviour is new:
   does not group rows yet, and ignoring `group` would import one record per row. The browser
   import does group.
 
+One typing change, from `3.0.0-rc.4`: the `request` handed to `configs`, `onImport` and `lang`
+is typed `ImportRequest` (a Node request with `params` and `query`), not Express's `Request`,
+so the typings need no `@types/express`. Code that reads something Express or your middleware
+adds, such as `request.user`, annotates the callback's parameter, and the options take that
+type: `configs: (entity, request: express.Request) => ...`. Nothing changes at run time: it is
+the same Express request object.
+
 ## Working on the engine and Dynamic Entity together
 
 Only for contributors: an app that uses Dynamic Entity installs `sheet-to-schema` from npm and

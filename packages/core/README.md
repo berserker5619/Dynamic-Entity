@@ -1,7 +1,7 @@
 # @dynamic-entity/core
 
 [![npm version](https://img.shields.io/npm/v/@dynamic-entity/core.svg?color=blue)](https://www.npmjs.com/package/@dynamic-entity/core)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/berserker5619/Dynamic-Entity/blob/main/LICENSE)
 
 Framework-agnostic core models, pure form logic, rules evaluation engine, and field type vocabulary for the `@dynamic-entity` ecosystem.
 

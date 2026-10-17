@@ -200,6 +200,8 @@ if (ssr) {
   dependencies['@angular/platform-server'] = ng;
   if (!zoneless) dependencies['zone.js'] = zone;
 }
+// EXTENDING.md's browser `.xlsx` parser imports exceljs, as a consumer who copies it would.
+if (useReadme) dependencies.exceljs = '4.4.0';
 
 fs.writeFileSync(
   path.join(proj, 'package.json'),

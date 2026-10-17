@@ -677,51 +677,78 @@ happens*. Collapsing them into one option would make each answer imply the other
 ```typescript
 import { provideNgxDynamicEntity } from 'ngx-dynamic-entity';
 import { cellText, type SheetGrid } from '@dynamic-entity/core';
+import type { CellValue } from 'exceljs';
 
-// SheetJS 0.20.3 or later, installed from https://cdn.sheetjs.com — the `xlsx` package on npm
-// stopped at 0.18.5, which has known vulnerabilities. Nothing in this library depends on it.
-declare const XLSX: {
-  read(data: ArrayBuffer, options: unknown): { SheetNames: string[]; Sheets: Record<string, unknown> };
-  utils: { sheet_to_json(sheet: unknown, options: unknown): unknown[][] };
-};
+/**
+ * One cell as the value a record is built from, exactly as the server's reader turns it: a
+ * formula's result (never its text), rich text joined, an error as its text (so it fails
+ * coercion rather than importing as blank), a hyperlink as its text. Numbers, booleans and
+ * dates stay typed.
+ */
+function cellValue(value: CellValue): unknown {
+  if (value === null || value === undefined) return '';
+  if (value instanceof Date || typeof value !== 'object') return value;
+  if ('richText' in value) return value.richText.map(part => part.text).join('');
+  if ('formula' in value || 'sharedFormula' in value) return cellValue(value.result ?? null);
+  if ('error' in value) return String(value.error);
+  if ('text' in value) return String(value.text);
+  return '';
+}
+
+/** The first worksheet as positional rows. ExcelJS is loaded on the first `.xlsx`, not before. */
+export async function exceljsSheetParser(file: File): Promise<SheetGrid> {
+  const { default: ExcelJS } = await import('exceljs');
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await file.arrayBuffer());
+  const sheet = workbook.worksheets[0];
+  const grid: unknown[][] = [];
+  for (let r = 1; r <= (sheet?.rowCount ?? 0); r++) {
+    const row = sheet.getRow(r);
+    const cells: unknown[] = [];
+    for (let c = 1; c <= row.cellCount; c++) {
+      const cell = row.getCell(c);
+      // A merged range: the master, top left, holds the value; every covered cell is ''.
+      cells.push(cell.isMerged && cell.master.address !== cell.address ? '' : cellValue(cell.value));
+    }
+    grid.push(cells);
+  }
+  return { headers: (grid[0] ?? []).map(cellText), rows: grid.slice(1) };
+}
 
 export const importProviders = [
   provideNgxDynamicEntity({
     // Only needed for formats beyond delimited text — CSV, semicolon CSV and TSV are built in.
     // Rows are positional, never keyed by header: a real sheet has two columns both called
     // "Notes", and a header-keyed row loses one of them.
-    sheetParser: async (file: File): Promise<SheetGrid> => {
-      const workbook = XLSX.read(await file.arrayBuffer(), { cellDates: true });
-      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {
-        header: 1,
-        raw: true,
-        defval: '',
-        UTC: true,
-      });
-      return { headers: (rows[0] ?? []).map(cellText), rows: rows.slice(1) };
-    },
+    sheetParser: exceljsSheetParser,
   }),
 ];
 ```
 
-Every one of those options matters, and each was checked against SheetJS 0.20.3:
+It uses [ExcelJS](https://www.npmjs.com/package/exceljs) (`npm install exceljs`), the library
+`@dynamic-entity/server` reads workbooks with, so the two sides agree by construction:
 
-- **`raw: true`** keeps cell types, so a number arrives as a number and a boolean as a boolean.
-  With `raw: false` every cell is whatever SheetJS's formatter printed.
-- **`cellDates: true`** makes a date cell a `Date`. Without it, `raw: true` hands over the
-  date's serial number, which imports as a number.
-- **`UTC: true`** puts that `Date` at UTC midnight. `coerceCell` reads a typed date by its
-  **UTC** components, because a spreadsheet date is a calendar date with no zone, and that is
-  also how the server's reader delivers one. Without it, SheetJS builds *local* midnight,
-  which in UTC is the previous day for anyone east of Greenwich: `2024-03-07` imported as
-  `2024-03-06` in India.
-- **`defval: ''`** emits `''` for covered cells of a merged range. The `SheetParser` contract
-  requires that covered cells of a merged range are `''` (as the server reader emits); the
-  master cell at the top-left holds the value.
+- **Typed cells.** A number arrives as a number, a boolean as a boolean, and a date as a
+  `Date` at UTC midnight. `coerceCell` reads a typed date by its UTC components, because a
+  spreadsheet date is a calendar date with no zone, and that is how the server's reader
+  delivers one. Workbooks on the Mac 1904 date system are read correctly.
+- **Merged ranges.** The `SheetParser` contract requires covered cells of a merged range to be
+  `''` (as the server reader emits); the master cell at the top left holds the value.
+- **Formulas** give their cached result, never the formula text.
+- **Text** is read as written, every character of it, including emoji and other characters
+  above U+FFFF.
 
-With all four, a workbook imported in the browser produces the same records as the same
-workbook posted to `@dynamic-entity/server`. A parser that returns text (`SheetData`) still
-works; it just loses the types.
+With this parser a workbook imported in the browser produces the same records as the same
+workbook posted to `@dynamic-entity/server`; a test in this repository holds the example above
+to that, file by file. A parser that returns text (`SheetData`) still works; it just loses the
+types.
+
+> **Not SheetJS, for now.** SheetJS (0.20.3, the current release when this was written) decodes
+> a numeric character reference above U+FFFF to its low 16 bits. A workbook that stores text
+> that way, as openpyxl and other generators do, loses those characters silently in the
+> browser: `&#128230;` (📦) becomes U+F4E6, an invisible private-use character, and
+> "Rajesh Kumar 🎉" imports as "Rajesh Kumar ". The same workbook posted to the server imports
+> correctly, so the two sides disagree without saying so.
 
 ### The column contract
 

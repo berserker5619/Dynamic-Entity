@@ -1,7 +1,7 @@
 # ngx-dynamic-entity
 
 [![npm version](https://img.shields.io/npm/v/ngx-dynamic-entity.svg?color=red)](https://www.npmjs.com/package/ngx-dynamic-entity)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/berserker5619/Dynamic-Entity/blob/main/LICENSE)
 
 Angular dynamic form renderer and tabbed record editor, powered by `@dynamic-entity/core`. Supports Angular 17 through 22.
 
@@ -86,11 +86,11 @@ Everything else is an option on `provideNgxDynamicEntity`:
 | `sheetParser` | A reader for upload formats beyond delimited text, e.g. `.xlsx` |
 | `importTransport` | Where an import runs — see `provideHttpImportTransport` |
 
-Details for each are in [EXTENDING.md](../../EXTENDING.md).
+Details for each are in [EXTENDING.md](https://github.com/berserker5619/Dynamic-Entity/blob/main/EXTENDING.md).
 
 Some field types take an optional collaborator. A `markdown` field renders its source as
 text until you register a renderer — see
-[Markdown](../../EXTENDING.md#markdown) for `MARKDOWN_RENDERER`, which is any function from
+[Markdown](https://github.com/berserker5619/Dynamic-Entity/blob/main/EXTENDING.md#markdown) for `MARKDOWN_RENDERER`, which is any function from
 source to HTML.
 
 ---
@@ -116,7 +116,7 @@ Values may be `LocalizedText`, a flat string, or — for an app that already has
 Transloco or `$localize` — a resolver `(key, defaultText, language) => string` provided
 through `UI_TEXT`. Resolution is per key: anything you leave out keeps its English default.
 `DEFAULT_UI_TEXT` exports every key with its English source string, so a translation file can
-be generated from it. See [i18n](../../EXTENDING.md#validation-messages-and-i18n).
+be generated from it. See [i18n](https://github.com/berserker5619/Dynamic-Entity/blob/main/EXTENDING.md#validation-messages-and-i18n).
 
 ---
 
@@ -263,15 +263,15 @@ rendering decision, not an access-control boundary.
 
 | Output | Payload |
 |---|---|
-| `importComplete` | `ImportResult` — the records, the rows that failed and why. **Nothing is stored for you**: this is where you write them. |
+| `importComplete` | `ImportResult` — the rows that failed and why, and the records. In the browser (the default) `records` holds every record and **nothing is stored for you**: this is where you write them. Over HTTP (`provideHttpImportTransport`) the server's `onImport` has already written them, so `records` is empty and `imported` is the count; read `imported ?? records.length` for how many. |
 | `templateReady` | `Blob` — the generated template. |
 
 With nothing registered, the file is read and mapped in the browser. The built-in reader
 handles comma CSV, semicolon CSV and TSV, detecting the separator from the header line; a
 `sheetParser` adds other formats. `provideHttpImportTransport({ baseUrl })` moves the same
-wizard onto [`@dynamic-entity/server`](../server) for files a tab cannot hold. The column
+wizard onto [`@dynamic-entity/server`](https://github.com/berserker5619/Dynamic-Entity/tree/main/packages/server) for files a tab cannot hold. The column
 contract, numbered array headers and the validation-parity gap are in
-[EXTENDING.md](../../EXTENDING.md#spreadsheet-import).
+[EXTENDING.md](https://github.com/berserker5619/Dynamic-Entity/blob/main/EXTENDING.md#spreadsheet-import).
 
 ---
 
@@ -328,5 +328,5 @@ An optional base stylesheet ships with it, driven entirely by custom properties 
 
 Re-skin it by redeclaring tokens such as `--ngx-color-accent` on the same selectors. Add
 `ngx-form-sticky-actions` to a wrapper for a Save bar that stays in view. See the
-[root README](../../README.md#-styling) for the full token story, and
+[root README](https://github.com/berserker5619/Dynamic-Entity/blob/main/README.md#-styling) for the full token story, and
 `packages/demo-angular/src/styles.css` for a working reference.

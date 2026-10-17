@@ -403,3 +403,27 @@ files.
 | 5b. Tamil and emoji, CSV | yes | yes | |
 
 - **Severity**: Medium for 5a (R3-1); everything else passes.
+
+### Resolution (3.0.0-rc.4)
+
+| # | Resolution |
+|---|---|
+| R3-1 | EXTENDING.md's browser `.xlsx` example now uses ExcelJS (merged-cell contract, typed cells, formula results), with a note on why not SheetJS. `packages/server/src/documented-sheet-parser.spec.ts` runs the documented example, read out of EXTENDING.md, against the server path on `case5_non_latin.xlsx` (now in `core/test-fixtures`), 1904 dates, numeric IDs and the merged/complex sheet. With SheetJS's 16-bit truncation put back into the example, it fails. |
+| R3-2, R3-3 | `@dynamic-entity/server/express` uses sheet-to-schema's structural request and router types and a request type parameter; its published typings import nothing from `express`. `verify-server-consumer.mjs` compiles a typed app with `skipLibCheck` off against `@types/express` 4, 5 and none. |
+| R3-4 | The ngx README says what `importComplete` carries over HTTP. |
+| R3-5 | Every published package README links absolutely; `scripts/check-readme-links.mjs` runs in `lint` (source READMEs) and in `check:parity` (what `npm pack` would publish from each `dist`). |
+
+The harnesses are in `test-harness/rc-round3/`.
+
+## Planned for sheet-to-schema 1.1
+
+### An official browser `.xlsx` parser
+- **Status**: Planned for `sheet-to-schema` 1.1.
+- **Why**: Round 3 (R3-1) showed that the browser half of a parity guarantee rests on whatever
+  `.xlsx` reader each consumer copies from a doc. Dynamic Entity's docs now show an ExcelJS
+  parser held to the server path by a test, but every consumer still owns a copy of it.
+- **What**: a browser-safe entry point (for example `sheet-to-schema/xlsx`) exporting a
+  `SheetGrid` reader with the server's cell rules: formula results, `''` for covered merged
+  cells, typed dates at UTC midnight, the 1904 date system, and every character a workbook
+  stores, however it stores it. `exceljs` stays an optional peer, loaded on first use. The
+  main entry stays dependency-free.

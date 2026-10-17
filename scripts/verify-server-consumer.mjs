@@ -418,6 +418,102 @@ fs.writeFileSync(
 step(`Compiling ${snippets.length} README snippet(s) against the packed tarballs`);
 run('npx', ['tsc', '--noEmit', '-p', proj], { cwd: proj, stdio: 'inherit' });
 
+// ─── Typings without a particular @types/express ────────────────────────────
+
+/*
+ * `@dynamic-entity/server/express`'s typings name nothing from `express`, so they must compile
+ * with `skipLibCheck` off against either major of `@types/express`, and with none installed.
+ * The snippets above run with `skipLibCheck` on, which is exactly what would hide a typing
+ * that reaches for a package the consumer does not have.
+ */
+const CUSTOMERS = `const customers: EntityFormConfig = {
+  entity: 'customers',
+  tabs: [{ id: 'main', label: { en: 'Main' }, flatData: true, fields: [{ id: 'name', type: 'text', label: { en: 'Name' } }] }],
+};`;
+const WITH_EXPRESS = `import express from 'express';
+import { createImportRouter, sendFailure, type ImportRequest } from '@dynamic-entity/server/express';
+import type { EntityFormConfig } from '@dynamic-entity/core';
+${CUSTOMERS}
+const app = express();
+app.use('/import', createImportRouter({ configs: { customers }, onImport: async () => {} }));
+
+// A callback that needs more of the request annotates it; the options take that type.
+interface TenantRequest extends express.Request { tenant?: string }
+app.use('/tenant', createImportRouter({
+  configs: (entity, request: TenantRequest) => (request.tenant && entity === 'customers' ? customers : undefined),
+  onImport: async (records, { request }) => {
+    const tenant: string | undefined = request.tenant;
+    void [records, tenant];
+  },
+  lang: request => String(request.query['lang'] ?? 'en'),
+}));
+app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
+  sendFailure(response, error);
+});
+const contentType = (request: ImportRequest): string | undefined => request.headers['content-type'];
+void contentType;
+`;
+const WITHOUT_EXPRESS_TYPES = `import { createServer } from 'node:http';
+import { createImportRouter, type ImportRequest } from '@dynamic-entity/server/express';
+import type { EntityFormConfig } from '@dynamic-entity/core';
+${CUSTOMERS}
+const router = createImportRouter({
+  configs: (entity, request: ImportRequest & { tenant?: string }) => (request.tenant && entity === 'customers' ? customers : undefined),
+  onImport: async (records, { request }) => void [records, request.tenant],
+});
+// The router is middleware: plain node:http can call it, with no Express types anywhere.
+createServer((request, response) => router(request, response, () => response.end()));
+`;
+
+for (const [label, typesExpress, source] of [
+  ['@types/express 4', '^4', WITH_EXPRESS],
+  ['@types/express 5', '^5', WITH_EXPRESS],
+  ['no @types/express', null, WITHOUT_EXPRESS_TYPES],
+]) {
+  const dir = path.join(work, `typings-${typesExpress ? `express${typesExpress.slice(1)}` : 'none'}`);
+  fs.mkdirSync(dir);
+  fs.writeFileSync(
+    path.join(dir, 'package.json'),
+    JSON.stringify(
+      {
+        name: path.basename(dir),
+        private: true,
+        version: '1.0.0',
+        dependencies: {
+          '@dynamic-entity/core': tgz('dynamic-entity-core'),
+          '@dynamic-entity/server': tgz('dynamic-entity-server'),
+          express: '^5.0.0',
+        },
+        devDependencies: {
+          '@types/node': '^20.14.0',
+          typescript: '~5.9.3',
+          ...(typesExpress ? { '@types/express': typesExpress } : {}),
+        },
+      },
+      null,
+      2,
+    ) + '\n',
+  );
+  step(`Typings with ${label}: installing`);
+  run('npm', ['install', '--no-audit', '--no-fund'], { cwd: dir, stdio: 'inherit' });
+  const installedTypes = path.join(dir, 'node_modules/@types/express/package.json');
+  if (!typesExpress && fs.existsSync(installedTypes)) {
+    console.error(`\nFAIL: @types/express was installed in the project meant to have none.`);
+    process.exit(1);
+  }
+  fs.writeFileSync(path.join(dir, 'app.mts'), source);
+  fs.writeFileSync(
+    path.join(dir, 'tsconfig.json'),
+    JSON.stringify({
+      compilerOptions: { target: 'ES2022', module: 'NodeNext', moduleResolution: 'NodeNext', strict: true, noEmit: true, skipLibCheck: false, types: ['node'] },
+      files: ['app.mts'],
+    }) + '\n',
+  );
+  const version = typesExpress ? JSON.parse(fs.readFileSync(installedTypes, 'utf8')).version : 'none';
+  step(`Typings with ${label} (${version}): compiling with skipLibCheck off`);
+  run('npx', ['tsc', '--noEmit', '-p', dir], { cwd: dir, stdio: 'inherit' });
+}
+
 // ─── Done ───────────────────────────────────────────────────────────────────
 
 if (keep) {

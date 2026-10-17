@@ -8,6 +8,28 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.0.0-rc.4]
+
+A release candidate. Fixes from the third round of testing against the published packages
+(`docs/rc-feedback.md`, Round 3).
+- **`sheet-to-schema` is now a normal dependency, `^1.0.0`**, the engine's first stable release.
+- **Browser `.xlsx` (R3-1).** EXTENDING.md's `sheetParser` example now uses ExcelJS, the
+  library the server reads workbooks with, so a workbook imports to the same records in the
+  browser and on the server. The SheetJS example it replaces lost characters above U+FFFF
+  (most emoji) when a workbook stored them as numeric character references, as openpyxl does,
+  while the server read them correctly. A test runs the documented parser against the server
+  path on four real-world workbooks, the emoji one among them.
+- **`@dynamic-entity/server/express` typings (R3-2, R3-3).** They no longer import `express`:
+  the router, request and response are structural types, so a TypeScript app compiles with
+  `@types/express` 4, 5 or none, with `skipLibCheck` off. The options take a request type
+  parameter, inferred from an annotated callback (`(entity, request: express.Request) => ...`)
+  and `ImportRequest` otherwise. **A callback that read Express-only properties of an
+  unannotated `request` now needs the annotation**; see MIGRATING-3.0.md. Nothing changes at
+  run time.
+- **Docs.** `importComplete` over HTTP carries `imported` and an empty `records` (R3-4).
+  Links in the published package READMEs are absolute, so they work on npmjs.com, and a lint
+  check fails on a relative one (R3-5).
+
 ## [3.0.0-rc.3]
 
 A release candidate. **`sheet-to-schema` has moved to its own repository,

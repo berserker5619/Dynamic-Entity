@@ -16,6 +16,13 @@
  * This module is published as `@dynamic-entity/server/express` rather than from the package
  * root, so that it — and its `express` import — is reached only by someone who wants it. A
  * consumer wiring Fastify imports the root and never pays for a framework they do not use.
+ *
+ * **Its typings name nothing from `express`.** The request, the response and the router are
+ * sheet-to-schema's structural types, which an Express 4 or 5 request, response and router
+ * satisfy as they are. So a TypeScript app needs no particular `@types/express`, or none, and
+ * two copies of it in one install cannot make the router's types disagree with the app's. A
+ * callback that reads more of the request than `ImportRequest` has (a user, a tenant)
+ * annotates its parameter with the app's own request type, and the options take that type.
  */
 
 import {
@@ -29,26 +36,40 @@ import {
   type FormRule,
   type ImportLookups,
 } from '@dynamic-entity/core';
-import express, { type Request, type Router } from 'express';
+import express from 'express';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
   createImportRouter as createRouterOverAdapters,
   ImportError,
   sendFailure as sendImportFailure,
   templateFilename as importerTemplateFilename,
   type ImportBinding,
+  type ImportRequest,
+  type ImportRouter as RouteTable,
 } from 'sheet-to-schema/node';
 import type { ImportLimits } from './limits';
 import { suggestionFor, type BatchInfo } from './run-import';
 import { templateSheetOf } from './write-template';
 
+export type { ImportRequest, ImportResponse } from 'sheet-to-schema/node';
+
+/**
+ * What `createImportRouter` returns: an Express router, described by what an app does with it.
+ * It is middleware, so `app.use('/import', router)` takes it, and it has the four routes on it.
+ * Nothing here is typed by `@types/express`, so any copy of it, or none, works.
+ */
+export interface ImportRouter<TRequest extends ImportRequest = ImportRequest> extends RouteTable<TRequest> {
+  (request: IncomingMessage, response: ServerResponse, next: (error?: unknown) => void): void;
+}
+
 /** What the consumer does with a batch of records. Called once per batch, and awaited. */
-export type OnImport = (
+export type OnImport<TRequest extends ImportRequest = ImportRequest> = (
   records: Record<string, unknown>[],
   context: BatchInfo & {
     entity: string;
     config: EntityFormConfig;
     /** For a tenant id, a user, a transaction — whatever the consumer's writer needs. */
-    request: Request;
+    request: TRequest;
   },
 ) => void | Promise<void>;
 
@@ -59,12 +80,16 @@ export type OnImport = (
  * need a restart to add an entity. Returning `undefined` is how a loader says "no such
  * entity"; throwing is how it says something went wrong.
  */
-export type ConfigSource =
+export type ConfigSource<TRequest extends ImportRequest = ImportRequest> =
   | Record<string, EntityFormConfig>
-  | ((entity: string, request: Request) => EntityFormConfig | undefined | Promise<EntityFormConfig | undefined>);
+  | ((entity: string, request: TRequest) => EntityFormConfig | undefined | Promise<EntityFormConfig | undefined>);
 
-export interface ImportRouterOptions {
-  configs: ConfigSource;
+/**
+ * `TRequest` is the request the callbacks below are handed: `ImportRequest` unless a callback
+ * annotates its own, such as `(entity, request: express.Request & { tenant: string }) => ...`.
+ */
+export interface ImportRouterOptions<TRequest extends ImportRequest = ImportRequest> {
+  configs: ConfigSource<TRequest>;
   /** Rules per entity. Without them an import checks validators only, which the form does not. */
   rules?: Record<string, readonly FormRule[]>;
   /** Values for every `listName` any config mentions. A server has no `LOOKUP_REGISTRY`. */
@@ -83,10 +108,10 @@ export interface ImportRouterOptions {
    * send the same file again. This package does not deduplicate: the config has no natural-key
    * concept to deduplicate on. See SECURITY.md.
    */
-  onImport: OnImport;
+  onImport: OnImport<TRequest>;
   limits?: Partial<ImportLimits>;
   /** Which language error text is produced in. Default `en`. */
-  lang?: string | ((request: Request) => string);
+  lang?: string | ((request: TRequest) => string);
 }
 
 /**
@@ -160,7 +185,9 @@ export const sendFailure = sendImportFailure;
 /** The config a binding was made from, for the writer, which is handed the config and not the binding. */
 type ConfigBinding = ImportBinding & { config: EntityFormConfig };
 
-export function createImportRouter(options: ImportRouterOptions): Router {
+export function createImportRouter<TRequest extends ImportRequest = ImportRequest>(
+  options: ImportRouterOptions<TRequest>,
+): ImportRouter<TRequest> {
   // At construction, not at first use: a map is knowable now, and an app that refuses to start
   // is cheaper than a column that silently stored the wrong thing.
   if (typeof options.configs !== 'function') {
@@ -169,7 +196,7 @@ export function createImportRouter(options: ImportRouterOptions): Router {
     }
   }
 
-  const languageOf = (request: Request): string =>
+  const languageOf = (request: TRequest): string =>
     typeof options.lang === 'function' ? options.lang(request) : options.lang ?? 'en';
 
   /**
@@ -180,7 +207,7 @@ export function createImportRouter(options: ImportRouterOptions): Router {
    * interpolated into anything. An own-property check, not `configs[entity]`: `constructor`,
    * `__proto__` or `toString` would otherwise resolve to a built-in and run an import against it.
    */
-  const bindingFor = async (entity: string, request: Request): Promise<ConfigBinding | undefined> => {
+  const bindingFor = async (entity: string, request: TRequest): Promise<ConfigBinding | undefined> => {
     const config =
       typeof options.configs === 'function' ? await options.configs(entity, request) : ownValue(options.configs, entity);
     if (!config) throw new ImportError('UNKNOWN_ENTITY', 'No import is configured for that entity.');
@@ -208,7 +235,10 @@ export function createImportRouter(options: ImportRouterOptions): Router {
     };
   };
 
-  return createRouterOverAdapters(express.Router(), {
+  // An Express router is an `ImportRouter` at run time; the cast is only to the structural type
+  // the typings describe, so that they need nothing from `@types/express`.
+  const router = express.Router() as unknown as ImportRouter<TRequest>;
+  return createRouterOverAdapters<ImportRouter<TRequest>, TRequest>(router, {
     bindings: bindingFor,
     param: 'entity',
     // What a Dynamic Entity client compares with its own `CORE_VERSION`, as it always has.

@@ -1,0 +1,1 @@
+{"name":"r3-e-realworld","private":true,"version":"1.0.0","type":"module","dependencies":{"@dynamic-entity/core":"^3.0.0-rc.3","@dynamic-entity/server":"^3.0.0-rc.3","exceljs":"^4.4.0","express":"^5.3.0","ngx-dynamic-entity":"^3.0.0-rc.3","sheet-to-schema":"^1.0.0-rc.3","xlsx":"https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"}}

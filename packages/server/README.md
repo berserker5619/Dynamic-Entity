@@ -3,7 +3,7 @@
 > Streaming spreadsheet import for [`@dynamic-entity/core`](https://www.npmjs.com/package/@dynamic-entity/core), with an Express adapter.
 
 [![npm](https://img.shields.io/npm/v/@dynamic-entity/server.svg)](https://www.npmjs.com/package/@dynamic-entity/server)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/berserker5619/Dynamic-Entity/blob/main/LICENSE)
 
 The import wizard in `ngx-dynamic-entity` works with **no backend at all** — it reads the file
 in the browser and runs the whole import there. This package exists for the one case that
@@ -24,6 +24,29 @@ npm install @dynamic-entity/server @dynamic-entity/core express
 
 `express` is an optional peer: it is needed only for the adapter, which lives behind its own
 entry point. Node 20 or newer.
+
+**TypeScript** needs no particular `@types/express`, or any: the adapter's typings describe the
+router, request and response by what it uses, and an Express 4 or 5 one fits them. Callbacks
+are handed an `ImportRequest` (a Node request with `params` and `query`). One that reads more,
+such as a user or a tenant, annotates its parameter, and the options take that type:
+
+```ts
+import express from 'express';
+import { createImportRouter } from '@dynamic-entity/server/express';
+import type { EntityFormConfig } from '@dynamic-entity/core';
+
+declare const loadConfig: (tenant: string, entity: string) => Promise<EntityFormConfig | undefined>;
+declare const saveAll: (tenant: string, entity: string, records: Record<string, unknown>[]) => Promise<void>;
+
+const app = express();
+app.use(
+  '/api/import',
+  createImportRouter({
+    configs: (entity, request: express.Request & { tenant: string }) => loadConfig(request.tenant, entity),
+    onImport: (records, { entity, request }) => saveAll(request.tenant, entity, records), // request is typed the same
+  }),
+);
+```
 
 ---
 
@@ -168,7 +191,7 @@ failure; an app that will not boot is the cheap one.
 ### 3. Authentication, authorization and concurrency are yours
 
 The router is mounted inside your app, behind your middleware. Nothing here checks who is
-asking, and nothing here limits how many imports run at once. See [SECURITY.md](../../SECURITY.md).
+asking, and nothing here limits how many imports run at once. See [SECURITY.md](https://github.com/berserker5619/Dynamic-Entity/blob/main/SECURITY.md).
 
 ### 4. The file is uploaded twice
 
@@ -213,7 +236,7 @@ UTF-16 text.
 
 `maxCellLength` is doing double duty: `validators.pattern` is a config-supplied regex that runs
 against cell text, and on a server that text is attacker-chosen. Bounding the input bounds a
-catastrophic backtrack. See [SECURITY.md](../../SECURITY.md).
+catastrophic backtrack. See [SECURITY.md](https://github.com/berserker5619/Dynamic-Entity/blob/main/SECURITY.md).
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "name": "@dynamic-entity/core",
-  "version": "3.0.0-rc.3",
+  "version": "3.0.0-rc.4",
   "description": "Shared model + framework-agnostic form logic for the dynamic-entity ecosystem.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -33,7 +33,7 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
-    "sheet-to-schema": "1.0.0-rc.3"
+    "sheet-to-schema": "^1.0.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
