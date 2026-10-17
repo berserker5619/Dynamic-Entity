@@ -34,7 +34,7 @@
     "@angular/compiler-cli": "^21.0.0",
     "@axe-core/playwright": "^4.13.0",
     "@dynamic-entity/server": "^3.0.0-rc.3",
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.64.0",
     "@types/jasmine": "^6.0.0",
     "express": "^5.2.1",
     "jasmine-core": "^6.3.0",
