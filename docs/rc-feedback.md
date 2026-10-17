@@ -209,3 +209,74 @@ Tested against published npm `@next` packages only (`sheet-to-schema@1.0.0-rc.1`
 ### Duplicate header names: preview should flag them
 - **Status**: Deferred to Phase 4.
 - **Description**: When an uploaded spreadsheet carries duplicate header names (such as multiple columns titled "Status"), the preview step should detect and flag them to alert the user during mapping.
+
+
+---
+
+## Dependency alerts triaged before 3.0.0-rc.3 (2026-10-17)
+
+Ten Dependabot alerts were open on `main`. Each was traced to whether it reaches the runtime
+dependency tree of a published package (`npm ls <pkg> --omit=dev` per workspace, and the
+generated `dist/package.json` each package publishes). Only one did.
+
+### uuid (#30, medium, GHSA-w5hq-g745-h8pq): runtime, vulnerable code not used
+
+- **Path**: `@dynamic-entity/server` depends on `exceljs@4.4.0` (a normal dependency, by the
+  Phase 2 decision, unchanged), which depends on `uuid@^8.3.0`, resolved to `uuid@8.3.2`.
+  `sheet-to-schema` reaches the same `exceljs` only as an optional peer.
+- **Fix available**: none short of a major. The first patched version is `uuid@11.1.1`; there
+  is no 8.x patch, and `exceljs@4.4.0` is exceljs's latest release. An override in this
+  repository would not ship: a server user would still install `uuid@8`.
+- **The advisory**: a missing buffer bounds check in `v3`, `v5` and `v6` when a `buf`
+  argument is passed.
+- **What exceljs calls**: every `uuid` reference in the installed `exceljs@4.4.0` was searched
+  (`grep -rn uuid node_modules/exceljs`, outside its own `node_modules`):
+  - `lib/xlsx/xform/sheet/cf-ext/cf-rule-ext-xform.js`, which Node loads
+    (`excel.js` → `lib/exceljs.nodejs.js`):
+    - line 1: `const {v4: uuidv4} = require('uuid');`
+    - line 43: `` model.x14Id = `{${uuidv4()}}`.toUpperCase(); ``
+    - line 77: `` id: model.x14Id || `{${uuidv4()}}`, ``
+
+    These are the only three references in `lib/`.
+  - `dist/es5/xlsx/xform/sheet/cf-ext/cf-rule-ext-xform.js` (the ES5 build): the same
+    import of `v4` only (lines 4-5) and the same two calls (lines 40 and 68).
+  - `dist/exceljs.js` and `.min.js` (the browser bundles, which nothing here loads): uuid's
+    whole source is bundled in, but the only calls from exceljs code are the same two
+    `uuidv4()` sites (lines 9287 and 9315); the remaining matches are inside uuid's own
+    bundled implementation.
+- **Conclusion**: exceljs uses `v4()` only, always with no arguments. `v3`, `v5` and `v6` are
+  never called and no `buf` is ever passed, so the vulnerable code is not reached. Alert #30
+  is dismissed as "vulnerable code not used".
+- **Upstream**: [exceljs/exceljs#3041](https://github.com/exceljs/exceljs/issues/3041) (open)
+  asks for this upgrade; [#3055](https://github.com/exceljs/exceljs/issues/3055) and
+  [PR #3085](https://github.com/exceljs/exceljs/pull/3085) ("upgrade uuid to v11", open) as
+  well. Revisit when an exceljs release takes `uuid >= 11.1.1`. The `tmp` advisory #3055 also
+  names (GHSA-ph9p-34f9-6g65) is already fixed here: `tmp` resolves to 0.2.7.
+
+### Fixed with a non-major update
+
+Dev-only: none reaches a published package's runtime tree.
+
+| Alert | Severity | Path | Now |
+|---|---|---|---|
+| handlebars #161, #163, #162 | critical, critical, medium | ts-jest | 4.7.10 |
+| shell-quote #158 | critical | webpack-dev-server → launch-editor | 1.11.0 |
+| source-map-js #156 | high | postcss, sass, source-map-loader | 1.2.2 |
+| qs #32 | medium | express 4 (webpack-dev-server) | via express 4.22.3 |
+| @modelcontextprotocol/sdk #159 | high | @angular/cli (exact pin) | via the Angular group's patch update |
+
+`qs` showed in the server's runtime listing only because sheet-to-schema's optional `express`
+peer was satisfied by the dev-installed express 4. Neither published package declares express
+as a dependency.
+
+### Left until after the finals: dev-only, no non-major fix
+
+- **esbuild #35 (low, GHSA-g7r4-m6w7-qqqr)**: arbitrary file read through the esbuild
+  development server on Windows. `esbuild@0.27.7` comes in through `tsup` (`^0.27.0`) and
+  `vite`; the fix is 0.28.1, outside `tsup`'s range, and a 0.x minor is a breaking range. The
+  build never runs esbuild's development server. Revisit when `tsup` accepts esbuild 0.28.
+- **sprintf-js #157 (medium, GHSA-hp3w-g68c-fv3c)**: denial of service through unbounded
+  precision specifiers. `sprintf-js@1.0.3` comes in through ts-jest → @jest/transform →
+  babel-plugin-istanbul → @istanbuljs/load-nyc-config → js-yaml 3 → argparse 1. No patched
+  version is published. It runs only in the test toolchain, on our own inputs. Revisit after
+  the finals.
