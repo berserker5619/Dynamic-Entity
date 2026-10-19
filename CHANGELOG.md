@@ -51,12 +51,21 @@ says what to do about each change.
 
   `importMessage` is exported, and there are new `UI_TEXT` keys (`importUnsupportedRuntime` and
   the rest).
-- **The picker's `accept` list** follows what the transport reads:
-  - `.csv,.tsv,.txt` with the built-in parser;
-  - `.xlsx` too with `provideSheetFileParser()` (new `SHEET_ACCEPT` token), and always over HTTP;
-  - unrestricted for a parser of your own, as in 3.0.
+- **`ImportTransport.accept`** (optional) and the **`SHEET_ACCEPT`** token: the picker's
+  `accept` list follows what the transport reads.
+  - `LocalImportTransport` offers `.csv,.tsv,.txt` with the built-in parser, or what a
+    registered parser declares through `SHEET_ACCEPT`. `provideSheetFileParser()` provides
+    `.csv,.tsv,.txt,.xlsx`.
+  - A parser registered without `SHEET_ACCEPT` leaves the picker unrestricted, as in 3.0.
+  - `HttpImportTransport` offers `.xlsx` always, because the server reads it.
+  - A transport of your own without `accept` leaves the picker unrestricted.
+- **The demo** (`packages/demo-angular`) gains two switches:
+  - `?parser=xlsx` registers `provideSheetFileParser()`, so the in-browser wizard reads `.xlsx`.
+  - `?plan=grouped` wraps the transport so each suggestion becomes a grouped plan
+    (`mock/grouping-transport.ts`), with `?transport=http` too, because grouped plans come from
+    code in 3.1.
 
-  `ImportTransport.accept` is optional.
+  `e2e/import-messages.spec.ts` drives both.
 
 ### Changed
 - **The built-in parser decides a file's format by its bytes, not its name.** It is

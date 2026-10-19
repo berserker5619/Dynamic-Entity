@@ -138,6 +138,10 @@ describe('HttpImportTransport — the plan it sends, by what the server reads', 
       expect(error).not.toHaveProperty('feature');
     });
 
+    it("offers .xlsx in the picker, which the server reads whatever this app's browser parser is", () => {
+      expect(server().transport.accept).toBe('.csv,.tsv,.txt,.xlsx');
+    });
+
     it('leaves a plan without grouping as it was, whatever the features', async () => {
       for (const features of [undefined, ['group']]) {
         const { transport, plans } = server({ planVersions: [1, 2], features });

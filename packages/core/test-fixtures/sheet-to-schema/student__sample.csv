@@ -1,0 +1,5 @@
+Student ID,First Name,Last Name,Enrolled On,Guardian 1 Name,Guardian 1 Relation,Guardian 1 Phone,Guardian 2 Name,Guardian 2 Relation,Guardian 2 Phone,Subject Code,Marks,Passed,Clubs
+S-204,Kavya,Iyer,01/06/2026,Lakshmi Iyer,mother,98400 12345,Ravi Iyer,father,98400 54321,MATH,91,yes,chess; robotics
+S-204,Kavya,Iyer,01/06/2026,Lakshmi Iyer,mother,98400 12345,Ravi Iyer,father,98400 54321,PHY,78,yes,chess; robotics
+S-205,Imran,Basha,02/06/2026,Salma Basha,mother,99400 11122,,,,MATH,34,no,football
+S-205,Imran,Basha,02/06/2026,Salma Basha,mother,99400 11122,,,,CHEM,sixty,yes,football

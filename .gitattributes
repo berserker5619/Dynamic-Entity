@@ -1,3 +1,7 @@
 # Real-world spreadsheet inputs are kept byte for byte: an Excel CSV ends its lines in CRLF,
 # and normalizing that away would test a file Excel never wrote.
 test-harness/rc-round3/files/*.csv -text
+
+# sheet-to-schema's own fixtures, vendored from its v1.3.0 tag (packages/core/test-fixtures/sheet-to-schema/README.md).
+packages/core/test-fixtures/sheet-to-schema/*.csv -text
+packages/core/test-fixtures/sheet-to-schema/*.tsv -text

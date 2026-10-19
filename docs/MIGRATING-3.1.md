@@ -49,6 +49,31 @@ export const providers = [provideNgxDynamicEntity({}), provideSheetFileParser()]
   reads.
 - **It replaces EXTENDING's hand-written ExcelJS parser**, which still works if you keep it.
 
+## The picker's file types: `accept` and `SHEET_ACCEPT`
+
+The wizard's file picker has an `accept` list from 3.1, and it comes from the transport, because
+the transport reads the file:
+
+| Setup | The picker offers |
+| --- | --- |
+| nothing registered (the built-in parser) | `.csv,.tsv,.txt` |
+| `provideSheetFileParser()` | `.csv,.tsv,.txt,.xlsx` |
+| a `sheetParser` of your own | anything, as in 3.0, unless you also provide `SHEET_ACCEPT` |
+| `HttpImportTransport` | `.csv,.tsv,.txt,.xlsx`: the server reads workbooks |
+| an `ImportTransport` of your own | anything, unless it sets `accept` |
+
+```typescript
+import { SHEET_ACCEPT, SHEET_PARSER } from 'ngx-dynamic-entity';
+
+// A parser of your own that reads OpenDocument too, and says so.
+export const providers = [
+  { provide: SHEET_PARSER, useValue: myParser },
+  { provide: SHEET_ACCEPT, useValue: '.csv,.tsv,.txt,.ods' },
+];
+```
+
+`ImportTransport.accept` is optional, so a transport written for 3.0 compiles unchanged.
+
 ## Grouping on the server
 
 ```typescript
@@ -77,3 +102,16 @@ and `PLAN_GROUP`.
 From sheet-to-schema 1.3, a problem inside one collected item (`items.2.sku` is required)
 carries that item's sheet row as `row`, and `rows: [that row]`. In 3.0 it named the group's
 first row and carried all its rows. A problem with the record as a whole is unchanged.
+
+## Trying it in the demo
+
+`packages/demo-angular` shows each opt-in with a query parameter:
+
+- `?parser=xlsx` registers `provideSheetFileParser()`, so the in-browser wizard reads `.xlsx`
+  and offers it in the picker.
+- `?plan=grouped` turns each suggestion into a grouped plan (`mock/grouping-transport.ts`): rows
+  are grouped by the first non-array column, and each numbered-column array is collected. The
+  wizard has no screen for building a grouped plan yet (Phase 4), so in 3.1 a grouped plan comes
+  from code, and this is that code for the demo.
+- With `?transport=http` as well, the wizard runs against `import-server.mjs`, which does not
+  group, so a grouped plan is refused before upload and the wizard says why.

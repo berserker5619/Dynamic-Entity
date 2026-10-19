@@ -14,7 +14,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { EntityFormConfig, MappingPlan } from '@dynamic-entity/core';
 import { provideSheetFileParser } from '../../../xlsx/src/public-api';
 import { DEFAULT_UI_TEXT } from '../services/ui-text.service';
-import { IMPORT_TRANSPORT } from '../tokens/injection-tokens';
+import { IMPORT_TRANSPORT, SHEET_PARSER } from '../tokens/injection-tokens';
 import { EntityImportComponent } from './entity-import.component';
 import { HttpImportTransport } from './http-import-transport';
 import type { ImportTransport } from './import-contracts';
@@ -126,6 +126,10 @@ describe('the wizard says what went wrong, by code (3.1)', () => {
       await mount([provideSheetFileParser()]);
       await choose(fileOf('book.xlsx', WORKBOOK));
       expect(problem()).toBe(text('importUnsupportedRuntime'));
+      // And a CSV still imports, in the same browser.
+      await choose(fileOf('people.csv', 'Name\nAda\n'));
+      expect(problem()).toBe('');
+      expect(fixture.nativeElement.querySelector('[data-testid="import-mapper"]')).toBeTruthy();
     });
 
     it('says which package to install, where exceljs is missing (PEER_MISSING)', async () => {
@@ -134,10 +138,25 @@ describe('the wizard says what went wrong, by code (3.1)', () => {
         await mount([provideSheetFileParser()]);
         await choose(fileOf('book.xlsx', WORKBOOK));
         expect(problem()).toBe(text('importPeerMissing', { peer: 'exceljs' }));
+        // And a CSV still imports, which never needed it.
+        await choose(fileOf('people.csv', 'Name\nAda\n'));
+        expect(problem()).toBe('');
+        expect(fixture.nativeElement.querySelector('[data-testid="import-mapper"]')).toBeTruthy();
       } finally {
         delete (globalThis as { DecompressionStream?: unknown }).DecompressionStream;
       }
     });
+  });
+
+  it("does not call a workbook chunk that failed to download a missing package: it shows the browser's own error", async () => {
+    // What a lazy chunk's failed download throws (sheet-to-schema passes it through, 1.2): the
+    // package is installed and the network failed, so "install exceljs" would be wrong.
+    const failed = new TypeError('Failed to fetch dynamically imported module: https://app.example/assets/exceljs.min-C8vHhlMF.js');
+    const SHEET_PARSER_FAILING = { provide: SHEET_PARSER, useValue: () => Promise.reject(failed) };
+    await mount([SHEET_PARSER_FAILING]);
+    await choose(fileOf('book.xlsx', WORKBOOK));
+    expect(problem()).toBe(failed.message);
+    expect(problem()).not.toContain('install');
   });
 
   describe('a grouped plan in the browser, through LocalImportTransport', () => {

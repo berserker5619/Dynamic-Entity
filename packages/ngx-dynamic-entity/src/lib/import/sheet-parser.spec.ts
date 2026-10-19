@@ -39,7 +39,8 @@ describe('defaultSheetParser', () => {
   it('refuses a workbook by its bytes, whatever it is called, rather than reading a zip as text', async () => {
     // Attempting it yields a header row of mojibake and a mapping screen of nonsense, which
     // is far harder to diagnose than being told the format is not supported.
-    for (const name of ['people.xlsx', 'people.csv']) {
+    // A .docx is a zip as well, refused the same way: the built-in parser reads no zip at all.
+    for (const name of ['people.xlsx', 'people.csv', 'letter.docx']) {
       await expect(defaultSheetParser(csvFile(name, 'PK\u0003\u0004...'))).rejects.toMatchObject({ code: 'UNSUPPORTED_FORMAT', message: expect.stringContaining('.xlsx workbook') });
     }
   });
