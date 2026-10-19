@@ -148,6 +148,12 @@ function readsMonthFirst(version: string | undefined): boolean {
 
 class HttpImportTransport implements ImportTransport {
   /**
+   * The server reads the file, and `@dynamic-entity/server` reads `.xlsx` as well as delimited
+   * text, whatever parser this app registered for the browser.
+   */
+  readonly accept = '.csv,.tsv,.txt,.xlsx';
+
+  /**
    * The date order each previewed file's server reported, for `commit` to compare against.
    * Keyed on the `File`, so it lives exactly as long as the file does.
    */

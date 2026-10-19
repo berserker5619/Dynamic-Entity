@@ -59,6 +59,9 @@ const DELIBERATELY_UNDEMONSTRATED = {
   RECORD_MIGRATIONS: 'Plumbing under provideNgxDynamicEntity({ migrations }), which the demo uses.',
   UI_TEXT: 'Plumbing under provideNgxDynamicEntity({ uiText }), which the demo uses.',
   SHEET_PARSER: 'Plumbing under provideNgxDynamicEntity({ sheetParser }) — see sheetParser.',
+  SHEET_ACCEPT:
+    'Plumbing under provideSheetFileParser() from ngx-dynamic-entity/xlsx, which the demo ' +
+    'registers with ?parser=xlsx: the token is how a parser tells the picker what it reads.',
   sheetParser:
     'The demo registers none: since 2.3 the built-in reader covers comma, semicolon and ' +
     'tab-separated text, which was all the demo parser added, and ?transport=http reads .xlsx ' +

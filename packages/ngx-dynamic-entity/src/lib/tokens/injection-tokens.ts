@@ -144,27 +144,31 @@ export const UPLOAD_HANDLER = new InjectionToken<FileUploadHandler>('UPLOAD_HAND
 /**
  * Reads an uploaded spreadsheet into headers and positional rows, for the import wizard.
  *
- * Unregistered, the wizard reads CSV with the dependency-free parser in
- * `@dynamic-entity/core`, so it works with nothing provided. Register one to accept `.xlsx`
- * — which spreadsheet library that uses stays the consumer's choice, and this package keeps
- * having no runtime dependency.
+ * Unregistered, the wizard reads CSV and TSV with sheet-to-schema's `readCsvFile`, which needs
+ * nothing installed. For `.xlsx`, add `provideSheetFileParser()` from `ngx-dynamic-entity/xlsx`
+ * (and install `exceljs`), or register a parser of your own here.
  *
- * Rows come back **positional** (`string[][]`) rather than keyed by header, because a real
+ * Rows come back **positional** (`unknown[][]`) rather than keyed by header, because a real
  * sheet has duplicate headers and blank ones; a header-keyed row silently loses the second
  * of two columns both called "Notes".
  *
  * @example
  * provideNgxDynamicEntity({
  *   sheetParser: async file => {
- *     const wb = XLSX.read(await file.arrayBuffer(), { cellDates: true });
- *     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {
- *       header: 1, raw: true, defval: '', UTC: true,
- *     }) as unknown[][];
- *     return { headers: (rows[0] ?? []).map(cellText), rows: rows.slice(1) };
+ *     const grid = await readMySpreadsheet(file);
+ *     return { headers: (grid[0] ?? []).map(cellText), rows: grid.slice(1) };
  *   },
  * })
  */
 export const SHEET_PARSER = new InjectionToken<SheetParser>('SHEET_PARSER');
+
+/**
+ * The file types the import wizard's picker offers for a registered `SHEET_PARSER`, as an
+ * `accept` attribute (`.csv,.tsv,.txt,.xlsx`). From 3.1. `provideSheetFileParser()` provides it.
+ * A parser registered without it keeps the picker unrestricted, as in 3.0: the wizard cannot know
+ * what a parser it did not write reads. The built-in parser offers `.csv`, `.tsv` and `.txt`.
+ */
+export const SHEET_ACCEPT = new InjectionToken<string>('SHEET_ACCEPT');
 
 /**
  * Where an import's work happens.

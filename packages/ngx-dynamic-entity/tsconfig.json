@@ -19,6 +19,7 @@
     "baseUrl": ".",
     "paths": {
       "@dynamic-entity/core": ["../core/src/index.ts"],
+      "ngx-dynamic-entity": ["./src/public-api.ts"],
       "rxjs": ["../../node_modules/rxjs"],
       "rxjs/*": ["../../node_modules/rxjs/*"]
     }
@@ -28,6 +29,6 @@
     "strictInputAccessModifiers": true,
     "strictTemplates": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/**/*.spec.ts"]
+  "include": ["src/**/*.ts", "xlsx/src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "src/**/*.spec.ts", "xlsx/src/**/*.spec.ts"]
 }

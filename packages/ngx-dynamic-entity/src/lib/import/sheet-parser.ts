@@ -2,37 +2,33 @@
  * sheet-parser.ts — the built-in CSV reader, and the reason it is the only one.
  *
  * CSV is what every spreadsheet tool exports and what a text editor can produce, and
- * `@dynamic-entity/core` parses it with no dependency. Shipping that as the default means the
- * import wizard works on a fresh `npm install` with nothing registered — `SHEET_PARSER` then
- * exists for the consumer who *also* wants `.xlsx`, rather than for the consumer who wants
- * the feature to work at all.
+ * sheet-to-schema's `readCsvFile` reads it with nothing installed. Shipping that as the default
+ * means the import wizard works on a fresh `npm install` with nothing registered, and an app
+ * that never installs `exceljs` still builds (docs/3.1-spec.md, Step 0: Angular's `ng build`
+ * fails on sheet-to-schema/browser without it). `.xlsx` is the opt-in `ngx-dynamic-entity/xlsx`
+ * entry, `provideSheetFileParser()`.
  *
- * The alternative was a hard dependency on a spreadsheet library in a package that currently
- * has none, for a file format many consumers will never see.
+ * Imported from `sheet-to-schema` itself, not through `@dynamic-entity/core`, whose re-exports of
+ * it are deprecated for 4.0.
  */
 
-import { parseCsv, type SheetData } from '@dynamic-entity/core';
+import { readCsvFile } from 'sheet-to-schema';
 import type { SheetParser } from './import-contracts';
 
-/** Extensions the built-in parser will attempt. */
-const TEXT_EXTENSIONS = /\.(csv|tsv|txt)$/i;
+/** What the picker offers with the built-in parser. */
+export const DEFAULT_SHEET_ACCEPT = '.csv,.tsv,.txt';
 
 /**
- * Read a text file as CSV.
+ * Read a CSV or TSV file into exactly the grid the server reads from the same bytes, with the
+ * separator it uses, so `LocalImportTransport` reads `1,5` in a semicolon file as the server does.
  *
- * A binary workbook is refused by name rather than attempted: `.xlsx` is a zip, so reading it
- * as text yields a header row of mojibake and a mapping screen full of nonsense, which is a
- * much harder thing to diagnose than being told the format is not supported.
+ * The format is decided by the bytes, not the name (from 3.1). A CSV under any name is read. A
+ * workbook is refused with `UNSUPPORTED_FORMAT` whatever it is called: `.xlsx`, or any zip, and a
+ * pre-2007 `.xls`. So is a UTF-16 file. Reading a zip as text would yield a header row of
+ * mojibake and a mapping screen full of nonsense, which is much harder to diagnose than being
+ * told the format is not supported.
  */
-export const defaultSheetParser: SheetParser = async (file: File): Promise<SheetData> => {
-  if (file?.name && !TEXT_EXTENSIONS.test(file.name)) {
-    throw new Error(
-      `Cannot read "${file.name}". The built-in parser handles CSV only — register a ` +
-        'sheetParser with provideNgxDynamicEntity({ sheetParser }) to accept other formats.',
-    );
-  }
-  // A `.tsv` says what it is. Anything else is read the way `parseCsv` reads text — the
-  // separator its header line uses most — which is also how the server reads an upload.
-  const tabs = /\.tsv$/i.test(file?.name ?? '');
-  return parseCsv(await file.text(), tabs ? { delimiter: '\t' } : {});
+export const defaultSheetParser: SheetParser = async (file: File) => {
+  const { headers, rows, delimiter } = await readCsvFile(file, { filename: file?.name });
+  return { headers, rows, delimiter };
 };

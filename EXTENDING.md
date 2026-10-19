@@ -666,89 +666,69 @@ in dev mode naming the keys it could not place.
 ## Spreadsheet import
 
 `<ngx-entity-import>` turns a CSV or spreadsheet into records. **It works with no backend and
-nothing registered** — the file is read in the tab by a dependency-free parser and mapped by
-`@dynamic-entity/core`. That parser reads comma CSV, semicolon CSV and TSV. The separator is
-detected from the header line (`.tsv` always means tab), and a semicolon file's numbers are
-read with a decimal comma, because Excel writes `;` exactly where `1,5` means one and a half.
-The server reads delimited text the same way. Two seams exist for the cases where that has to change, and they answer
-different questions: `sheetParser` reads the file, `importTransport` decides *where the work
-happens*. Collapsing them into one option would make each answer imply the other.
+nothing registered.** The file is read in the tab by sheet-to-schema's `readCsvFile`, which needs
+nothing installed, and mapped by `@dynamic-entity/core`. That parser reads comma CSV, semicolon
+CSV and TSV. The separator is detected from the header line (`.tsv` always means tab), and a
+semicolon file's numbers are read with a decimal comma, because Excel writes `;` exactly where
+`1,5` means one and a half. The format is decided by the file's bytes, not its name: a CSV under
+any name is read, and an `.xlsx`, a pre-2007 `.xls` or a UTF-16 file is refused with
+`UNSUPPORTED_FORMAT`. The server reads delimited text the same way.
+
+Two seams exist for the cases where that has to change, and they answer different questions:
+`sheetParser` reads the file, `importTransport` decides *where the work happens*. Collapsing them
+into one option would make each answer imply the other.
+
+### `.xlsx` in the browser: `ngx-dynamic-entity/xlsx`
 
 ```typescript
 import { provideNgxDynamicEntity } from 'ngx-dynamic-entity';
-import { cellText, type SheetGrid } from '@dynamic-entity/core';
-import type { CellValue } from 'exceljs';
-
-/**
- * One cell as the value a record is built from, exactly as the server's reader turns it: a
- * formula's result (never its text), rich text joined, an error as its text (so it fails
- * coercion rather than importing as blank), a hyperlink as its text. Numbers, booleans and
- * dates stay typed.
- */
-function cellValue(value: CellValue): unknown {
-  if (value === null || value === undefined) return '';
-  if (value instanceof Date || typeof value !== 'object') return value;
-  if ('richText' in value) return value.richText.map(part => part.text).join('');
-  if ('formula' in value || 'sharedFormula' in value) return cellValue(value.result ?? null);
-  if ('error' in value) return String(value.error);
-  if ('text' in value) return String(value.text);
-  return '';
-}
-
-/** The first worksheet as positional rows. ExcelJS is loaded on the first `.xlsx`, not before. */
-export async function exceljsSheetParser(file: File): Promise<SheetGrid> {
-  const { default: ExcelJS } = await import('exceljs');
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(await file.arrayBuffer());
-  const sheet = workbook.worksheets[0];
-  const grid: unknown[][] = [];
-  for (let r = 1; r <= (sheet?.rowCount ?? 0); r++) {
-    const row = sheet.getRow(r);
-    const cells: unknown[] = [];
-    for (let c = 1; c <= row.cellCount; c++) {
-      const cell = row.getCell(c);
-      // A merged range: the master, top left, holds the value; every covered cell is ''.
-      cells.push(cell.isMerged && cell.master.address !== cell.address ? '' : cellValue(cell.value));
-    }
-    grid.push(cells);
-  }
-  return { headers: (grid[0] ?? []).map(cellText), rows: grid.slice(1) };
-}
+import { provideSheetFileParser } from 'ngx-dynamic-entity/xlsx';
 
 export const importProviders = [
-  provideNgxDynamicEntity({
-    // Only needed for formats beyond delimited text — CSV, semicolon CSV and TSV are built in.
-    // Rows are positional, never keyed by header: a real sheet has two columns both called
-    // "Notes", and a header-keyed row loses one of them.
-    sheetParser: exceljsSheetParser,
-  }),
+  provideNgxDynamicEntity({}),
+  // After provideNgxDynamicEntity, whose own SHEET_PARSER it replaces.
+  provideSheetFileParser(),
 ];
 ```
 
-It uses [ExcelJS](https://www.npmjs.com/package/exceljs) (`npm install exceljs`), the library
-`@dynamic-entity/server` reads workbooks with, so the two sides agree by construction:
+Install [ExcelJS](https://www.npmjs.com/package/exceljs) as well (`npm install exceljs`). It is an
+optional peer of `ngx-dynamic-entity`, needed only by an app that imports this entry. Without it,
+Angular's `ng build` fails with `Could not resolve "exceljs"`. That is why this is an entry of its
+own: an app that never reads a workbook never imports it, and builds without ExcelJS. ExcelJS is
+fetched only when a workbook is first read, so a user who only imports CSV never downloads it,
+and the picker offers `.xlsx` only with this parser registered.
+
+The parser it registers is a few lines over sheet-to-schema/browser's `readSheetFile`, for an app
+that composes its own:
+
+```typescript
+import type { SheetGrid } from '@dynamic-entity/core';
+import { readSheetFile } from 'sheet-to-schema/browser';
+
+/** CSV, TSV or `.xlsx`, read into exactly the grid the server reads from the same bytes. */
+export async function sheetFileParser(file: File): Promise<SheetGrid> {
+  const { headers, rows, delimiter } = await readSheetFile(file, { filename: file.name });
+  return { headers, rows, ...(delimiter ? { delimiter } : {}) };
+}
+```
+
+`readSheetFile` reads a workbook by the server's own rules, with the server's code:
 
 - **Typed cells.** A number arrives as a number, a boolean as a boolean, and a date as a
-  `Date` at UTC midnight. `coerceCell` reads a typed date by its UTC components, because a
-  spreadsheet date is a calendar date with no zone, and that is how the server's reader
-  delivers one. Workbooks on the Mac 1904 date system are read correctly.
-- **Merged ranges.** The `SheetParser` contract requires covered cells of a merged range to be
-  `''` (as the server reader emits); the master cell at the top left holds the value.
+  `Date` at UTC midnight. Workbooks on the Mac 1904 date system are read correctly.
 - **Formulas** give their cached result, never the formula text.
 - **Text** is read as written, every character of it, including emoji and other characters
   above U+FFFF.
+- **The same limits and refusals** as the server, with the same codes: `UNSUPPORTED_FORMAT` for a
+  `.xls`, a UTF-16 file or a zip that is not a workbook, and `ARCHIVE_REFUSED` or
+  `SHEET_TOO_LARGE` past a limit.
 
-With this parser a workbook imported in the browser produces the same records as the same
-workbook posted to `@dynamic-entity/server`; a test in this repository holds the example above
-to that, file by file. A parser that returns text (`SheetData`) still works; it just loses the
-types.
-
-> **Not SheetJS, for now.** SheetJS (0.20.3, the current release when this was written) decodes
-> a numeric character reference above U+FFFF to its low 16 bits. A workbook that stores text
-> that way, as openpyxl and other generators do, loses those characters silently in the
-> browser: `&#128230;` (📦) becomes U+F4E6, an invisible private-use character, and
-> "Rajesh Kumar 🎉" imports as "Rajesh Kumar ". The same workbook posted to the server imports
-> correctly, so the two sides disagree without saying so.
+A workbook needs `DecompressionStream` with the `deflate-raw` format (Chrome and Edge 103,
+Firefox 113, Safari 16.4); on an older browser it is refused with `UNSUPPORTED_RUNTIME`, and a
+CSV still reads. A workbook imported in the browser produces the same records as the same
+workbook posted to `@dynamic-entity/server`; a test in this repository holds the parser above
+to that, file by file. A parser of your own still works: register it as `sheetParser`, and
+provide `SHEET_ACCEPT` if the picker should offer only what it reads.
 
 ### The column contract
 

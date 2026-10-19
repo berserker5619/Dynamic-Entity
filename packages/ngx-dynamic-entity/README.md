@@ -83,7 +83,7 @@ Everything else is an option on `provideNgxDynamicEntity`:
 | `uiText` | The library's own text — see below |
 | `hooks` | Lifecycle hooks keyed `<entity>:<hook>` — `beforeSave` may abort a save |
 | `migrations` | `RecordMigration[]` applied as a record enters the form |
-| `sheetParser` | A reader for upload formats beyond delimited text, e.g. `.xlsx` |
+| `sheetParser` | A reader of your own for upload formats. For `.xlsx`, `provideSheetFileParser()` from `ngx-dynamic-entity/xlsx` |
 | `importTransport` | Where an import runs — see `provideHttpImportTransport` |
 
 Details for each are in [EXTENDING.md](https://github.com/berserker5619/Dynamic-Entity/blob/main/EXTENDING.md).
@@ -267,8 +267,26 @@ rendering decision, not an access-control boundary.
 | `templateReady` | `Blob` — the generated template. |
 
 With nothing registered, the file is read and mapped in the browser. The built-in reader
-handles comma CSV, semicolon CSV and TSV, detecting the separator from the header line; a
-`sheetParser` adds other formats. `provideHttpImportTransport({ baseUrl })` moves the same
+(sheet-to-schema's `readCsvFile`, which needs nothing installed) handles comma CSV, semicolon
+CSV and TSV, detecting the separator from the header line. The format is decided by the file's
+bytes, not its name, and the picker offers `.csv`, `.tsv` and `.txt`.
+
+**`.xlsx` in the browser** is the `ngx-dynamic-entity/xlsx` entry, from 3.1:
+
+```typescript
+import { provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+import { provideSheetFileParser } from 'ngx-dynamic-entity/xlsx';
+
+export const providers = [provideNgxDynamicEntity({}), provideSheetFileParser()];
+```
+
+Install `exceljs` for it (`npm install exceljs`), an optional peer needed only with this entry:
+without it, `ng build` fails with `Could not resolve "exceljs"`. An app that does not import the
+entry builds without it. ExcelJS is fetched the first time a workbook is read, and a workbook
+needs `DecompressionStream('deflate-raw')`: Chrome and Edge 103, Firefox 113, Safari 16.4. On
+an older browser a workbook is refused with `UNSUPPORTED_RUNTIME`, and a CSV still reads.
+
+A `sheetParser` of your own still works in place of either. `provideHttpImportTransport({ baseUrl })` moves the same
 wizard onto [`@dynamic-entity/server`](https://github.com/berserker5619/Dynamic-Entity/tree/main/packages/server) for files a tab cannot hold. The column
 contract, numbered array headers and the validation-parity gap are in
 [EXTENDING.md](https://github.com/berserker5619/Dynamic-Entity/blob/main/EXTENDING.md#spreadsheet-import).

@@ -40,10 +40,13 @@ const RULES: FormRule[] = [
   },
 ];
 
-/** A `File` whose `text()` works under jsdom, which does not implement Blob.text. */
+/** A `File` whose `text()` and `arrayBuffer()` work under jsdom, which implements neither. */
 function csvFile(name: string, body: string): File {
   const file = new File([body], name, { type: 'text/csv' });
   Object.defineProperty(file, 'text', { value: () => Promise.resolve(body) });
+  // The built-in parser reads bytes (sheet-to-schema's readCsvFile, from 3.1), as a browser's
+  // Blob.arrayBuffer gives them; jsdom's File does not implement it.
+  Object.defineProperty(file, 'arrayBuffer', { value: () => Promise.resolve(new TextEncoder().encode(body).buffer) });
   return file;
 }
 
@@ -213,10 +216,11 @@ describe('EntityImportComponent', () => {
 
   it('reports a file the parser refuses, where the user is looking', async () => {
     await mount();
-    await chooseFile(csvFile('book.xlsx', 'PK'));
+    // Refused by its bytes (a zip) from 3.1, where 3.0 refused it by name.
+    await chooseFile(csvFile('book.xlsx', 'PK\u0003\u0004'));
 
     const problem = fixture.nativeElement.querySelector('[data-testid="import-problem"]');
-    expect(problem.textContent).toContain('CSV only');
+    expect(problem.textContent).toContain('.xlsx workbook');
     // And stays on the upload step rather than advancing into an empty mapper.
     expect(fixture.nativeElement.querySelector('[data-testid="import-mapper"]')).toBeNull();
   });

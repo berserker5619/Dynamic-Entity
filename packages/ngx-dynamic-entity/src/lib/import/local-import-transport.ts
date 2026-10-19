@@ -26,8 +26,8 @@ import {
   type SheetGrid,
   type TemplateSpec,
 } from '@dynamic-entity/core';
-import { SHEET_PARSER } from '../tokens/injection-tokens';
-import { defaultSheetParser } from './sheet-parser';
+import { SHEET_ACCEPT, SHEET_PARSER } from '../tokens/injection-tokens';
+import { DEFAULT_SHEET_ACCEPT, defaultSheetParser } from './sheet-parser';
 import type {
   ImportContext,
   ImportPreview,
@@ -41,6 +41,13 @@ const SAMPLE_ROWS = 5;
 @Injectable({ providedIn: 'root' })
 export class LocalImportTransport implements ImportTransport {
   private readonly registered = inject(SHEET_PARSER, { optional: true });
+
+  /**
+   * What the picker offers: the built-in parser's types, or what a registered parser says it
+   * reads (`SHEET_ACCEPT`, which `provideSheetFileParser()` provides). A parser registered without
+   * saying keeps the picker unrestricted, as in 3.0.
+   */
+  readonly accept: string | undefined = this.registered ? (inject(SHEET_ACCEPT, { optional: true }) ?? undefined) : DEFAULT_SHEET_ACCEPT;
 
   /**
    * One parse per file, not one per call.

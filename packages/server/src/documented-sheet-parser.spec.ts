@@ -2,21 +2,23 @@
  * The browser `.xlsx` parser EXTENDING.md documents, held to the server path, file by file.
  *
  * The parser is not copied here: it is read out of EXTENDING.md, transpiled and run, so the
- * example a consumer copies is the code this test runs. Each workbook is then imported twice
- * with the same config and plan: through the documented parser and `applyMapping` (what
- * `LocalImportTransport` does with a `sheetParser`), and through the server's `runImport`. The
- * records must be the same.
+ * example a consumer copies is the code this test runs. From 3.1 it is `sheetFileParser`, the
+ * parser `provideSheetFileParser()` from `ngx-dynamic-entity/xlsx` registers, over
+ * sheet-to-schema/browser's `readSheetFile` (the entry's own spec holds the two to the same
+ * grids). Each workbook is then imported twice with the same config and plan: through the
+ * documented parser and `applyMapping` (what `LocalImportTransport` does with a `sheetParser`),
+ * and through the server's `runImport`. The records must be the same.
  *
  * `case5_non_latin.xlsx` is the one that matters most. It was written by openpyxl, which stores
- * text as numeric character references, and SheetJS 0.20.3, the parser this document used to
- * show, decodes a reference above U+FFFF to its low 16 bits: 📦 and 🎉 vanished in the browser
+ * text as numeric character references, and SheetJS 0.20.3, a parser this document once
+ * showed, decodes a reference above U+FFFF to its low 16 bits: 📦 and 🎉 vanished in the browser
  * while the server read them correctly (docs/rc-feedback.md, R3-1).
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
+import * as browser from 'sheet-to-schema/browser';
 import * as core from '@dynamic-entity/core';
 import { applyMapping, type EntityFormConfig, type MappingPlan, type SheetGrid } from '@dynamic-entity/core';
 import { runImport } from './run-import';
@@ -26,20 +28,18 @@ import { chunked } from './sheet.fixtures';
 const ROOT = path.resolve(__dirname, '../../..');
 const FIXTURES = path.join(ROOT, 'packages/core/test-fixtures');
 
-/** The fenced block in EXTENDING.md that defines `exceljsSheetParser`, run as CommonJS. */
+/** The fenced block in EXTENDING.md that defines `sheetFileParser`, run as CommonJS. */
 function documentedParser(): (file: File) => Promise<SheetGrid> {
   const markdown = fs.readFileSync(path.join(ROOT, 'EXTENDING.md'), 'utf8');
   const blocks = [...markdown.matchAll(/```typescript\r?\n([\s\S]*?)```/g)].map(m => m[1]);
-  const source = blocks.find(block => block.includes('export async function exceljsSheetParser'));
-  if (!source) throw new Error('EXTENDING.md no longer documents exceljsSheetParser');
+  const source = blocks.find(block => block.includes('export async function sheetFileParser'));
+  if (!source) throw new Error('EXTENDING.md no longer documents sheetFileParser');
   const js = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
   }).outputText;
   const modules: Record<string, unknown> = {
-    exceljs: ExcelJS,
+    'sheet-to-schema/browser': browser,
     '@dynamic-entity/core': core,
-    // The example also builds providers; only the parser is under test.
-    'ngx-dynamic-entity': { provideNgxDynamicEntity: (options: unknown) => options },
   };
   const exports: Record<string, unknown> = {};
   const load = (id: string): unknown => {
@@ -47,7 +47,7 @@ function documentedParser(): (file: File) => Promise<SheetGrid> {
     return modules[id];
   };
   new Function('require', 'exports', js)(load, exports);
-  return exports['exceljsSheetParser'] as (file: File) => Promise<SheetGrid>;
+  return exports['sheetFileParser'] as (file: File) => Promise<SheetGrid>;
 }
 
 const flat = (entity: string, fields: [string, string][]): EntityFormConfig => ({

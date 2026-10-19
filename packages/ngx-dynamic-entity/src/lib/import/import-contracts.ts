@@ -147,6 +147,13 @@ export function compareDateOrders(
  * chosen at registration, without a second implementation of the mapping rules.
  */
 export interface ImportTransport {
+  /**
+   * The file types the wizard's picker offers, as an `accept` attribute (`.csv,.tsv,.txt`).
+   * Absent, the picker is unrestricted, as in 3.0. From 3.1, and optional, so an existing
+   * implementation keeps compiling. It is the transport's, because the transport reads the file:
+   * in the browser that is its parser, and over HTTP the server, which reads `.xlsx` as well.
+   */
+  readonly accept?: string;
   /** Headers, a sample, and a suggested mapping for a freshly chosen file. */
   preview(file: File, context: ImportContext): Promise<ImportPreview>;
   /** Apply a plan to the whole file. */

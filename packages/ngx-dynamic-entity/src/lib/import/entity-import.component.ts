@@ -83,7 +83,7 @@ type Step = 'upload' | 'map' | 'review' | 'done';
 
           <label class="ngx-import__file">
             <span>{{ ui.text('importChooseFile', language) }}</span>
-            <input type="file" data-testid="import-file" (change)="chooseFile($event)" />
+            <input type="file" data-testid="import-file" [attr.accept]="accept" (change)="chooseFile($event)" />
           </label>
 
           @if (busy()) {
@@ -320,6 +320,11 @@ export class EntityImportComponent {
 
   private get transport(): ImportTransport {
     return this.registered ?? this.local;
+  }
+
+  /** The picker's file types, as the transport reads them; `null` leaves it unrestricted. */
+  protected get accept(): string | null {
+    return this.transport.accept ?? null;
   }
 
   private context(): ImportContext {

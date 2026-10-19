@@ -26,10 +26,13 @@ const CONFIG: EntityFormConfig = {
   ],
 };
 
-/** A `File` whose `text()` works under jsdom, which does not implement Blob.text. */
+/** A `File` whose `text()` and `arrayBuffer()` work under jsdom, which implements neither. */
 function csvFile(name: string, body: string): File {
   const file = new File([body], name, { type: 'text/csv' });
   Object.defineProperty(file, 'text', { value: () => Promise.resolve(body) });
+  // The built-in parser reads bytes (sheet-to-schema's readCsvFile, from 3.1), as a browser's
+  // Blob.arrayBuffer gives them; jsdom's File does not implement it.
+  Object.defineProperty(file, 'arrayBuffer', { value: () => Promise.resolve(new TextEncoder().encode(body).buffer) });
   return file;
 }
 

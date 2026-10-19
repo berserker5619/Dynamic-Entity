@@ -2,9 +2,9 @@
 module.exports = {
   preset: 'jest-preset-angular',
   setupFilesAfterEnv: ['<rootDir>/setup-jest.ts'],
-  testMatch: ['<rootDir>/src/**/*.spec.ts'],
+  testMatch: ['<rootDir>/src/**/*.spec.ts', '<rootDir>/xlsx/src/**/*.spec.ts'],
   // Coverage is measured on shipped source only: barrels and specs are excluded.
-  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/public-api.ts'],
+  collectCoverageFrom: ['src/**/*.ts', 'xlsx/src/**/*.ts', '!src/**/*.spec.ts', '!xlsx/src/**/*.spec.ts', '!src/public-api.ts', '!xlsx/src/public-api.ts'],
   coverageReporters: ['text-summary', 'lcov'],
   // Thresholds sit just under the current numbers: they are a ratchet against regression,
   // not a target to game. Raise them when coverage genuinely improves.
@@ -17,10 +17,13 @@ module.exports = {
   // under the weakest file in the package.
   coverageThreshold: {
     './src/**/*.ts': { statements: 95, branches: 83, functions: 93, lines: 96 },
+    './xlsx/src/**/*.ts': { statements: 95, branches: 83, functions: 93, lines: 96 },
   },
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   moduleNameMapper: {
     '^@dynamic-entity/core$': '<rootDir>/../core/src/index.ts',
+    // The xlsx entry imports the primary entry by name, as ng-packagr builds it.
+    '^ngx-dynamic-entity$': '<rootDir>/src/public-api.ts',
   },
   transform: {
     '^.+\\.(ts|mjs|js|html)$': [

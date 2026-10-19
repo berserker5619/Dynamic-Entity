@@ -20,6 +20,7 @@ import { DEMO_MASK } from './mock/demo-mask';
 import { SampleModuleTabComponent } from './mock/sample-module.component';
 import { LocalStore } from './mock/local-store.service';
 import { renderMarkdown } from './mock/markdown-renderer';
+import { provideSheetFileParser } from 'ngx-dynamic-entity/xlsx';
 import { BUILDER_TEXT } from 'ngx-dynamic-entity-builder';
 import { DEMO_BUILDER_TEXT, DEMO_UI_TEXT } from './mock/ui-text-de';
 import { DEMO_ENTITY_REF_LOADERS } from './mock/entity-ref-loaders';
@@ -49,6 +50,15 @@ import {
  */
 const useServerImport =
   typeof location !== 'undefined' && new URLSearchParams(location.search).get('transport') === 'http';
+
+/**
+ * ?parser=xlsx registers `provideSheetFileParser()` from `ngx-dynamic-entity/xlsx` (3.1), so the
+ * in-browser wizard reads `.xlsx` too and its picker offers it. Opt-in for the same reason as the
+ * transport: the default is what a consumer gets with nothing registered, CSV with no ExcelJS.
+ * Importing the entry is what needs `exceljs` installed, which this demo has.
+ */
+const useSheetFileParser =
+  typeof location !== 'undefined' && new URLSearchParams(location.search).get('parser') === 'xlsx';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -80,9 +90,10 @@ export const appConfig: ApplicationConfig = {
       // labels come from the config and already follow `language`; without this the chrome
       // around them stays English whatever `language` says.
       uiText: DEMO_UI_TEXT,
-      // No `sheetParser`: the built-in reader handles comma, semicolon and tab-separated text
-      // with no dependency. Register one here — SheetJS, ExcelJS — to accept .xlsx in the
-      // browser; ?transport=http reads .xlsx on the server instead.
+      // No `sheetParser`: the built-in reader (sheet-to-schema's readCsvFile) handles comma,
+      // semicolon and tab-separated text with no dependency. ?parser=xlsx adds
+      // provideSheetFileParser() below for .xlsx in the browser; ?transport=http reads .xlsx on
+      // the server instead.
       /**
        * The messages shown under an invalid field.
        *
@@ -175,5 +186,8 @@ export const appConfig: ApplicationConfig = {
     // Opt-in, per the note above. An empty array when it is off, so the wizard falls back to
     // the in-browser transport exactly as it does for a consumer who registers nothing.
     ...(useServerImport ? [provideHttpImportTransport({ baseUrl: '/api/import' })] : []),
+    // After provideNgxDynamicEntity, whose SHEET_PARSER it replaces. The picker offers .xlsx
+    // with it, and only with it.
+    ...(useSheetFileParser ? provideSheetFileParser() : []),
   ],
 };

@@ -12,7 +12,7 @@
     "benchmark": "node scripts/run-benchmarks.mjs",
     "check:ssr": "node scripts/check-ssr.mjs",
     "check:timezones": "node scripts/check-timezones.mjs",
-    "check:parity": "node scripts/check-importer-bundle.mjs && node scripts/check-phase2-parity.mjs && node scripts/check-published-2.5-client.mjs && node scripts/check-transport-servers.mjs && node scripts/check-readme-links.mjs packages/core/dist packages/ngx-dynamic-entity/dist packages/ngx-dynamic-entity-builder/dist packages/server/dist",
+    "check:parity": "node scripts/check-importer-bundle.mjs && node scripts/check-phase2-parity.mjs && node scripts/check-published-2.5-client.mjs && node scripts/check-transport-servers.mjs && node scripts/check-xlsx-entry.mjs && node scripts/check-readme-links.mjs packages/core/dist packages/ngx-dynamic-entity/dist packages/ngx-dynamic-entity-builder/dist packages/server/dist",
     "dev": "turbo run dev",
     "test:coverage": "turbo run test:coverage",
     "check:chars": "node scripts/check-control-chars.mjs",
