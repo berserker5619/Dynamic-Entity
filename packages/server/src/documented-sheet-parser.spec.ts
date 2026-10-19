@@ -18,7 +18,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import JSZip from 'jszip';
-import * as browser from 'sheet-to-schema/browser';
+// Loaded by Jest, which reads the package's `exports`, not imported for its types: this suite's
+// ts-jest options resolve modules the Node10 way, which cannot see a subpath's typings. The
+// documented parser only needs it as the module its own import names.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const browser = require('sheet-to-schema/browser') as Record<string, unknown>;
 import * as core from '@dynamic-entity/core';
 import { applyMapping, type EntityFormConfig, type MappingPlan, type SheetGrid } from '@dynamic-entity/core';
 import { runImport } from './run-import';
