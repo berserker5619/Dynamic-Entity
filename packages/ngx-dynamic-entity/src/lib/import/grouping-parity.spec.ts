@@ -19,7 +19,7 @@
 import { Injector } from '@angular/core';
 import type { ImportResult } from '@dynamic-entity/core';
 import { readSheetFile } from 'sheet-to-schema/browser';
-import { CASES, isWaiting, plain, sheetFile, viaImporterRouter, type Case, type Imported, type SheetBytes } from '../../../../core/test-fixtures/grouping-cases';
+import { CASES, plain, sheetFile, viaImporterRouter, type Case, type Imported, type SheetBytes } from '../../../../core/test-fixtures/grouping-cases';
 import { SHEET_PARSER } from '../tokens/injection-tokens';
 import type { ImportContext } from './import-contracts';
 import { LocalImportTransport } from './local-import-transport';
@@ -50,9 +50,5 @@ describe.each(['csv', 'xlsx'] as const)('a grouped plan over a Dynamic Entity co
     expect(server).toEqual(browser);
     c.check(browser);
   };
-  const passing = CASES.filter(c => !isWaiting(c));
-  const waiting = CASES.filter(c => isWaiting(c));
-  it.each(passing.map(c => [c.name, c] as const))('%s: the same through LocalImportTransport and the router', (_, c) => run(c));
-  // Each fails on the engine it waits on, for its stated reason; on that release or later it runs above.
-  if (waiting.length) it.failing.each(waiting.map(c => [c.name, c.waitsOn?.reason, c] as const))('%s (waits on %s)', (_, __, c) => run(c));
+  it.each(CASES.map(c => [c.name, c] as const))('%s: the same through LocalImportTransport and the router', (_, c) => run(c));
 });

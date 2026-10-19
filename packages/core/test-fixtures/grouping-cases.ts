@@ -15,20 +15,9 @@
  */
 import ExcelJS from 'exceljs';
 import express from 'express';
-import { IMPORTER_VERSION } from 'sheet-to-schema';
 import { createImportRouter } from 'sheet-to-schema/node';
 import request from 'supertest';
 import { entityFormConfigAdapter, planForConfig, type EntityFormConfig, type FormRule, type ImportLookups, type NestedFieldConfig } from '../src/index';
-
-/** `version` or later, by its numbers: a release candidate of it counts, as it holds the change. */
-const reached = (installed: string, version: string): boolean => {
-  const [a, b] = [installed, version].map(v => v.split('-')[0].split('.').map(Number));
-  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i];
-  return true;
-};
-
-/** Whether `c` still waits on a sheet-to-schema release, given the one installed. */
-export const isWaiting = (c: Case, installed = IMPORTER_VERSION): boolean => c.waitsOn !== undefined && !reached(installed, c.waitsOn.version);
 
 /** A sheet as a user would upload it. */
 export interface SheetBytes {
@@ -71,13 +60,6 @@ export interface Case {
   lookups?: ImportLookups;
   /** What the case proves, beyond the two paths agreeing. */
   check: (result: Imported) => void;
-  /**
-   * Set while the case waits on a sheet-to-schema release: below `version` it runs as
-   * `it.failing`, and from it as a plain test. Tied to the installed version, not to a date, so
-   * the drift check's `next` (a newer engine) and `latest` (the pinned one) each hold the case
-   * to what that engine does.
-   */
-  waitsOn?: { version: string; reason: string };
 }
 
 const grouped = (entries: [string, number][], collect: string[], extra: Record<string, unknown> = {}) => ({
@@ -125,9 +107,7 @@ export const CASES: Case[] = [
     headers: ['Order', 'SKU', 'Qty'],
     rows: [['A-1', 'PEN', '2'], ['A-1', 'INK', 'x'], ['A-2', 'PAD', '1'], ['A-2', '', '3'], ['A-3', 'NIB', '4']],
     plan: grouped([['orderId', 0], ['items.sku', 1], ['items.qty', 2]], ['items']),
-    // sheet-to-schema 1.2 reports a record-level problem inside an item on the group's first row
-    // (row 4, rows [4, 5]); 1.3.0 reports it on the item's own row. Failing until DE is on ^1.3.0.
-    waitsOn: { version: '1.3.0', reason: 'sheet-to-schema 1.3.0: an item problem reports its own row' },
+    // From sheet-to-schema 1.3.0 (B1): an item's own problem names its row, not the group's first.
     check: ({ records, errors }) => {
       // A bad item fails its whole record; the record without one imports.
       expect(records.map(r => r['orderId'])).toEqual(['A-3']);
