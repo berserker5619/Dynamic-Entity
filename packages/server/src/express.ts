@@ -112,6 +112,16 @@ export interface ImportRouterOptions<TRequest extends ImportRequest = ImportRequ
   limits?: Partial<ImportLimits>;
   /** Which language error text is produced in. Default `en`. */
   lang?: string | ((request: TRequest) => string);
+  /**
+   * Import and validate plans that group rows into one record (`group`, contiguous groups only),
+   * and say so on a preview (`features: ["group"]`), so `HttpImportTransport` sends them. From
+   * 3.1. Default `false`: a grouped plan is refused exactly as in 3.0 (`INVALID_PLAN`, a
+   * `PLAN_GROUP` problem with reason `grouping-disabled`), and previews carry no `features`.
+   * `group.contiguous: false` is refused either way (reason `non-contiguous`): the streaming
+   * runner holds one group at a time. An import is not transactional, and a grouped one can stop
+   * on a group limit after earlier groups were written, so run `/validate` first.
+   */
+  grouping?: boolean;
 }
 
 /**
@@ -246,6 +256,7 @@ export function createImportRouter<TRequest extends ImportRequest = ImportReques
     dateOrder: options.dateOrder,
     limits: options.limits,
     lang: options.lang,
+    grouping: options.grouping,
     onImport: (records, { index, firstRow, imported, name, binding, request }) =>
       options.onImport(records, { index, firstRow, imported, entity: name, config: (binding as ConfigBinding).config, request }),
   });

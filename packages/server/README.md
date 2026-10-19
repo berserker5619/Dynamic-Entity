@@ -115,6 +115,39 @@ export const providers = [
 The wizard components do not change: they already talk to an `ImportTransport`, which is what
 the seam was for.
 
+### Grouping rows into one record (opt-in, from 3.1)
+
+A plan v2 with `group` turns consecutive rows sharing a key into one record, with each row's
+item appended to a collected array: one row per order line, one order per group. The browser
+import does it always. This router does it only when asked:
+
+```ts
+import { createImportRouter } from '@dynamic-entity/server/express';
+import type { EntityFormConfig } from '@dynamic-entity/core';
+
+declare const orderConfig: EntityFormConfig;
+
+export const orders = createImportRouter({
+  configs: { order: orderConfig },
+  grouping: true,
+  async onImport(records) {
+    console.log(records.length);
+  },
+});
+```
+
+- **Off by default.** Without `grouping: true` a grouped plan is refused as in 3.0: `400
+  INVALID_PLAN`, with a `PLAN_GROUP` problem whose `reason` is `grouping-disabled`.
+- **With it**, previews say `features: ["group"]`, and `HttpImportTransport` sends a grouped plan
+  only to a server whose preview says so.
+- **Contiguous groups only.** Sort the sheet by the key columns. `group.contiguous: false` is
+  refused either way (`reason: 'non-contiguous'`), because the router streams and holds one
+  group at a time.
+- **Run `/validate` first.** A grouped import can stop on a group limit (`GROUP_TOO_LARGE`,
+  `TOO_MANY_GROUPS`) or on a key that comes back (`GROUP_NOT_CONTIGUOUS`) after earlier groups
+  were written, and it is not transactional (below). `/validate` runs the same pipeline and finds
+  those first.
+
 ---
 
 ## Without Express
