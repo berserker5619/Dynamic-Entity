@@ -1,0 +1,368 @@
+[
+ {
+  "browser": "chromium",
+  "name": "csv-app offers .csv,.tsv,.txt",
+  "ok": true,
+  "detail": ".csv,.tsv,.txt"
+ },
+ {
+  "browser": "chromium",
+  "name": "csv-app imports a CSV",
+  "ok": true,
+  "detail": "2 records"
+ },
+ {
+  "browser": "chromium",
+  "name": "csv-app refuses an .xlsx with the CSV-only message",
+  "ok": true,
+  "detail": "This is a workbook or another zip file, and this import reads CSV files only. Save it as CSV (in Excel: File › Save As › CSV UTF-8) and choose it again."
+ },
+ {
+  "browser": "chromium",
+  "name": "xlsx entry: parity__blank_rows.xlsx matches the server",
+  "ok": true,
+  "detail": "4 records, 0 errors; server 4, 0"
+ },
+ {
+  "browser": "chromium",
+  "name": "xlsx entry: parity__error_cells.xlsx matches the server",
+  "ok": true,
+  "detail": "3 records, 0 errors; server 3, 0"
+ },
+ {
+  "browser": "chromium",
+  "name": "xlsx entry: parity__formula_results.xlsx matches the server",
+  "ok": true,
+  "detail": "3 records, 0 errors; server 3, 0"
+ },
+ {
+  "browser": "chromium",
+  "name": "xlsx entry: parity__tamil_text.xlsx matches the server",
+  "ok": true,
+  "detail": "3 records, 0 errors; server 3, 0"
+ },
+ {
+  "browser": "chromium",
+  "name": "xlsx entry: parity__typed_cells.xlsx matches the server",
+  "ok": true,
+  "detail": "2 records, 0 errors; server 2, 0"
+ },
+ {
+  "browser": "chromium",
+  "name": "xlsx entry: real-world__case1_1904_dates.xlsx matches the server",
+  "ok": true,
+  "detail": "2 records, 0 errors; server 2, 0"
+ },
+ {
+  "browser": "chromium",
+  "name": "xlsx entry: real-world__case2_numeric_identifiers.xlsx matches the server",
+  "ok": true,
+  "detail": "2 records, 0 errors; server 2, 0"
+ },
+ {
+  "browser": "chromium",
+  "name": "xlsx entry: real-world__case4_complex_sheet.xlsx matches the server",
+  "ok": true,
+  "detail": "2 records, 0 errors; server 2, 0"
+ },
+ {
+  "browser": "chromium",
+  "name": "xlsx entry: real-world__case5_non_latin.xlsx matches the server",
+  "ok": true,
+  "detail": "3 records, 0 errors; server 3, 0"
+ },
+ {
+  "browser": "chromium",
+  "name": "no deflate-raw: UNSUPPORTED_RUNTIME message",
+  "ok": true,
+  "detail": "This browser cannot read .xlsx files. Chrome or Edge 103, Firefox 113 and Safari 16.4 can. Save the file as CSV to import it here."
+ },
+ {
+  "browser": "chromium",
+  "name": "no deflate-raw: a CSV still imports",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "browser": "chromium",
+  "name": "local grouped: B-2 imports, A-1 fails",
+  "ok": true,
+  "detail": "[\"B-2\"]"
+ },
+ {
+  "browser": "chromium",
+  "name": "local grouped: the item error is on row 3, its own",
+  "ok": true,
+  "detail": "3:3:items.1.sku:RECORD_REQUIRED"
+ },
+ {
+  "browser": "chromium",
+  "name": "server, grouping on: uploaded, and B-2 written with its item",
+  "ok": true,
+  "detail": "[\"B-2\"]"
+ },
+ {
+  "browser": "chromium",
+  "name": "server, grouping on: the item error is on row 3, its own",
+  "ok": true,
+  "detail": "3:3:items.1.sku:RECORD_REQUIRED"
+ },
+ {
+  "browser": "chromium",
+  "name": "server, grouping off: the wizard says the server does not group, nothing uploaded",
+  "ok": true,
+  "detail": "This mapping combines several rows into one record, and the import server does not do that. Nothing was imported. Ask whoever runs the server to turn grouping on, or use a mapping that imports one record per row."
+ },
+ {
+  "browser": "chromium",
+  "name": "DE 3.0.0 server: refused before upload",
+  "ok": true,
+  "detail": "This mapping combines several rows into one record, and the import server does not do that. Nothing was imported. Ask whoever runs the server to turn grouping on, or use a mapping that imports one record per row."
+ },
+ {
+  "browser": "firefox",
+  "name": "csv-app offers .csv,.tsv,.txt",
+  "ok": true,
+  "detail": ".csv,.tsv,.txt"
+ },
+ {
+  "browser": "firefox",
+  "name": "csv-app imports a CSV",
+  "ok": true,
+  "detail": "2 records"
+ },
+ {
+  "browser": "firefox",
+  "name": "csv-app refuses an .xlsx with the CSV-only message",
+  "ok": true,
+  "detail": "This is a workbook or another zip file, and this import reads CSV files only. Save it as CSV (in Excel: File › Save As › CSV UTF-8) and choose it again."
+ },
+ {
+  "browser": "firefox",
+  "name": "xlsx entry: parity__blank_rows.xlsx matches the server",
+  "ok": true,
+  "detail": "4 records, 0 errors; server 4, 0"
+ },
+ {
+  "browser": "firefox",
+  "name": "xlsx entry: parity__error_cells.xlsx matches the server",
+  "ok": true,
+  "detail": "3 records, 0 errors; server 3, 0"
+ },
+ {
+  "browser": "firefox",
+  "name": "xlsx entry: parity__formula_results.xlsx matches the server",
+  "ok": true,
+  "detail": "3 records, 0 errors; server 3, 0"
+ },
+ {
+  "browser": "firefox",
+  "name": "xlsx entry: parity__tamil_text.xlsx matches the server",
+  "ok": true,
+  "detail": "3 records, 0 errors; server 3, 0"
+ },
+ {
+  "browser": "firefox",
+  "name": "xlsx entry: parity__typed_cells.xlsx matches the server",
+  "ok": true,
+  "detail": "2 records, 0 errors; server 2, 0"
+ },
+ {
+  "browser": "firefox",
+  "name": "xlsx entry: real-world__case1_1904_dates.xlsx matches the server",
+  "ok": true,
+  "detail": "2 records, 0 errors; server 2, 0"
+ },
+ {
+  "browser": "firefox",
+  "name": "xlsx entry: real-world__case2_numeric_identifiers.xlsx matches the server",
+  "ok": true,
+  "detail": "2 records, 0 errors; server 2, 0"
+ },
+ {
+  "browser": "firefox",
+  "name": "xlsx entry: real-world__case4_complex_sheet.xlsx matches the server",
+  "ok": true,
+  "detail": "2 records, 0 errors; server 2, 0"
+ },
+ {
+  "browser": "firefox",
+  "name": "xlsx entry: real-world__case5_non_latin.xlsx matches the server",
+  "ok": true,
+  "detail": "3 records, 0 errors; server 3, 0"
+ },
+ {
+  "browser": "firefox",
+  "name": "no deflate-raw: UNSUPPORTED_RUNTIME message",
+  "ok": true,
+  "detail": "This browser cannot read .xlsx files. Chrome or Edge 103, Firefox 113 and Safari 16.4 can. Save the file as CSV to import it here."
+ },
+ {
+  "browser": "firefox",
+  "name": "no deflate-raw: a CSV still imports",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "browser": "firefox",
+  "name": "local grouped: B-2 imports, A-1 fails",
+  "ok": true,
+  "detail": "[\"B-2\"]"
+ },
+ {
+  "browser": "firefox",
+  "name": "local grouped: the item error is on row 3, its own",
+  "ok": true,
+  "detail": "3:3:items.1.sku:RECORD_REQUIRED"
+ },
+ {
+  "browser": "firefox",
+  "name": "server, grouping on: uploaded, and B-2 written with its item",
+  "ok": true,
+  "detail": "[\"B-2\"]"
+ },
+ {
+  "browser": "firefox",
+  "name": "server, grouping on: the item error is on row 3, its own",
+  "ok": true,
+  "detail": "3:3:items.1.sku:RECORD_REQUIRED"
+ },
+ {
+  "browser": "firefox",
+  "name": "server, grouping off: the wizard says the server does not group, nothing uploaded",
+  "ok": true,
+  "detail": "This mapping combines several rows into one record, and the import server does not do that. Nothing was imported. Ask whoever runs the server to turn grouping on, or use a mapping that imports one record per row."
+ },
+ {
+  "browser": "firefox",
+  "name": "DE 3.0.0 server: refused before upload",
+  "ok": true,
+  "detail": "This mapping combines several rows into one record, and the import server does not do that. Nothing was imported. Ask whoever runs the server to turn grouping on, or use a mapping that imports one record per row."
+ },
+ {
+  "browser": "webkit",
+  "name": "csv-app offers .csv,.tsv,.txt",
+  "ok": true,
+  "detail": ".csv,.tsv,.txt"
+ },
+ {
+  "browser": "webkit",
+  "name": "csv-app imports a CSV",
+  "ok": true,
+  "detail": "2 records"
+ },
+ {
+  "browser": "webkit",
+  "name": "csv-app refuses an .xlsx with the CSV-only message",
+  "ok": true,
+  "detail": "This is a workbook or another zip file, and this import reads CSV files only. Save it as CSV (in Excel: File › Save As › CSV UTF-8) and choose it again."
+ },
+ {
+  "browser": "webkit",
+  "name": "xlsx entry: parity__blank_rows.xlsx matches the server",
+  "ok": true,
+  "detail": "4 records, 0 errors; server 4, 0"
+ },
+ {
+  "browser": "webkit",
+  "name": "xlsx entry: parity__error_cells.xlsx matches the server",
+  "ok": true,
+  "detail": "3 records, 0 errors; server 3, 0"
+ },
+ {
+  "browser": "webkit",
+  "name": "xlsx entry: parity__formula_results.xlsx matches the server",
+  "ok": true,
+  "detail": "3 records, 0 errors; server 3, 0"
+ },
+ {
+  "browser": "webkit",
+  "name": "xlsx entry: parity__tamil_text.xlsx matches the server",
+  "ok": true,
+  "detail": "3 records, 0 errors; server 3, 0"
+ },
+ {
+  "browser": "webkit",
+  "name": "xlsx entry: parity__typed_cells.xlsx matches the server",
+  "ok": true,
+  "detail": "2 records, 0 errors; server 2, 0"
+ },
+ {
+  "browser": "webkit",
+  "name": "xlsx entry: real-world__case1_1904_dates.xlsx matches the server",
+  "ok": true,
+  "detail": "2 records, 0 errors; server 2, 0"
+ },
+ {
+  "browser": "webkit",
+  "name": "xlsx entry: real-world__case2_numeric_identifiers.xlsx matches the server",
+  "ok": true,
+  "detail": "2 records, 0 errors; server 2, 0"
+ },
+ {
+  "browser": "webkit",
+  "name": "xlsx entry: real-world__case4_complex_sheet.xlsx matches the server",
+  "ok": true,
+  "detail": "2 records, 0 errors; server 2, 0"
+ },
+ {
+  "browser": "webkit",
+  "name": "xlsx entry: real-world__case5_non_latin.xlsx matches the server",
+  "ok": true,
+  "detail": "3 records, 0 errors; server 3, 0"
+ },
+ {
+  "browser": "webkit",
+  "name": "no deflate-raw: UNSUPPORTED_RUNTIME message",
+  "ok": true,
+  "detail": "This browser cannot read .xlsx files. Chrome or Edge 103, Firefox 113 and Safari 16.4 can. Save the file as CSV to import it here."
+ },
+ {
+  "browser": "webkit",
+  "name": "no deflate-raw: a CSV still imports",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "browser": "webkit",
+  "name": "local grouped: B-2 imports, A-1 fails",
+  "ok": true,
+  "detail": "[\"B-2\"]"
+ },
+ {
+  "browser": "webkit",
+  "name": "local grouped: the item error is on row 3, its own",
+  "ok": true,
+  "detail": "3:3:items.1.sku:RECORD_REQUIRED"
+ },
+ {
+  "browser": "webkit",
+  "name": "server, grouping on: uploaded, and B-2 written with its item",
+  "ok": true,
+  "detail": "[\"B-2\"]"
+ },
+ {
+  "browser": "webkit",
+  "name": "server, grouping on: the item error is on row 3, its own",
+  "ok": true,
+  "detail": "3:3:items.1.sku:RECORD_REQUIRED"
+ },
+ {
+  "browser": "webkit",
+  "name": "server, grouping off: the wizard says the server does not group, nothing uploaded",
+  "ok": true,
+  "detail": "This mapping combines several rows into one record, and the import server does not do that. Nothing was imported. Ask whoever runs the server to turn grouping on, or use a mapping that imports one record per row."
+ },
+ {
+  "browser": "webkit",
+  "name": "DE 3.0.0 server: refused before upload",
+  "ok": true,
+  "detail": "This mapping combines several rows into one record, and the import server does not do that. Nothing was imported. Ask whoever runs the server to turn grouping on, or use a mapping that imports one record per row."
+ },
+ {
+  "browser": "server",
+  "name": "grouping off, a grouped plan sent anyway: 400 INVALID_PLAN, reason grouping-disabled",
+  "ok": true,
+  "detail": "400 INVALID_PLAN grouping-disabled"
+ }
+]
