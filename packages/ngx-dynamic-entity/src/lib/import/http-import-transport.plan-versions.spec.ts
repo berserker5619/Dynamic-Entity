@@ -7,7 +7,7 @@
  * only a v2 reader would get right.
  */
 import { CORE_VERSION, type EntityFormConfig, type MappingPlan, type MappingPlanV1 } from '@dynamic-entity/core';
-import { HttpImportTransport } from './http-import-transport';
+import { HttpImportTransport, type ImportCapabilityError } from './http-import-transport';
 import type { ImportContext } from './import-contracts';
 
 const CONFIG: EntityFormConfig = {
@@ -86,12 +86,67 @@ describe('HttpImportTransport — the plan it sends, by what the server reads', 
     expect(plans).toEqual([]);
   });
 
-  it('sends a grouped plan to a server that reads v2, which answers for it', async () => {
-    const { transport, plans } = server({ planVersions: [1, 2] });
-    const upload = file();
-    await transport.preview(upload, CONTEXT);
-    await transport.commit(upload, GROUPED, CONTEXT);
-    expect(plans).toEqual([GROUPED]);
+  // 3.0 sent a grouped plan to any server reading v2, which then refused it after the upload.
+  // From 3.1 it goes only where the preview says "group" (docs/3.1-spec.md, Feature C), and the
+  // four servers of that table are run for real by scripts/check-transport-servers.mjs.
+  describe('a grouped plan, by what the server says it can do (3.1)', () => {
+    const refusalOf = async (preview: Record<string, unknown>) => {
+      const { transport, plans } = server(preview);
+      const upload = file();
+      await transport.preview(upload, CONTEXT);
+      const error = await transport.commit(upload, GROUPED, CONTEXT).then(
+        () => undefined,
+        (thrown: unknown) => thrown as ImportCapabilityError,
+      );
+      return { error, plans };
+    };
+
+    it('is sent to a server whose preview lists "group" (DE 3.1 with grouping on)', async () => {
+      const { error, plans } = await refusalOf({ planVersions: [1, 2], features: ['group'] });
+      expect(error).toBeUndefined();
+      expect(plans).toEqual([GROUPED]);
+    });
+
+    it.each([
+      ['DE 3.1 by default, or DE 3.0 (no features)', {}],
+      ['a server listing other features', { features: ['something-else'] }],
+      ['a features that is not a list', { features: 'group' }],
+    ])('is refused before upload by %s, saying grouping is what it lacks', async (_, extra) => {
+      const { error, plans } = await refusalOf({ planVersions: [1, 2], ...extra });
+      expect(plans).toEqual([]);
+      expect(error).toMatchObject({ name: 'ImportCapabilityError', code: 'UNSUPPORTED_BY_SERVER', refused: ['group'], feature: 'group' });
+      expect(error?.message).toMatch(/does not import grouped plans.*Nothing was imported.*grouping: true.*or import this file in the browser/);
+    });
+
+    it('is refused before upload by DE 2.x (planVersions [1] or none), as in 3.0, with no feature', async () => {
+      for (const preview of [{}, { planVersions: [1] }]) {
+        const { error, plans } = await refusalOf({ ...preview, features: undefined });
+        expect(plans).toEqual([]);
+        expect(error).toMatchObject({ code: 'UNSUPPORTED_BY_SERVER', refused: ['group'] });
+        expect(error).not.toHaveProperty('feature');
+        expect(error?.message).toMatch(/before mapping plan v2/);
+      }
+    });
+
+    it('names every v2-only field to a 2.x server, grouping among them, as the server would ignore them all', async () => {
+      const { transport } = server();
+      const upload = file();
+      await transport.preview(upload, CONTEXT);
+      const plan = { ...GROUPED, entries: [{ ...entries[0], dateOrder: 'DMY' as const }] };
+      const error = (await transport.commit(upload, plan, CONTEXT).catch((thrown: unknown) => thrown)) as ImportCapabilityError;
+      expect(error.refused).toEqual(['group', 'entries[0].dateOrder']);
+      expect(error).not.toHaveProperty('feature');
+    });
+
+    it('leaves a plan without grouping as it was, whatever the features', async () => {
+      for (const features of [undefined, ['group']]) {
+        const { transport, plans } = server({ planVersions: [1, 2], features });
+        const upload = file();
+        await transport.preview(upload, CONTEXT);
+        await transport.commit(upload, PLAN_V2, CONTEXT);
+        expect(plans).toEqual([PLAN_V2]);
+      }
+    });
   });
 
   it('treats a file it never previewed as one for a server that reads only 2.x plans', async () => {

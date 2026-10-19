@@ -15,7 +15,6 @@ import {
   CORE_VERSION,
   DEFAULT_ARRAY_ROWS,
   deriveImportColumns,
-  planForServer,
   stripIndices,
   type AdapterStamp,
   type DateOrder,
@@ -27,6 +26,9 @@ import {
   type TemplateSpec,
 } from '@dynamic-entity/core';
 import type { Provider } from '@angular/core';
+// From sheet-to-schema itself, not core's re-export (deprecated for 4.0): the preview form, which
+// also checks the server's `features`, is 1.1's.
+import { planForServer, type ServerCapabilities } from 'sheet-to-schema';
 import { IMPORT_TRANSPORT } from '../tokens/injection-tokens';
 import {
   compareDateOrders,
@@ -151,11 +153,12 @@ class HttpImportTransport implements ImportTransport {
    */
   private readonly reported = new WeakMap<File, DateOrder | undefined>();
   /**
-   * The plan versions each previewed file's server said it reads. A file with no entry was
-   * never previewed here, and one whose server said nothing is from before plan v2: either
-   * way `commit` sends nothing that only a v2 reader would understand.
+   * What each previewed file's server said it can do: the plan versions it reads, and from DE
+   * 3.1 its `features` (`"group"` when it imports grouped plans). A file with no entry was never
+   * previewed here, and a server that said nothing is from before plan v2, or (for `features`)
+   * from before 3.1: either way `commit` sends nothing that server would get wrong.
    */
-  private readonly planVersions = new WeakMap<File, readonly number[] | undefined>();
+  private readonly capabilities = new WeakMap<File, ServerCapabilities>();
 
   constructor(private readonly options: HttpImportTransportOptions) {}
 
@@ -247,7 +250,10 @@ class HttpImportTransport implements ImportTransport {
     const preview = (await response.json()) as ImportPreviewResponse;
     this.checkEngine(preview.engineVersion);
     this.checkAdapter(preview.adapter);
-    this.planVersions.set(file, Array.isArray(preview.planVersions) ? preview.planVersions : undefined);
+    this.capabilities.set(file, {
+      planVersions: Array.isArray(preview.planVersions) ? preview.planVersions : undefined,
+      features: Array.isArray(preview.features) ? preview.features : undefined,
+    });
     this.reported.set(file, preview.dateOrder);
     this.checkDateOrder(context?.dateOrder, preview.dateOrder, preview.engineVersion);
 
@@ -275,15 +281,12 @@ class HttpImportTransport implements ImportTransport {
     }
 
     // Also before a byte is sent. A server from before plan v2 ignores what it does not know,
-    // so a plan that groups rows would import one record per row there and report success.
-    const sendable = planForServer(plan, this.planVersions.get(file));
-    if (sendable.refused) {
-      throw new Error(
-        `This mapping uses ${sendable.refused.join(', ')}, which the import server does not read: it is from ` +
-          'before mapping plan v2 and would ignore it. Nothing was imported. Upgrade the server to ' +
-          '@dynamic-entity/server 3.0 or later.',
-      );
-    }
+    // so a plan that groups rows would import one record per row there and report success; and
+    // one that reads v2 but does not say "group" refuses a grouped plan (DE 3.0, or 3.1 without
+    // `grouping: true`), which is better said here than after the upload.
+    const server = this.capabilities.get(file) ?? {};
+    const sendable = planForServer(plan, server);
+    if (sendable.refused) throw refusal(sendable.refused, server);
 
     const body = new FormData();
     // **The plan first, and the file second.** The server starts importing while the file is
@@ -363,3 +366,30 @@ export function provideHttpImportTransport(options: HttpImportTransportOptions):
 
 /** Exported for a consumer who wants to subclass or wrap it; most should use the provider. */
 export { HttpImportTransport };
+
+/**
+ * Why a plan was not sent, before a byte of the file was: `UNSUPPORTED_BY_SERVER`, with the
+ * plan's paths the server cannot take (`refused`), and `feature: 'group'` when the server reads
+ * plan v2 and it is grouping it does not offer, so the wizard can say which.
+ */
+export interface ImportCapabilityError extends Error {
+  code: 'UNSUPPORTED_BY_SERVER';
+  refused: string[];
+  feature?: 'group';
+}
+
+function refusal(refused: string[], server: ServerCapabilities): ImportCapabilityError {
+  const grouping = (server.planVersions?.includes(2) ?? false) && refused.length === 1 && refused[0] === 'group';
+  const message = grouping
+    ? 'This mapping groups rows into records, and the import server does not import grouped plans. Nothing was imported. ' +
+      'Enable grouping on the server (createImportRouter({ grouping: true }), from @dynamic-entity/server 3.1), or import this file in the browser.'
+    : `This mapping uses ${refused.join(', ')}, which the import server does not read: it is from ` +
+      'before mapping plan v2 and would ignore it. Nothing was imported. Upgrade the server to ' +
+      '@dynamic-entity/server 3.0 or later.';
+  return Object.assign(new Error(message), {
+    name: 'ImportCapabilityError',
+    code: 'UNSUPPORTED_BY_SERVER' as const,
+    refused,
+    ...(grouping ? { feature: 'group' as const } : {}),
+  });
+}
