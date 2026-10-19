@@ -1,10 +1,13 @@
-import { ApplicationConfig } from '@angular/core';
+import { ApplicationConfig, inject } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { routes } from './app.routes';
 import {
   COMMON_MODULES_REGISTRY,
   CONFIG_SOURCE,
+  HttpImportTransport,
+  IMPORT_TRANSPORT,
+  LocalImportTransport,
   ENTITY_REF_CACHE_STORE,
   MARKDOWN_RENDERER,
   MASKED_PLACEHOLDER,
@@ -16,6 +19,7 @@ import {
   provideNgxDynamicEntity,
 } from 'ngx-dynamic-entity';
 import { CLIENT_TIER_LIST, MASKED_ROLES } from './mock/sample-data';
+import { groupingTransport } from './mock/grouping-transport';
 import { DEMO_MASK } from './mock/demo-mask';
 import { SampleModuleTabComponent } from './mock/sample-module.component';
 import { LocalStore } from './mock/local-store.service';
@@ -59,6 +63,14 @@ const useServerImport =
  */
 const useSheetFileParser =
   typeof location !== 'undefined' && new URLSearchParams(location.search).get('parser') === 'xlsx';
+
+/**
+ * ?plan=grouped turns each suggestion into a plan that groups rows into one record
+ * (mock/grouping-transport.ts), over whichever transport the demo would use: in the browser,
+ * or with ?transport=http on import-server.mjs, which does not group, so the wizard says so.
+ */
+const useGroupedPlans =
+  typeof location !== 'undefined' && new URLSearchParams(location.search).get('plan') === 'grouped';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -185,7 +197,16 @@ export const appConfig: ApplicationConfig = {
     { provide: BUILDER_TEXT, useValue: DEMO_BUILDER_TEXT },
     // Opt-in, per the note above. An empty array when it is off, so the wizard falls back to
     // the in-browser transport exactly as it does for a consumer who registers nothing.
-    ...(useServerImport ? [provideHttpImportTransport({ baseUrl: '/api/import' })] : []),
+    ...(useServerImport && !useGroupedPlans ? [provideHttpImportTransport({ baseUrl: '/api/import' })] : []),
+    ...(useGroupedPlans
+      ? [
+          {
+            provide: IMPORT_TRANSPORT,
+            useFactory: () =>
+              groupingTransport(useServerImport ? new HttpImportTransport({ baseUrl: '/api/import' }) : inject(LocalImportTransport)),
+          },
+        ]
+      : []),
     // After provideNgxDynamicEntity, whose SHEET_PARSER it replaces. The picker offers .xlsx
     // with it, and only with it.
     ...(useSheetFileParser ? provideSheetFileParser() : []),

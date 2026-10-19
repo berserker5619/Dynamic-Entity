@@ -154,6 +154,28 @@ export const DEFAULT_UI_TEXT = {
   importErrorField: 'Field',
   importErrorReason: 'Reason',
   importPlanProblem: 'This mapping cannot be used: {message}',
+  // A file the import cannot read, by what it is (3.1). Each says what to save the file as.
+  importUnsupportedRuntime:
+    'This browser cannot read .xlsx files. Chrome or Edge 103, Firefox 113 and Safari 16.4 can. Save the file as CSV to import it here.',
+  importPeerMissing:
+    'This app cannot read .xlsx files: the {peer} package it needs is not installed. Save the file as CSV to import it now, and ask whoever runs this app to install {peer}.',
+  importFormatXlsxNotRead:
+    'This is a workbook or another zip file, and this import reads CSV files only. Save it as CSV (in Excel: File › Save As › CSV UTF-8) and choose it again.',
+  importFormatNotWorkbook: 'This is a zip file, but not an Excel workbook. Choose an .xlsx or CSV file.',
+  importFormatXls: 'This is an Excel 97–2003 file (.xls), which cannot be imported. Save it as .xlsx or CSV and choose it again.',
+  importFormatXlsCsvOnly: 'This is an Excel 97–2003 file (.xls), which cannot be imported. Save it as CSV UTF-8 and choose it again.',
+  importFormatWideText: 'This file is saved as UTF-16 text, which cannot be imported. Save it as CSV UTF-8 and choose it again.',
+  // A mapping that combines several rows into one record, and what stopped it (3.1).
+  importServerCannotGroup:
+    'This mapping combines several rows into one record, and the import server does not do that. Nothing was imported. Ask whoever runs the server to turn grouping on, or use a mapping that imports one record per row.',
+  importGroupScatteredRefused:
+    "This mapping gathers each record's rows from anywhere in the sheet, and the import server can only gather rows that are next to each other. Nothing was imported. Sort the sheet by the key columns so each record's rows are together, and import it again.",
+  importGroupNotContiguous:
+    'The rows for {key} are not together: they end at row {ended} and start again at row {again}. The import stopped at row {again}. Sort the sheet by the key columns so each record’s rows are together, and import it again.',
+  importGroupTooLarge:
+    'The record {key} has more rows than one record may: it starts at row {first} and reaches row {last}. The import stopped at row {last}. Check that the key columns tell records apart.',
+  importTooManyGroups:
+    'The sheet has more records than one import may, from row {row}. The import stopped at row {row}. Check that the key columns tell records apart, or split the file.',
 
   // Banners and whole-record states
   entityLabel: 'Entity: {entity}',

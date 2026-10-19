@@ -11,8 +11,10 @@ import {
   type ImportColumn,
   type DateOrder,
   type ImportLookups,
+  type ImportRowError,
   type AnyMappingPlan,
 } from '@dynamic-entity/core';
+import { ImportFailure } from 'sheet-to-schema';
 import { UiTextService } from '../services/ui-text.service';
 
 /** One cell, already turned into the text the record will show. */
@@ -171,19 +173,8 @@ export class ImportPreviewComponent implements OnChanges {
     const entries = (plan?.entries ?? []).filter(entry => byRef.has(entry.ref));
     this.columns.set(entries.map(entry => byRef.get(entry.ref)!));
 
-    // The same engine the commit runs, over the sample only. Row 0 of the sample is numbered
-    // 0 here rather than 2, because these row numbers index the preview, not the file.
-    const dryRun = applyMapping(this.rows, this.plan, this.config, {
-      lang: this.language,
-      lookups: this.lookups,
-      rules: this.rules,
-      decimal: this.decimal,
-      dateOrder: this.dateOrder,
-      stamp: false,
-      firstRowNumber: 0,
-    });
     const rejectionsByRow = new Map<number, string[]>();
-    for (const error of dryRun.errors) {
+    for (const error of this.dryRunErrors()) {
       rejectionsByRow.set(error.row, [...(rejectionsByRow.get(error.row) ?? []), error.message]);
     }
 
@@ -209,5 +200,31 @@ export class ImportPreviewComponent implements OnChanges {
         }),
       })),
     );
+  }
+
+  /**
+   * The same engine the commit runs, over the sample only. Row 0 of the sample is numbered 0
+   * here rather than 2, because these row numbers index the preview, not the file.
+   *
+   * A grouped plan can stop the whole run (`ImportFailure`: a group that comes back, or one past
+   * a limit). Over a sample that says nothing reliable about the file, and its rows would be the
+   * preview's, not the sheet's, so the review shows no rejections for it and the commit reports
+   * the failure with the sheet's own rows (3.1). Before, it was thrown out of the render.
+   */
+  private dryRunErrors(): readonly ImportRowError[] {
+    try {
+      return applyMapping(this.rows, this.plan, this.config, {
+        lang: this.language,
+        lookups: this.lookups,
+        rules: this.rules,
+        decimal: this.decimal,
+        dateOrder: this.dateOrder,
+        stamp: false,
+        firstRowNumber: 0,
+      }).errors;
+    } catch (error) {
+      if (error instanceof ImportFailure) return [];
+      throw error;
+    }
   }
 }

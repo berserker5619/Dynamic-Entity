@@ -89,7 +89,13 @@ async function failureOf(response: Response): Promise<Error> {
     /* not our envelope */
   }
   const message = body?.error?.message;
-  return new Error(message || `The import server answered ${response.status}.`);
+  // The code and details as well (3.1): the wizard says what a refusal means by its code, and
+  // the key and rows of a group failure are in its details.
+  return Object.assign(new Error(message || `The import server answered ${response.status}.`), {
+    status: response.status,
+    ...(body?.error?.code ? { code: body.error.code } : {}),
+    ...(body?.error?.details !== undefined ? { details: body.error.details } : {}),
+  });
 }
 
 /**

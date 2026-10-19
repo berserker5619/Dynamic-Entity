@@ -83,6 +83,9 @@ describe('EntityImportComponent', () => {
     Object.defineProperty(input, 'files', { value: [file] });
     input.dispatchEvent(new Event('change'));
     await fixture.whenStable();
+    // Until the wizard has finished with the file: reading it, and for a refusal reading its
+    // first bytes (through FileReader under jsdom, which takes more than one turn).
+    for (let turn = 0; turn < 50 && fixture.componentInstance['busy'](); turn++) await settle();
     await settle();
     fixture.detectChanges();
   };
@@ -220,7 +223,8 @@ describe('EntityImportComponent', () => {
     await chooseFile(csvFile('book.xlsx', 'PK\u0003\u0004'));
 
     const problem = fixture.nativeElement.querySelector('[data-testid="import-problem"]');
-    expect(problem.textContent).toContain('.xlsx workbook');
+    // The wizard's own words for it (3.1), by its bytes and what this app reads: CSV only here.
+    expect(problem.textContent).toContain('this import reads CSV files only. Save it as CSV');
     // And stays on the upload step rather than advancing into an empty mapper.
     expect(fixture.nativeElement.querySelector('[data-testid="import-mapper"]')).toBeNull();
   });

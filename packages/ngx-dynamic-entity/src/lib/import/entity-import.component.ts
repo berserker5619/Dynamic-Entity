@@ -23,6 +23,7 @@ import {
 import { IMPORT_TRANSPORT } from '../tokens/injection-tokens';
 import { UiTextService } from '../services/ui-text.service';
 import { LookupRegistryService } from '../services/lookup-registry.service';
+import { importMessage } from './import-messages';
 import { LocalImportTransport } from './local-import-transport';
 import { ImportErrorsComponent } from './import-errors.component';
 import { ImportMapperComponent } from './import-mapper.component';
@@ -322,6 +323,21 @@ export class EntityImportComponent {
     return this.registered ?? this.local;
   }
 
+  /**
+   * What to tell the user about `error`: the wizard's own message when it knows the failure's
+   * code (3.1, `import-messages.ts`), in `UI_TEXT` so a host can translate it, and otherwise the
+   * failure's own message, as before. `file` is what the user chose; for `UNSUPPORTED_FORMAT` its
+   * first bytes say which file it is.
+   */
+  private async problemOf(error: unknown, file: File | null): Promise<string> {
+    const refusedFile =
+      (error as { code?: unknown } | null)?.code === 'UNSUPPORTED_FORMAT' && file
+        ? { head: await headOf(file), readsXlsx: this.accept === null || this.accept.includes('.xlsx') }
+        : undefined;
+    const known = importMessage(error, refusedFile);
+    return known ? this.ui.text(known.key, this.language, known.params) : messageOf(error);
+  }
+
   /** The picker's file types, as the transport reads them; `null` leaves it unrestricted. */
   protected get accept(): string | null {
     return this.transport.accept ?? null;
@@ -415,7 +431,7 @@ export class EntityImportComponent {
     } catch (error) {
       // A parser refusing a format, or a file that is not what it claims, is ordinary user
       // input rather than a defect — it is reported where the user is looking.
-      this.problem.set(messageOf(error));
+      this.problem.set(await this.problemOf(error, file));
     } finally {
       this.busy.set(false);
     }
@@ -458,7 +474,7 @@ export class EntityImportComponent {
       this.step.set('done');
       this.importComplete.emit(result);
     } catch (error) {
-      this.problem.set(messageOf(error));
+      this.problem.set(await this.problemOf(error, this.file));
     } finally {
       this.busy.set(false);
     }
@@ -551,6 +567,22 @@ export class EntityImportComponent {
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/** A file's first bytes, or none if it cannot be read: enough to tell a zip from text. */
+async function headOf(file: File): Promise<Uint8Array> {
+  const head = file.slice(0, 8);
+  try {
+    if (typeof head.arrayBuffer === 'function') return new Uint8Array(await head.arrayBuffer());
+    return await new Promise<Uint8Array>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(head);
+    });
+  } catch {
+    return new Uint8Array();
+  }
 }
 
 /**

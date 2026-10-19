@@ -36,6 +36,7 @@ export * from './lib/import/import-mapper.component';
 export * from './lib/import/import-preview.component';
 export * from './lib/import/import-template.component';
 export * from './lib/import/import-errors.component';
+export * from './lib/import/import-messages';
 
 // The contract a field component must satisfy to be registered with provideFieldTypes.
 // Previously this existed only as a code comment and an ADR that is gitignored, so a
