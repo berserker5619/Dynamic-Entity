@@ -11,7 +11,7 @@
 import express from 'express';
 import request from 'supertest';
 import type { EntityFormConfig } from '@dynamic-entity/core';
-import { CASES, sheetFile, viaImporterRouter, viaRouter, type Case } from '../../core/test-fixtures/grouping-cases';
+import { CASES, isWaiting, sheetFile, viaImporterRouter, viaRouter, type Case } from '../../core/test-fixtures/grouping-cases';
 import { createImportRouter, type ImportRouterOptions } from './express';
 
 /** DE's router, as an app would mount it, with this case's config, rules and lookups. */
@@ -36,10 +36,10 @@ describe.each(['csv', 'xlsx'] as const)("DE's router with grouping: true, as %s"
     expect(ours).toEqual(await viaImporterRouter(c, file));
     c.check(ours);
   };
-  const passing = CASES.filter(c => !c.failing);
-  const waiting = CASES.filter(c => c.failing);
+  const passing = CASES.filter(c => !isWaiting(c));
+  const waiting = CASES.filter(c => isWaiting(c));
   it.each(passing.map(c => [c.name, c] as const))('%s: the same as through sheet-to-schema directly', (_, c) => run(c));
-  if (waiting.length) it.failing.each(waiting.map(c => [c.name, c.failing, c] as const))('%s (waits on %s)', (_, __, c) => run(c));
+  if (waiting.length) it.failing.each(waiting.map(c => [c.name, c.waitsOn?.reason, c] as const))('%s (waits on %s)', (_, __, c) => run(c));
 });
 
 // ─── The option ───────────────────────────────────────────────────────────────
