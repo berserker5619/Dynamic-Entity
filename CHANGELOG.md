@@ -8,6 +8,74 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.1.0-rc.1]
+
+**The browser wizard reads `.xlsx` (opt-in), DE's server can group rows into records
+(opt-in), and the HTTP transport checks what a server can do before it uploads.** An app
+upgrading from 3.0 with no code changes behaves the same, except that the built-in parser now
+decides a file's format by its bytes (below). Built to
+[docs/3.1-spec.md](https://github.com/berserker5619/Dynamic-Entity/blob/main/docs/3.1-spec.md);
+[MIGRATING-3.1.md](https://github.com/berserker5619/Dynamic-Entity/blob/main/docs/MIGRATING-3.1.md)
+says what to do about each change.
+
+### Upgrading
+- `@dynamic-entity/core`, `@dynamic-entity/server` and, new, `ngx-dynamic-entity` depend on
+  `sheet-to-schema` `^1.3.0`, one copy for all three. npm installs it.
+- Nothing else is required. `exceljs` is needed only by an app that imports the new
+  `ngx-dynamic-entity/xlsx` entry.
+
+### Added
+- **`ngx-dynamic-entity/xlsx`**, a secondary entry. `provideSheetFileParser()` registers
+  `sheetFileParser`, which reads CSV, TSV and `.xlsx` in the browser with sheet-to-schema's
+  `readSheetFile`, giving the grid the server reads from the same bytes. List it after
+  `provideNgxDynamicEntity`.
+  - `exceljs` is an optional peer of `ngx-dynamic-entity`, needed only with this entry. Without
+    it, `ng build` fails with `Could not resolve "exceljs"`, so an app that never reads a
+    workbook never imports the entry, and builds without ExcelJS.
+  - ExcelJS is a lazy chunk, fetched on the first workbook.
+- **`createImportRouter({ grouping: true })`** on `@dynamic-entity/server/express`: imports and
+  validates plans that group rows into one record (contiguous groups), and says so on a preview
+  (`features: ["group"]`). Off by default: without it a grouped plan is refused exactly as in
+  3.0.
+- **`HttpImportTransport` checks a grouped plan against the server's `features`** before
+  uploading. A server that does not list `"group"` (DE 3.0, or 3.1 without `grouping: true`)
+  gets nothing sent, and an `ImportCapabilityError` (`code: 'UNSUPPORTED_BY_SERVER'`,
+  `feature: 'group'`) says so. It also keeps a server error's `code`, `details` and `status`.
+- **The wizard names each failure by its code**, in `UI_TEXT`, so a host can translate it:
+  - `UNSUPPORTED_RUNTIME`, `PEER_MISSING`;
+  - `UNSUPPORTED_FORMAT`, by what the file is (a workbook where the app reads CSV only, a zip
+    that is no workbook, `.xls`, UTF-16);
+  - the capability refusal, and a server's `PLAN_GROUP` refusal by reason;
+  - `GROUP_NOT_CONTIGUOUS`, `GROUP_TOO_LARGE` and `TOO_MANY_GROUPS`, with the key and rows, from
+    either transport.
+
+  `importMessage` is exported, and there are new `UI_TEXT` keys (`importUnsupportedRuntime` and
+  the rest).
+- **The picker's `accept` list** follows what the transport reads:
+  - `.csv,.tsv,.txt` with the built-in parser;
+  - `.xlsx` too with `provideSheetFileParser()` (new `SHEET_ACCEPT` token), and always over HTTP;
+  - unrestricted for a parser of your own, as in 3.0.
+
+  `ImportTransport.accept` is optional.
+
+### Changed
+- **The built-in parser decides a file's format by its bytes, not its name.** It is
+  sheet-to-schema's `readCsvFile`.
+  - A CSV that 3.0 refused for its name is read.
+  - An `.xlsx` (or any zip), a `.xls` and a UTF-16 file are refused with `UNSUPPORTED_FORMAT`
+    whatever they are called, where 3.0 refused only by extension, with its own message.
+- **`HttpImportTransport` no longer sends a grouped plan to a server that reads plan v2 but does
+  not list `"group"`**. 3.0 sent it and the server refused it after the upload, so no working
+  setup changes outcome.
+- **A problem inside a collected item names the item's own row** (sheet-to-schema 1.3), where it
+  named the group's first row.
+
+### Fixed
+- The review screen no longer throws when a grouped plan's sample hits a group failure. It
+  leaves that failure to the commit, which reports the sheet's own rows.
+
+---
+
 ## [3.0.0]
 
 **The spreadsheet-import engine is now its own package,
