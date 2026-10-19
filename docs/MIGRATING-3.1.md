@@ -115,3 +115,9 @@ first row and carried all its rows. A problem with the record as a whole is unch
   from code, and this is that code for the demo.
 - With `?transport=http` as well, the wizard runs against `import-server.mjs`, which does not
   group, so a grouped plan is refused before upload and the wizard says why.
+
+## Known in 3.1
+
+The import errors table shows a field by its ref (`items.1.sku`), as 3.0 did, not by its label.
+The message beside it names the field, and the row is right. Labels come in 3.2, together with
+the Phase 4 mapper's.

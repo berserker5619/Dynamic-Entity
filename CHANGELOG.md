@@ -8,6 +8,63 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.1.0]
+
+**`.xlsx` in the browser through a new entry, `ngx-dynamic-entity/xlsx`; grouping on the server,
+opt-in; and an HTTP transport that checks what a server can do before it uploads.** An app
+upgrading from 3.0 with no code changes behaves the same, except that the built-in parser now
+decides a file's format by its bytes, not its name.
+[MIGRATING-3.1.md](https://github.com/berserker5619/Dynamic-Entity/blob/main/docs/MIGRATING-3.1.md)
+says what to do about each change.
+
+The code is identical to 3.1.0-rc.1; only the version and `CORE_VERSION` changed. The candidate
+was tested from npm in fresh Angular 21 apps, in Chromium, Firefox and WebKit, against real 3.1 and
+3.0.0 servers, and Round 3's typings case passed on `@types/express` 5, 4 and none
+([docs/3.1-rc-feedback.md](https://github.com/berserker5619/Dynamic-Entity/blob/main/docs/3.1-rc-feedback.md)).
+What follows is the whole change from 3.0.0. [3.1.0-rc.1] below has it in full.
+
+### Upgrading
+- `@dynamic-entity/core`, `@dynamic-entity/server` and `ngx-dynamic-entity` (new) depend on
+  `sheet-to-schema` `^1.3.0`. npm installs one copy for all three.
+- Nothing else is required. `exceljs` is needed only by an app that imports
+  `ngx-dynamic-entity/xlsx`.
+
+### Added
+- `ngx-dynamic-entity/xlsx`: `provideSheetFileParser()` reads CSV, TSV and `.xlsx` in the browser,
+  giving the grid the server reads from the same bytes.
+  - `exceljs` is an optional peer, needed only with this entry. An app that never imports it
+    builds without ExcelJS, under `ng build` too.
+  - ExcelJS is a lazy chunk, fetched on the first workbook.
+- `createImportRouter({ grouping: true })` on `@dynamic-entity/server/express`: grouped plans import
+  and validate, and previews say `features: ["group"]`. Off by default, so a grouped plan is
+  refused exactly as in 3.0.
+- `HttpImportTransport` sends a grouped plan only to a server whose preview lists `"group"`, and
+  refuses it before upload otherwise (`ImportCapabilityError`, `UNSUPPORTED_BY_SERVER`).
+- The wizard says what each failure means, by its code, in `UI_TEXT`:
+  - an unsupported runtime;
+  - a missing `exceljs`;
+  - a file it cannot read, and what to save it as;
+  - the capability refusal, and `PLAN_GROUP` refusals by reason;
+  - each group failure, with its key and rows.
+- `ImportTransport.accept` and the `SHEET_ACCEPT` token: the picker offers the file types the
+  transport reads.
+
+### Changed
+- The built-in parser decides a file's format by its bytes (sheet-to-schema's `readCsvFile`): a
+  CSV under any name is read, and a workbook is refused whatever it is called.
+- `HttpImportTransport` no longer uploads a grouped plan to a v2 server without `"group"`; 3.0's
+  server refused it after the upload.
+- A problem inside a collected item names the item's own row (sheet-to-schema 1.3).
+
+### Fixed
+- The review screen no longer throws when a grouped plan's sample hits a group failure.
+
+### Known
+- The errors table shows a field's ref (`items.1.sku`), not its label, as 3.0 did. Labels come in
+  3.2, with the Phase 4 mapper's (R1-1).
+
+---
+
 ## [3.1.0-rc.1]
 
 **The browser wizard reads `.xlsx` (opt-in), DE's server can group rows into records
