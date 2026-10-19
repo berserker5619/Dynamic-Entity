@@ -1,7 +1,7 @@
 name: sheet-to-schema drift
 
 # Dynamic Entity's import engine is sheet-to-schema, published from its own repository
-# (github.com/berserker5619/sheet-to-schema). Core and server pin it exactly during the release
+# (github.com/berserker5619/sheet-to-schema). Core, server and ngx-dynamic-entity (from 3.1) depend on it, pinned exactly during release
 # candidates, so nothing here moves when it publishes. This job is how Dynamic Entity finds out,
 # within a day, that a newly published sheet-to-schema would break it: before a user does, and
 # before the pin is raised.
@@ -58,13 +58,13 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # Every workspace that depends on it is moved, not just the root: a root-level install
-      # would leave core and server resolving their own pinned copy beside it, and this job
+      # would leave core, server and ngx-dynamic-entity resolving their own pinned copy beside it, and this job
       # would test the pin while reporting the new version.
       - name: Install sheet-to-schema@${{ steps.resolve.outputs.version }} in place of the pin
         env:
           VERSION: ${{ steps.resolve.outputs.version }}
         run: |
-          for WS in packages/core packages/server; do
+          for WS in packages/core packages/server packages/ngx-dynamic-entity; do
             npm pkg set "dependencies.sheet-to-schema=$VERSION" --workspace "$WS"
           done
           npm install --no-audit --no-fund
@@ -106,7 +106,7 @@ jobs:
             echo "## :x: $MESSAGE"
             echo "The failing step above is where it broke. Reproduce locally with:"
             echo '```'
-            echo "npm pkg set dependencies.sheet-to-schema=${VERSION} --workspace packages/core --workspace packages/server && npm install"
+            echo "npm pkg set dependencies.sheet-to-schema=${VERSION} --workspace packages/core --workspace packages/server --workspace packages/ngx-dynamic-entity && npm install"
             echo '```'
             echo "Fix it in sheet-to-schema first, or hold Dynamic Entity's pin where it is."
           } >> "$GITHUB_STEP_SUMMARY"

@@ -73,7 +73,7 @@
   "dependencies": {
     "busboy": "1.6.0",
     "exceljs": "4.4.0",
-    "sheet-to-schema": "^1.0.0"
+    "sheet-to-schema": "^1.2.0"
   },
   "peerDependenciesMeta": {
     "express": {

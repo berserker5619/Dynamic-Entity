@@ -57,5 +57,8 @@
   "bugs": {
     "url": "https://github.com/berserker5619/Dynamic-Entity/issues"
   },
-  "author": "Nizamudeen"
+  "author": "Nizamudeen",
+  "dependencies": {
+    "sheet-to-schema": "^1.2.0"
+  }
 }

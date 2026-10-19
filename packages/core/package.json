@@ -33,7 +33,7 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
-    "sheet-to-schema": "^1.0.0"
+    "sheet-to-schema": "^1.2.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

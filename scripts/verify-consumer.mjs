@@ -245,6 +245,14 @@ if (fs.existsSync(path.join(proj, 'node_modules/@dynamic-entity/core/node_module
   process.exit(1);
 }
 
+// From 3.1 ngx-dynamic-entity depends on sheet-to-schema directly (its default parser reads with
+// `readCsvFile`), in the range core uses, so it must share core's hoisted copy, not nest its own.
+if (fs.existsSync(path.join(proj, 'node_modules/ngx-dynamic-entity/node_modules/sheet-to-schema'))) {
+  console.error('\nFAIL: ngx-dynamic-entity installed its own sheet-to-schema.');
+  console.error('      It and core must ask for the same range, so one hoisted copy serves both.');
+  process.exit(1);
+}
+
 // A nested copy of the renderer means the builder shipped it as a runtime dependency, which
 // breaks InjectionToken identity: registries provided by the app become invisible to it.
 const nested = fs.existsSync(path.join(proj, 'node_modules/ngx-dynamic-entity-builder/node_modules'));
