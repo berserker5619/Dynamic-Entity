@@ -9,18 +9,23 @@ name: sheet-to-schema drift
 # Two jobs, each resolving a version, installing it in place of the declared range (and proving
 # it is the only copy), building, then running the Phase 2 parity gate and the import suites:
 #
-# - in-range (blocking): the newest sheet-to-schema that satisfies the range core, server and
-#   ngx-dynamic-entity declare, which is what a user installing Dynamic Entity 3.x gets. Red here
-#   means a 3.x user is broken today.
-# - latest (non-blocking, continue-on-error): sheet-to-schema@latest, an early warning for
-#   Dynamic Entity 4.0. Once sheet-to-schema 2.0.0 is latest it is outside 3.x's range, and this
-#   job failing is expected until 4.0 adopts it; it never fails the run.
+# - in-range (blocking, daily): the newest sheet-to-schema that satisfies the range core, server
+#   and ngx-dynamic-entity declare, which is what a user installing Dynamic Entity 3.x gets. Red
+#   here means a 3.x user is broken today.
+# - latest (non-blocking, continue-on-error, weekly): sheet-to-schema@latest, an early warning
+#   for Dynamic Entity 4.0. sheet-to-schema 2.0.0 is latest and outside 3.x's range, so this job
+#   fails until 4.0 adopts it; it never fails the run. Weekly, because a known failure needs
+#   no daily reminder.
+#
+# Which jobs run is chosen by what started the workflow: the daily schedule runs in-range only,
+# the weekly one latest only, and a manual run both.
 #
 # A failure names the version and what was resolved.
 
 on:
   schedule:
-    - cron: '17 4 * * *' # daily, off the hour
+    - cron: '17 4 * * *' # daily, off the hour: in-range
+    - cron: '47 4 * * 1' # Mondays: latest
   workflow_dispatch:
 
 permissions:
@@ -36,19 +41,14 @@ env:
 
 jobs:
   drift:
-    name: ${{ matrix.name }}
+    name: "${{ matrix.resolve == 'in-range' && 'sheet-to-schema in Dynamic Entity''s declared range (blocking)' || 'sheet-to-schema@latest: early warning for Dynamic Entity 4.0 (non-blocking)' }}"
     runs-on: ubuntu-latest
-    continue-on-error: ${{ !matrix.blocking }}
+    continue-on-error: ${{ matrix.resolve != 'in-range' }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: sheet-to-schema in Dynamic Entity's declared range (blocking)
-            resolve: in-range
-            blocking: true
-          - name: 'sheet-to-schema@latest: early warning for Dynamic Entity 4.0 (non-blocking)'
-            resolve: latest
-            blocking: false
+        # The daily schedule: in-range. The weekly one: latest. Anything else (a manual run): both.
+        resolve: ${{ fromJSON(github.event.schedule == '17 4 * * *' && '["in-range"]' || github.event.schedule == '47 4 * * 1' && '["latest"]' || '["in-range","latest"]') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -72,7 +72,7 @@ jobs:
           {
             echo "### sheet-to-schema@$SPEC = \`$VERSION\`"
             echo "Dynamic Entity declares \`$RANGE\` in core, server and ngx-dynamic-entity."
-            if [ "${{ matrix.blocking }}" != "true" ]; then
+            if [ "${{ matrix.resolve == 'in-range' }}" != "true" ]; then
               echo "Non-blocking: an early warning for Dynamic Entity 4.0."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
@@ -120,8 +120,8 @@ jobs:
           VERSION: ${{ steps.resolve.outputs.version }}
         run: |
           MESSAGE="Dynamic Entity fails against sheet-to-schema@${VERSION:-unresolved} (resolved from ${{ steps.resolve.outputs.spec || matrix.resolve }})."
-          if [ "${{ matrix.blocking }}" != "true" ]; then MESSAGE="$MESSAGE Early warning for 4.0; not blocking."; fi
-          if [ "${{ matrix.blocking }}" = "true" ]; then
+          if [ "${{ matrix.resolve == 'in-range' }}" != "true" ]; then MESSAGE="$MESSAGE Early warning for 4.0; not blocking."; fi
+          if [ "${{ matrix.resolve == 'in-range' }}" = "true" ]; then
             echo "::error title=sheet-to-schema drift::$MESSAGE"
           else
             echo "::warning title=sheet-to-schema early warning::$MESSAGE"
@@ -133,7 +133,7 @@ jobs:
             echo '```'
             echo "npm pkg set dependencies.sheet-to-schema=${VERSION} --workspace packages/core --workspace packages/server --workspace packages/ngx-dynamic-entity && npm install"
             echo '```'
-            if [ "${{ matrix.blocking }}" = "true" ]; then
+            if [ "${{ matrix.resolve == 'in-range' }}" = "true" ]; then
               echo "Fix it in sheet-to-schema's 1.x line first: a user installing Dynamic Entity today gets this version."
             else
               echo "Expected while sheet-to-schema@latest is a major Dynamic Entity does not declare yet; 4.0's work list."
