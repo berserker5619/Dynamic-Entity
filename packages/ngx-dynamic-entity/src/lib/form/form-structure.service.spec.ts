@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { FormArray, FormControl, FormGroup } from '@angular/forms';
 import type { EntityFormConfig, NestedFieldConfig } from '@dynamic-entity/core';
-import { applyMapping, assignFieldRefs } from '@dynamic-entity/core';
+import { ROW_ID_KEY, applyMapping, assignFieldRefs } from '@dynamic-entity/core';
 import { FormStructureService } from './form-structure.service';
 
 /**
@@ -303,8 +303,12 @@ describe('FormStructureService', () => {
       expect(rows.length).toBe(2);
       expect(rows.at(1).get('name')!.value).toBe('Bo');
 
+      // Rows saved without an id get the positional one the migration gives them.
       expect(service.extractRecord(form, config)['people']).toEqual({
-        contacts: [{ name: 'Ada' }, { name: 'Bo' }],
+        contacts: [
+          { [ROW_ID_KEY]: 'legacy-1', name: 'Ada' },
+          { [ROW_ID_KEY]: 'legacy-2', name: 'Bo' },
+        ],
       });
     });
 
@@ -331,8 +335,14 @@ describe('FormStructureService', () => {
       service.patchForm(form, config, imported, fieldsById(config));
       const saved = service.extractRecord(form, config);
 
-      expect(saved['personal'].contacts).toEqual([{ name: 'Ada' }, { name: 'Bo' }]);
-      expect((imported['personal'] as Record<string, unknown> | undefined)?.['contacts']).toEqual(saved['personal'].contacts);
+      expect(saved['personal'].contacts).toEqual([
+        { [ROW_ID_KEY]: 'legacy-1', name: 'Ada' },
+        { [ROW_ID_KEY]: 'legacy-2', name: 'Bo' },
+      ]);
+      // The engine's own output carries no ids; the rows are otherwise the ones the form saves.
+      expect((imported['personal'] as Record<string, unknown> | undefined)?.['contacts']).toEqual(
+        saved['personal'].contacts.map(({ name }: { name: string }) => ({ name })),
+      );
     });
 
     it('reports a top-level key that names a field but reached no control', () => {

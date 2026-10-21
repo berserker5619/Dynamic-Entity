@@ -15,6 +15,8 @@ exports[`formatConfigProblems prints every case as it always has 1`] = `
   [error] tabs[0].fields[0].id: A field id is required.
 # a field named __proto__
   [error] tabs[0].fields[0].id: "__proto__" is a reserved object key. A field with this id can never store a value: every path guard refuses to read or write it. Rename the field.
+# a field id starting with $
+  [error] tabs[0].fields[0].id: "$rowId" starts with "$", which is reserved for keys the library stores in a record (such as $rowId on an array row). Rename the field.
 # a field id with a space
   [warning] tabs[0].fields[0].id: "has space" is not a plain identifier; it is used as an object key in saved records.
 # one id twice in a scope

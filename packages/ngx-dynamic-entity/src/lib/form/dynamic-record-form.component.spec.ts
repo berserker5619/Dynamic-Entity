@@ -1,6 +1,7 @@
 import { SimpleChange } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { EntityFormConfig, FormRule } from '@dynamic-entity/core';
+import { ROW_ID_KEY } from '@dynamic-entity/core';
 import { provideBuiltInFieldTypes } from '../providers/provide-field-types';
 import { DynamicRecordFormComponent } from './dynamic-record-form.component';
 import { MASKED_ROLES } from '../tokens/injection-tokens';
@@ -766,7 +767,7 @@ describe('DynamicRecordFormComponent — array row drawer', () => {
 
     expect(component.inlineRowField()?.id).toBe('addresses');
     expect(component.inlineRowIndex()).toBeNull();
-    expect(component.inlineRowForm!.value).toEqual({ street: null, city: null });
+    expect(component.inlineRowForm!.value).toEqual({ [ROW_ID_KEY]: expect.any(String), street: null, city: null });
   });
 
   it('does not push the row until save', () => {
@@ -778,7 +779,7 @@ describe('DynamicRecordFormComponent — array row drawer', () => {
 
     component.saveRow();
     expect(component.rowsOf(arrayField()).length).toBe(1);
-    expect(component.rowsOf(arrayField())[0]).toEqual({ street: '9 Elm', city: 'Munich' });
+    expect(component.rowsOf(arrayField())[0]).toEqual({ [ROW_ID_KEY]: expect.any(String), street: '9 Elm', city: 'Munich' });
   });
 
   it('refuses to save an invalid row and keeps the drawer open', () => {
@@ -797,7 +798,7 @@ describe('DynamicRecordFormComponent — array row drawer', () => {
     component.openEditRow(arrayField(), 0);
 
     expect(component.inlineRowIndex()).toBe(0);
-    expect(component.inlineRowForm!.value).toEqual({ street: '1 Main St', city: 'Berlin' });
+    expect(component.inlineRowForm!.value).toEqual({ [ROW_ID_KEY]: 'legacy-1', street: '1 Main St', city: 'Berlin' });
 
     component.inlineRowForm!.patchValue({ street: '2 Oak Ave' });
     component.saveRow();
@@ -850,7 +851,7 @@ describe('DynamicRecordFormComponent — array row drawer', () => {
     component.saveRow();
 
     const record = component.dynamicFormComp!.extractRecord();
-    expect(record['main'].addresses).toEqual([{ street: '9 Elm', city: 'Munich' }]);
+    expect(record['main'].addresses).toEqual([{ [ROW_ID_KEY]: expect.any(String), street: '9 Elm', city: 'Munich' }]);
   });
 });
 

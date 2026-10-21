@@ -89,6 +89,7 @@ export const CONFIG_CASES: readonly ConfigCase[] = [
   { name: 'a field that is not an object', code: 'CONFIG_FIELD_NOT_OBJECT', config: one([null]) },
   { name: 'a field with no id', code: 'CONFIG_FIELD_ID_REQUIRED', config: one([{ type: 'text', label: { en: 'x' } }]) },
   { name: 'a field named __proto__', code: 'CONFIG_RESERVED_FIELD_ID', config: one([text('__proto__')]) },
+  { name: 'a field id starting with $', code: 'CONFIG_RESERVED_FIELD_ID', config: one([text('$rowId')]) },
   { name: 'a field id with a space', code: 'CONFIG_FIELD_ID_NOT_IDENTIFIER', config: one([text('has space')]) },
   { name: 'one id twice in a scope', code: 'CONFIG_DUPLICATE_FIELD_ID', config: one([text('a'), text('a')]) },
   { name: 'a field with no type', code: 'CONFIG_FIELD_TYPE_REQUIRED', config: one([{ id: 'a', label: { en: 'a' } }]) },

@@ -2,7 +2,7 @@ import { Component, Input, inject, forwardRef, ChangeDetectionStrategy, ChangeDe
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig, EntityFormConfig } from '@dynamic-entity/core';
 import { MASKED_PLACEHOLDER } from '../tokens/injection-tokens';
-import { resolveLabel } from '@dynamic-entity/core';
+import { ROW_ID_KEY, newRowId, resolveLabel } from '@dynamic-entity/core';
 import { DynamicFieldComponent } from '../form/dynamic-field/dynamic-field.component';
 import { ValidatorRegistryService } from '../services/validator-registry.service';
 import { UiTextService } from '../services/ui-text.service';
@@ -204,6 +204,8 @@ export class ArrayFieldComponent {
       const validators = this.validatorRegistry.resolveFromConfig(child.validators);
       controls[child.id] = [child.defaultValue ?? null, validators];
     }
+    // A new row's identity — see `FormStructureService.buildArrayRow`.
+    if (this.field.children?.length) controls[ROW_ID_KEY] = [newRowId()];
     const group = this.fb.group(controls);
     this.formArray.push(group);
     this.cdr.markForCheck();

@@ -19,6 +19,7 @@ import type {
   NestedFieldConfig,
   NestedTabConfig,
 } from './form-model.types';
+import { assignLegacyRowIds, forEachRowList } from './row-ids';
 import type { VersionedRecord } from './versioning.types';
 
 /** The version assumed for a config that does not declare one. */
@@ -322,6 +323,54 @@ function withKeyFromOptions(value: unknown, options: readonly DropdownOption[]):
   const match = options.find(option => valuesMatch(option, value));
   const key = match ? optionKeyOf(match) : undefined;
   return key === undefined ? value : { [OPTION_KEY]: key, ...(value as Record<string, unknown>) };
+}
+
+// ─── Row identity ────────────────────────────────────────────────────────────
+
+/**
+ * Give stored array rows the `$rowId` they were saved without.
+ *
+ * Rows saved before 3.2 carry no id, and inventing a random one on read would give the same row
+ * a different id on every server and every load — which is worse than none, because a history
+ * would then record a delete and an insert for a row nobody touched. So a row with no id gets a
+ * positional one (`legacy-1`, `legacy-2`, …) that depends only on the stored list.
+ *
+ * Save the migrated record: a positional id is only stable until the list is reordered, and
+ * once it is written it travels with its row like any other.
+ *
+ *     const migrations = [rowIdMigration(config)];  // from: 1, to: 2
+ */
+export function rowIdMigration(
+  config: EntityFormConfig,
+  versions: { from?: number; to?: number } = {},
+): RecordMigration {
+  const to = versions.to ?? configVersion(config);
+  const from = versions.from ?? to - 1;
+
+  return {
+    from,
+    to,
+    description: 'Give stored array rows a stable $rowId',
+    migrate: record => applyRowIds(record, config),
+  };
+}
+
+/**
+ * The rewrite `rowIdMigration` performs, exposed for a one-off run over stored data. The form
+ * runs it too, on every record it loads, so the two always agree.
+ *
+ * Only object rows of an `array` field with `children` get an id; an array of plain values has
+ * nowhere to put one. An existing `$rowId` is never changed. Returns a new record.
+ */
+export function applyRowIds(
+  record: Record<string, any>,
+  config: EntityFormConfig,
+): Record<string, any> {
+  if (!record || typeof record !== 'object') return record;
+  const next = structuredCloneish(record);
+
+  forEachRowList(next, config, assignLegacyRowIds);
+  return next;
 }
 
 /**

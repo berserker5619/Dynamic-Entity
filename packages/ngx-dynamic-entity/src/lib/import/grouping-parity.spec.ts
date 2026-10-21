@@ -20,6 +20,7 @@ import { Injector } from '@angular/core';
 import type { ImportResult } from '@dynamic-entity/core';
 import { readSheetFile } from 'sheet-to-schema/browser';
 import { CASES, plain, sheetFile, viaImporterRouter, type Case, type Imported, type SheetBytes } from '../../../../core/test-fixtures/grouping-cases';
+import { expectFreshRowIds, withoutRowIds } from '../../../../core/test-fixtures/row-ids';
 import { SHEET_PARSER } from '../tokens/injection-tokens';
 import type { ImportContext } from './import-contracts';
 import { LocalImportTransport } from './local-import-transport';
@@ -32,8 +33,10 @@ async function browserPath(c: Case, file: SheetBytes): Promise<Imported> {
   const transport = Injector.create({ providers: [...providers, { provide: LocalImportTransport }] }).get(LocalImportTransport);
   const context: ImportContext = { config: c.config, lang: 'en', rules: c.rules, lookups: c.lookups };
   const result: ImportResult = await transport.commit(new File([file.bytes], file.name), c.plan as never, context);
+  expectFreshRowIds(result.records);
   return plain({
-    records: result.records,
+    // The browser hands each imported row a fresh `$rowId`; the generic router does not.
+    records: withoutRowIds(result.records),
     errors: result.errors,
     warnings: result.warnings ?? [],
     planProblems: result.planProblems,

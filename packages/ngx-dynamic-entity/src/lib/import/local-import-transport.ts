@@ -18,6 +18,7 @@ import {
   cellText,
   decimalMarkFor,
   deriveImportColumns,
+  stampNewRowIds,
   suggestMapping,
   toCsv,
   type ImportResult,
@@ -104,7 +105,7 @@ export class LocalImportTransport implements ImportTransport {
 
   async commit(file: File, plan: AnyMappingPlan, context: ImportContext): Promise<ImportResult> {
     const sheet = await this.read(file);
-    return applyMapping(sheet.rows, plan, context.config, {
+    const result = applyMapping(sheet.rows, plan, context.config, {
       lang: context.lang,
       rules: context.rules,
       lookups: context.lookups,
@@ -113,6 +114,9 @@ export class LocalImportTransport implements ImportTransport {
       // Stated by the host, never inferred: a date that reads two ways fails without it.
       dateOrder: context.dateOrder,
     });
+    // An imported row is a new row: it gets a fresh `$rowId`, as one added in the form does.
+    for (const record of result.records) stampNewRowIds(record, context.config);
+    return result;
   }
 
   async template(spec: TemplateSpec, format: TemplateFormat): Promise<Blob> {

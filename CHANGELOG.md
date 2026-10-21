@@ -8,6 +8,57 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.2.0]
+
+**Stable row ids for `array` fields.** Every object row of an `array` field with `children`
+now carries a `$rowId`, so a history or an audit trail can tell which row is which across saves.
+Records saved by 3.1 keep working: the form gives their rows positional ids when it loads them,
+the same ids a server migration gives. See "Row identity" in the
+[README](https://github.com/berserker5619/Dynamic-Entity/blob/main/README.md#-row-identity).
+
+### Upgrading
+- **`validateConfig` now refuses a field id that starts with `$`** (`CONFIG_RESERVED_FIELD_ID`,
+  an error). It was a warning before (`CONFIG_FIELD_ID_NOT_IDENTIFIER`), so a config that
+  validated under 3.1 can fail under 3.2. `$` is reserved for keys the library writes into a
+  record, `$key` and now `$rowId`. Rename any such field. An id with `$` later in it is
+  unaffected.
+- Saved records gain a `$rowId` on each array row. Code that compares a saved row with a whole
+  object, or that sends rows to a strict schema, has to allow the extra key.
+- To give stored records their ids once rather than on every load, register
+  `rowIdMigration(config)` or run `applyRowIds` over them, **and save the result**. A legacy id
+  stands for a position, so it is stable only once it is written.
+- `ngx-dynamic-entity-builder` and `@dynamic-entity/server` depend on `@dynamic-entity/core`
+  `^3.2.0`, and the builder on `ngx-dynamic-entity` `^3.2.0`.
+
+### Added
+- `@dynamic-entity/core`: `ROW_ID_KEY` (`'$rowId'`), `newRowId()`, `applyRowIds(record, config)`,
+  `rowIdMigration(config, { from, to })`, `stampNewRowIds(record, config)` and
+  `LEGACY_ROW_ID_PREFIX`.
+  - `newRowId()` uses `crypto.randomUUID()` where it exists, and otherwise a v4 UUID from
+    `crypto.getRandomValues`, so it works outside a secure context, such as an intranet app
+    served over plain HTTP.
+  - `applyRowIds` walks the record against the config the way `applyOptionKeys` does: tabs,
+    `flatData`, groups, nested arrays, and an array moved by `refererField`. A row with no id
+    gets `legacy-1`, `legacy-2`, … in list order, skipping numbers already used in that list.
+    It never changes an existing id, and the same input always gives the same output.
+- `ngx-dynamic-entity`: each array row's `FormGroup` has a `$rowId` control. A row keeps its id
+  through edits in place and in the drawer, and through adding, removing and reordering the rows
+  around it. A new row gets a fresh id, from the drawer or from the inline Add button.
+- Import: every imported row gets a fresh id. `@dynamic-entity/server`'s `runImport` (and so
+  `createImportRouter`) adds them to the records it hands `onBatch`, and the browser's
+  `LocalImportTransport` to the records its commit returns. The import engine's own output
+  (`applyMapping`) stays free of ids, so it remains deterministic and comparable with 2.5.0.
+
+### Changed
+- The form runs `applyRowIds` on every record it loads, so one 3.1 record opened in the browser
+  and the same record migrated on a server agree row for row.
+- `$rowId` is never a value. It is not rendered or validated, the values rules and `showWhen`
+  see do not include it, it does not make a critical array field read as changed, and it is
+  never a template column, a mapping suggestion or a preview column. A row holding nothing but
+  its id counts as empty.
+
+---
+
 ## [3.1.0]
 
 **`.xlsx` in the browser through a new entry, `ngx-dynamic-entity/xlsx`; grouping on the server,

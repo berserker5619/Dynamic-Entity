@@ -2,11 +2,14 @@ import { Injectable, inject, isDevMode } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, FormGroup } from '@angular/forms';
 import type { EntityFormConfig, FieldScopeEntry, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
 import {
+  ROW_ID_KEY,
+  applyRowIds,
   fieldRefFor,
   flattenFieldValues,
   getTabData,
   getTabPath,
   getValueByPath,
+  newRowId,
   normalizeArrayStructures,
   parseFieldRef,
   placeTabFields,
@@ -95,6 +98,12 @@ export class FormStructureService {
     for (const child of field.children) {
       this.buildFieldControl(child, rowGroup);
     }
+    // The row's identity rides along as a control of its own: `patchValue` drops any key the
+    // group has no control for, so without one the id would be gone by the next save. It has
+    // no validators and no field config, so nothing renders it, validates it or runs a rule
+    // on it. A row being loaded or edited keeps the id it has; a new one gets a fresh id.
+    const existing = item && typeof item === 'object' ? (item as Record<string, unknown>)[ROW_ID_KEY] : undefined;
+    rowGroup[ROW_ID_KEY] = this.fb.control(existing ?? newRowId());
     const group = this.fb.group(rowGroup);
     if (item && typeof item === 'object') group.patchValue(item as Record<string, unknown>);
     return group;
@@ -143,7 +152,9 @@ export class FormStructureService {
     // The naming rule is core's, shared with the importer; only where values come from is ours.
     return flattenFieldValues(entries, entry => {
       const ctrl = this.controlAt(form, entry);
-      return ctrl ? { value: ctrl.value } : undefined;
+      // A row's `$rowId` is the record's bookkeeping, not a value: a rule never sees it, and a
+      // record supplied without ids does not read as changed against one the form loaded.
+      return ctrl ? { value: withoutRowIds(ctrl.value) } : undefined;
     });
   }
 
@@ -232,6 +243,9 @@ export class FormStructureService {
     fieldsById: Map<string, NestedFieldConfig>,
   ): string[] {
     if (!data || !form || !config) return [];
+    // Rows saved before 3.2 get the same positional ids `rowIdMigration` gives them on a server,
+    // so one record loaded here and migrated there agrees row for row. Ids it already has stay.
+    data = applyRowIds(data, config);
     const patchedFieldIds = new Set<string>();
 
     const walkTabs = (tabs: NestedTabConfig[]) => {
@@ -302,4 +316,19 @@ export class FormStructureService {
         !patchedFieldIds.has(key),
     );
   }
+}
+
+/**
+ * A value with every array row's `$rowId` removed, at any depth: through a group's object and
+ * each row of each array. Anything that is not a plain object or an array is returned as is.
+ */
+function withoutRowIds(value: unknown, isRow = false): unknown {
+  if (Array.isArray(value)) return value.map(row => withoutRowIds(row, true));
+  if (!value || typeof value !== 'object' || Object.getPrototypeOf(value) !== Object.prototype) return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    if (isRow && key === ROW_ID_KEY) continue;
+    out[key] = withoutRowIds(child);
+  }
+  return out;
 }

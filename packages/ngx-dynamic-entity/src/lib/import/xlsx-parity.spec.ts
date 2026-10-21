@@ -31,6 +31,7 @@ import {
   buildParityWorkbook,
   sha256,
 } from '../../../../core/test-fixtures/xlsx-parity';
+import { expectFreshRowIds, withoutRowIds } from '../../../../core/test-fixtures/row-ids';
 
 /** One exceljs cell value as the typed value a record is built from. */
 function cellOf(value: ExcelJS.CellValue | undefined): unknown {
@@ -106,7 +107,8 @@ describe('an xlsx import in the browser, against the shared parity workbook', ()
       config: PARITY_XLSX_CONFIG,
       lang: 'en',
     });
-    expect({ records: result.records, errors: result.errors, skipped: result.skipped }).toEqual(
+    expectFreshRowIds(result.records);
+    expect({ records: withoutRowIds(result.records), errors: result.errors, skipped: result.skipped }).toEqual(
       PARITY_XLSX_EXPECTED,
     );
   });

@@ -3,6 +3,7 @@ import {
   coerceCell,
   deriveImportColumns,
   parseCsv,
+  ROW_ID_KEY,
   suggestMapping,
   type EntityFormConfig,
   type NestedFieldConfig,
@@ -21,6 +22,7 @@ import {
   trackedStream,
 } from './sheet.fixtures';
 import { PREVIEW_PARITY_CASES, suggestedEntries } from '../../core/test-fixtures/preview-parity';
+import { withoutRowIds } from '../../core/test-fixtures/row-ids';
 
 /** Collect what `onBatch` was handed, for the tests that are about the records themselves. */
 function collector(): { onBatch: OnBatch; records: Record<string, unknown>[] } {
@@ -775,5 +777,42 @@ describe('runImport — a date written in digits', () => {
     expect((await importDated('DMY')).dates).toEqual(['2026-09-05', '2026-09-06']);
     expect((await importDated('MDY')).dates).toEqual(['2026-05-09', '2026-09-06']);
     expect((await importDated('DMY')).result.errors).toEqual([]);
+  });
+});
+
+describe('row identity', () => {
+  const CONTACTS = {
+    entity: 'contact',
+    tabs: [
+      {
+        id: 'main',
+        label: { en: 'Main' },
+        fields: [
+          { id: 'name', type: 'text', label: { en: 'Name' } },
+          { id: 'phones', type: 'array', label: { en: 'Phones' }, children: [{ id: 'number', type: 'text', label: { en: 'Number' } }] },
+        ],
+      },
+    ],
+  } as EntityFormConfig;
+
+  it('hands every imported row a fresh $rowId, and the same file twice gives different ones', async () => {
+    const columns = deriveImportColumns(CONTACTS).columns;
+    const headers = ['Name', 'Phones 1 Number', 'Phones 2 Number'];
+    const plan = suggestMapping(headers, columns, 'contact');
+    const csv = `${headers.join(',')}\nAda,111,222\nGrace,333,\n`;
+
+    const run = async () => {
+      const { onBatch, records } = collector();
+      await runImport({ stream: chunked(new TextEncoder().encode(csv), 64), filename: 'c.csv', plan, config: CONTACTS, onBatch });
+      return records;
+    };
+    const first = await run();
+    const second = await run();
+
+    const ids = (records: Record<string, unknown>[]) =>
+      records.flatMap(record => ((record['main'] as Record<string, Record<string, unknown>[]>)['phones'] ?? []).map(row => row[ROW_ID_KEY]));
+    expect(ids(first)).toHaveLength(3);
+    expect(new Set([...ids(first), ...ids(second)]).size).toBe(6);
+    expect(withoutRowIds(first)).toEqual(withoutRowIds(second));
   });
 });

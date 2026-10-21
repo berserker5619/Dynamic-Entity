@@ -29,6 +29,7 @@ import {
   type FieldScopeEntry,
 } from './field-scopes';
 import { evaluateFormRules } from './rules-engine';
+import { ROW_ID_KEY } from './row-ids';
 import {
   evaluateFieldVisibility,
   getTabPath,
@@ -195,7 +196,8 @@ function isEmptyValue(value: unknown): boolean {
   if (value === undefined || value === null || value === '') return true;
   if (Array.isArray(value)) return value.length === 0;
   // Anything else with an identity — a Date, a File — is a value, whatever its keys look like.
-  if (isPlainObject(value)) return Object.values(value).every(isEmptyValue);
+  // A row's `$rowId` is not something the user put there: a row holding only that is blank.
+  if (isPlainObject(value)) return Object.entries(value).every(([key, child]) => key === ROW_ID_KEY || isEmptyValue(child));
   return false;
 }
 

@@ -382,6 +382,16 @@ export function validateConfig(
           `"${field.id}" is a reserved object key. A field with this id can never store a ` +
             `value: every path guard refuses to read or write it. Rename the field.`,
         );
+      } else if (field.id.startsWith('$')) {
+        // `$` marks keys the library writes into a record itself — `$key` on a choice value,
+        // `$rowId` on an array row. A field with such an id would share that key and lose it.
+        add(
+          'error',
+          'CONFIG_RESERVED_FIELD_ID',
+          `${path}.id`,
+          `"${field.id}" starts with "$", which is reserved for keys the library stores in a ` +
+            `record (such as $rowId on an array row). Rename the field.`,
+        );
       } else if (!ID_PATTERN.test(field.id)) {
         add(
           'warning',

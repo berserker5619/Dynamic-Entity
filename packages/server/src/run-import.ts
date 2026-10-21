@@ -14,6 +14,7 @@ import {
   deriveImportColumns,
   entityFormConfigAdapter,
   planForConfig,
+  stampNewRowIds,
   suggestMapping,
   type AnyMappingPlan,
   type ConfigProblem,
@@ -134,7 +135,8 @@ export function runImport(options: RunImportOptions): Promise<ImportRunResult> {
     ctx: { lang: options.lang },
     decimal: options.decimal,
     dateOrder: options.dateOrder,
-    onBatch: options.onBatch,
+    // An imported row is a new row: it gets a fresh `$rowId` on its way to the consumer.
+    onBatch: options.onBatch && ((records, info) => options.onBatch!(records.map(record => stampNewRowIds(record, config)), info)),
     limits: options.limits,
   });
 }

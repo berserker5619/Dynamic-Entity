@@ -1,6 +1,7 @@
 import { SimpleChange } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { EntityFormConfig } from '@dynamic-entity/core';
+import { ROW_ID_KEY } from '@dynamic-entity/core';
 import { provideBuiltInFieldTypes } from '../providers/provide-field-types';
 import { DynamicRecordFormComponent } from './dynamic-record-form.component';
 
@@ -105,7 +106,8 @@ describe('DynamicRecordFormComponent — array rows', () => {
     expect(component.inlineRowField()?.id).toBe('lineItems');
     expect(component.inlineRowIndex()).toBe(1);
     // Seeded from the row that was opened, not the first one.
-    expect(component.inlineRowForm?.value).toEqual({ description: 'Parts', amount: 50 });
+    // Seeded with that row's id too, so saving the edit keeps it.
+    expect(component.inlineRowForm?.value).toEqual({ [ROW_ID_KEY]: 'legacy-2', description: 'Parts', amount: 50 });
   });
 
   it('opens an empty drawer for a new row', () => {
@@ -114,7 +116,7 @@ describe('DynamicRecordFormComponent — array rows', () => {
     component.openAddRow(config.tabs![0].fields![0]);
 
     expect(component.inlineRowIndex()).toBeNull();
-    expect(component.inlineRowForm?.value).toEqual({ description: null, amount: null });
+    expect(component.inlineRowForm?.value).toEqual({ [ROW_ID_KEY]: expect.any(String), description: null, amount: null });
   });
 
   it('closes the drawer without touching the record on cancel', () => {
@@ -144,9 +146,10 @@ describe('DynamicRecordFormComponent — array rows', () => {
     fixture.detectChanges();
 
     const rows = component.rowsOf(config.tabs![0].fields![0]);
-    expect(rows[0]).toEqual({ description: 'Repair (revised)', amount: 120 });
+    // An edit keeps the row's id.
+    expect(rows[0]).toEqual({ [ROW_ID_KEY]: 'legacy-1', description: 'Repair (revised)', amount: 120 });
     // The sibling row is untouched — a save writes one row, not the array.
-    expect(rows[1]).toEqual({ description: 'Parts', amount: 50 });
+    expect(rows[1]).toEqual({ [ROW_ID_KEY]: 'legacy-2', description: 'Parts', amount: 50 });
     expect(component.inlineRowField()).toBeNull();
   });
 
@@ -161,7 +164,8 @@ describe('DynamicRecordFormComponent — array rows', () => {
 
     const rows = component.rowsOf(config.tabs![0].fields![0]);
     expect(rows).toHaveLength(3);
-    expect(rows[2]).toEqual({ description: 'Labour', amount: 75 });
+    expect(rows[2]).toEqual({ [ROW_ID_KEY]: expect.any(String), description: 'Labour', amount: 75 });
+    expect(rows[2][ROW_ID_KEY]).not.toMatch(/^legacy-/);
   });
 
   it('does nothing on save when no row is open', () => {
@@ -179,7 +183,8 @@ describe('DynamicRecordFormComponent — array rows', () => {
 
     const rows = component.rowsOf(config.tabs![0].fields![0]);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toEqual({ description: 'Parts', amount: 50 });
+    // The survivor keeps its own id; it does not become row 1.
+    expect(rows[0]).toEqual({ [ROW_ID_KEY]: 'legacy-2', description: 'Parts', amount: 50 });
   });
 
   it('refuses to delete while the section is read-only', () => {

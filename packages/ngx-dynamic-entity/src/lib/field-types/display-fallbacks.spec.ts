@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { NestedFieldConfig } from '@dynamic-entity/core';
+import { ROW_ID_KEY } from '@dynamic-entity/core';
 import { ArrayFieldComponent } from './array-field.component';
 import { DateFieldComponent } from './date-field.component';
 import { DropdownFieldComponent } from './dropdown-field.component';
@@ -166,6 +167,16 @@ describe('array field', () => {
 
     fixture.componentInstance.addItem();
     // A default that is not applied on Add is a default that only exists in the config.
-    expect(fixture.componentInstance.formArray.at(0).value).toEqual({ description: null, quantity: 1 });
+    expect(fixture.componentInstance.formArray.at(0).value).toEqual({ [ROW_ID_KEY]: expect.any(String), description: null, quantity: 1 });
+  });
+
+  it('gives a row no id when the array declares no children', () => {
+    const fixture = TestBed.createComponent(ArrayFieldComponent);
+    fixture.componentRef.setInput('field', { id: 'tags', type: 'array', label: { en: 'Tags' } } as NestedFieldConfig);
+    fixture.componentRef.setInput('control', new FormArray<FormGroup>([]));
+    fixture.detectChanges();
+
+    fixture.componentInstance.addItem();
+    expect(fixture.componentInstance.formArray.at(0).value).toEqual({});
   });
 });

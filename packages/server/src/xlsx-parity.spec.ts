@@ -24,6 +24,7 @@ import {
   buildParityWorkbook,
   sha256,
 } from '../../core/test-fixtures/xlsx-parity';
+import { expectFreshRowIds, withoutRowIds } from '../../core/test-fixtures/row-ids';
 
 describe('an xlsx import, against the shared parity workbook', () => {
   let bytes: Uint8Array;
@@ -49,7 +50,8 @@ describe('an xlsx import, against the shared parity workbook', () => {
     });
 
     expect(result.format).toBe('xlsx');
-    expect({ records, errors: result.errors, skipped: result.skipped }).toEqual(PARITY_XLSX_EXPECTED);
+    expectFreshRowIds(records);
+    expect({ records: withoutRowIds(records), errors: result.errors, skipped: result.skipped }).toEqual(PARITY_XLSX_EXPECTED);
   });
 
   it('emits covered cells of a merged header range as empty string in parity with browser', async () => {

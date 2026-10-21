@@ -357,6 +357,73 @@ person with the old config in front of them.
 
 ---
 
+## 🧷 Row identity
+
+An `array` field's rows have no identity of their own. A row's index changes whenever a row
+above it is added, removed or moved, and its values change whenever it is edited. Anything that
+has to say "this row" across two saves, such as a change history, an audit trail or a comment on
+a line item, cannot tell an edited row from a deleted one plus a new one.
+
+Since 3.2 every object row of an `array` field with `children` carries a `$rowId`:
+
+```json
+{ "lineItems": [{ "$rowId": "9b1c…", "description": "Repair", "amount": 100 }] }
+```
+
+- **The form** keeps a row's id from load to save. Editing a row, in place or in the drawer,
+  keeps it, and so does adding, removing or reordering the rows around it. A new row gets a
+  fresh id from `newRowId()`.
+- **Import** gives every imported row a fresh id.
+- **It is never a value.** It is not rendered or validated, rules and `showWhen` do not see
+  it, it does not make a critical field read as changed, and it is never a template column, a
+  mapping suggestion or a preview column.
+- An array of plain values (no `children`) has nowhere to put an id and gets none.
+
+`ROW_ID_KEY` is the key, `'$rowId'`. `validateConfig` refuses a field id that starts with `$`,
+so the id can never collide with a field.
+
+### Giving stored records ids
+
+A record saved before 3.2 has rows with no ids. `applyRowIds` gives each one a positional id,
+`legacy-1`, `legacy-2` and so on, skipping any number the list already uses, and never changes
+an id a row already has. The result depends only on the stored list, so running it twice, or
+on two servers, gives the same ids. The form runs it on every record it loads, so a record
+opened in the browser and the same record migrated on a server agree.
+
+As a migration step, with `config.version` raised:
+
+```typescript
+import { rowIdMigration } from '@dynamic-entity/core';
+import { provideNgxDynamicEntity } from 'ngx-dynamic-entity';
+import type { EntityFormConfig } from '@dynamic-entity/core';
+
+declare const config: EntityFormConfig;
+
+provideNgxDynamicEntity({ migrations: [rowIdMigration(config)] });
+```
+
+Or once, over stored data:
+
+```typescript
+import { applyRowIds } from '@dynamic-entity/core';
+import type { EntityFormConfig } from '@dynamic-entity/core';
+
+declare const config: EntityFormConfig;
+declare const stored: Record<string, unknown>[];
+declare function save(record: Record<string, unknown>): Promise<void>;
+
+export async function migrateStoredRows(): Promise<void> {
+  for (const record of stored) await save(applyRowIds(record, config));
+}
+```
+
+**Save the migrated records.** A legacy id stands for a position, so it is stable only until
+the list changes. Once it is written to the record it moves with its row like any other id.
+A record that is never saved gets its legacy ids again on every load, from whatever order its
+rows are in at that point.
+
+---
+
 ## 🔄 Schema versioning
 
 `EntityFormConfig.version` and a record's `_configVersion` describe which shape a record was

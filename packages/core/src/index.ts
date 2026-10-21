@@ -41,14 +41,17 @@ export type { VersionedRecord } from './versioning.types';
 export {
   DEFAULT_CONFIG_VERSION,
   applyOptionKeys,
+  applyRowIds,
   configVersion,
   migrateRecord,
   needsMigration,
   optionKeyMigration,
   recordVersion,
+  rowIdMigration,
   stampRecord,
   validateMigrations,
 } from './migration';
+export { LEGACY_ROW_ID_PREFIX, ROW_ID_KEY, newRowId, stampNewRowIds } from './row-ids';
 export type { MigrateOptions, MigrationResult, RecordMigration } from './migration';
 
 // ─── Field addressing: scopes, refs and paths ───────────────────────────────

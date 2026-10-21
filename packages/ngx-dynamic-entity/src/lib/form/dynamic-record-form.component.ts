@@ -14,7 +14,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { EntityFormConfig, FormRule, NestedFieldConfig, NestedTabConfig } from '@dynamic-entity/core';
-import { findTab, formatDisplayValue, getTabData, resolveLabel } from '@dynamic-entity/core';
+import { ROW_ID_KEY, findTab, formatDisplayValue, getTabData, resolveLabel } from '@dynamic-entity/core';
 import { DynamicFormComponent } from './dynamic-form.component';
 import { DynamicFieldComponent } from './dynamic-field/dynamic-field.component';
 import { HookRegistryService } from '../services/hook-registry.service';
@@ -418,7 +418,11 @@ export class DynamicRecordFormComponent implements OnChanges {
     if (this.sectionReadOnly) return;
     this.inlineRowField.set(field);
     this.inlineRowIndex.set(index);
-    this.inlineRowForm = this.dynamicFormComp?.createArrayRow(field, this.rowsOf(field)[index]) as FormGroup;
+    // `currentData` can still hold the record as supplied, before the form gave its rows ids;
+    // the row's id is the one in the form.
+    const id = this.dynamicFormComp?.getArrayControl(field.id, this.activeTabId ?? undefined)?.at(index)?.value?.[ROW_ID_KEY];
+    const row = this.rowsOf(field)[index];
+    this.inlineRowForm = this.dynamicFormComp?.createArrayRow(field, id ? { ...row, [ROW_ID_KEY]: id } : row) as FormGroup;
   }
 
   cancelRow(): void {
@@ -443,7 +447,12 @@ export class DynamicRecordFormComponent implements OnChanges {
 
     const index = this.inlineRowIndex();
     if (index === null) array.push(form.createArrayRow(field, this.inlineRowForm.value));
-    else array.at(index).patchValue(this.inlineRowForm.value);
+    else {
+      // An edit never changes which row this is: the row in the array keeps its `$rowId`.
+      const values = { ...(this.inlineRowForm.value as Record<string, unknown>) };
+      delete values[ROW_ID_KEY];
+      array.at(index).patchValue(values);
+    }
 
     array.updateValueAndValidity();
     this.currentData.set(form.extractRecord());

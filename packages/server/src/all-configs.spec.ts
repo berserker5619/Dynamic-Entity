@@ -39,6 +39,7 @@ import { listNamesOf } from './express';
 import { runImport } from './run-import';
 import { chunked } from './sheet.fixtures';
 import { workbookOf } from './workbook.fixtures';
+import { expectFreshRowIds, withoutRowIds } from '../../core/test-fixtures/row-ids';
 
 const ROOT = join(__dirname, '..', '..', '..');
 
@@ -190,7 +191,9 @@ describe.each(CONFIGS.map(config => [config.entity, config] as const))(
       expect(result.errors).toEqual([]);
       expect(result.imported).toBe(1);
       expect(result.format).toBe('csv');
-      expect(records).toEqual(local.records);
+      // Imported rows get fresh ids on the way out; the records are otherwise the browser's.
+      expectFreshRowIds(records);
+      expect(withoutRowIds(records)).toEqual(local.records);
     });
 
     /**
@@ -215,7 +218,9 @@ describe.each(CONFIGS.map(config => [config.entity, config] as const))(
       expect(result.errors).toEqual([]);
       expect(result.imported).toBe(1);
       expect(result.format).toBe('xlsx');
-      expect(records).toEqual(local.records);
+      // Imported rows get fresh ids on the way out; the records are otherwise the browser's.
+      expectFreshRowIds(records);
+      expect(withoutRowIds(records)).toEqual(local.records);
     });
 
     /**
