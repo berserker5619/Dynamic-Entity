@@ -9,7 +9,7 @@ export default defineConfig({
    * entry keeps it reachable — `@dynamic-entity/core/cli` — and keeps it out of the root by
    * construction rather than by a bundler being clever.
    */
-  entry: ['src/index.ts', 'src/cli.ts'],
+  entry: ['src/index.ts', 'src/cli.ts', 'src/history.ts'],
   format: ['cjs', 'esm'],
   dts: true,
   sourcemap: true,

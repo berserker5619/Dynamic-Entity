@@ -58,11 +58,18 @@ const published = {
       import: './cli.mjs',
       require: './cli.js',
     },
+    // Change history. Its own entry because audit-trail-text is ESM-only: the root entry's
+    // CommonJS build never requires it.
+    './history': {
+      types: './history.d.ts',
+      import: './history.mjs',
+      require: './history.js',
+    },
     './schema': './entity-form-config.schema.json',
     './package.json': './package.json',
   },
-  // One, since 3.0: the import engine. Published so a consumer's tree holds a single copy of
-  // it, which is what makes a plan or a result the same type on both sides.
+  // The import engine since 3.0, and audit-trail-text for `/history` since 3.3. Published so a
+  // consumer's tree holds a single copy of each.
   ...(source.dependencies ? { dependencies: source.dependencies } : {}),
 };
 
@@ -85,6 +92,9 @@ const missing = [
   'index.d.ts',
   'cli.mjs',
   'cli.d.ts',
+  'history.js',
+  'history.mjs',
+  'history.d.ts',
   'bin.mjs',
   'entity-form-config.schema.json',
 ].filter(

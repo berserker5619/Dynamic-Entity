@@ -8,7 +8,54 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Unreleased]
+## [3.3.0]
+
+**Change history, for records and for form configs.** A new entry,
+`@dynamic-entity/core/history`, says what changed between two versions of a record or of a
+config, as structured changes to store and one plain sentence each, in any language. It is
+built on [`audit-trail-text`](https://www.npmjs.com/package/audit-trail-text), reading the config
+as the schema, so there is no label map to maintain. Core only: there is no history UI in the
+renderer. See "Change history" in the
+[README](https://github.com/berserker5619/Dynamic-Entity/blob/main/README.md#-change-history).
+
+### Upgrading
+- `@dynamic-entity/core` depends on `audit-trail-text` `^1.2.0`. Nothing else is required.
+- `audit-trail-text` is ESM-only, so it is loaded only by `@dynamic-entity/core/history`; the
+  root entry never loads it, and works on every Node version it did. Importing `/history` from
+  CommonJS needs Node 20.19 or later or 22.12 or later, or a dynamic `import()`.
+- `ngx-dynamic-entity-builder` and `@dynamic-entity/server` depend on `@dynamic-entity/core`
+  `^3.3.0`, and the builder on `ngx-dynamic-entity` `^3.3.0`.
+
+### Added
+- `diffEntityRecords(before, after, config, { migrations, assumeVersion, ... })`: the changes
+  between two saved versions of a record. Both are brought to the config's version with
+  `migrateRecord` first, so a field a migration renamed or moved never reads as an edit, then
+  given row ids with `applyRowIds`, so a 3.1 record without them matches the same record saved
+  since. `null` before is a create, `null` after a delete.
+- `describeEntityChanges(changes, { config, language, ... })`: one sentence per change, with
+  labels in the config's `defaultLanguage` unless `language` says otherwise.
+- `entityAuditAdapter(config)` and `entitySchema(config)`: the `audit-trail-text` adapter and the
+  JSON Schema a config reads as.
+  - Tabs, `flatData`, groups and sub-tabs nest exactly as DE saves them. An array with
+    `children` is a list of rows matched by `$rowId` and named by its first text column.
+  - Labels are language maps, so one stored change reads in every language the config has.
+  - A `{ value, label }` option's stored code reads as its label. An option stored whole, and a
+    lookup list value, is compared by `$key` and read in the reader's language.
+  - A file or image is compared by `url` and named by its file name. An `entity-ref` holds the
+    referenced record's id and reads as that id.
+  - Dates, date-times, numbers and booleans read as dates, digits and Yes / No.
+  - `password` fields, and fields under `maskData` on the field, its tab or the config, are
+    reported without their values, and their values are never stored in the change.
+  - `_configVersion`, `_deletedAt`, other root `_` keys that are not fields, and the second copy
+    of a field moved by `refererField` are ignored.
+- `diffFormConfigs(oldConfig, newConfig, { oldRules, newRules })` and
+  `describeFormChanges(changes, { config })`: history for the config itself. Tabs are matched by
+  id, fields by id within their list (so a field moved between tabs reads as removed and
+  added), options by `$key`, else by a `{ value, label }` option's code, else by their label in
+  `defaultLanguage`, and rules by id. Labels, validators, visibility and `showWhen` read as
+  changes to the field: "Field "Phone" added to Contact", "Contact › Mobile: Label changed from
+  Phone to Mobile", "Option "Inactive" removed from Status". **Rules need ids:** if any rule in
+  either version has none, the rules are compared as one value and read "Rules changed".
 
 ### Fixed
 - `ngx-dynamic-entity`: the rows of an `array` inside a `group`, or inside another array's row,

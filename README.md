@@ -424,6 +424,141 @@ rows are in at that point.
 
 ---
 
+## 🕘 Change history
+
+`@dynamic-entity/core/history` says what changed between two versions of a record, or of a
+form's config, as structured changes and one plain sentence each:
+
+```
+Policy: Sum Insured changed from 250,000 to 275,000
+Settlement › Settlement Line Items › Stock write-off: Amount changed from 17,650 to 18,000
+Settlement: Row "Courtesy vehicle" added to Settlement Line Items
+Settlement: Auditor PIN changed
+```
+
+The diffing and the wording come from
+[`audit-trail-text`](https://www.npmjs.com/package/audit-trail-text). The config supplies
+everything it needs: field labels in every language, how the record nests, which rows are
+which (by `$rowId`, see "Row identity"), how a choice value is labelled, and which fields are
+masked.
+
+### Record history
+
+```typescript
+import { describeEntityChanges, diffEntityRecords, type Change } from '@dynamic-entity/core/history';
+import type { EntityFormConfig, RecordMigration } from '@dynamic-entity/core';
+
+declare const config: EntityFormConfig;
+declare const migrations: RecordMigration[];
+declare const before: Record<string, unknown>;
+declare const after: Record<string, unknown>;
+declare function appendToAuditTable(changes: Change[]): Promise<void>;
+
+export async function onSaved(): Promise<void> {
+  // Store the changes, not the sentences: they read later in any language.
+  const changes = diffEntityRecords(before, after, config, { migrations });
+  await appendToAuditTable(changes);
+
+  describeEntityChanges(changes, { config }); // in the config's defaultLanguage
+  describeEntityChanges(changes, { config, language: 'de' }); // labels in German
+}
+```
+
+- **Migrations first.** `diffEntityRecords` brings both records to the config's `version` with
+  `migrateRecord`, so a field a migration renamed or moved never reads as an edit. Pass the
+  same `migrations` the form uses.
+- **Rows by `$rowId`.** Both records go through `applyRowIds`, so a 3.1 record whose rows have
+  no ids still matches the same record saved since. A row is named by its first text column.
+- **Choices by their label.** A `{ value, label }` option stores a code, which is shown by its
+  label. An option stored whole is compared by `$key`, so renaming the option is not an edit to
+  the records that hold it. Both read in the reader's language.
+- **Masked values stay out.** A `password` field, and anything marked `maskData` on the field,
+  its tab or the config, reads "Auditor PIN changed". Its values are not in the change at all,
+  so they never reach the audit table.
+- **Ignored:** `_configVersion`, `_deletedAt`, `_id` and any other root key starting with `_`
+  that is not a field, and the second copy of a field moved by `refererField`.
+- A file reads by its name and is compared by its `url`. An `entity-ref` stores the referenced
+  record's id, and reads as that id.
+- `null` before is a create and `null` after a delete.
+
+`entityAuditAdapter(config)` is the `audit-trail-text` adapter underneath, for calling its
+`diffRecords` yourself. Run `applyRowIds` on both records first.
+
+### Showing history in a tab
+
+The sentences are plain text, so Angular escapes them like any other value. A history tab
+registered as a common module can show them:
+
+```typescript
+import { Component, Input } from '@angular/core';
+import { describeEntityChanges, type Change } from '@dynamic-entity/core/history';
+import type { EntityFormConfig } from '@dynamic-entity/core';
+
+@Component({
+  selector: 'app-history-tab',
+  standalone: true,
+  template: `
+    <ul>
+      @for (sentence of sentences; track $index) {
+        <li>{{ sentence.text }}</li>
+      }
+    </ul>
+  `,
+})
+export class HistoryTabComponent {
+  @Input({ required: true }) config!: EntityFormConfig;
+  @Input() language = 'en';
+  /** Changes as `diffEntityRecords` returned them, from your audit table. */
+  @Input() changes: Change[] = [];
+
+  get sentences() {
+    return describeEntityChanges(this.changes, { config: this.config, language: this.language });
+  }
+}
+```
+
+Each sentence also has `parts`, so a template can bold field names or values without parsing
+the text.
+
+### Form history
+
+`diffFormConfigs` does the same for the config itself, and for its rules:
+
+```typescript
+import { describeFormChanges, diffFormConfigs } from '@dynamic-entity/core/history';
+import type { EntityFormConfig, FormRule } from '@dynamic-entity/core';
+
+declare const oldConfig: EntityFormConfig;
+declare const newConfig: EntityFormConfig;
+declare const oldRules: FormRule[];
+declare const newRules: FormRule[];
+
+const changes = diffFormConfigs(oldConfig, newConfig, { oldRules, newRules });
+describeFormChanges(changes, { config: newConfig }).map(sentence => sentence.text);
+// Field "Phone" added to Contact
+// Contact › Mobile: Label changed from Phone to Mobile
+// Option "Inactive" removed from Status
+// Fields reordered in Contact
+```
+
+- Tabs are matched by id and fields by id within their list. A field moved to another tab reads
+  as removed from one and added to the other.
+- Options are matched by `$key`, else by the code a `{ value, label }` option stores, else by
+  their label in the config's `defaultLanguage`.
+- Labels, validators, visibility and `showWhen` are reported as changes to the field.
+- **Rules need ids.** Rules are matched by `id`. If any rule in either version has none, the
+  rules are compared as one value, and any change reads only "Rules changed".
+
+### Loading it
+
+`audit-trail-text` is ESM-only, so history has its own entry and the root
+`@dynamic-entity/core` never loads it. Angular, Vite, webpack and any ESM project import
+`@dynamic-entity/core/history` as usual. From CommonJS, `require('@dynamic-entity/core/history')`
+works on Node 20.19 or later and 22.12 or later. On older Node, load it with
+`await import('@dynamic-entity/core/history')`.
+
+---
+
 ## 🔄 Schema versioning
 
 `EntityFormConfig.version` and a record's `_configVersion` describe which shape a record was

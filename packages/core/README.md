@@ -29,6 +29,7 @@ npm install @dynamic-entity/core
 - **Spreadsheet import engine** — `deriveImportColumns`, `suggestMapping` and `applyMapping` turn sheet rows into records against a config, applying the field validators and the rules the way the form does. The engine also includes a streaming CSV reader that detects `,` / `;` / tab (`createCsvReader`, `parseCsv`), numbered-header matching for repeating fields, `arrayBoundFor` to size them from a sheet, and `cellText` for rendering typed cells. It is pure, so the same engine runs in the browser and in `@dynamic-entity/server`.
 - **Record migration** — `migrateRecord`, `needsMigration`, `stampRecord` and `validateMigrations` move a saved record forward as a config's `version` changes. Pure, so the same steps run in the browser and on a server.
 - **Row identity** — every object row of an `array` field carries a `$rowId` (`ROW_ID_KEY`). `applyRowIds` and `rowIdMigration` give rows saved before 3.2 positional ids, `legacy-1`, `legacy-2`, …, the same on every run; `newRowId` makes a fresh one. See the root README's "Row identity" section.
+- **Change history** — `@dynamic-entity/core/history`: `diffEntityRecords` and `describeEntityChanges` turn two versions of a record into structured changes and one sentence each, in any language, through [`audit-trail-text`](https://www.npmjs.com/package/audit-trail-text). `diffFormConfigs` does the same for a form's config and rules. ESM-only underneath: from CommonJS it needs Node 20.19+ or 22.12+, or `import()`. See the root README's "Change history" section.
 
 ---
 
