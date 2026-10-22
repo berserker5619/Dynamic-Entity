@@ -76,6 +76,22 @@ async function employee(page: Page, firstName: string): Promise<Row> {
 const addresses = (record: Row) =>
   ((record['addressesTab'] as Row | undefined)?.['addresses'] ?? []) as Row[];
 
+/**
+ * An imported row's values, without the fresh `$rowId` import gives it (3.2). The id is checked
+ * here, once per row, so the assertions below can name the values alone.
+ */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const values = (rows: Row[]): Row[] => {
+  const ids = rows.map(row => row['$rowId']);
+  for (const id of ids) expect(id).toMatch(UUID);
+  expect(new Set(ids).size).toBe(ids.length);
+  return rows.map(row => {
+    const rest = { ...row };
+    delete rest['$rowId'];
+    return rest;
+  });
+};
+
 /** Line endings as a spreadsheet writes them. */
 const sheet = (...lines: string[]) => lines.map(line => `${line}\r\n`).join('');
 
@@ -121,7 +137,7 @@ test.describe('array columns', () => {
     await commit(page, 1);
     // Slots are where a value is read from, not where it is stored: empty rows are dropped,
     // so the sixth slot's city is the record's second address.
-    expect(addresses(await employee(page, 'Grace'))).toEqual([{ street: '1 Navy Yard' }, { city: 'Arlington' }]);
+    expect(values(addresses(await employee(page, 'Grace')))).toEqual([{ street: '1 Navy Yard' }, { city: 'Arlington' }]);
   });
 
   test('Add a row adds one slot per child, and a value mapped there is imported', async ({ page }) => {
@@ -140,7 +156,7 @@ test.describe('array columns', () => {
 
     await page.getByTestId(`import-select-${ADDRESSES}.3.street`).selectOption({ label: 'Extra Street' });
     await commit(page, 1);
-    expect(addresses(await employee(page, 'Hedy'))).toEqual([{ street: '9 Frequency Hop' }]);
+    expect(values(addresses(await employee(page, 'Hedy')))).toEqual([{ street: '9 Frequency Hop' }]);
   });
 });
 
