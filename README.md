@@ -544,7 +544,9 @@ describeFormChanges(changes, { config: newConfig }).map(sentence => sentence.tex
 - Tabs are matched by id and fields by id within their list. A field moved to another tab reads
   as removed from one and added to the other.
 - Options are matched by `$key`, else by the code a `{ value, label }` option stores, else by
-  their label in the config's `defaultLanguage`.
+  their label in the config's `defaultLanguage`. **Options need a `$key`, a code or unique
+  labels to be tracked reliably:** an option matched by its label reads as removed and added
+  when it is relabelled, and two options with one label are told apart only by position.
 - Labels, validators, visibility and `showWhen` are reported as changes to the field.
 - **Rules need ids.** Rules are matched by `id`. If any rule in either version has none, the
   rules are compared as one value, and any change reads only "Rules changed".
