@@ -551,6 +551,31 @@ describeFormChanges(changes, { config: newConfig }).map(sentence => sentence.tex
 - **Rules need ids.** Rules are matched by `id`. If any rule in either version has none, the
   rules are compared as one value, and any change reads only "Rules changed".
 
+Every tab, field and option is stored with its name in every language the config has, so
+form history reads in the reader's `language`, like record history. The wording is English.
+To use another language, pass `messages`, with `{item}`, `{itemNoun}`, `{parent}`, `{list}`,
+`{field}`, `{before}`, `{after}` and `{context}` as tokens (`formChangeMessages` lists every key).
+Pass `translateLabel` to translate the words around the names, such as "Field" or "Label":
+
+```typescript
+import { describeFormChanges, type Change } from '@dynamic-entity/core/history';
+
+declare const changes: Change[];
+const WORDS: Record<string, string> = { Field: 'Feld', Label: 'Bezeichnung' };
+
+describeFormChanges(changes, {
+  language: 'de',
+  messages: {
+    ITEM_ADDED: '{itemNoun} „{item}“ zu {parent} hinzugefügt',
+    ITEM_REMOVED: '{itemNoun} „{item}“ aus {parent} entfernt',
+    FIELD_CHANGED: '{field} von {before} zu {after} geändert',
+  },
+  translateLabel: label => WORDS[label] ?? label,
+});
+// Feld „E-Mail“ zu Kontakt hinzugefügt
+// Kontakt › Handy: Bezeichnung von Telefon zu Handy geändert
+```
+
 ### Loading it
 
 `audit-trail-text` is ESM-only, so history has its own entry and the root

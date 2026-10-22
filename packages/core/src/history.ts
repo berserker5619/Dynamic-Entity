@@ -15,5 +15,6 @@ export {
 } from './history-records';
 export type { DescribeEntityChangesOptions, DiffEntityRecordsOptions, EntityAuditAdapterOptions } from './history-records';
 export { describeFormChanges, diffFormConfigs, formChangeMessages } from './history-forms';
+export type { FormMessageKey } from './history-forms';
 export type { DescribeFormChangesOptions, DiffFormConfigsOptions, FormRules } from './history-forms';
 export type { Change, Sentence, SentencePart } from 'audit-trail-text';

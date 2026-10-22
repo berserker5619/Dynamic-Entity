@@ -338,6 +338,103 @@ describe('form history', () => {
     expect(texts(diffFormConfigs(CLAIMS, next))).toEqual([`Field "Weather" added to ${detailsLabel}`]);
   });
 
+  describe('in the reader’s language', () => {
+    const contact = (): EntityFormConfig => ({
+      entity: 'contacts',
+      defaultLanguage: 'en',
+      tabs: [
+        {
+          id: 'contact',
+          label: { en: 'Contact', de: 'Kontakt' },
+          fields: [
+            { id: 'phone', type: 'phone', label: { en: 'Phone', de: 'Telefon' } },
+            {
+              id: 'status',
+              type: 'dropdown',
+              label: { en: 'Status', de: 'Status' },
+              options: [
+                { $key: 'active', en: 'Active', de: 'Aktiv' },
+                { $key: 'inactive', en: 'Inactive', de: 'Inaktiv' },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const edited = () => {
+      const next = contact();
+      const fields = next.tabs[0].fields!;
+      fields[0].label = { en: 'Mobile', de: 'Handy' };
+      fields[1].options = fields[1].options!.filter(o => o.$key !== 'inactive');
+      fields.push({ id: 'email', type: 'email', label: { en: 'Email', de: 'E-Mail' } });
+      return next;
+    };
+    /** How an app words form history in German. */
+    const GERMAN = {
+      ITEM_ADDED: '{itemNoun} „{item}“ zu {parent} hinzugefügt',
+      ITEM_REMOVED: '{itemNoun} „{item}“ aus {parent} entfernt',
+      FIELD_CHANGED: '{field} von {before} zu {after} geändert',
+    };
+    const WORDS: Record<string, string> = { Field: 'Feld', Option: 'Option', Label: 'Bezeichnung' };
+
+    it('names every tab, field and option in the reader’s language', () => {
+      const changes = diffFormConfigs(contact(), edited());
+      expect(describeFormChanges(changes, { config: edited() }).map(s => s.text)).toEqual([
+        'Contact › Mobile: Label changed from Phone to Mobile',
+        'Option "Inactive" removed from Status',
+        'Field "Email" added to Contact',
+      ]);
+      expect(
+        describeFormChanges(changes, { language: 'de', messages: GERMAN, translateLabel: label => WORDS[label] ?? label }).map(s => s.text),
+      ).toEqual([
+        'Kontakt › Handy: Bezeichnung von Telefon zu Handy geändert',
+        'Option „Inaktiv“ aus Status entfernt',
+        'Feld „E-Mail“ zu Kontakt hinzugefügt',
+      ]);
+    });
+
+    it('names them in the reader’s language even with the English wording', () => {
+      const changes = diffFormConfigs(contact(), edited());
+      expect(describeFormChanges(changes, { language: 'de' }).map(s => s.text)).toEqual([
+        'Kontakt › Handy: Label changed from Telefon to Handy',
+        'Option "Inaktiv" removed from Status',
+        'Field "E-Mail" added to Kontakt',
+      ]);
+      // A language the labels do not have falls back to English; a regional one to its base.
+      expect(describeFormChanges(changes, { language: 'fr' })[2].text).toBe('Field "Email" added to Contact');
+      expect(describeFormChanges(changes, { locale: 'de-CH' })[2].text).toBe('Field "E-Mail" added to Kontakt');
+      expect(describeFormChanges(changes, { config: { ...edited(), defaultLanguage: 'de' } })[2].text).toBe('Field "E-Mail" added to Kontakt');
+    });
+
+    it('lets messages place the context and word a root item and a reorder', () => {
+      const before = contact();
+      const after = contact();
+      after.tabs[0].fields!.reverse();
+      after.tabs.push({ id: 'notes', label: { en: 'Notes', de: 'Notizen' }, fields: [] });
+      after.tabs[0].fields![0].label = { en: 'State', de: 'Zustand' };
+      const changes = diffFormConfigs(before, after);
+      const de = describeFormChanges(changes, {
+        language: 'de',
+        messages: {
+          'ITEM_ADDED:root': 'Reiter „{item}“ hinzugefügt',
+          LIST_REORDERED: '{list} in {parent} umsortiert',
+          FIELD_CHANGED: '{field} ({context}): {before} → {after}',
+        },
+        translateLabel: label => ({ Fields: 'Felder', Label: 'Bezeichnung' })[label] ?? label,
+      }).map(s => s.text);
+      expect(de).toEqual(
+        expect.arrayContaining(['Felder in Kontakt umsortiert', 'Bezeichnung (Kontakt › Zustand): Status → Zustand', 'Reiter „Notizen“ hinzugefügt']),
+      );
+    });
+
+    it('names a tab or field with no label by its id', () => {
+      const bare = (): EntityFormConfig => ({ entity: 'b', tabs: [{ id: 'main', label: {}, fields: [] }] });
+      const next = bare();
+      next.tabs[0].fields!.push({ id: 'note', type: 'text', label: {} });
+      expect(texts(diffFormConfigs(bare(), next))).toEqual(['Field "note" added to main']);
+    });
+  });
+
   it('reports re-ordered fields', () => {
     const next = clone(CFT);
     tab(next, 'generalTab').fields!.reverse();

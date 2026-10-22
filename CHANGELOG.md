@@ -8,6 +8,28 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.3.1]
+
+**Form history in the reader's language.** Changes are stored and compared exactly as in
+3.3.0. What differs is the names they carry and how they are worded.
+
+### Changed
+- `diffFormConfigs` names every tab, field and option by its label in every language the
+  config has. 3.3.0 named them only in `defaultLanguage`. `describeFormChanges` reads the names
+  in the reader's `language`: "Feld „E-Mail“ zu Kontakt hinzugefügt" where 3.3.0 wrote
+  "Field "Email" added to Contact" for a German reader. Changes stored by 3.3.0 still read, in
+  the language they were stored in.
+- `describeFormChanges` takes `messages` as templates, the way record history does:
+  `{item}`, `{itemNoun}`, `{parent}`, `{list}`, `{field}`, `{before}`, `{after}` and `{context}`,
+  with `:root` and `:redacted` variants. `formChangeMessages` now holds the English templates
+  as strings, and `FormMessageKey` names every key. A `FIELD_*` template without `{context}`
+  is still prefixed with "Contact › Phone: ".
+- The words around the names, such as "Field", "Label" and "Options", stay plain English, so
+  `translateLabel` translates them into any language. A built-in language map would bypass
+  `translateLabel` and lock other languages out.
+
+---
+
 ## [3.3.0]
 
 **Change history, for records and for form configs.** A new entry,

@@ -31,9 +31,12 @@ const flag = (title: string): Doc => ({ title, type: 'boolean' });
 const num = (title: string): Doc => ({ title, type: 'number' });
 
 /**
- * The schema of a config, as `diffFormConfigs` normalises it. `name` is the label in the
- * config's default language: it names an item in a sentence and is never reported itself —
- * `label`, the whole language map, is.
+ * The schema of a config, as `diffFormConfigs` normalises it.
+ *
+ * A tab, field or option is named by its `label`, the whole language map, so a stored change
+ * carries the name in every language and reads in the reader's. The words around the names
+ * ("Field", "Label", "Options") are plain English, so `translateLabel` can put them in any
+ * language: a language map would be read as it is and never reach it.
  */
 const FORM_SCHEMA: Doc = {
   title: 'Form',
@@ -49,7 +52,7 @@ const FORM_SCHEMA: Doc = {
     rulesValue: { title: 'Rules', type: 'string', 'x-sensitive': true },
   },
   $defs: {
-    tabList: { title: 'Tabs', type: 'array', 'x-itemNoun': 'Tab', 'x-key': 'id', 'x-label': '{name}', items: { $ref: '#/$defs/tab' } },
+    tabList: { title: 'Tabs', type: 'array', 'x-itemNoun': 'Tab', 'x-key': 'id', 'x-label': '{label}', items: { $ref: '#/$defs/tab' } },
     tab: {
       title: 'Tab',
       type: 'object',
@@ -64,7 +67,7 @@ const FORM_SCHEMA: Doc = {
         children: { $ref: '#/$defs/tabList' },
       },
     },
-    fieldList: { title: 'Fields', type: 'array', 'x-itemNoun': 'Field', 'x-key': 'id', 'x-label': '{name}', items: { $ref: '#/$defs/field' } },
+    fieldList: { title: 'Fields', type: 'array', 'x-itemNoun': 'Field', 'x-key': 'id', 'x-label': '{label}', items: { $ref: '#/$defs/field' } },
     field: {
       title: 'Field',
       type: 'object',
@@ -103,7 +106,7 @@ const FORM_SCHEMA: Doc = {
           type: 'array',
           'x-itemNoun': 'Option',
           'x-key': 'key',
-          'x-label': '{name}',
+          'x-label': '{label}',
           items: { type: 'object', properties: { key: text('Key'), label: atomicText('Label') } },
         },
         children: { $ref: '#/$defs/fieldList' },
@@ -168,13 +171,7 @@ export function diffFormConfigs(
     formAdapter,
     // Validators gained on a field read one by one ("Required set to Yes"), not as an object.
     { expandObjects: true, ...diffOptions },
-  ).filter(change => !isNameChange(change));
-}
-
-/** `name` mirrors `label` in one language, so a change to it is always reported as the label's. */
-function isNameChange(change: Change): boolean {
-  const path = change.afterPath ?? change.beforePath ?? '';
-  return change.code.startsWith('FIELD_') && /\/name$/.test(path) && path !== '/name';
+  );
 }
 
 /** A config as the form schema reads it. */
@@ -198,7 +195,6 @@ function formDocument(config: EntityFormConfig, rules: readonly FormRule[] | und
 function tabDocument(tab: NestedTabConfig, lang: string): Doc {
   return {
     id: tab.id,
-    name: resolveLabel(tab.label, lang) || tab.id,
     label: textMap(tab.label),
     visibility: tab.visibility,
     flatData: tab.flatData,
@@ -213,7 +209,6 @@ function fieldDocument(field: NestedFieldConfig, lang: string): Doc {
   const v = field.validators;
   return {
     id: field.id,
-    name: resolveLabel(field.label, lang) || field.id,
     label: textMap(field.label),
     type: field.type,
     visibility: field.visibility,
@@ -248,14 +243,16 @@ function optionDocuments(options: unknown[] | undefined, lang: string): Doc[] | 
   return options.map(option => {
     const raw = option && typeof option === 'object' ? (option as Record<string, unknown>) : { en: String(option) };
     const labelSource = 'label' in raw ? raw['label'] : 'value' in raw ? raw['value'] : raw;
-    const label = textMap(labelSource) ?? { [lang]: String(raw['value'] ?? '') };
-    const name = resolveLabel(label, lang);
+    let label = textMap(labelSource) ?? { [lang]: String(raw['value'] ?? '') };
     const value = 'value' in raw && ['string', 'number'].includes(typeof raw['value']) ? String(raw['value']) : undefined;
-    let key = optionKeyOf(raw) ?? value ?? name;
+    let key = optionKeyOf(raw) ?? value ?? resolveLabel(label, lang);
     const count = (seen.get(key) ?? 0) + 1;
     seen.set(key, count);
-    if (count > 1) key = `${key} #${count}`;
-    return { key, name: count > 1 ? `${name} #${count}` : name, label };
+    if (count > 1) {
+      key = `${key} #${count}`;
+      label = Object.fromEntries(Object.entries(label).map(([language, text]) => [language, `${text} #${count}`]));
+    }
+    return { key, label };
   });
 }
 
@@ -299,62 +296,139 @@ function stableJson(value: unknown): string {
 
 // ─── Describing form changes ─────────────────────────────────────────────────
 
-/** The items a change sits inside, outermost first: "Contact", "Status". */
-function itemsAround(change: Change): string[] {
-  return (change.display.itemLabels ?? []).map(index => change.labels[index]).filter(Boolean);
-}
-
-const prefixed = (change: Change, sentence: string): string => {
-  const around = itemsAround(change);
-  return around.length ? `${around.join(' › ')}: ${sentence}` : sentence;
-};
 /**
- * The tab or field an added, removed or reordered item belongs to. An item change's path ends
- * with the item itself ("Contact", "Phone"), so its parent is the one before it.
+ * The sentences form history writes, one per change, as templates with tokens:
+ *
+ * - `{item}` the tab, field, option or rule added or removed, `{itemNoun}` what it is ("Field")
+ * - `{parent}` the tab or field it belongs to, `{list}` the list it is in ("Fields")
+ * - `{field}` the property that changed, `{before}` and `{after}` its values
+ * - `{context}` the tab and field a property sits in: "Contact › Phone"
+ *
+ * Names are in the reader's language. A `FIELD_*` template without `{context}` gets
+ * "{context}: " in front when there is one. A `:root` variant is used for an item with no
+ * parent, such as a tab, and `:redacted` for the rules compared as one value.
  */
-const parentOf = (change: Change): string | undefined => {
-  const around = itemsAround(change);
-  return change.code === 'LIST_REORDERED' ? around.at(-1) : around.at(-2);
+export type FormMessageKey =
+  | 'ITEM_ADDED'
+  | 'ITEM_ADDED:root'
+  | 'ITEM_REMOVED'
+  | 'ITEM_REMOVED:root'
+  | 'LIST_REORDERED'
+  | 'LIST_REORDERED:root'
+  | 'FIELD_CHANGED'
+  | 'FIELD_CHANGED:redacted'
+  | 'FIELD_SET'
+  | 'FIELD_SET:redacted'
+  | 'FIELD_CLEARED'
+  | 'FIELD_CLEARED:redacted'
+  | 'RECORD_CREATED'
+  | 'RECORD_DELETED';
+
+/** English. An app adds a language by passing its own `messages`, as for record history. */
+export const formChangeMessages: Readonly<Record<FormMessageKey, string>> = {
+  ITEM_ADDED: '{itemNoun} "{item}" added to {parent}',
+  'ITEM_ADDED:root': '{itemNoun} "{item}" added',
+  ITEM_REMOVED: '{itemNoun} "{item}" removed from {parent}',
+  'ITEM_REMOVED:root': '{itemNoun} "{item}" removed',
+  LIST_REORDERED: '{list} reordered in {parent}',
+  'LIST_REORDERED:root': '{list} reordered',
+  FIELD_CHANGED: '{field} changed from {before} to {after}',
+  'FIELD_CHANGED:redacted': '{field} changed',
+  FIELD_SET: '{field} set to {after}',
+  'FIELD_SET:redacted': '{field} set',
+  FIELD_CLEARED: '{field} cleared (was {before})',
+  'FIELD_CLEARED:redacted': '{field} cleared',
+  RECORD_CREATED: 'Form created',
+  RECORD_DELETED: 'Form deleted',
 };
 
-/** Sentences that name the tab or field a change is in, not the lists it passed through. */
-export const formChangeMessages: Partial<Record<string, Template>> = {
-  ITEM_ADDED: (change: Change, v: TemplateValues) => {
-    const parent = parentOf(change);
-    return `${v.itemNoun} "${v.item}" added${parent ? ` to ${parent}` : ''}`;
-  },
-  ITEM_REMOVED: (change: Change, v: TemplateValues) => {
-    const parent = parentOf(change);
-    return `${v.itemNoun} "${v.item}" removed${parent ? ` from ${parent}` : ''}`;
-  },
-  LIST_REORDERED: (change: Change, v: TemplateValues) => {
-    const parent = parentOf(change);
-    return `${v.list} reordered${parent ? ` in ${parent}` : ''}`;
-  },
-  FIELD_CHANGED: (change: Change, v: TemplateValues) => prefixed(change, `${v.field} changed from ${v.before} to ${v.after}`),
-  'FIELD_CHANGED:redacted': (change: Change, v: TemplateValues) => prefixed(change, `${v.field} changed`),
-  FIELD_SET: (change: Change, v: TemplateValues) => prefixed(change, `${v.field} set to ${v.after}`),
-  'FIELD_SET:redacted': (change: Change, v: TemplateValues) => prefixed(change, `${v.field} set`),
-  FIELD_CLEARED: (change: Change, v: TemplateValues) => prefixed(change, `${v.field} cleared (was ${v.before})`),
-  'FIELD_CLEARED:redacted': (change: Change, v: TemplateValues) => prefixed(change, `${v.field} cleared`),
-};
-
-export interface DescribeFormChangesOptions extends DescribeOptions {
+export interface DescribeFormChangesOptions extends Omit<DescribeOptions, 'messages'> {
   /** The config the changes came from: its `defaultLanguage` is the default `language`. */
   config?: EntityFormConfig;
+  /** Templates that win over `formChangeMessages`: how an app words form history in its language. */
+  messages?: Partial<Record<FormMessageKey, string>>;
 }
 
 /**
- * One sentence per form change: "Field "Phone" added to Contact", "Contact › Phone: Label
- * changed from Phone to Mobile", "Option "Inactive" removed from Status". `messages` you pass
- * win over these.
+ * One sentence per form change, with every tab, field and option named in the reader's
+ * `language` — by default the config's `defaultLanguage`:
+ *
+ *     Field "Phone" added to Contact
+ *     Contact › Mobile: Label changed from Phone to Mobile
+ *     Option "Inactive" removed from Status
+ *
+ * The wording is English unless `messages` say otherwise; `translateLabel` translates the
+ * words around the names ("Field", "Label").
  */
 export function describeFormChanges(changes: readonly Change[], options: DescribeFormChangesOptions = {}): Sentence[] {
   const { config, messages, ...rest } = options;
-  const language = rest.language ?? config?.defaultLanguage;
+  const language = rest.language ?? config?.defaultLanguage ?? (rest.locale ?? 'en').split('-')[0];
+  const fallback = rest.fallbackLanguage ?? 'en';
+  const words: Record<string, string> = { ...formChangeMessages, ...messages };
+
+  const sentence = (key: FormMessageKey, change: Change, v: TemplateValues): string => {
+    const names = namesOf(change, language, fallback);
+    const itemAt = change.display.itemLabels ?? [];
+    const isItem = change.code === 'ITEM_ADDED' || change.code === 'ITEM_REMOVED';
+    // An item change's path ends with the item itself; its parent is the item before it.
+    const around = itemAt.filter(index => !(isItem && index === change.labels.length - 1)).map(index => names[index]);
+    const tokens: Record<string, string> = {
+      itemNoun: v.itemNoun,
+      item: isItem ? (names[change.labels.length - 1] ?? v.item) : v.item,
+      parent: around.at(-1) ?? '',
+      list: v.list,
+      field: v.field,
+      before: v.before,
+      after: v.after,
+      context: around.join(' › '),
+    };
+    const root = !tokens['parent'] && (isItem || change.code === 'LIST_REORDERED');
+    let template = words[root ? `${key}:root` : key] ?? words[key] ?? '';
+    if (change.code.startsWith('FIELD_') && tokens['context'] && !template.includes('{context}')) {
+      template = `{context}: ${template}`;
+    }
+    return template.replace(/\{(\w+)\}/g, (match, token: string) => tokens[token] ?? match);
+  };
+
+  const template =
+    (key: FormMessageKey): Template =>
+    (change, v) =>
+      sentence(change.redacted && words[`${key}:redacted`] !== undefined ? (`${key}:redacted` as FormMessageKey) : key, change, v);
+
   return describe(changes, {
     ...rest,
-    ...(language ? { language } : {}),
-    messages: { ...(formChangeMessages as DescribeOptions['messages']), ...messages },
+    language,
+    messages: {
+      ITEM_ADDED: template('ITEM_ADDED'),
+      ITEM_REMOVED: template('ITEM_REMOVED'),
+      LIST_REORDERED: template('LIST_REORDERED'),
+      FIELD_CHANGED: template('FIELD_CHANGED'),
+      'FIELD_CHANGED:redacted': template('FIELD_CHANGED'),
+      FIELD_SET: template('FIELD_SET'),
+      'FIELD_SET:redacted': template('FIELD_SET'),
+      FIELD_CLEARED: template('FIELD_CLEARED'),
+      'FIELD_CLEARED:redacted': template('FIELD_CLEARED'),
+      RECORD_CREATED: template('RECORD_CREATED'),
+      RECORD_DELETED: template('RECORD_DELETED'),
+    },
   });
+}
+
+/** Every label on a change's path in `language`, from the language maps stored with it. */
+function namesOf(change: Change, language: string, fallback: string): string[] {
+  const maps = change.display.i18n?.labels ?? [];
+  return change.labels.map((label, index) => {
+    const map = maps[index];
+    return map ? pickLanguage(map, language, fallback) || label : label;
+  });
+}
+
+/** The exact language, then its base (`de` for `de-CH`), then `fallback`, then the first there is. */
+function pickLanguage(map: Record<string, string>, language: string, fallback: string): string {
+  const keys = Object.keys(map).filter(key => !key.startsWith('$'));
+  const find = (wanted: string) =>
+    keys.find(key => key.toLowerCase() === wanted.toLowerCase()) ??
+    keys.find(key => key.toLowerCase() === wanted.toLowerCase().split('-')[0]);
+  const key = find(language) ?? find(fallback) ?? keys[0];
+  return key === undefined ? '' : map[key];
 }
