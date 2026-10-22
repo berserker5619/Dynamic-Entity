@@ -105,8 +105,39 @@ export class FormStructureService {
     const existing = item && typeof item === 'object' ? (item as Record<string, unknown>)[ROW_ID_KEY] : undefined;
     rowGroup[ROW_ID_KEY] = this.fb.control(existing ?? newRowId());
     const group = this.fb.group(rowGroup);
-    if (item && typeof item === 'object') group.patchValue(item as Record<string, unknown>);
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      this.patchFields(group, field.children, item as Record<string, unknown>);
+    }
     return group;
+  }
+
+  /**
+   * Write one field's value into its control, at any depth.
+   *
+   * `patchValue` cannot do this alone: on a `FormArray` it only fills controls that already
+   * exist, and a freshly built array has none — so the rows of an array inside a group, or
+   * inside another array's row, had nowhere to land and were lost on the next save (#38). An
+   * array's rows are therefore rebuilt from the value, and a group is walked field by field so
+   * every array below it gets the same treatment.
+   */
+  private patchField(ctrl: AbstractControl, field: NestedFieldConfig | undefined, value: unknown): void {
+    if (ctrl instanceof FormArray && Array.isArray(value)) {
+      ctrl.clear({ emitEvent: false });
+      for (const item of value) ctrl.push(this.buildArrayRow(field, item), { emitEvent: false });
+    } else if (field?.type === 'group' && ctrl instanceof FormGroup && value && typeof value === 'object' && !Array.isArray(value)) {
+      this.patchFields(ctrl, field.children, value as Record<string, unknown>);
+    } else {
+      ctrl.patchValue(value, { emitEvent: false });
+    }
+  }
+
+  /** `patchField` for each of `fields` the value holds. Keys with no field are ignored, as `patchValue` ignores them. */
+  private patchFields(group: FormGroup, fields: NestedFieldConfig[] | undefined, value: Record<string, unknown>): void {
+    for (const field of fields ?? []) {
+      if (!field?.id || value[field.id] === undefined) continue;
+      const ctrl = group.controls[field.id];
+      if (ctrl) this.patchField(ctrl, field, value[field.id]);
+    }
   }
 
   /** The `FormGroup` a tab's fields live in, honouring `flatData`. */
@@ -268,7 +299,7 @@ export class FormStructureService {
               ctrl.push(this.buildArrayRow(fieldsById.get(field.id), item));
             }
           } else {
-            ctrl.patchValue(val, { emitEvent: false });
+            this.patchField(ctrl, field, val);
           }
           patchedFieldIds.add(field.id);
         }

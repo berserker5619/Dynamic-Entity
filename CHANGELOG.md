@@ -8,6 +8,18 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- `ngx-dynamic-entity`: the rows of an `array` inside a `group`, or inside another array's row,
+  now load into the form, and so survive a save
+  ([#38](https://github.com/berserker5619/Dynamic-Entity/issues/38)). Only a tab-level array got
+  its rows before. Deeper ones went through `patchValue`, which fills only the `FormArray`
+  controls that already exist, so the rows were not shown and the next save dropped them. Each
+  nested row keeps its `$rowId`.
+
+---
+
 ## [3.2.0]
 
 **Stable row ids for `array` fields.** Every object row of an `array` field with `children`
