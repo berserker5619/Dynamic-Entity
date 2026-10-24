@@ -8,6 +8,21 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.3.2]
+
+### Fixed
+- `entityAuditAdapter` and `diffEntityRecords` now build history for an `array` on a tab or
+  config marked `maskData`. 3.3.1 threw `SENSITIVE_KEY` for such a config, so no change to it
+  could be recorded: every column inherited the mask, and the row was named by its first text
+  column. A row is now never named by a masked column. A row's `$rowId` and an option's `$key`
+  are identities, not data, and are never marked sensitive, so rows are still matched by id and
+  reported as added, removed or changed. Every value inside them stays masked: none reaches the
+  stored change or the sentence.
+- The same throw for an unmasked array whose first text column is marked `maskData` or is a
+  `password`. The row is now named by its first column that is not masked.
+
+---
+
 ## [3.3.1]
 
 **Form history in the reader's language.** Changes are stored and compared exactly as in

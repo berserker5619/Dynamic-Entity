@@ -63,7 +63,10 @@ export interface EntityAuditAdapterOptions {
  *   that id. Dates, date-times, numbers and booleans are typed so they read as dates, digits
  *   and Yes / No.
  * - **Sensitive values.** A `password` field, and any field marked `maskData` — or sitting on
- *   a tab or a config marked `maskData` — is reported without its values.
+ *   a tab or a config marked `maskData` — is reported without its values. A row's `$rowId`
+ *   and an option's `$key` are identities, not data, so they are never sensitive: rows of a
+ *   masked array are still matched and reported, without their values. A row is never named
+ *   by a sensitive column.
  *
  * System fields (`_configVersion`, `_deletedAt`, `_id` and any other root key starting with
  * `_` that is not a field) and the second copy of a field moved by `refererField` are not in
@@ -99,8 +102,12 @@ export function entitySchema(config: EntityFormConfig, options: EntityAuditAdapt
   return root;
 }
 
+function isSensitive(field: NestedFieldConfig, masked: boolean): boolean {
+  return masked || !!field.maskData || field.type === 'password';
+}
+
 function fieldSchema(field: NestedFieldConfig, masked: boolean, lang: string): Schema {
-  const sensitive = masked || !!field.maskData || field.type === 'password';
+  const sensitive = isSensitive(field, masked);
   const base: Schema = { ...titled(field.label, field.id, lang), ...(sensitive ? { 'x-sensitive': true } : {}) };
   const children = field.children ?? [];
 
@@ -112,9 +119,10 @@ function fieldSchema(field: NestedFieldConfig, masked: boolean, lang: string): S
     }
     case 'array': {
       if (!children.length) return { ...base, type: 'array', items: {} };
+      // `$rowId` is the row's identity, so it is never marked sensitive, even in a masked array.
       const properties: Record<string, Schema> = { [ROW_ID_KEY]: { type: 'string' } };
       for (const child of children) if (child?.id) properties[child.id] = fieldSchema(child, sensitive, lang);
-      const name = rowLabelField(children);
+      const name = rowLabelField(children.filter(child => child && !isSensitive(child, sensitive)));
       return {
         ...base,
         type: 'array',
@@ -167,10 +175,14 @@ function choiceSchema(field: NestedFieldConfig, lang: string): Schema {
       }),
     };
   }
+  // `$key` is the option's identity: the schema describes no properties, so it is never sensitive.
   return { type: 'object', 'x-atomic': true, 'x-key': '$key', 'x-label': '@lang' };
 }
 
-/** The child that names a row: the first text column, else the first column of any text-like type. */
+/**
+ * The child that names a row: the first text column, else the first column of any text-like
+ * type. Callers pass only columns that are not sensitive, so a row's name never leaks a value.
+ */
 function rowLabelField(children: NestedFieldConfig[]): string | undefined {
   for (const type of LABEL_TYPES) {
     const match = children.find(child => child?.id && child.type === type);

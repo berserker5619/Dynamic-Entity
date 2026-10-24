@@ -267,6 +267,106 @@ describe('the schema a config reads as', () => {
     expect((entitySchema({ entity: 'bare', tabs: [{ id: 'x', label: undefined as never, fields: [] }] }) as any).properties.x).toMatchObject({ title: 'x' });
   });
 
+  it('builds history for an array on a masked tab: rows are matched by id and reported, values never shown', () => {
+    const cfg: EntityFormConfig = {
+      entity: 'e',
+      tabs: [
+        {
+          id: 'secret',
+          label: { en: 'Secret' },
+          maskData: true,
+          fields: [
+            {
+              id: 'contacts',
+              type: 'array',
+              label: { en: 'Contacts' },
+              children: [
+                { id: 'name', type: 'text', label: { en: 'Name' } },
+                { id: 'level', type: 'dropdown', label: { en: 'Level' }, options: [{ $key: 'hi', en: 'High' }, { $key: 'lo', en: 'Low' }] },
+              ],
+            },
+          ] as NestedFieldConfig[],
+        },
+      ],
+    };
+    const schema = entitySchema(cfg);
+    const contacts = props(schema, 'secret', 'contacts');
+    // Identities are not data: neither the row id nor an option's key is marked sensitive.
+    expect(contacts.items.properties[ROW_ID_KEY]).not.toHaveProperty('x-sensitive');
+    expect(contacts.items.properties.level).toMatchObject({ 'x-sensitive': true, 'x-key': '$key' });
+    expect(contacts.items.properties.level).not.toHaveProperty('properties');
+    // Every column is masked, so no column names a row.
+    expect(contacts).not.toHaveProperty('x-label');
+    expect(() => entityAuditAdapter(cfg)).not.toThrow();
+
+    const before = {
+      secret: {
+        contacts: [
+          { [ROW_ID_KEY]: 'r1', name: 'Ada Secret', level: { $key: 'hi', en: 'High' } },
+          { [ROW_ID_KEY]: 'r2', name: 'Bob Hidden', level: { $key: 'lo', en: 'Low' } },
+        ],
+      },
+    };
+    const after = {
+      secret: {
+        contacts: [
+          { [ROW_ID_KEY]: 'r2', name: 'Bob Renamed', level: { $key: 'hi', en: 'High' } },
+          { [ROW_ID_KEY]: 'r3', name: 'Cy Private', level: { $key: 'lo', en: 'Low' } },
+        ],
+      },
+    };
+    const changes = diffEntityRecords(before, after, cfg);
+    expect(changes.map(c => [c.code, c.beforePath ?? c.afterPath])).toEqual(
+      expect.arrayContaining([
+        ['ITEM_REMOVED', '/secret/contacts/0'],
+        ['ITEM_ADDED', '/secret/contacts/1'],
+        ['FIELD_CHANGED', '/secret/contacts/1/name'],
+        ['FIELD_CHANGED', '/secret/contacts/1/level'],
+      ]),
+    );
+    expect(changes.every(c => c.redacted)).toBe(true);
+
+    const masked = ['Ada Secret', 'Bob Hidden', 'Bob Renamed', 'Cy Private', 'High', 'Low', '"hi"', '"lo"'];
+    const stored = JSON.stringify(changes);
+    const read = [...en(changes, cfg), ...de(changes, cfg)].join('\n');
+    for (const value of masked) {
+      expect(stored).not.toContain(value);
+      expect(read).not.toContain(value);
+    }
+  });
+
+  it('never names a row by a masked column', () => {
+    const cfg: EntityFormConfig = {
+      entity: 'e',
+      tabs: [
+        {
+          id: 't',
+          label: { en: 'T' },
+          fields: [
+            {
+              id: 'rows',
+              type: 'array',
+              label: { en: 'Rows' },
+              children: [
+                { id: 'ssn', type: 'text', label: { en: 'SSN' }, maskData: true },
+                { id: 'pin', type: 'password', label: { en: 'PIN' } },
+                { id: 'email', type: 'email', label: { en: 'Email' } },
+              ],
+            },
+          ] as NestedFieldConfig[],
+        },
+      ],
+    };
+    expect(props(entitySchema(cfg), 't', 'rows')).toMatchObject({ 'x-label': '{email}' });
+    const before = { t: { rows: [{ [ROW_ID_KEY]: 'r1', ssn: '123-45', pin: '9999', email: 'a@x.io' }] } };
+    const after = { t: { rows: [{ [ROW_ID_KEY]: 'r1', ssn: '678-90', pin: '0000', email: 'a@x.io' }] } };
+    const changes = diffEntityRecords(before, after, cfg);
+    expect(changes.map(c => c.code)).toEqual(['FIELD_CHANGED', 'FIELD_CHANGED']);
+    const read = en(changes, cfg).join('\n');
+    expect(read).toContain('a@x.io');
+    for (const value of ['123-45', '678-90', '9999', '0000']) expect(JSON.stringify(changes) + read).not.toContain(value);
+  });
+
   it('reads coded multi-select values by their labels', () => {
     const before = savedCft();
     const after = clone(before);

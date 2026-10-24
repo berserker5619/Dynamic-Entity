@@ -474,7 +474,9 @@ export async function onSaved(): Promise<void> {
   the records that hold it. Both read in the reader's language.
 - **Masked values stay out.** A `password` field, and anything marked `maskData` on the field,
   its tab or the config, reads "Auditor PIN changed". Its values are not in the change at all,
-  so they never reach the audit table.
+  so they never reach the audit table. A row's `$rowId` and an option's `$key` are identities,
+  not data, so the rows of a masked array are still matched and reported, without their values.
+  A row is never named by a masked column.
 - **Ignored:** `_configVersion`, `_deletedAt`, `_id` and any other root key starting with `_`
   that is not a field, and the second copy of a field moved by `refererField`.
 - A file reads by its name and is compared by its `url`. An `entity-ref` stores the referenced
