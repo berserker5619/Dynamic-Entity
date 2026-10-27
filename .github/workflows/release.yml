@@ -148,10 +148,11 @@ jobs:
           for PKG in packages/core packages/ngx-dynamic-entity packages/ngx-dynamic-entity-builder packages/server; do
             NAME=$(node -p "require('./$PKG/package.json').name")
             VERSION=$(node -p "require('./$PKG/package.json').version")
+            PUBLISHED=$(npm view "$NAME@$VERSION" version 2>/dev/null || true)
             if [ "$VERSION" = "$TAG" ]; then
               MATCHED=1
               echo "$NAME is $VERSION (matches tag $TAG)"
-            elif npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            elif [ "$PUBLISHED" = "$VERSION" ]; then
               echo "$NAME is $VERSION (already on npm)"
             else
               echo "::error::$NAME is $VERSION: neither equals tag $TAG nor exists on npm"
