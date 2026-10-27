@@ -8,6 +8,17 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.3.3]
+
+### Fixed
+- Secondary entry points (`ngx-dynamic-entity/xlsx`) now declare a `typesVersions` map in
+  the published `package.json`. On Angular 17 where `moduleResolution` defaults to `node`
+  (Node10), TypeScript ignores `package.json#exports`; `typesVersions` maps every secondary
+  entry point to its `.d.ts` bundle so `import ... from "ngx-dynamic-entity/xlsx"` resolves
+  without `TS2307`.
+
+---
+
 ## [3.3.2]
 
 ### Fixed

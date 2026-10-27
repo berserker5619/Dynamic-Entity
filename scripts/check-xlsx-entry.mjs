@@ -72,6 +72,26 @@ if (manifest.dependencies?.exceljs !== undefined) problems.push('the published m
 if (manifest.dependencies?.['sheet-to-schema'] === undefined) problems.push('the published manifest does not depend on sheet-to-schema, which the default parser imports.');
 if (!manifest.exports?.['./xlsx']) problems.push('the published manifest does not export ./xlsx.');
 
+// 4. Secondary entry points must be mapped in typesVersions for TS Node10 resolution.
+const NGX_DIR = path.join(ROOT, 'packages/ngx-dynamic-entity');
+const secondaryEntries = readdirSync(NGX_DIR, { withFileTypes: true })
+  .filter(d => d.isDirectory() && !SKIP.has(d.name))
+  .filter(d => existsSync(path.join(NGX_DIR, d.name, 'ng-package.json')))
+  .map(d => d.name);
+
+for (const entry of secondaryEntries) {
+  const mapped = manifest.typesVersions?.['*']?.[entry];
+  if (!mapped || !Array.isArray(mapped) || mapped.length === 0) {
+    problems.push(`the published manifest typesVersions["*"] does not map secondary entry "${entry}".`);
+  } else {
+    for (const target of mapped) {
+      if (!existsSync(path.join(DIST, target))) {
+        problems.push(`the published manifest typesVersions["*"]["${entry}"] target "${target}" does not exist in dist.`);
+      }
+    }
+  }
+}
+
 if (problems.length) {
   console.error('\nThe xlsx entry boundary does not hold:\n');
   for (const problem of problems) console.error(`  - ${problem}`);

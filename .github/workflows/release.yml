@@ -143,25 +143,28 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           TAG="${GITHUB_REF_NAME#v}"
-          FAILED=0
+          MATCHED=0
           for PKG in packages/core packages/ngx-dynamic-entity packages/ngx-dynamic-entity-builder packages/server; do
             VERSION=$(node -p "require('./$PKG/package.json').version")
-            if [ "$VERSION" != "$TAG" ]; then
-              echo "::error::$PKG is $VERSION but the tag is $TAG"
-              FAILED=1
+            if [ "$VERSION" = "$TAG" ]; then
+              MATCHED=1
             fi
           done
+          if [ "$MATCHED" = "0" ]; then
+            echo "::error::Tag $TAG does not match any package version"
+            exit 1
+          fi
           # CORE_VERSION is compared across a network by the server and the client transport,
           # so a stale one would report agreement between two engines that had diverged.
           # packages/core/build-manifest.mjs already refuses to build on a mismatch; this says
-          # so against the tag as well, where the message names the tag.
+          # so against core's version as well.
+          CORE_PKG=$(node -p "require('./packages/core/package.json').version")
           CORE_CONST=$(node -p "/export const CORE_VERSION = '([^']+)'/.exec(require('fs').readFileSync('packages/core/src/constants.ts','utf8'))[1]")
-          if [ "$CORE_CONST" != "$TAG" ]; then
-            echo "::error::CORE_VERSION is $CORE_CONST but the tag is $TAG"
-            FAILED=1
+          if [ "$CORE_CONST" != "$CORE_PKG" ]; then
+            echo "::error::CORE_VERSION is $CORE_CONST but packages/core is $CORE_PKG"
+            exit 1
           fi
-          [ "$FAILED" = "0" ] || exit 1
-          echo "All four packages and CORE_VERSION are at $TAG"
+          echo "Tag $TAG matches bumped package(s) and CORE_VERSION matches core ($CORE_PKG)"
 
       # A package that has never been published cannot be published by this workflow, and the
       # reason is worth stating because it is not a bug to be fixed here.
@@ -281,11 +284,13 @@ jobs:
       - name: Move next up to a stable release
         if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
         run: |
-          VERSION=$(node -p "require('./packages/core/dist/package.json').version")
-          case "$VERSION" in
-            *-*) echo "$VERSION is a prerelease — next was set by the publish steps."; exit 0 ;;
-          esac
-          for PKG in @dynamic-entity/core ngx-dynamic-entity ngx-dynamic-entity-builder @dynamic-entity/server; do
+          DIRS=("packages/core" "packages/ngx-dynamic-entity" "packages/ngx-dynamic-entity-builder" "packages/server")
+          for PKG_DIR in "${DIRS[@]}"; do
+            PKG=$(node -p "require('./$PKG_DIR/dist/package.json').name")
+            VERSION=$(node -p "require('./$PKG_DIR/dist/package.json').version")
+            case "$VERSION" in
+              *-*) echo "$PKG $VERSION is a prerelease — next was set by publish."; continue ;;
+            esac
             CURRENT_NEXT=$(npm view "$PKG" dist-tags.next 2>/dev/null || true)
             if [ -z "$CURRENT_NEXT" ]; then
               echo "$PKG has no next dist-tag — nothing to move."
