@@ -144,14 +144,25 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME#v}"
           MATCHED=0
+          FAILED=0
           for PKG in packages/core packages/ngx-dynamic-entity packages/ngx-dynamic-entity-builder packages/server; do
+            NAME=$(node -p "require('./$PKG/package.json').name")
             VERSION=$(node -p "require('./$PKG/package.json').version")
             if [ "$VERSION" = "$TAG" ]; then
               MATCHED=1
+              echo "$NAME is $VERSION (matches tag $TAG)"
+            elif npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+              echo "$NAME is $VERSION (already on npm)"
+            else
+              echo "::error::$NAME is $VERSION: neither equals tag $TAG nor exists on npm"
+              FAILED=1
             fi
           done
+          if [ "$FAILED" = "1" ]; then
+            exit 1
+          fi
           if [ "$MATCHED" = "0" ]; then
-            echo "::error::Tag $TAG does not match any package version"
+            echo "::error::No package has version matching tag $TAG"
             exit 1
           fi
           # CORE_VERSION is compared across a network by the server and the client transport,
@@ -284,12 +295,17 @@ jobs:
       - name: Move next up to a stable release
         if: ${{ github.event_name == 'push' || github.event.inputs.dry_run != 'true' }}
         run: |
+          TAG="${GITHUB_REF_NAME#v}"
           DIRS=("packages/core" "packages/ngx-dynamic-entity" "packages/ngx-dynamic-entity-builder" "packages/server")
           for PKG_DIR in "${DIRS[@]}"; do
             PKG=$(node -p "require('./$PKG_DIR/dist/package.json').name")
             VERSION=$(node -p "require('./$PKG_DIR/dist/package.json').version")
+            if [ "$VERSION" != "$TAG" ]; then
+              echo "$PKG is $VERSION (does not equal tag $TAG) — leaving dist-tag alone."
+              continue
+            fi
             case "$VERSION" in
-              *-*) echo "$PKG $VERSION is a prerelease — next was set by publish."; continue ;;
+              *-*) echo "$PKG $VERSION is a prerelease — next was set by the publish steps."; continue ;;
             esac
             CURRENT_NEXT=$(npm view "$PKG" dist-tags.next 2>/dev/null || true)
             if [ -z "$CURRENT_NEXT" ]; then
